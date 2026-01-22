@@ -173,6 +173,11 @@ if (typeof UniversalSupabaseClient === 'undefined') {
      * Inicializar cliente Supabase
      */
     async initialize() {
+        // Si ya está inicializado, retornar el cliente existente
+        if (this.isInitialized && this.client) {
+            return this.client;
+        }
+
         try {
             // Verificar que la biblioteca esté disponible
             if (typeof supabase === 'undefined') {
@@ -199,12 +204,23 @@ if (typeof UniversalSupabaseClient === 'undefined') {
                 throw new Error('Configuración de Supabase no disponible. Verifica las variables de entorno.');
             }
 
+            // Si ya existe un cliente, reutilizarlo para evitar múltiples instancias
+            if (this.client && this.client.auth) {
+                console.log('ℹ️ Reutilizando cliente Supabase existente');
+                this.isInitialized = true;
+                return this.client;
+            }
+
             // Crear cliente con configuración optimizada
+            // Usar una clave de almacenamiento única para evitar conflictos
+            const storageKey = `sb-${config.url.split('//')[1]?.split('.')[0] || 'default'}-auth-token`;
             this.client = supabase.createClient(config.url, config.anonKey, {
                 auth: {
                     persistSession: true, // Persistir sesión para mantener login entre recargas
                     autoRefreshToken: true, // Refrescar token automáticamente
-                    detectSessionInUrl: true // Detectar sesión en URL (para callbacks)
+                    detectSessionInUrl: true, // Detectar sesión en URL (para callbacks)
+                    storageKey: storageKey, // Clave única para evitar conflictos
+                    storage: window.localStorage // Usar localStorage explícitamente
                 },
                 global: {
                     headers: {
@@ -220,8 +236,14 @@ if (typeof UniversalSupabaseClient === 'undefined') {
                 }
             });
 
-            // Test de conexión
-            await this.testConnection();
+            // Test de conexión (solo si no estamos en file://)
+            if (window.location.protocol !== 'file:') {
+                try {
+                    await this.testConnection();
+                } catch (error) {
+                    console.warn('⚠️ Error en test de conexión (continuando):', error);
+                }
+            }
             
             this.isInitialized = true;
             

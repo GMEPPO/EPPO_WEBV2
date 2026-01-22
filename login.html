@@ -301,23 +301,28 @@
                 }
             }
             
-            // Verificar si ya está autenticado (con múltiples intentos y delay)
+            // Limpiar bandera de redirección si existe
+            sessionStorage.removeItem('auth_redirecting');
+            
+            // Verificar si ya está autenticado (con timeout más largo)
             try {
                 // Esperar un momento para que la sesión se cargue completamente
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                await new Promise(resolve => setTimeout(resolve, 1500));
                 
-                // Verificar múltiples veces para evitar falsos negativos
+                // Verificar autenticación una sola vez con timeout
                 let isAuth = false;
-                for (let i = 0; i < 3; i++) {
+                if (window.authManager && typeof window.authManager.isAuthenticated === 'function') {
                     try {
                         isAuth = await Promise.race([
                             window.authManager.isAuthenticated(),
-                            new Promise(resolve => setTimeout(() => resolve(false), 2000))
+                            new Promise(resolve => setTimeout(() => {
+                                console.log('ℹ️ Timeout en verificación de autenticación en login');
+                                resolve(false);
+                            }, 5000))
                         ]);
-                        if (isAuth) break;
-                        await new Promise(resolve => setTimeout(resolve, 500));
                     } catch (e) {
-                        console.warn('⚠️ Error verificando autenticación en login, intento', i + 1);
+                        console.warn('⚠️ Error verificando autenticación en login:', e);
+                        isAuth = false;
                     }
                 }
                 
@@ -326,16 +331,26 @@
                     // Verificar que no estemos ya en index.html
                     const currentPath = window.location.pathname || window.location.href;
                     if (!currentPath.includes('index.html')) {
-                        // Agregar un pequeño delay para evitar bucles
-                        setTimeout(() => {
-                            window.location.href = 'index.html';
-                        }, 100);
+                        // Verificar que no hayamos redirigido recientemente
+                        const lastRedirect = sessionStorage.getItem('last_auth_redirect');
+                        const now = Date.now();
+                        if (!lastRedirect || (now - parseInt(lastRedirect)) > 2000) {
+                            sessionStorage.setItem('last_auth_redirect', now.toString());
+                            // Agregar un pequeño delay para evitar bucles
+                            setTimeout(() => {
+                                window.location.href = 'index.html';
+                            }, 300);
+                        } else {
+                            console.warn('⚠️ Redirección reciente detectada, evitando bucle');
+                        }
                     }
                     return;
+                } else {
+                    console.log('ℹ️ Usuario no autenticado, mostrando formulario de login');
                 }
             } catch (error) {
                 // Si hay error, continuar con el login normal
-                console.log('ℹ️ Continuando con login normal');
+                console.log('ℹ️ Continuando con login normal:', error);
             }
 
             // Configurar formulario
