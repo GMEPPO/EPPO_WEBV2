@@ -1,0 +1,142 @@
+:root{
+  --brand-blue:#0D2A3C;      /* Azul noche (principal) */
+  --brand-gold:#C6A15B;      /* Dorado sobrio (acento)  */
+  --bg-warm:#F6F4F0;         /* Marfil (fondo)         */
+  --text:#151719;            /* Carbón (texto)         */
+  --text-muted:#5E6B76;      /* Gris pizarra           */
+  --radius:14px;
+  --shadow:0 6px 18px rgba(13,42,60,.12);
+  --shadow-lg:0 10px 26px rgba(13,42,60,.18);
+}
+
+*{ box-sizing:border-box }
+html,body{ height:100% }
+
+body{
+  background:var(--bg-warm);
+  color:var(--text);
+  font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+
+/* Tipografía */
+h1,h2,h3,.heading{
+  font-family:"Playfair Display",serif;
+  color:var(--brand-blue);
+  letter-spacing:.01em;
+  margin:0 0 .5em;
+}
+h1{ font-size:clamp(36px,4vw,52px); line-height:1.1 }
+h2{ font-size:clamp(28px,3vw,36px); line-height:1.2 }
+.section-title{
+  position:relative; padding-bottom:.6rem; margin-bottom:1.2rem;
+}
+.section-title:after{
+  content:""; position:absolute; left:0; bottom:0;
+  width:48px; height:2px; background:var(--brand-gold);
+}
+
+/* Contenedores */
+.container{ max-width:1200px; margin:0 auto; padding:0 24px }
+
+/* Tarjetas */
+.card{
+  background:#fff; border-radius:var(--radius); box-shadow:var(--shadow);
+  transition:transform .18s ease, box-shadow .18s ease;
+}
+.card:hover{ transform:translateY(-4px); box-shadow:var(--shadow-lg) }
+
+/* Botones */
+.btn{
+  display:inline-flex; align-items:center; justify-content:center;
+  gap:.5rem; border-radius:12px; padding:12px 18px; font-weight:600;
+  text-decoration:none; cursor:pointer; border:1px solid transparent;
+  min-height:44px;
+}
+.btn-primary{ background:var(--brand-blue); color:#fff; transition: all 0.3s ease; cursor: pointer; }
+.btn-primary:hover{ 
+  background:#113B55; 
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+.btn-primary:active{ 
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+.btn-secondary{
+  background:#fff; color:var(--brand-blue); border-color:var(--brand-blue)
+}
+.btn-secondary:hover{ background:#F0ECE5 }
+
+/* Badges / chips */
+.badge{
+  display:inline-block; padding:4px 10px; border-radius:999px;
+  font-size:.78rem; font-weight:700; letter-spacing:.02em;
+  background:var(--brand-blue); color:#fff;
+}
+.badge--accent{ background:var(--brand-gold); color:var(--brand-blue) }
+
+/* Header / Nav */
+.site-header{
+  background:#fff; border-bottom:1px solid #E8EBEF;
+}
+.nav{ display:flex; gap:24px }
+.nav a{
+  color:var(--brand-blue); text-decoration:none; padding:22px 0; font-weight:600;
+  min-height:44px; display:flex; align-items:center;
+}
+.nav a:hover{ box-shadow:inset 0 -2px 0 var(--brand-gold) }
+
+/* Grids */
+.grid{ display:grid; gap:24px }
+.grid-3{ grid-template-columns:repeat(3,minmax(0,1fr)) }
+.grid-4{ grid-template-columns:repeat(4,minmax(0,1fr)) }
+
+/* Tarjetas de categoría con overlay limpio */
+.category-card{
+  position:relative; overflow:hidden; border-radius:var(--radius)
+}
+.category-card img{ width:100%; height:220px; object-fit:cover; display:block }
+.category-card .overlay{
+  position:absolute; inset:auto 0 0; padding:18px; color:#fff;
+  background:linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,.45) 100%);
+}
+.category-card .title{ font-family:"Playfair Display",serif; font-size:1.3rem }
+
+/* Tarjeta de producto */
+.product-card .media{ height:220px; display:grid; place-items:center; overflow:hidden; border-bottom:1px solid #F0F2F5; position:relative; }
+.product-card img{ width:100%; height:100%; object-fit:contain; transition:transform .18s ease }
+.product-card:hover .media img{ transform:scale(1.02) }
+.product-card .title{ font-weight:600; margin:.6rem 0 .2rem }
+.product-card .meta{ display:flex; gap:.5rem; flex-wrap:wrap }
+
+/* Filtros */
+.filters{ position:sticky; top:90px }
+input[type="range"]{ width:100% }
+input[type="range"]::-webkit-slider-thumb{ background:var(--brand-gold); border-radius:50% }
+
+/* Estados de foco accesibles */
+:focus-visible{ outline:2px solid var(--brand-gold); outline-offset:2px }
+
+/* Footer */
+.site-footer{ background:var(--brand-blue); color:#fff; padding:40px 0 }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .grid-3, .grid-4 { grid-template-columns: 1fr }
+  .nav { gap: 16px }
+  .container { padding: 0 16px }
+}
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,2039 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EPPO by Groupe GM - Preparador de Presupuesto</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="menu-hamburguesa.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* Indicador de edición de propuesta */
+        .editing-indicator {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            color: white;
+            padding: var(--space-3) var(--space-6);
+            z-index: 10000;
+            box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.15);
+            animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(100%);
+            }
+            to {
+                transform: translateY(0);
+            }
+        }
+
+        .editing-indicator-content {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            max-width: 1400px;
+            margin: 0 auto;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .editing-indicator-content i {
+            font-size: 1rem;
+        }
+
+        /* Ajustar padding del body cuando hay indicador (ahora en la parte inferior) */
+        body:has(.editing-indicator) .main-content {
+            padding-bottom: calc(var(--space-8) + 50px);
+        }
+    </style>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="load-config.js"></script>
+    <script src="supabase-config-universal.js"></script>
+    <script src="translation-system.js"></script>
+    <script src="auth.js"></script>
+    <script src="stock-warning.js"></script>
+    <!-- Librerías para generar PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- PDF.js para convertir PDFs a imágenes -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" onload="console.log('✅ Script PDF.js cargado'); window.pdfjsLibReady = true;" onerror="console.error('❌ Error cargando PDF.js');"></script>
+    <script>
+        // Verificar que PDF.js se cargó correctamente
+        function checkPdfJsLoaded() {
+            // Intentar múltiples formas de acceder a PDF.js
+            const pdfjs = window.pdfjsLib || window.pdfjs || (typeof pdfjsLib !== 'undefined' ? pdfjsLib : null);
+            
+            if (pdfjs) {
+                console.log('✅ PDF.js disponible:', {
+                    version: pdfjs.version || 'desconocida',
+                    hasGetDocument: typeof pdfjs.getDocument === 'function'
+                });
+                // Configurar worker por defecto
+                if (!pdfjs.GlobalWorkerOptions.workerSrc) {
+                    pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                }
+                window.pdfjsLibReady = true;
+                window.pdfjsLibInstance = pdfjs;
+                return true;
+            }
+            return false;
+        }
+        
+        // Verificar inmediatamente
+        if (checkPdfJsLoaded()) {
+            console.log('✅ PDF.js ya está disponible');
+        } else {
+            // Si no está disponible, esperar a que se cargue
+            window.addEventListener('load', function() {
+                if (checkPdfJsLoaded()) {
+                    console.log('✅ PDF.js cargado después del evento load');
+                } else {
+                    console.error('❌ PDF.js no se cargó correctamente después del evento load');
+                }
+            });
+        }
+    </script>
+    <style>
+        /* Menú desplegable hamburguesa */
+        .menu-dropdown {
+            position: relative;
+        }
+
+        .menu-toggle {
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: var(--space-2) var(--space-3);
+            border-radius: var(--radius-md);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .menu-toggle:hover {
+            background: var(--bg-gray-100);
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: var(--space-2);
+            background: var(--bg-white);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-xl);
+            min-width: 220px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            border: 1px solid var(--bg-gray-200);
+        }
+
+        .dropdown-menu.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .dropdown-link {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            padding: var(--space-3) var(--space-4);
+            color: var(--text-primary);
+            text-decoration: none;
+            transition: all 0.2s ease;
+            border-bottom: 1px solid var(--bg-gray-200);
+            font-size: 0.875rem;
+        }
+
+        .dropdown-link:last-child {
+            border-bottom: none;
+        }
+
+        .dropdown-link:hover {
+            background: var(--bg-gray-100);
+            color: var(--brand-blue);
+        }
+
+        .dropdown-link.active {
+            background: var(--primary-500);
+            color: #ffffff;
+            font-weight: 600;
+        }
+
+        [data-theme="dark"] .dropdown-link.active {
+            background: var(--primary-600);
+            color: #ffffff;
+        }
+
+        .dropdown-link i {
+            width: 20px;
+            text-align: center;
+            color: var(--text-secondary);
+        }
+
+        .dropdown-link:hover i {
+            color: var(--brand-blue);
+        }
+
+        .dropdown-link.active i {
+            color: #ffffff;
+        }
+
+        [data-theme="dark"] .dropdown-link.active i {
+            color: #ffffff;
+        }
+
+        @media (max-width: 768px) {
+            .dropdown-menu {
+                right: auto;
+                left: 0;
+            }
+        }
+    </style>
+    <style>
+        /* Estilos específicos para el carrito */
+        .cart-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: var(--space-8) var(--space-6);
+        }
+
+        .cart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-8);
+            padding-bottom: var(--space-4);
+            border-bottom: 2px solid var(--bg-gray-200);
+        }
+
+        .cart-header-center {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0 var(--space-4);
+        }
+
+        .editing-proposal-badge {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            padding: var(--space-3) var(--space-5);
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            color: white;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            font-size: 0.875rem;
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2);
+        }
+
+        .editing-proposal-badge i {
+            font-size: 1rem;
+        }
+
+        .editing-proposal-badge span {
+            margin: 0 var(--space-2);
+        }
+
+        .cart-header-right {
+            display: flex;
+            gap: var(--space-4);
+        }
+
+        .cart-title {
+            font-family: var(--font-display);
+            font-size: 2.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .cart-actions {
+            display: flex;
+            gap: var(--space-4);
+        }
+
+        .btn-clear-cart {
+            background: var(--danger-500);
+            color: var(--text-white);
+            border: none;
+            padding: var(--space-3) var(--space-4);
+            border-radius: var(--radius-md);
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-clear-cart:hover {
+            background: var(--danger-600);
+        }
+
+        .cart-content {
+            display: block;
+        }
+
+        .cart-items {
+            background: var(--bg-white);
+            border-radius: var(--radius-xl);
+            padding: var(--space-6);
+            box-shadow: var(--shadow-md);
+        }
+
+        .cart-item-header {
+            display: grid;
+            grid-template-columns: 120px 2fr 120px 120px 150px 80px;
+            gap: var(--space-4);
+            padding: var(--space-4);
+            background: var(--bg-gray-100);
+            border-bottom: 2px solid var(--bg-gray-300);
+            align-items: center;
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .cart-header-cell {
+            text-align: center;
+        }
+
+        .cart-item-wrapper {
+            background: linear-gradient(135deg, #1f2a48 0%, #1c2f60 100%);
+            border-radius: var(--radius-sm);
+            padding: var(--space-1);
+            margin-bottom: var(--space-2);
+            box-shadow: 0 1px 3px rgba(30, 58, 138, 0.14), 0 1px 2px rgba(0, 0, 0, 0.06);
+            border: 1px solid rgba(59, 130, 246, 0.15);
+        }
+
+        .cart-item {
+            display: grid;
+            grid-template-columns: 120px 2fr 120px 120px 150px 80px;
+            gap: var(--space-4);
+            padding: var(--space-4);
+            border-bottom: none;
+            align-items: center;
+            background: var(--bg-white);
+            border-radius: var(--radius-md);
+        }
+
+        .cart-item-image-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .cart-item-name {
+            font-size: 0.875rem;
+            color: var(--text-primary);
+            text-align: center;
+            font-weight: 600;
+            line-height: 1.3;
+            word-wrap: break-word;
+        }
+
+        .cart-item-wrapper:last-child {
+            margin-bottom: 0;
+        }
+
+        .cart-item-image {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: var(--radius-md);
+            background: var(--bg-gray-100);
+        }
+
+        .cart-item-info {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-2);
+        }
+
+        .cart-item-name {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0;
+        }
+
+        .cart-item-category {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            background: var(--primary-50);
+            color: var(--primary-600);
+            padding: var(--space-1) var(--space-2);
+            border-radius: var(--radius-sm);
+            width: fit-content;
+        }
+
+        .cart-item-specs {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .quantity-input {
+            width: 100%;
+            padding: var(--space-2);
+            text-align: center;
+            border: 1px solid var(--bg-gray-300);
+            border-radius: var(--radius-md);
+            background: var(--bg-white);
+            font-weight: 600;
+            color: var(--text-primary);
+            -moz-appearance: textfield; /* Firefox */
+        }
+        
+        .quantity-input::-webkit-outer-spin-button,
+        .quantity-input::-webkit-inner-spin-button {
+            -webkit-appearance: none; /* Chrome, Safari, Edge */
+            margin: 0;
+        }
+
+        .quantity-input:focus {
+            outline: none;
+            border-color: var(--primary-500);
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+        }
+
+        .cart-item-description {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: var(--space-2) var(--space-4);
+        }
+
+        .product-description-text {
+            font-size: 0.9rem;
+            color: var(--text-primary);
+            line-height: 1.6;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+
+        .cart-item-actions {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-2);
+            align-items: center;
+        }
+
+        .observations-btn {
+            background: none;
+            border: none;
+            color: var(--primary-500);
+            cursor: pointer;
+            padding: var(--space-2);
+            border-radius: var(--radius-sm);
+            transition: all 0.2s ease;
+            font-size: 1rem;
+        }
+
+        .observations-btn:hover {
+            background: var(--primary-50);
+            color: var(--primary-600);
+        }
+
+        .cart-item-observations-container {
+            grid-column: 1 / -1;
+            margin-top: var(--space-2);
+            padding-top: var(--space-3);
+            border-top: 1px solid var(--bg-gray-200);
+        }
+
+        .observations-input {
+            width: 100%;
+            padding: var(--space-3);
+            border: 1px solid var(--bg-gray-300);
+            border-radius: var(--radius-md);
+            background: var(--bg-white);
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        .observations-input:focus {
+            outline: none;
+            border-color: var(--primary-500);
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+        }
+
+        .cart-item-price {
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .cart-item-total {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--accent-500);
+        }
+
+        .cart-item-delivery {
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .delivery-time {
+            font-size: 0.875rem;
+            color: var(--text-primary);
+            font-weight: 500;
+            padding: var(--space-2) var(--space-3);
+            background: var(--bg-gray-100);
+            border-radius: var(--radius-md);
+            text-align: center;
+        }
+
+        .remove-item {
+            background: none;
+            border: none;
+            color: var(--danger-500);
+            cursor: pointer;
+            padding: var(--space-2);
+            border-radius: var(--radius-sm);
+            transition: all 0.2s ease;
+            font-size: 1rem;
+        }
+
+        .remove-item:hover {
+            background: var(--danger-50);
+        }
+
+        .cart-summary {
+            background: var(--bg-white);
+            border-radius: var(--radius-xl);
+            padding: var(--space-6);
+            box-shadow: var(--shadow-md);
+            height: fit-content;
+            position: sticky;
+            top: 100px;
+        }
+
+        .summary-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: var(--space-6);
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: var(--space-3);
+            padding-bottom: var(--space-3);
+            border-bottom: 1px solid var(--bg-gray-200);
+        }
+
+        .summary-row:last-child {
+            border-bottom: none;
+            font-weight: 700;
+            font-size: 1.25rem;
+            color: var(--text-primary);
+        }
+
+        .summary-total {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent-500);
+        }
+
+        .checkout-btn {
+            width: 100%;
+            background: var(--primary-500);
+            color: var(--text-white);
+            border: none;
+            padding: var(--space-4);
+            border-radius: var(--radius-md);
+            font-size: 1.125rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: var(--space-6);
+        }
+
+        .checkout-btn:hover {
+            background: var(--primary-600);
+        }
+
+        .checkout-btn:disabled {
+            background: var(--bg-gray-300);
+            cursor: not-allowed;
+        }
+
+        .empty-cart {
+            text-align: center;
+            padding: var(--space-12);
+            color: var(--text-secondary);
+        }
+
+        .empty-cart-icon {
+            font-size: 4rem;
+            color: var(--bg-gray-300);
+            margin-bottom: var(--space-4);
+        }
+
+        .empty-cart-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: var(--space-2);
+        }
+
+        .empty-cart-text {
+            margin-bottom: var(--space-6);
+        }
+
+        .btn-continue-shopping {
+            background: var(--primary-500);
+            color: var(--text-white);
+            border: none;
+            padding: var(--space-3) var(--space-6);
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-continue-shopping:hover {
+            background: var(--primary-600);
+            text-decoration: none;
+            color: var(--text-white);
+        }
+
+        /* Modal para agregar categoría */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background: var(--bg-white);
+            border-radius: var(--radius-xl);
+            padding: var(--space-8);
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-overlay.active .modal {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-6);
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: var(--space-2);
+            border-radius: var(--radius-sm);
+            transition: all 0.2s ease;
+        }
+
+        .modal-close:hover {
+            background: var(--bg-gray-100);
+        }
+
+        .form-group {
+            margin-bottom: var(--space-4);
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: var(--space-2);
+        }
+
+        .form-select {
+            width: 100%;
+            padding: var(--space-3);
+            border: 1px solid var(--bg-gray-200);
+            border-radius: var(--radius-md);
+            background: var(--bg-white);
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: var(--space-3);
+            border: 1px solid var(--bg-gray-200);
+            border-radius: var(--radius-md);
+            background: var(--bg-white);
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+
+        .form-input:focus,
+        .form-select:focus {
+            outline: none;
+            border-color: var(--primary-500);
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+        }
+        
+        /* Quitar flechas de inputs numéricos */
+        .form-input[type="number"] {
+            -moz-appearance: textfield; /* Firefox */
+        }
+        
+        .form-input[type="number"]::-webkit-outer-spin-button,
+        .form-input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none; /* Chrome, Safari, Edge */
+            margin: 0;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: var(--space-3);
+            justify-content: flex-end;
+            margin-top: var(--space-6);
+        }
+
+        .btn-secondary {
+            background: var(--bg-gray-100);
+            color: var(--text-secondary);
+            border: none;
+            padding: var(--space-3) var(--space-4);
+            border-radius: var(--radius-md);
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-gray-200);
+        }
+
+        .btn-primary {
+            background: var(--primary-500);
+            color: var(--text-white);
+            border: none;
+            padding: var(--space-3) var(--space-4);
+            border-radius: var(--radius-md);
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-600);
+        }
+
+        /* Estilos para resultados de búsqueda de productos */
+        .product-search-item {
+            padding: var(--space-3);
+            border-bottom: 1px solid var(--bg-gray-200);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+        }
+
+        .product-search-item:hover {
+            background: var(--bg-gray-100);
+        }
+
+        .product-search-item:last-child {
+            border-bottom: none;
+        }
+
+        .product-search-item-image {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            border-radius: var(--radius-sm);
+            background: var(--bg-gray-200);
+        }
+
+        .product-search-item-info {
+            flex: 1;
+        }
+
+        .product-search-item-name {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0 0 var(--space-1) 0;
+            font-size: 0.95rem;
+        }
+
+        .product-search-item-ref {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin: 0;
+        }
+
+        .product-search-item-category {
+            font-size: 0.75rem;
+            color: var(--primary-600);
+            background: var(--primary-50);
+            padding: 2px 6px;
+            border-radius: var(--radius-sm);
+            display: inline-block;
+            margin-top: var(--space-1);
+        }
+
+        .no-results {
+            padding: var(--space-6);
+            text-align: center;
+            color: var(--text-secondary);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .cart-item-header {
+                grid-template-columns: 80px 1fr 80px 100px 60px;
+                gap: var(--space-3);
+                font-size: 0.75rem;
+            }
+
+            .cart-item {
+                grid-template-columns: 80px 1fr 80px 100px 60px;
+                gap: var(--space-3);
+            }
+            
+            .cart-item-image {
+                width: 80px;
+                height: 80px;
+            }
+            
+            .cart-item-description {
+                grid-column: 2 / -1;
+                margin-top: var(--space-2);
+                text-align: left;
+            }
+            
+            .quantity-input {
+                grid-column: 3;
+            }
+            
+            .cart-item-price {
+                grid-column: 4;
+            }
+
+            .cart-item-delivery {
+                grid-column: 5;
+            }
+
+            .cart-item-actions {
+                grid-column: 1 / -1;
+                flex-direction: row;
+                justify-content: center;
+                margin-top: var(--space-2);
+            }
+        }
+
+        /* Menú desplegable hamburguesa */
+        .menu-dropdown {
+            position: relative;
+        }
+
+        .menu-toggle {
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: var(--space-2) var(--space-3);
+            border-radius: var(--radius-md);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .menu-toggle:hover {
+            background: var(--bg-gray-100);
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: var(--space-2);
+            background: var(--bg-white);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-xl);
+            min-width: 220px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            border: 1px solid var(--bg-gray-200);
+        }
+
+        .dropdown-menu.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .dropdown-link {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            padding: var(--space-3) var(--space-4);
+            color: var(--text-primary);
+            text-decoration: none;
+            transition: all 0.2s ease;
+            border-bottom: 1px solid var(--bg-gray-200);
+            font-size: 0.875rem;
+        }
+
+        .dropdown-link:last-child {
+            border-bottom: none;
+        }
+
+        .dropdown-link:hover {
+            background: var(--bg-gray-100);
+            color: var(--brand-blue);
+        }
+
+        .dropdown-link.active {
+            background: var(--primary-500);
+            color: #ffffff;
+            font-weight: 600;
+        }
+
+        [data-theme="dark"] .dropdown-link.active {
+            background: var(--primary-600);
+            color: #ffffff;
+        }
+
+        .dropdown-link i {
+            width: 20px;
+            text-align: center;
+            color: var(--text-secondary);
+        }
+
+        .dropdown-link:hover i {
+            color: var(--brand-blue);
+        }
+
+        .dropdown-link.active i {
+            color: #ffffff;
+        }
+
+        [data-theme="dark"] .dropdown-link.active i {
+            color: #ffffff;
+        }
+
+        @media (max-width: 768px) {
+            .dropdown-menu {
+                right: auto;
+                left: 0;
+            }
+        }
+        /* Modal de imagen ampliada */
+        .image-modal {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .image-modal-content {
+            position: relative;
+            margin: auto;
+            padding: 20px;
+            width: 90%;
+            max-width: 1200px;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .image-modal-close {
+            position: absolute;
+            top: 10px;
+            right: 25px;
+            color: #fff;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 10001;
+            transition: opacity 0.2s;
+        }
+
+        .image-modal-close:hover {
+            opacity: 0.7;
+        }
+
+        .image-modal-img {
+            max-width: 100%;
+            max-height: 80vh;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .image-modal-title {
+            margin-top: 20px;
+            color: #fff;
+            font-size: 1.25rem;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        /* Modal de escalones de precios */
+        .price-tiers-modal {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.3s;
+        }
+
+        .price-tiers-modal-content {
+            position: relative;
+            background-color: var(--bg-white);
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 85vh;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .price-tiers-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--bg-gray-200);
+            background: var(--brand-blue, #0D2A3C);
+        }
+
+        [data-theme="dark"] .price-tiers-modal-header {
+            background: var(--brand-blue, #0D2A3C);
+            border-bottom-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .price-tiers-modal-title {
+            margin: 0;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: white;
+        }
+
+        .price-tiers-modal-close {
+            color: white;
+            font-size: 32px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            line-height: 1;
+        }
+
+        .price-tiers-modal-close:hover {
+            opacity: 0.8;
+        }
+
+        .price-tiers-modal-body {
+            padding: 24px;
+            overflow-y: auto;
+            max-height: calc(85vh - 100px);
+            background: var(--bg-white);
+        }
+
+        .price-tiers-list {
+            width: 100%;
+        }
+
+        .price-tiers-current {
+            background: linear-gradient(135deg, rgba(13, 42, 60, 0.08) 0%, rgba(198, 161, 91, 0.12) 100%);
+            border: 2px solid var(--brand-gold, #C6A15B);
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        [data-theme="dark"] .price-tiers-current {
+            background: linear-gradient(135deg, rgba(198, 161, 91, 0.15) 0%, rgba(198, 161, 91, 0.08) 100%);
+            border-color: var(--brand-gold, #C6A15B);
+        }
+
+        .price-tiers-current-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .price-tiers-current-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .price-tiers-current-value {
+            font-size: 1.5rem;
+            color: var(--brand-blue, #0D2A3C);
+            font-weight: 700;
+        }
+
+        [data-theme="dark"] .price-tiers-current-value {
+            color: var(--brand-gold, #C6A15B);
+        }
+
+        .price-tiers-current-icon {
+            font-size: 1.75rem;
+            color: var(--brand-gold, #C6A15B);
+        }
+
+        .price-tiers-table {
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid var(--bg-gray-200);
+        }
+
+        [data-theme="dark"] .price-tiers-table {
+            border-color: var(--bg-gray-200);
+        }
+
+        .price-tiers-table table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--bg-white);
+        }
+
+        .price-tiers-table th {
+            background: var(--bg-gray-100);
+            padding: 14px 16px;
+            text-align: left;
+            border-bottom: 2px solid var(--bg-gray-200);
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        [data-theme="dark"] .price-tiers-table th {
+            background: var(--bg-gray-100);
+            border-bottom-color: var(--bg-gray-200);
+        }
+
+        .price-tiers-table td {
+            padding: 14px 16px;
+            color: var(--text-primary);
+            border-bottom: 1px solid var(--bg-gray-200);
+            transition: background-color 0.2s;
+        }
+
+        .price-tiers-table tbody tr {
+            transition: background-color 0.2s;
+        }
+
+        .price-tiers-table tbody tr:hover {
+            background: var(--bg-gray-50);
+        }
+
+        [data-theme="dark"] .price-tiers-table tbody tr:hover {
+            background: var(--bg-gray-100);
+        }
+
+        .price-tiers-table tbody tr.active-tier {
+            background: linear-gradient(135deg, rgba(198, 161, 91, 0.1) 0%, rgba(198, 161, 91, 0.05) 100%);
+            border-left: 3px solid var(--brand-gold, #C6A15B);
+        }
+
+        [data-theme="dark"] .price-tiers-table tbody tr.active-tier {
+            background: linear-gradient(135deg, rgba(198, 161, 91, 0.2) 0%, rgba(198, 161, 91, 0.1) 100%);
+        }
+
+        .price-tiers-table tbody tr.active-tier td {
+            font-weight: 600;
+            color: var(--brand-blue, #0D2A3C);
+        }
+
+        [data-theme="dark"] .price-tiers-table tbody tr.active-tier td {
+            color: var(--brand-gold, #C6A15B);
+        }
+
+        .price-tiers-table .price-cell {
+            text-align: right;
+            font-weight: 600;
+        }
+
+        .price-tiers-table .price-cell .check-icon {
+            color: var(--brand-gold, #C6A15B);
+            margin-left: 8px;
+        }
+
+        @media (max-width: 768px) {
+            .image-modal-content {
+                width: 95%;
+                padding: 10px;
+            }
+
+            .image-modal-img {
+                max-height: 70vh;
+            }
+
+            .price-tiers-modal-content {
+                width: 95%;
+                margin: 10% auto;
+            }
+
+            .price-tiers-modal-header {
+                padding: 16px 20px;
+            }
+
+            .price-tiers-modal-body {
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <span>EPPO by <span class="groupe-gm">Groupe GM</span></span>
+            </div>
+            <nav class="nav">
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="productos-dinamico.html" class="nav-link">Products</a>
+                <a href="carrito-compras.html" class="nav-link active" id="nav-cart-link">Presupuesto</a>
+                
+                <!-- Menú hamburguesa -->
+                <div class="menu-dropdown">
+                    <button class="menu-toggle" id="menuToggle" onclick="toggleMenu()" aria-label="Toggle menu">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="dropdown-menu" id="dropdownMenu">
+                        <a href="comparar-productos.html" class="dropdown-link">
+                            <i class="fas fa-balance-scale"></i>
+                            <span>Comparar</span>
+                        </a>
+                        <a href="consultar-propuestas.html" class="dropdown-link" id="nav-proposals-link">
+                            <i class="fas fa-file-invoice"></i>
+                            <span>Histórico</span>
+                        </a>
+                        <a href="selector-productos.html" class="dropdown-link" id="nav-create-product-link">
+                            <i class="fas fa-edit"></i>
+                            <span id="create-product-text">Creador/Editor</span>
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="language-selector">
+                    <button class="flag-btn active" data-lang="pt" title="Português" onclick="changeLanguage('pt')">
+                        <img src="https://flagcdn.com/w20/pt.png" alt="Portugal">
+                    </button>
+                    <button class="flag-btn" data-lang="es" title="Español" onclick="changeLanguage('es')">
+                        <img src="https://flagcdn.com/w20/es.png" alt="España">
+                    </button>
+                    <button class="flag-btn" data-lang="en" title="English" onclick="changeLanguage('en')">
+                        <img src="https://flagcdn.com/w20/gb.png" alt="Reino Unido">
+                    </button>
+                </div>
+                <button class="theme-toggle" id="theme-toggle" title="Cambiar tema">
+                    <i class="fas fa-sun sun-icon"></i>
+                    <i class="fas fa-moon moon-icon"></i>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="cart-container">
+            <!-- Header del carrito -->
+            <div class="cart-header">
+                <div class="cart-actions">
+                    <button class="btn-clear-cart" id="clearCartBtn" onclick="clearCart()">
+                        <i class="fas fa-trash"></i> <span id="clear-cart-text">Limpiar Presupuesto</span>
+                    </button>
+                    <button class="btn-primary" onclick="openAddProductModal()" style="background: #10b981;">
+                        <i class="fas fa-search"></i> <span id="add-product-text">Agregar Producto</span>
+                    </button>
+                    <button class="btn-primary" id="addExclusiveProductBtn" onclick="openAddExclusiveProductModal()" style="background: linear-gradient(135deg, #C6A15B 0%, #B8944F 100%); display: none;">
+                        <i class="fas fa-star"></i> <span id="add-exclusive-product-text">Agregar Producto Exclusivo</span>
+                    </button>
+                    <button class="btn-primary" onclick="openAddSpecialOrderModal()" style="background: #8b5cf6;">
+                        <i class="fas fa-edit"></i> <span id="add-special-order-text">Pedido Especial</span>
+                    </button>
+                    <button class="btn-mode-200" id="mode200Btn" onclick="toggleMode200()" style="
+                        background: var(--bg-gray-200);
+                        color: var(--text-primary);
+                        border: 2px solid var(--bg-gray-300);
+                        padding: 8px 16px;
+                        border-radius: 8px;
+                        font-size: 0.875rem;
+                        font-weight: 600;
+                        cursor: pointer;
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                        transition: all 0.2s;
+                    " onmouseover="this.style.background='var(--bg-gray-300)';" onmouseout="if(!this.classList.contains('active')) this.style.background='var(--bg-gray-200)';">
+                        <i class="fas fa-toggle-off"></i>
+                        <span id="mode-200-text">Modo 200+</span>
+                    </button>
+                </div>
+                <div class="cart-header-center" id="editing-proposal-info" style="display: none;">
+                    <div class="editing-proposal-badge">
+                        <i class="fas fa-edit"></i>
+                        <span id="editing-proposal-number-text"></span>
+                        <span id="editing-proposal-client-text"></span>
+                    </div>
+                    <button class="btn-apply-max-price" id="applyMaxPriceBtn" onclick="applyMaxPriceToAllItems()" style="
+                        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+                        color: white;
+                        border: none;
+                        padding: 8px 16px;
+                        border-radius: 8px;
+                        font-size: 0.875rem;
+                        font-weight: 600;
+                        cursor: pointer;
+                        display: none;
+                        align-items: center;
+                        gap: 8px;
+                        margin-left: 16px;
+                        transition: all 0.2s;
+                    " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(245,158,11,0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
+                        <i class="fas fa-tags"></i>
+                        <span id="apply-max-price-text">Aplicar Precio 200+</span>
+                    </button>
+                </div>
+                <div class="cart-header-right">
+                    <button class="btn-primary" id="sendProposalBtn" onclick="openSendProposalModal()" style="background: #10b981;">
+                        <i class="fas fa-paper-plane"></i> <span id="send-proposal-text">Enviar Propuesta</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Contenido del carrito -->
+            <div class="cart-content">
+                <!-- Items del carrito -->
+                <div class="cart-items" id="cartItems">
+                    <!-- Los items se cargarán dinámicamente aquí -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal para agregar productos exclusivos del cliente -->
+    <div class="modal-overlay" id="addExclusiveProductModal">
+        <div class="modal" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3 id="add-exclusive-product-modal-title" class="modal-title">Productos Exclusivos de este Cliente</h3>
+                <button class="modal-close" onclick="closeAddExclusiveProductModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div style="margin-bottom: var(--space-4); padding: var(--space-4); background: linear-gradient(135deg, rgba(13, 42, 60, 0.05) 0%, rgba(198, 161, 91, 0.08) 100%); border: 2px solid var(--brand-gold, #C6A15B); border-radius: var(--radius-md);">
+                <p style="margin: 0; color: var(--text-secondary); font-size: 0.875rem;">
+                    <i class="fas fa-info-circle" style="margin-right: 8px; color: var(--brand-gold, #C6A15B);"></i>
+                    <span id="exclusive-products-info">Estos productos están asociados exclusivamente a este cliente y solo aparecen en sus propuestas.</span>
+                </p>
+            </div>
+            <div id="exclusiveProductSearchResults" style="max-height: 500px; overflow-y: auto; margin-bottom: var(--space-4); border: 1px solid var(--bg-gray-200); border-radius: var(--radius-md);">
+                <div style="padding: var(--space-4); text-align: center; color: var(--text-secondary);">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: var(--space-2); opacity: 0.3;"></i>
+                    <p id="exclusive-loading-text">Cargando productos exclusivos...</p>
+                </div>
+            </div>
+            <div id="selectedExclusiveProductSection" style="display: none; margin-bottom: var(--space-4); padding: var(--space-4); background: var(--bg-gray-100); border-radius: var(--radius-md);">
+                <div style="display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3);">
+                    <img id="selectedExclusiveProductImage" src="" alt="" style="width: 60px; height: 60px; object-fit: cover; border-radius: var(--radius-md);">
+                    <div style="flex: 1;">
+                        <h4 id="selectedExclusiveProductName" style="margin: 0; color: var(--text-primary);"></h4>
+                        <p id="selectedExclusiveProductRef" style="margin: 0; font-size: 0.875rem; color: var(--text-secondary);"></p>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="exclusiveProductQuantityInput" id="exclusive-product-quantity-label">Cantidad:</label>
+                    <input type="number" class="form-input" id="exclusiveProductQuantityInput" min="1" max="50000" value="1" required>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeAddExclusiveProductModal()" id="cancel-exclusive-product-btn">Cancelar</button>
+                <button type="button" class="btn-primary" id="add-exclusive-product-btn" onclick="addSelectedExclusiveProductToCart()" disabled>
+                    <i class="fas fa-plus"></i> <span id="add-exclusive-product-to-cart-text">Agregar al Presupuesto</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para agregar producto manualmente -->
+    <div class="modal-overlay" id="addProductModal">
+        <div class="modal" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3 id="add-product-modal-title" class="modal-title">Agregar Producto al Presupuesto</h3>
+                <button class="modal-close" onclick="closeAddProductModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div style="margin-bottom: var(--space-4);">
+                <label class="form-label" for="productSearchInput" id="search-product-label">Buscar por referencia o nombre:</label>
+                <input type="text" class="form-input" id="productSearchInput" placeholder="" autocomplete="off">
+            </div>
+            <!-- Sección de productos exclusivos del cliente (solo visible al editar propuesta) -->
+            <div id="clientExclusiveProductsSection" style="display: none; margin-bottom: var(--space-4); padding: var(--space-4); background: linear-gradient(135deg, rgba(13, 42, 60, 0.05) 0%, rgba(198, 161, 91, 0.08) 100%); border: 2px solid var(--brand-gold, #C6A15B); border-radius: var(--radius-md);">
+                <h4 style="margin: 0 0 var(--space-3) 0; color: var(--brand-blue, #0D2A3C); font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-star" style="color: var(--brand-gold, #C6A15B);"></i>
+                    <span id="exclusive-products-title">Productos Exclusivos de este Cliente</span>
+                </h4>
+                <div id="clientExclusiveProductsList" style="display: grid; gap: var(--space-2); max-height: 200px; overflow-y: auto;">
+                    <!-- Los productos exclusivos se cargarán aquí -->
+                </div>
+            </div>
+            <div id="productSearchResults" style="max-height: 400px; overflow-y: auto; margin-bottom: var(--space-4); border: 1px solid var(--bg-gray-200); border-radius: var(--radius-md);">
+                <div style="padding: var(--space-4); text-align: center; color: var(--text-secondary);">
+                    <i class="fas fa-search" style="font-size: 2rem; margin-bottom: var(--space-2); opacity: 0.3;"></i>
+                    <p id="search-placeholder-text">Escribe para buscar productos...</p>
+                </div>
+            </div>
+            <div id="selectedProductSection" style="display: none; margin-bottom: var(--space-4); padding: var(--space-4); background: var(--bg-gray-100); border-radius: var(--radius-md);">
+                <div style="display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3);">
+                    <img id="selectedProductImage" src="" alt="" style="width: 60px; height: 60px; object-fit: cover; border-radius: var(--radius-md);">
+                    <div style="flex: 1;">
+                        <h4 id="selectedProductName" style="margin: 0; color: var(--text-primary);"></h4>
+                        <p id="selectedProductRef" style="margin: 0; font-size: 0.875rem; color: var(--text-secondary);"></p>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="productQuantityInput" id="product-quantity-label">Cantidad:</label>
+                    <input type="number" class="form-input" id="productQuantityInput" min="1" max="50000" value="1" required>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeAddProductModal()" id="cancel-product-btn">Cancelar</button>
+                <button type="button" class="btn-primary" id="add-product-btn" onclick="addSelectedProductToCart()" disabled>
+                    <i class="fas fa-plus"></i> <span id="add-product-to-cart-text">Agregar al Presupuesto</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para agregar categoría -->
+    <div class="modal-overlay" id="addCategoryModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modal-title" class="modal-title">Agregar Categoría al Presupuesto</h3>
+                <button class="modal-close" onclick="closeAddCategoryModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="addCategoryForm">
+                <div class="form-group">
+                    <label class="form-label" for="categorySelect" id="category-label">Categoría:</label>
+                    <select class="form-select" id="categorySelect" required>
+                        <option value="" id="select-category-option">Seleccionar categoría...</option>
+                        <option value="secadores" id="secadores-option">Secadores</option>
+                        <option value="ironing" id="ironing-option">Planchado</option>
+                        <option value="porta-malas" id="porta-malas-option">Portamaletas</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="quantityInput" id="quantity-label">Cantidad:</label>
+                    <input type="number" class="form-input" id="quantityInput" min="1" max="50000" value="1" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="notesInput" id="notes-label">Notas (opcional):</label>
+                    <textarea class="form-input" id="notesInput" rows="3" placeholder="Ej: Para habitaciones dobles, modelo básico..."></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeAddCategoryModal()" id="cancel-btn">Cancelar</button>
+                    <button type="submit" class="btn-primary" id="add-btn">Agregar al Presupuesto</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para agregar pedido especial -->
+    <div class="modal-overlay" id="addSpecialOrderModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="special-order-modal-title" class="modal-title">Agregar Pedido Especial</h3>
+                <button class="modal-close" onclick="closeAddSpecialOrderModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="addSpecialOrderForm">
+                <div class="form-group">
+                    <label class="form-label" for="specialOrderNameInput" id="special-order-name-label">Nombre del producto:</label>
+                    <input type="text" class="form-input" id="specialOrderNameInput" placeholder="" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="specialOrderDescInput" id="special-order-desc-label">Descripción:</label>
+                    <textarea class="form-input" id="specialOrderDescInput" rows="3" placeholder=""></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="specialOrderQuantityInput" id="special-order-quantity-label">Cantidad:</label>
+                    <input type="number" class="form-input" id="specialOrderQuantityInput" min="1" max="50000" value="1" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="specialOrderPriceInput" id="special-order-price-label">Precio (€):</label>
+                    <input type="number" class="form-input" id="specialOrderPriceInput" min="0" step="0.0001" value="0" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="specialOrderLeadTimeInput" id="special-order-leadtime-label">Plazo de entrega:</label>
+                    <input type="text" class="form-input" id="specialOrderLeadTimeInput" placeholder="">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="specialOrderBoxSizeInput" id="special-order-boxsize-label">Cantidad por caja:</label>
+                    <input type="number" class="form-input" id="specialOrderBoxSizeInput" min="0" step="1" value="0">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="specialOrderImageInput" id="special-order-image-label">Foto del producto (opcional):</label>
+                    <input type="file" class="form-input" id="specialOrderImageInput" accept="image/*">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="specialOrderNotesInput" id="special-order-notes-label">Notas adicionales (opcional):</label>
+                    <textarea class="form-input" id="specialOrderNotesInput" rows="2" placeholder=""></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeAddSpecialOrderModal()" id="cancel-special-order-btn">Cancelar</button>
+                    <button type="submit" class="btn-primary" id="add-special-order-btn">
+                        <i class="fas fa-plus"></i> <span id="add-special-order-to-cart-text">Crear producto y agregar</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para enviar propuesta -->
+    <div class="modal-overlay" id="sendProposalModal">
+        <div class="modal" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3 id="send-proposal-modal-title" class="modal-title">Enviar Propuesta</h3>
+                <button class="modal-close" onclick="closeSendProposalModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="sendProposalForm">
+                <div class="form-group" style="position: relative;">
+                    <label class="form-label" for="clientNameInput" id="client-name-label">Nombre del Cliente *</label>
+                    <input type="text" class="form-input" id="clientNameInput" placeholder="" required autocomplete="off">
+                    <div id="clientSuggestions" class="autocomplete-suggestions" style="
+                        display: none;
+                        position: absolute;
+                        top: 100%;
+                        left: 0;
+                        right: 0;
+                        background: var(--bg-secondary, #1f2937);
+                        border: 1px solid var(--border-color, #374151);
+                        border-radius: 8px;
+                        max-height: 200px;
+                        overflow-y: auto;
+                        z-index: 1000;
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                        margin-top: 4px;
+                    "></div>
+                </div>
+                <div class="form-group" style="position: relative;">
+                    <label class="form-label" for="commercialNameInput" id="commercial-name-label">Nombre del Comercial *</label>
+                    <select class="form-input" id="commercialNameInput" required>
+                        <option value="">Seleccione un comercial...</option>
+                    </select>
+                    <div id="commercialSuggestions" class="autocomplete-suggestions" style="display: none;
+                        display: none;
+                        position: absolute;
+                        top: 100%;
+                        left: 0;
+                        right: 0;
+                        background: var(--bg-secondary, #1f2937);
+                        border: 1px solid var(--border-color, #374151);
+                        border-radius: 8px;
+                        max-height: 200px;
+                        overflow-y: auto;
+                        z-index: 1000;
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                        margin-top: 4px;
+                    "></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="proposalDateInput" id="proposal-date-label">Fecha del Pedido *</label>
+                    <input type="date" class="form-input" id="proposalDateInput" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="proposalCountryInput" id="proposal-country-label">País *</label>
+                    <select class="form-input" id="proposalCountryInput" required>
+                        <option value="" id="select-country-option">Seleccionar país...</option>
+                        <option value="es" id="country-es-option">España</option>
+                        <option value="pt" id="country-pt-option">Portugal</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="clientNumberInput" id="client-number-label">Número de Cliente *</label>
+                    <input type="text" class="form-input" id="clientNumberInput" placeholder="0 si el cliente no está creado" required autocomplete="off">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeSendProposalModal()" id="cancel-send-proposal-btn">Cancelar</button>
+                    <button type="submit" class="btn-primary" id="send-proposal-submit-btn" style="background: #10b981;">
+                        <i class="fas fa-paper-plane"></i> <span id="send-proposal-submit-text">Enviar Propuesta</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="carrito-compras.js"></script>
+    
+    <script>
+        // Función para manejar el cambio de tema
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            
+            // Actualizar el título del botón
+            const toggleButton = document.getElementById('theme-toggle');
+            toggleButton.setAttribute('title', newTheme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro');
+        }
+
+        // Función para inicializar el tema
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const theme = savedTheme || (prefersDark ? 'dark' : 'light');
+            
+            document.documentElement.setAttribute('data-theme', theme);
+            
+            const toggleButton = document.getElementById('theme-toggle');
+            toggleButton.setAttribute('title', theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro');
+        }
+
+
+        // Función para traducir la página del carrito
+        function translateCartPage(lang) {
+            const translations = {
+                pt: {
+                    cartTitle: 'Preparador de Orçamento',
+                    clearCart: 'Limpar Carrinho',
+                    addProduct: 'Adicionar Produto',
+                    addCategory: 'Adicionar Categoria',
+                    summary: 'Resumo',
+                    items: 'Produtos:',
+                    checkout: 'Enviar Pedido',
+                    addProductModalTitle: 'Adicionar Produto ao Orçamento',
+                    searchProduct: 'Buscar por referência ou nome:',
+                    searchPlaceholder: 'Escreva para buscar produtos...',
+                    productQuantity: 'Quantidade:',
+                    addProductToCart: 'Adicionar ao Orçamento',
+                    modalTitle: 'Adicionar Categoria ao Carrinho',
+                    category: 'Categoria:',
+                    selectCategory: 'Selecionar categoria...',
+                    secadores: 'Secadores',
+                    ironing: 'Passar a ferro',
+                    portamaletas: 'Porta-malas',
+                    quantity: 'Quantidade:',
+                    notes: 'Notas (opcional):',
+                    cancel: 'Cancelar',
+                    add: 'Adicionar ao Orçamento',
+                    emptyCartTitle: 'Orçamento Vazio',
+                    emptyCartText: 'Não há produtos no seu orçamento.',
+                    addSpecialOrder: 'Pedido Especial',
+                    specialOrderModalTitle: 'Adicionar Pedido Especial',
+                    specialOrderName: 'Nome do produto:',
+                    specialOrderNamePlaceholder: 'Ex: Secador especial modelo X...',
+                    specialOrderDesc: 'Descrição:',
+                    specialOrderDescPlaceholder: 'Detalhes rápidos do produto...',
+                    specialOrderQuantity: 'Quantidade:',
+                    specialOrderPrice: 'Preço (€):',
+                    specialOrderLeadTime: 'Prazo de entrega:',
+                    specialOrderLeadTimePlaceholder: 'Ex: 4-6 semanas',
+                    specialOrderBoxSize: 'Quantidade por caixa:',
+                    specialOrderBoxSizePlaceholder: 'Ex: 24',
+                    specialOrderImage: 'Foto do produto (opcional):',
+                    specialOrderNotes: 'Notas adicionais (opcional):',
+                    specialOrderNotesPlaceholder: 'Ex: Cor preta, voltagem 220V...',
+                    continueShopping: 'Continuar Comprando',
+                    generateProposal: 'Criar Proposta',
+                    selectLanguageTitle: 'Selecionar Idioma do PDF',
+                    selectLanguageDescription: 'Escolha o idioma em que deseja gerar a proposta:',
+                    cancel: 'Cancelar'
+                },
+                es: {
+                    cartTitle: 'Preparador de Presupuesto',
+                    clearCart: 'Limpiar Presupuesto',
+                    addProduct: 'Agregar Producto',
+                    addCategory: 'Agregar Categoría',
+                    summary: 'Resumen',
+                    items: 'Productos:',
+                    checkout: 'Enviar Pedido',
+                    addProductModalTitle: 'Agregar Producto al Presupuesto',
+                    searchProduct: 'Buscar por referencia o nombre:',
+                    searchPlaceholder: 'Escribe para buscar productos...',
+                    productQuantity: 'Cantidad:',
+                    addProductToCart: 'Agregar al Presupuesto',
+                    modalTitle: 'Agregar Categoría al Presupuesto',
+                    category: 'Categoría:',
+                    selectCategory: 'Seleccionar categoría...',
+                    secadores: 'Secadores',
+                    ironing: 'Planchado',
+                    portamaletas: 'Portamaletas',
+                    quantity: 'Cantidad:',
+                    notes: 'Notas (opcional):',
+                    cancel: 'Cancelar',
+                    add: 'Agregar al Presupuesto',
+                    emptyCartTitle: 'Presupuesto Vacío',
+                    emptyCartText: 'No hay productos en tu presupuesto.',
+                    addSpecialOrder: 'Pedido Especial',
+                    specialOrderModalTitle: 'Agregar Pedido Especial',
+                    specialOrderName: 'Nombre del producto:',
+                    specialOrderNamePlaceholder: 'Ej: Secador especial modelo X...',
+                    specialOrderDesc: 'Descripción:',
+                    specialOrderDescPlaceholder: 'Detalles rápidos del producto...',
+                    specialOrderQuantity: 'Cantidad:',
+                    specialOrderPrice: 'Precio (€):',
+                    specialOrderLeadTime: 'Plazo de entrega:',
+                    specialOrderLeadTimePlaceholder: 'Ej: 4-6 semanas',
+                    specialOrderBoxSize: 'Cantidad por caja:',
+                    specialOrderBoxSizePlaceholder: 'Ej: 24',
+                    specialOrderImage: 'Foto del producto (opcional):',
+                    specialOrderNotes: 'Notas adicionales (opcional):',
+                    specialOrderNotesPlaceholder: 'Ej: Color negro, voltaje 220V...',
+                    continueShopping: 'Continuar Comprando',
+                    generateProposal: 'Crear Propuesta',
+                    sendProposal: 'Enviar Propuesta',
+                    selectLanguageTitle: 'Seleccionar Idioma del PDF',
+                    selectLanguageDescription: 'Elige el idioma en el que deseas generar la propuesta:',
+                    cancel: 'Cancelar'
+                },
+                en: {
+                    cartTitle: 'Budget Preparer',
+                    clearCart: 'Clear Budget',
+                    addProduct: 'Add Product',
+                    addCategory: 'Add Category',
+                    summary: 'Summary',
+                    items: 'Items:',
+                    checkout: 'Send Order',
+                    addProductModalTitle: 'Add Product to Budget',
+                    searchProduct: 'Search by reference or name:',
+                    searchPlaceholder: 'Type to search products...',
+                    productQuantity: 'Quantity:',
+                    addProductToCart: 'Add to Budget',
+                    modalTitle: 'Add Category to Budget',
+                    category: 'Category:',
+                    selectCategory: 'Select category...',
+                    secadores: 'Hair Dryers',
+                    ironing: 'Ironing',
+                    portamaletas: 'Luggage Racks',
+                    quantity: 'Quantity:',
+                    notes: 'Notes (optional):',
+                    cancel: 'Cancel',
+                    add: 'Add to Budget',
+                    emptyCartTitle: 'Empty Budget',
+                    emptyCartText: 'There are no products in your budget.',
+                    addSpecialOrder: 'Special Order',
+                    specialOrderModalTitle: 'Add Special Order',
+                    specialOrderName: 'Product name:',
+                    specialOrderNamePlaceholder: 'E.g: Special hairdryer model X...',
+                    specialOrderDesc: 'Description:',
+                    specialOrderDescPlaceholder: 'Quick product details...',
+                    specialOrderQuantity: 'Quantity:',
+                    specialOrderPrice: 'Price (€):',
+                    specialOrderLeadTime: 'Lead time:',
+                    specialOrderLeadTimePlaceholder: 'E.g: 4-6 weeks',
+                    specialOrderBoxSize: 'Units per box:',
+                    specialOrderBoxSizePlaceholder: 'E.g: 24',
+                    specialOrderImage: 'Product photo (optional):',
+                    specialOrderNotes: 'Additional notes (optional):',
+                    specialOrderNotesPlaceholder: 'E.g: Black color, 220V voltage...',
+                    continueShopping: 'Continue Shopping',
+                    generateProposal: 'Create Proposal',
+                    sendProposal: 'Send Proposal'
+                }
+            };
+
+            const t = translations[lang] || translations.pt;
+
+            // Actualizar elementos de la página
+            const elements = {
+                'cart-title': t.cartTitle,
+                'clear-cart-text': t.clearCart,
+                'add-product-text': t.addProduct,
+                'add-category-text': t.addCategory,
+                'summary-title': t.summary,
+                'items-count-label': t.items,
+                'checkout-text': t.checkout,
+                'add-product-modal-title': t.addProductModalTitle,
+                'search-product-label': t.searchProduct,
+                'search-placeholder-text': t.searchPlaceholder,
+                'product-quantity-label': t.productQuantity,
+                'add-product-to-cart-text': t.addProductToCart,
+                'add-special-order-text': t.addSpecialOrder,
+                'special-order-modal-title': t.specialOrderModalTitle,
+                'special-order-name-label': t.specialOrderName,
+                'special-order-desc-label': t.specialOrderDesc,
+                'special-order-quantity-label': t.specialOrderQuantity,
+                'special-order-price-label': t.specialOrderPrice,
+                'special-order-leadtime-label': t.specialOrderLeadTime,
+                'special-order-boxsize-label': t.specialOrderBoxSize,
+                'special-order-image-label': t.specialOrderImage,
+                'special-order-notes-label': t.specialOrderNotes,
+                'add-special-order-to-cart-text': t.add,
+                'cancel-special-order-btn': t.cancel,
+                'nav-cart-link': t.cartTitle,
+                'generate-proposal-text': t.generateProposal,
+                'send-proposal-text': t.sendProposal,
+                'modal-title-text': t.selectLanguageTitle,
+                'modal-description-text': t.selectLanguageDescription,
+                'modal-cancel-text': t.cancel
+            };
+            
+            // Actualizar placeholder del input de búsqueda
+            const searchInput = document.getElementById('productSearchInput');
+            if (searchInput) {
+                searchInput.placeholder = t.searchPlaceholder;
+            }
+            
+            // Actualizar placeholder del input de pedido especial
+            const specialOrderNameInput = document.getElementById('specialOrderNameInput');
+            if (specialOrderNameInput) {
+                specialOrderNameInput.placeholder = t.specialOrderNamePlaceholder;
+            }
+            const specialOrderDescInput = document.getElementById('specialOrderDescInput');
+            if (specialOrderDescInput) {
+                specialOrderDescInput.placeholder = t.specialOrderDescPlaceholder || '';
+            }
+            const specialOrderLeadTimeInput = document.getElementById('specialOrderLeadTimeInput');
+            if (specialOrderLeadTimeInput) {
+                specialOrderLeadTimeInput.placeholder = t.specialOrderLeadTimePlaceholder || '';
+            }
+            const specialOrderBoxSizeInput = document.getElementById('specialOrderBoxSizeInput');
+            if (specialOrderBoxSizeInput) {
+                specialOrderBoxSizeInput.placeholder = t.specialOrderBoxSizePlaceholder || '';
+            }
+            const specialOrderImageLabel = document.getElementById('special-order-image-label');
+            if (specialOrderImageLabel && t.specialOrderImage) {
+                specialOrderImageLabel.textContent = t.specialOrderImage;
+            }
+            
+            const specialOrderNotesInput = document.getElementById('specialOrderNotesInput');
+            if (specialOrderNotesInput) {
+                specialOrderNotesInput.placeholder = t.specialOrderNotesPlaceholder;
+            }
+            
+            const elements2 = {
+                'modal-title': t.modalTitle,
+                'category-label': t.category,
+                'select-category-option': t.selectCategory,
+                'secadores-option': t.secadores,
+                'ironing-option': t.ironing,
+                'porta-malas-option': t.portamaletas,
+                'quantity-label': t.quantity,
+                'notes-label': t.notes,
+                'cancel-btn': t.cancel,
+                'cancel-product-btn': t.cancel,
+                'add-btn': t.add
+            };
+
+            Object.entries(elements).forEach(([id, text]) => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.textContent = text;
+                }
+            });
+        }
+
+        // Función para cambiar idioma
+        function changeLanguage(lang) {
+            document.documentElement.lang = lang;
+            localStorage.setItem('language', lang);
+            
+            // Actualizar banderas activas
+            document.querySelectorAll('.flag-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-lang="${lang}"]`).classList.add('active');
+            
+            // Traducir página del carrito
+            translateCartPage(lang);
+            
+            // Actualizar botones de navegación
+            updateNavigationButtons(lang);
+            
+            // Actualizar sistema de traducción global
+            if (window.translationSystem) {
+                window.translationSystem.setLanguage(lang);
+            }
+            
+            // Actualizar carrito si está disponible
+            if (window.cartManager) {
+                window.cartManager.updateLanguage(lang);
+            }
+        }
+        
+        // Función para actualizar botones de navegación
+        function updateNavigationButtons(lang) {
+            const navTranslations = {
+                pt: {
+                    budget: 'Orçamento',
+                    history: 'Histórico',
+                    createProduct: 'Criador/Editor'
+                },
+                es: {
+                    budget: 'Presupuesto',
+                    history: 'Histórico',
+                    createProduct: 'Creador/Editor'
+                },
+                en: {
+                    budget: 'Budget',
+                    history: 'History',
+                    createProduct: 'Creator/Editor'
+                }
+            };
+            
+            const t = navTranslations[lang] || navTranslations.pt;
+            
+            const cartLink = document.getElementById('nav-cart-link');
+            const proposalsLink = document.getElementById('nav-proposals-link');
+            const createProductLink = document.getElementById('create-product-text');
+            
+            if (cartLink) cartLink.textContent = t.budget;
+            if (proposalsLink) {
+                const span = proposalsLink.querySelector('span');
+                if (span) span.textContent = t.history;
+            }
+            if (createProductLink) createProductLink.textContent = t.createProduct;
+        }
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Verificar autenticación primero
+            const isAuth = await window.authManager.requireAuth('login.html');
+            if (!isAuth) {
+                return; // Redirige a login.html
+            }
+
+            initTheme();
+            
+            const toggleButton = document.getElementById('theme-toggle');
+            if (toggleButton) {
+                toggleButton.addEventListener('click', toggleTheme);
+            }
+
+            // Inicializar idioma
+            const savedLanguage = localStorage.getItem('language') || 'pt';
+            changeLanguage(savedLanguage);
+            // Asegurar que los botones de navegación se traduzcan
+            updateNavigationButtons(savedLanguage);
+        });
+
+        // Escuchar cambios en las preferencias del sistema
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+            if (!localStorage.getItem('theme')) {
+                const theme = e.matches ? 'dark' : 'light';
+                document.documentElement.setAttribute('data-theme', theme);
+            }
+        });
+
+        // TEST SIMPLE PARA VERIFICAR QUE LAS FUNCIONES FUNCIONEN
+        function testButton() {
+            alert('¡Los botones funcionan!');
+            console.log('TEST: Botón funcionando');
+        }
+    </script>
+    <script src="menu-hamburguesa.js"></script>
+    <script src="theme-common.js"></script>
+    <!-- Modal para seleccionar idioma del PDF -->
+
+    <!-- Modal para seleccionar logotipo existente del cliente -->
+    <div id="clientLogoModal" class="modal-overlay" style="display: none;" onclick="if(event.target === this) closeClientLogoModal()">
+        <div class="modal" style="max-width: 800px;" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2 class="modal-title" id="clientLogoModalTitle">Logotipos del Cliente</h2>
+                <button class="modal-close" onclick="closeClientLogoModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="clientLogoModalBody" style="max-height: 70vh; overflow-y: auto;">
+                <!-- Contenido dinámico -->
+            </div>
+        </div>
+    </div>
+
+    </body>
+</html>

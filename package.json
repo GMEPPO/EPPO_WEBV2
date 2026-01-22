@@ -1,0 +1,27 @@
+{
+  "name": "web-interna",
+  "version": "1.0.0",
+  "description": "Sistema de gestión de propuestas y productos",
+  "main": "index.html",
+  "scripts": {
+    "dev": "npx http-server -p 8000",
+    "start": "npx http-server -p 8000"
+  },
+  "keywords": [
+    "propuestas",
+    "productos",
+    "supabase"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}
+
+
+
+
+
+
+

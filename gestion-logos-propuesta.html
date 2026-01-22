@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Logos de Propuestas</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .logos-container {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+        .logo-section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .logo-section h2 {
+            margin-top: 0;
+            color: #333;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        .logo-upload-area {
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            margin: 20px 0;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #fafafa;
+        }
+        .logo-upload-area:hover {
+            border-color: #4CAF50;
+            background: #f0f8f0;
+        }
+        .logo-upload-area.dragover {
+            border-color: #4CAF50;
+            background: #e8f5e9;
+        }
+        .logo-preview {
+            margin: 20px 0;
+            text-align: center;
+        }
+        .logo-preview img {
+            max-width: 300px;
+            max-height: 200px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 10px;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .logo-info {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        .logo-info p {
+            margin: 5px 0;
+            color: #666;
+        }
+        .logo-info strong {
+            color: #333;
+        }
+        .btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+            transition: background 0.3s;
+        }
+        .btn:hover {
+            background: #45a049;
+        }
+        .btn-secondary {
+            background: #2196F3;
+        }
+        .btn-secondary:hover {
+            background: #0b7dda;
+        }
+        .btn-danger {
+            background: #f44336;
+        }
+        .btn-danger:hover {
+            background: #da190b;
+        }
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        .status-message {
+            padding: 12px;
+            border-radius: 6px;
+            margin: 15px 0;
+            display: none;
+        }
+        .status-message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+        .status-message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+        .current-logo {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid #2196F3;
+        }
+        .current-logo img {
+            max-width: 200px;
+            max-height: 100px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="logos-container">
+        <h1><i class="fas fa-images"></i> Gestión de Logos de Propuestas</h1>
+
+        <!-- Logo Izquierdo -->
+        <div class="logo-section">
+            <h2><i class="fas fa-arrow-left"></i> Logo Izquierdo</h2>
+            <div id="left-logo-status" class="status-message"></div>
+            
+            <div id="left-current-logo" class="current-logo" style="display: none;">
+                <h3>Logo Actual:</h3>
+                <div id="left-logo-preview-current"></div>
+                <p><strong>Nombre:</strong> <span id="left-logo-name-current"></span></p>
+                <p><strong>URL:</strong> <span id="left-logo-url-current"></span></p>
+                <button class="btn btn-danger" onclick="deactivateLogo('izquierdo')">
+                    <i class="fas fa-times"></i> Desactivar Logo
+                </button>
+            </div>
+
+            <div class="logo-upload-area" id="left-upload-area">
+                <i class="fas fa-cloud-upload-alt" style="font-size: 48px; color: #999; margin-bottom: 15px;"></i>
+                <p>Arrastra una imagen aquí o haz clic para seleccionar</p>
+                <p style="color: #999; font-size: 14px;">Formatos soportados: PNG, JPG, GIF, WEBP (máx. 5MB)</p>
+                <input type="file" id="left-file-input" accept="image/*">
+            </div>
+
+            <div class="logo-preview" id="left-preview" style="display: none;">
+                <h3>Vista Previa:</h3>
+                <div id="left-preview-image"></div>
+                <div class="logo-info">
+                    <p><strong>Nombre del archivo:</strong> <span id="left-filename"></span></p>
+                    <p><strong>Tamaño:</strong> <span id="left-filesize"></span></p>
+                </div>
+                <input type="text" id="left-logo-name" placeholder="Nombre del logo (opcional)" 
+                       style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; margin: 10px 0;">
+                <button class="btn" onclick="uploadLogo('izquierdo')">
+                    <i class="fas fa-upload"></i> Subir y Activar Logo
+                </button>
+                <button class="btn btn-secondary" onclick="cancelUpload('izquierdo')">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
+            </div>
+        </div>
+
+        <!-- Logo Derecho -->
+        <div class="logo-section">
+            <h2><i class="fas fa-arrow-right"></i> Logo Derecho</h2>
+            <div id="right-logo-status" class="status-message"></div>
+            
+            <div id="right-current-logo" class="current-logo" style="display: none;">
+                <h3>Logo Actual:</h3>
+                <div id="right-logo-preview-current"></div>
+                <p><strong>Nombre:</strong> <span id="right-logo-name-current"></span></p>
+                <p><strong>URL:</strong> <span id="right-logo-url-current"></span></p>
+                <button class="btn btn-danger" onclick="deactivateLogo('derecho')">
+                    <i class="fas fa-times"></i> Desactivar Logo
+                </button>
+            </div>
+
+            <div class="logo-upload-area" id="right-upload-area">
+                <i class="fas fa-cloud-upload-alt" style="font-size: 48px; color: #999; margin-bottom: 15px;"></i>
+                <p>Arrastra una imagen aquí o haz clic para seleccionar</p>
+                <p style="color: #999; font-size: 14px;">Formatos soportados: PNG, JPG, GIF, WEBP (máx. 5MB)</p>
+                <input type="file" id="right-file-input" accept="image/*">
+            </div>
+
+            <div class="logo-preview" id="right-preview" style="display: none;">
+                <h3>Vista Previa:</h3>
+                <div id="right-preview-image"></div>
+                <div class="logo-info">
+                    <p><strong>Nombre del archivo:</strong> <span id="right-filename"></span></p>
+                    <p><strong>Tamaño:</strong> <span id="right-filesize"></span></p>
+                </div>
+                <input type="text" id="right-logo-name" placeholder="Nombre del logo (opcional)" 
+                       style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; margin: 10px 0;">
+                <button class="btn" onclick="uploadLogo('derecho')">
+                    <i class="fas fa-upload"></i> Subir y Activar Logo
+                </button>
+                <button class="btn btn-secondary" onclick="cancelUpload('derecho')">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="load-config.js"></script>
+    <script src="supabase-config-universal.js"></script>
+    <script src="stock-warning.js"></script>
+    <script>
+        let supabase = null;
+        let leftFile = null;
+        let rightFile = null;
+
+        // Esperar a que Supabase esté disponible
+        async function waitForSupabase(maxWait = 10000) {
+            const startTime = Date.now();
+            while (Date.now() - startTime < maxWait) {
+                // Verificar si supabase está disponible globalmente
+                if (typeof window.supabase !== 'undefined' && window.supabase && window.supabase.createClient) {
+                    return true;
+                }
+                // Verificar si está disponible como variable global sin window
+                if (typeof supabase !== 'undefined' && supabase && supabase.createClient) {
+                    return true;
+                }
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            return false;
+        }
+
+        // Inicializar Supabase
+        async function initSupabase() {
+            try {
+                // Esperar a que Supabase esté disponible
+                // Esperando a que se cargue...
+                const isAvailable = await waitForSupabase();
+                
+                if (!isAvailable) {
+                    throw new Error('Supabase no se cargó después de 10 segundos. Verifica tu conexión a internet.');
+                }
+
+                // Intentar usar configuración universal primero
+                if (window.universalSupabase) {
+                    try {
+                        supabase = await window.universalSupabase.getClient();
+                        // Inicializado
+                        return supabase;
+                    } catch (error) {
+                        // Error usando configuración universal, intentando método manual
+                    }
+                }
+
+                // Esperar un momento para que universalSupabase se inicialice
+                await new Promise(resolve => setTimeout(resolve, 200));
+                if (window.universalSupabase) {
+                    supabase = await window.universalSupabase.getClient();
+                    return supabase;
+                }
+
+                throw new Error('Supabase no está disponible. Asegúrate de que supabase-config-universal.js se cargue antes.');
+            } catch (error) {
+                // Error inicializando
+                alert('Error al inicializar Supabase: ' + error.message + '\n\nPor favor, recarga la página.');
+                return null;
+            }
+        }
+
+        // Inicializar cuando la página esté lista
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // Inicializar Supabase (la función ya espera a que esté disponible)
+                const client = await initSupabase();
+                if (!client) {
+                    return;
+                }
+
+                // Cargar logos actuales
+                await loadCurrentLogos();
+
+                // Configurar eventos de drag and drop
+                setupDragAndDrop('left');
+                setupDragAndDrop('right');
+
+                // Configurar eventos de click
+                document.getElementById('left-upload-area').addEventListener('click', () => {
+                    document.getElementById('left-file-input').click();
+                });
+                document.getElementById('right-upload-area').addEventListener('click', () => {
+                    document.getElementById('right-file-input').click();
+                });
+
+                // Configurar eventos de cambio de archivo
+                document.getElementById('left-file-input').addEventListener('change', (e) => {
+                    if (e.target.files.length > 0) {
+                        handleFileSelect('left', e.target.files[0]);
+                    }
+                });
+                document.getElementById('right-file-input').addEventListener('change', (e) => {
+                    if (e.target.files.length > 0) {
+                        handleFileSelect('right', e.target.files[0]);
+                    }
+                });
+            } catch (error) {
+                console.error('Error inicializando:', error);
+                alert('Error al inicializar la página. Por favor, recarga.');
+            }
+        });
+
+        function setupDragAndDrop(side) {
+            const uploadArea = document.getElementById(`${side}-upload-area`);
+            const fileInput = document.getElementById(`${side}-file-input`);
+
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('dragover');
+            });
+
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                if (e.dataTransfer.files.length > 0) {
+                    handleFileSelect(side, e.dataTransfer.files[0]);
+                }
+            });
+        }
+
+        function handleFileSelect(side, file) {
+            if (!file.type.startsWith('image/')) {
+                showStatus(side, 'Por favor, selecciona un archivo de imagen', 'error');
+                return;
+            }
+
+            if (file.size > 5 * 1024 * 1024) {
+                showStatus(side, 'El archivo es demasiado grande. Máximo 5MB', 'error');
+                return;
+            }
+
+            if (side === 'left') {
+                leftFile = file;
+            } else {
+                rightFile = file;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const preview = document.getElementById(`${side}-preview`);
+                const previewImage = document.getElementById(`${side}-preview-image`);
+                const filename = document.getElementById(`${side}-filename`);
+                const filesize = document.getElementById(`${side}-filesize`);
+
+                previewImage.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+                filename.textContent = file.name;
+                filesize.textContent = formatFileSize(file.size);
+                preview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        async function uploadLogo(tipo) {
+            const side = tipo === 'izquierdo' ? 'left' : 'right';
+            const file = side === 'left' ? leftFile : rightFile;
+            const statusDiv = document.getElementById(`${side}-logo-status`);
+
+            if (!file) {
+                showStatus(side, 'Por favor, selecciona un archivo primero', 'error');
+                return;
+            }
+
+            try {
+                showStatus(side, 'Subiendo imagen...', 'success');
+
+                // 1. Subir imagen a Supabase Storage
+                const fileExt = file.name.split('.').pop();
+                const fileName = `${tipo}_${Date.now()}.${fileExt}`;
+                const filePath = `${fileName}`;
+
+                const { data: uploadData, error: uploadError } = await supabase.storage
+                    .from('logos-propuesta')
+                    .upload(filePath, file, {
+                        cacheControl: '3600',
+                        upsert: false
+                    });
+
+                if (uploadError) {
+                    throw uploadError;
+                }
+
+                // 2. Obtener URL pública de la imagen
+                const { data: urlData } = supabase.storage
+                    .from('logos-propuesta')
+                    .getPublicUrl(filePath);
+
+                const imageUrl = urlData.publicUrl;
+
+                // 3. Desactivar logo anterior del mismo tipo
+                await supabase
+                    .from('logos_propuesta')
+                    .update({ activo: false })
+                    .eq('tipo', tipo)
+                    .eq('activo', true);
+
+                // 4. Guardar nuevo logo en la tabla
+                const logoName = document.getElementById(`${side}-logo-name`).value || fileName;
+                const { error: insertError } = await supabase
+                    .from('logos_propuesta')
+                    .insert({
+                        tipo: tipo,
+                        nombre: logoName,
+                        url_imagen: imageUrl,
+                        activo: true
+                    });
+
+                if (insertError) {
+                    throw insertError;
+                }
+
+                showStatus(side, 'Logo subido y activado correctamente', 'success');
+                
+                // Limpiar formulario
+                cancelUpload(tipo);
+                
+                // Recargar logos actuales
+                await loadCurrentLogos();
+            } catch (error) {
+                console.error('Error subiendo logo:', error);
+                showStatus(side, `Error: ${error.message}`, 'error');
+            }
+        }
+
+        function cancelUpload(tipo) {
+            const side = tipo === 'izquierdo' ? 'left' : 'right';
+            const preview = document.getElementById(`${side}-preview`);
+            const fileInput = document.getElementById(`${side}-file-input`);
+            const logoName = document.getElementById(`${side}-logo-name`);
+
+            preview.style.display = 'none';
+            fileInput.value = '';
+            logoName.value = '';
+            
+            if (side === 'left') {
+                leftFile = null;
+            } else {
+                rightFile = null;
+            }
+        }
+
+        async function loadCurrentLogos() {
+            try {
+                const { data: logos, error } = await supabase
+                    .from('logos_propuesta')
+                    .select('*')
+                    .eq('activo', true);
+
+                if (error) {
+                    console.error('Error cargando logos:', error);
+                    return;
+                }
+
+                const leftLogo = logos.find(l => l.tipo === 'izquierdo');
+                const rightLogo = logos.find(l => l.tipo === 'derecho');
+
+                if (leftLogo) {
+                    displayCurrentLogo('left', leftLogo);
+                } else {
+                    document.getElementById('left-current-logo').style.display = 'none';
+                }
+
+                if (rightLogo) {
+                    displayCurrentLogo('right', rightLogo);
+                } else {
+                    document.getElementById('right-current-logo').style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Error en loadCurrentLogos:', error);
+            }
+        }
+
+        function displayCurrentLogo(side, logo) {
+            const container = document.getElementById(`${side}-current-logo`);
+            const preview = document.getElementById(`${side}-logo-preview-current`);
+            const name = document.getElementById(`${side}-logo-name-current`);
+            const url = document.getElementById(`${side}-logo-url-current`);
+
+            preview.innerHTML = `<img src="${logo.url_imagen}" alt="${logo.nombre}">`;
+            name.textContent = logo.nombre;
+            url.textContent = logo.url_imagen;
+            container.style.display = 'block';
+        }
+
+        async function deactivateLogo(tipo) {
+            if (!confirm(`¿Estás seguro de que quieres desactivar el logo ${tipo}?`)) {
+                return;
+            }
+
+            try {
+                const { error } = await supabase
+                    .from('logos_propuesta')
+                    .update({ activo: false })
+                    .eq('tipo', tipo)
+                    .eq('activo', true);
+
+                if (error) {
+                    throw error;
+                }
+
+                const side = tipo === 'izquierdo' ? 'left' : 'right';
+                showStatus(side, 'Logo desactivado correctamente', 'success');
+                await loadCurrentLogos();
+            } catch (error) {
+                console.error('Error desactivando logo:', error);
+                const side = tipo === 'izquierdo' ? 'left' : 'right';
+                showStatus(side, `Error: ${error.message}`, 'error');
+            }
+        }
+
+        function showStatus(side, message, type) {
+            const statusDiv = document.getElementById(`${side}-logo-status`);
+            statusDiv.textContent = message;
+            statusDiv.className = `status-message ${type}`;
+            
+            setTimeout(() => {
+                statusDiv.className = 'status-message';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
+

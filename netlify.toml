@@ -1,0 +1,45 @@
+[build]
+  # Directorio de build (si usas un bundler)
+  publish = "dist"
+  
+  # Comando de build (si usas un bundler como Vite)
+  command = "npm run build"
+
+[build.environment]
+  # Variables de entorno para Supabase
+  # IMPORTANTE: Configura estas variables en Netlify Dashboard → Site settings → Environment variables
+  # NO pongas credenciales aquí directamente
+  # VITE_SUPABASE_URL = "configurar en Netlify Dashboard"
+  # VITE_SUPABASE_ANON_KEY = "configurar en Netlify Dashboard"
+
+# Headers para CORS y seguridad
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # Permitir CORS para Supabase
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
+    Access-Control-Allow-Headers = "Content-Type, Authorization, apikey"
+    
+    # Seguridad
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Redirecciones para SPA
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Configuración de funciones (si usas Netlify Functions)
+[functions]
+  directory = "netlify/functions"
+
+
+
+
+
+
+

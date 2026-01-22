@@ -1,0 +1,1276 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EPPO by Groupe GM - Comparar Productos</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="menu-hamburguesa.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="load-config.js"></script>
+    <script src="supabase-config-universal.js"></script>
+    <script src="translation-system.js"></script>
+    <script src="auth.js"></script>
+    <script src="stock-warning.js"></script>
+    <style>
+        /* =====================================================
+           ESTILOS ESPECÍFICOS PARA COMPARACIÓN MODERNA
+           ===================================================== */
+        
+        .comparison-hero {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 80px 0;
+            text-align: center;
+            margin-bottom: 60px;
+        }
+        
+        .comparison-hero h1 {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .comparison-hero p {
+            font-size: 1.3rem;
+            opacity: 0.9;
+            margin-bottom: 40px;
+        }
+        
+        .buy-button {
+            display: inline-block;
+            background: #007AFF;
+            color: white;
+            padding: 15px 30px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 122, 255, 0.3);
+        }
+        
+        .buy-button:hover {
+            background: #0056CC;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 122, 255, 0.4);
+        }
+        
+        .product-selectors {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 60px 0;
+            flex-wrap: wrap;
+        }
+        
+        .product-selector {
+            position: relative;
+            min-width: 280px;
+        }
+        
+        .selector-label {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .product-dropdown {
+            position: relative;
+            background: white;
+            border: 2px solid #e1e5e9;
+            border-radius: 12px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .product-dropdown:hover {
+            border-color: #007AFF;
+            box-shadow: 0 4px 20px rgba(0, 122, 255, 0.15);
+        }
+        
+        .product-dropdown.active {
+            border-color: #007AFF;
+            box-shadow: 0 4px 20px rgba(0, 122, 255, 0.2);
+        }
+        
+        .dropdown-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .selected-product {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .product-image-small {
+            width: 50px;
+            height: 50px;
+            border-radius: 8px;
+            object-fit: cover;
+            background: #f8f9fa;
+        }
+        
+        .product-info-small {
+            flex: 1;
+        }
+        
+        .product-name-small {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #333;
+            margin: 0;
+        }
+        
+        .product-price-small {
+            font-size: 0.9rem;
+            color: #666;
+            margin: 0;
+        }
+        
+        .dropdown-arrow {
+            color: #007AFF;
+            font-size: 1.2rem;
+            transition: transform 0.3s ease;
+        }
+        
+        .product-dropdown.active .dropdown-arrow {
+            transform: rotate(180deg);
+        }
+        
+        .dropdown-options {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 2px solid #e1e5e9;
+            border-top: none;
+            border-radius: 0 0 12px 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+        
+        .dropdown-options.show {
+            display: block;
+        }
+        
+        .dropdown-option {
+            padding: 15px 20px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background-color 0.2s ease;
+        }
+        
+        .dropdown-option:hover {
+            background: #f8f9fa;
+        }
+        
+        .dropdown-option:last-child {
+            border-bottom: none;
+        }
+        
+        .option-content {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .option-image {
+            width: 40px;
+            height: 40px;
+            border-radius: 6px;
+            object-fit: cover;
+            background: #f8f9fa;
+        }
+        
+        .option-info {
+            flex: 1;
+        }
+        
+        .option-name {
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: #333;
+            margin: 0;
+        }
+        
+        .option-price {
+            font-size: 0.85rem;
+            color: #666;
+            margin: 0;
+        }
+        
+        .product-display {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin: 60px 0;
+            flex-wrap: wrap;
+        }
+        
+        .product-card-display {
+            text-align: center;
+            max-width: 300px;
+        }
+        
+        .product-image-large {
+            width: 200px;
+            height: 200px;
+            border-radius: 20px;
+            object-fit: cover;
+            background: #f8f9fa;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .product-image-large:hover {
+            transform: scale(1.05);
+        }
+        
+        .product-name-display {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .product-price-display {
+            font-size: 1.1rem;
+            color: #007AFF;
+            text-align: center;
+            font-weight: 600;
+        }
+        
+        .comparison-table-modern {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            margin: 60px 0;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        
+        .table-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #333;
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .comparison-table th {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #e1e5e9;
+        }
+        
+        .comparison-table td {
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid #f0f0f0;
+            vertical-align: middle;
+        }
+        
+        .feature-label {
+            font-weight: 600;
+            color: #333;
+            text-align: left !important;
+            background: #f8f9fa;
+        }
+        
+        .feature-value {
+            font-size: 1rem;
+            color: #666;
+        }
+        
+        .feature-value .check {
+            color: #27ae60;
+            font-size: 1.2rem;
+        }
+        
+        .feature-value .cross {
+            color: #e74c3c;
+            font-size: 1.2rem;
+        }
+        
+        .no-data {
+            color: #bdc3c7;
+            font-style: italic;
+        }
+        
+        .category-selection {
+            text-align: center;
+            margin: 40px 0;
+        }
+        
+        .category-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .category-btn {
+            background: white;
+            border: 2px solid #e1e5e9;
+            border-radius: 12px;
+            padding: 15px 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .category-btn:hover {
+            border-color: #007AFF;
+            color: #007AFF;
+        }
+        
+        .category-btn.active {
+            background: #007AFF;
+            border-color: #007AFF;
+            color: white;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+        
+        .empty-state i {
+            font-size: 4rem;
+            color: #bdc3c7;
+            margin-bottom: 20px;
+        }
+        
+        .empty-state h3 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .empty-state p {
+            font-size: 1.1rem;
+            opacity: 0.8;
+        }
+        
+        @media (max-width: 768px) {
+            .comparison-hero h1 {
+                font-size: 2.5rem;
+            }
+            
+            .product-selectors {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .product-selector {
+                min-width: 250px;
+            }
+            
+            .product-display {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .category-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .comparison-table-modern {
+                padding: 20px;
+                overflow-x: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <span>EPPO by <span class="groupe-gm">Groupe GM</span></span>
+            </div>
+            <nav class="nav">
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="productos-dinamico.html" class="nav-link">Products</a>
+                <a href="carrito-compras.html" class="nav-link" id="nav-cart-link">Presupuesto</a>
+                
+                <!-- Menú hamburguesa -->
+                <div class="menu-dropdown">
+                    <button class="menu-toggle" id="menuToggle" onclick="toggleMenu()" aria-label="Toggle menu">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="dropdown-menu" id="dropdownMenu">
+                        <a href="comparar-productos.html" class="dropdown-link active">
+                            <i class="fas fa-balance-scale"></i>
+                            <span>Comparar</span>
+                        </a>
+                        <a href="consultar-propuestas.html" class="dropdown-link" id="nav-proposals-link">
+                            <i class="fas fa-file-invoice"></i>
+                            <span>Histórico</span>
+                        </a>
+                        <a href="selector-productos.html" class="dropdown-link" id="nav-create-product-link">
+                            <i class="fas fa-edit"></i>
+                            <span id="create-product-text">Creador/Editor</span>
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="language-selector">
+                    <button class="flag-btn active" data-lang="pt" title="Português" onclick="changeLanguage('pt')">
+                        <img src="https://flagcdn.com/w20/pt.png" alt="Portugal">
+                    </button>
+                    <button class="flag-btn" data-lang="es" title="Español" onclick="changeLanguage('es')">
+                        <img src="https://flagcdn.com/w20/es.png" alt="España">
+                    </button>
+                    <button class="flag-btn" data-lang="en" title="English" onclick="changeLanguage('en')">
+                        <img src="https://flagcdn.com/w20/gb.png" alt="Reino Unido">
+                    </button>
+                </div>
+                <button class="theme-toggle" id="theme-toggle" title="Cambiar tema">
+                    <i class="fas fa-sun sun-icon"></i>
+                    <i class="fas fa-moon moon-icon"></i>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="comparison-hero">
+        <div class="container">
+            <h1 id="heroTitle">Compare modelos de Secadores</h1>
+            <p id="heroSubtitle">Encuentra el secador perfecto para tu hotel</p>
+            <a href="productos-dinamico.html" class="buy-button">
+                <i class="fas fa-shopping-cart"></i>
+                Compre o Secador >
+            </a>
+        </div>
+    </section>
+
+    <!-- Category Selection -->
+    <div class="category-selection">
+        <div class="container">
+            <div class="category-buttons" id="categoryButtons">
+                <!-- Se llenará dinámicamente -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Product Selectors -->
+    <div class="product-selectors" id="productSelectors" style="display: none;">
+        <div class="product-selector">
+            <div class="selector-label">Secador 1</div>
+            <div class="product-dropdown" onclick="toggleDropdown(0)">
+                <div class="dropdown-content">
+                    <div class="selected-product" id="selectedProduct0">
+                        <div style="width:80px;height:80px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;border-radius:8px;">
+                            <i class="fas fa-image" style="font-size:1.5rem;color:#9ca3af;"></i>
+                        </div>
+                        <div class="product-info-small">
+                            <h4 class="product-name-small">Seleccionar Secador</h4>
+                            <p class="product-price-small">-</p>
+                        </div>
+                    </div>
+                    <i class="fas fa-chevron-down dropdown-arrow"></i>
+                </div>
+                <div class="dropdown-options" id="dropdownOptions0">
+                    <!-- Se llenará dinámicamente -->
+                </div>
+            </div>
+        </div>
+
+        <div class="product-selector">
+            <div class="selector-label">Secador 2</div>
+            <div class="product-dropdown" onclick="toggleDropdown(1)">
+                <div class="dropdown-content">
+                    <div class="selected-product" id="selectedProduct1">
+                        <div style="width:80px;height:80px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;border-radius:8px;">
+                            <i class="fas fa-image" style="font-size:1.5rem;color:#9ca3af;"></i>
+                        </div>
+                        <div class="product-info-small">
+                            <h4 class="product-name-small">Seleccionar Secador</h4>
+                            <p class="product-price-small">-</p>
+                        </div>
+                    </div>
+                    <i class="fas fa-chevron-down dropdown-arrow"></i>
+                </div>
+                <div class="dropdown-options" id="dropdownOptions1">
+                    <!-- Se llenará dinámicamente -->
+                </div>
+            </div>
+        </div>
+
+        <div class="product-selector">
+            <div class="selector-label">Secador 3</div>
+            <div class="product-dropdown" onclick="toggleDropdown(2)">
+                <div class="dropdown-content">
+                    <div class="selected-product" id="selectedProduct2">
+                        <div style="width:80px;height:80px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;border-radius:8px;">
+                            <i class="fas fa-image" style="font-size:1.5rem;color:#9ca3af;"></i>
+                        </div>
+                        <div class="product-info-small">
+                            <h4 class="product-name-small">Seleccionar Secador</h4>
+                            <p class="product-price-small">-</p>
+                        </div>
+                    </div>
+                    <i class="fas fa-chevron-down dropdown-arrow"></i>
+                </div>
+                <div class="dropdown-options" id="dropdownOptions2">
+                    <!-- Se llenará dinámicamente -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Product Display -->
+    <div class="product-display" id="productDisplay" style="display: none;">
+        <!-- Se llenará dinámicamente -->
+    </div>
+
+    <!-- Comparison Table -->
+    <div class="comparison-table-modern" id="comparisonTable" style="display: none;">
+        <h2 class="table-title">Comparação de Especificações</h2>
+        <table class="comparison-table" id="comparisonTableContent">
+            <!-- Se llenará dinámicamente -->
+        </table>
+    </div>
+
+    <!-- Empty State -->
+    <div class="empty-state" id="emptyState">
+        <i class="fas fa-balance-scale"></i>
+        <h3>Seleccione una categoría para comenzar</h3>
+        <p>Elija una categoría de productos para ver las opciones de comparación</p>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 EPPO by Groupe GM. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+
+    <script>
+        // =====================================================
+        // SISTEMA DE COMPARACIÓN MODERNA
+        // =====================================================
+        
+        class ModernProductComparison {
+            constructor() {
+                this.currentLanguage = localStorage.getItem('language') || document.documentElement.lang || 'pt';
+                this.supabase = null;
+                this.allProducts = [];
+                this.availableProducts = [];
+                this.selectedProducts = [null, null, null];
+                this.currentCategory = null;
+                this.categories = [];
+                this.categoryMeta = {
+                    'secadores': {
+                        icon: 'wind',
+                        labels: { pt: 'Secadores', es: 'Secadores', en: 'Hair Dryers' },
+                        heroTitle: {
+                            pt: 'Compare modelos de Secadores',
+                            es: 'Compare modelos de Secadores',
+                            en: 'Compare Hair Dryer Models'
+                        },
+                        heroSubtitle: {
+                            pt: 'Encontre o secador perfeito para seu hotel',
+                            es: 'Encuentra el secador perfecto para tu hotel',
+                            en: 'Find the perfect hair dryer for your hotel'
+                        }
+                    },
+                    'ironing': {
+                        icon: 'tshirt',
+                        labels: { pt: 'Planchas', es: 'Planchas', en: 'Ironing' },
+                        heroTitle: {
+                            pt: 'Compare modelos de Planchas',
+                            es: 'Compare modelos de Planchas',
+                            en: 'Compare Iron Models'
+                        },
+                        heroSubtitle: {
+                            pt: 'Encontre a plancha perfeita para seu hotel',
+                            es: 'Encuentra la plancha perfecta para tu hotel',
+                            en: 'Find the perfect iron for your hotel'
+                        }
+                    },
+                    'porta-malas': {
+                        icon: 'suitcase',
+                        labels: { pt: 'Porta-malas', es: 'Porta maletas', en: 'Luggage racks' },
+                        heroTitle: {
+                            pt: 'Compare modelos de Porta-malas',
+                            es: 'Compare modelos de Porta-malas',
+                            en: 'Compare Luggage Rack Models'
+                        },
+                        heroSubtitle: {
+                            pt: 'Encontre o porta-malas perfeito para seu hotel',
+                            es: 'Encuentra el porta-malas perfecto para tu hotel',
+                            en: 'Find the perfect luggage rack for your hotel'
+                        }
+                    }
+                };
+
+                this.init();
+            }
+
+            async init() {
+                await this.initSupabase();
+                await this.loadAllProducts();
+                this.renderCategoryButtons();
+                this.setupGlobalLanguageButtons();
+                this.updateLanguageUI();
+            }
+
+            async initSupabase() {
+                try {
+                    if (window.universalSupabase) {
+                        this.supabase = await window.universalSupabase.getClient();
+                        return;
+                    }
+
+                    // Esperar un momento para que universalSupabase se inicialice
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                    if (window.universalSupabase) {
+                        this.supabase = await window.universalSupabase.getClient();
+                    } else {
+                        throw new Error('Supabase no está disponible. Asegúrate de que supabase-config-universal.js se cargue antes.');
+                    }
+                } catch (error) {
+                    // No se pudo inicializar
+                    throw error;
+                }
+            }
+
+            async loadAllProducts() {
+                try {
+                    const { data, error } = await this.supabase
+                        .from('products')
+                        .select('*')
+                        .order('created_at', { ascending: false });
+                    if (error) throw error;
+
+                    this.allProducts = (data || []).map((product) => this.normalizeProduct(product));
+                    this.categories = [...new Set(this.allProducts.map((p) => p.categoria || 'otros'))];
+                    if (this.categories.length > 0) {
+                        this.currentCategory = this.categories.includes(this.currentCategory)
+                            ? this.currentCategory
+                            : this.categories[0];
+                        this.setCategoryActiveButton(this.currentCategory);
+                        this.updateHeroSection(this.currentCategory);
+                        this.filterProductsByCategory(this.currentCategory);
+                    }
+                } catch (error) {
+                    console.error('❌ Error al cargar productos:', error);
+                    this.showError('No se pudieron cargar los productos para la comparación.');
+                }
+            }
+
+            normalizeProduct(product) {
+                const features = Array.isArray(product.features)
+                    ? product.features
+                    : typeof product.features === 'string' && product.features.length > 0
+                        ? product.features.split(',').map((f) => f.trim()).filter(Boolean)
+                        : [];
+
+                const priceTiersRaw = Array.isArray(product.price_tiers) ? product.price_tiers : [];
+                const price_tiers = priceTiersRaw.map((tier) => ({
+                    label: tier.label || tier.name || '',
+                    min_qty: tier.min_qty ?? tier.min ?? null,
+                    max_qty: tier.max_qty ?? tier.max ?? null,
+                    price: tier.price !== undefined && tier.price !== null ? Number(tier.price) : null,
+                    currency: tier.currency || 'EUR'
+                }));
+
+                return {
+                    ...product,
+                    categoria: product.categoria || 'otros',
+                    precio: product.precio !== undefined && product.precio !== null ? Number(product.precio) : 0,
+                    potencia: product.potencia !== undefined && product.potencia !== null ? Number(product.potencia) : null,
+                    color: product.color || '',
+                    tipo: product.tipo || '',
+                    brand: product.brand || '',
+                    features,
+                    price_tiers,
+                    caracteristicas_text: product.caracteristicas || product['Carateristicas'] || '',
+                    especificaciones_text: product.especificaciones || product['Especificações'] || '',
+                    dimensiones_peso: product.dimensiones_peso || product['Dimensões e peso'] || '',
+                    ficha_tecnica: product.ficha_tecnica || product['Ficha tecnica'] || ''
+                };
+            }
+
+            renderCategoryButtons() {
+                const container = document.getElementById('categoryButtons');
+                if (!container) return;
+
+                if (this.categories.length === 0) {
+                    container.innerHTML = '<p style="color:#64748b;">No hay categorías disponibles.</p>';
+                    return;
+                }
+
+                container.innerHTML = this.categories
+                    .map((category) => {
+                        const meta = this.categoryMeta[category] || {
+                            icon: 'cube',
+                            labels: { pt: category, es: category, en: category },
+                            heroTitle: { pt: category, es: category, en: category },
+                            heroSubtitle: { pt: '', es: '', en: '' }
+                        };
+                        const label = meta.labels[this.currentLanguage] || meta.labels.pt || category;
+                        const isActive = category === this.currentCategory;
+                        return `
+                            <button class="category-btn ${isActive ? 'active' : ''}" data-category="${category}" onclick="comparison.selectCategory('${category}', event)">
+                                <i class="fas fa-${meta.icon}"></i>
+                                <span>${label}</span>
+                            </button>
+                        `;
+                    })
+                    .join('');
+
+                document.getElementById('emptyState').style.display = 'none';
+                document.getElementById('productSelectors').style.display = 'flex';
+            }
+
+            setCategoryActiveButton(categoryId) {
+                document.querySelectorAll('.category-btn').forEach((btn) => {
+                    btn.classList.toggle('active', btn.getAttribute('data-category') === categoryId);
+                });
+            }
+
+            selectCategory(categoryId, event) {
+                this.currentCategory = categoryId;
+                this.selectedProducts = [null, null, null];
+                this.setCategoryActiveButton(categoryId);
+                this.updateHeroSection(categoryId);
+                this.filterProductsByCategory(categoryId);
+                this.populateDropdowns();
+                this.updateProductDisplay();
+                this.updateComparisonTable();
+            }
+
+            filterProductsByCategory(categoryId) {
+                this.availableProducts = this.allProducts.filter((product) => product.categoria === categoryId);
+            }
+
+            populateDropdowns() {
+                for (let i = 0; i < 3; i++) {
+                    const dropdown = document.getElementById(`dropdownOptions${i}`);
+                    if (!dropdown) continue;
+                    dropdown.innerHTML = this.availableProducts
+                        .map((product) => `
+                            <div class="dropdown-option" onclick="comparison.selectProduct(${i}, ${product.id})">
+                                <div class="option-content">
+                                    ${product.foto ? 
+                                        `<img src="${product.foto}" alt="${product.nombre}" class="option-image" onerror="this.style.display='none'">` :
+                                        `<div style="width:60px;height:60px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;border-radius:8px;">
+                                            <i class="fas fa-image" style="font-size:1.2rem;color:#9ca3af;"></i>
+                                        </div>`
+                                    }
+                                    <div class="option-info">
+                                        <h4 class="option-name">${product.nombre}</h4>
+                                        <p class="option-price">€${product.precio.toFixed(2)}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        `)
+                        .join('');
+                }
+            }
+
+            selectProduct(slotIndex, productId) {
+                const product = this.availableProducts.find((p) => p.id === productId);
+                if (!product) return;
+
+                this.selectedProducts[slotIndex] = product;
+                this.updateSelectedProductDisplay(slotIndex, product);
+                this.updateProductDisplay();
+                this.updateComparisonTable();
+                this.closeDropdown(slotIndex);
+            }
+
+            updateSelectedProductDisplay(slotIndex, product) {
+                const selectedProduct = document.getElementById(`selectedProduct${slotIndex}`);
+                if (!selectedProduct) return;
+                selectedProduct.innerHTML = `
+                    ${product.foto ? 
+                        `<img src="${product.foto}" alt="${product.nombre}" class="product-image-small" onerror="this.style.display='none'">` :
+                        `<div style="width:80px;height:80px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;border-radius:8px;">
+                            <i class="fas fa-image" style="font-size:1.5rem;color:#9ca3af;"></i>
+                        </div>`
+                    }
+                    <div class="product-info-small">
+                        <h4 class="product-name-small">${product.nombre}</h4>
+                        <p class="product-price-small">€${product.precio.toFixed(2)}</p>
+                    </div>
+                `;
+            }
+
+            updateProductDisplay() {
+                const container = document.getElementById('productDisplay');
+                if (!container) return;
+
+                const hasSelected = this.selectedProducts.some((product) => product !== null);
+                if (!hasSelected) {
+                    container.style.display = 'none';
+                    return;
+                }
+
+                container.style.display = 'flex';
+                container.innerHTML = this.selectedProducts
+                    .map((product) => {
+                        if (!product) {
+                            const label = this.translateCategoryLabel(this.currentCategory);
+                            return `
+                                <div class="product-card-display">
+                                    <div class="product-image-large" style="background:#f8f9fa;display:flex;align-items:center;justify-content:center;color:#cbd5f5;">
+                                        <i class="fas fa-plus" style="font-size:3rem;"></i>
+                                    </div>
+                                    <h3 class="product-name-display">${this.translate('selectPlaceholder')} ${label}</h3>
+                                    <p class="product-price-display">-</p>
+                                </div>
+                            `;
+                        }
+
+                        // Obtener URL de imagen desde Supabase Storage
+                        const getProductImageUrl = (imageUrl) => {
+                            if (!imageUrl || imageUrl.trim() === '') {
+                                return null;
+                            }
+                            if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+                                return imageUrl;
+                            }
+                            if (imageUrl.startsWith('productos/') || imageUrl.includes('product-images')) {
+                                // Usar la configuración de Supabase desde window.SUPABASE_CONFIG
+                                const SUPABASE_URL = (typeof window !== 'undefined' && window.SUPABASE_CONFIG && window.SUPABASE_CONFIG.url) 
+                                    ? window.SUPABASE_CONFIG.url 
+                                    : null;
+                                
+                                if (!SUPABASE_URL) {
+                                    console.error('Error: Configuración de Supabase no disponible');
+                                    return imageUrl; // Devolver URL original si no hay configuración
+                                }
+                                
+                                if (!imageUrl.includes('supabase.co')) {
+                                    return `${SUPABASE_URL}/storage/v1/object/public/product-images/${imageUrl}`;
+                                }
+                            }
+                            return imageUrl;
+                        };
+                        
+                        const imageUrl = getProductImageUrl(product.foto);
+                        const imageHtml = imageUrl ? 
+                            `<img src="${imageUrl}" alt="${product.nombre}" class="product-image-large" onerror="this.style.display='none'">` :
+                            `<div style="width:100%;height:200px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;color:#9ca3af;">
+                                <i class="fas fa-image" style="font-size:2rem;"></i>
+                            </div>`;
+                        
+                        return `
+                            <div class="product-card-display">
+                                ${imageHtml}
+                                <h3 class="product-name-display">${product.nombre}</h3>
+                                <p class="product-price-display">€${product.precio.toFixed(2)}</p>
+                            </div>
+                        `;
+                    })
+                    .join('');
+            }
+
+            updateComparisonTable() {
+                const container = document.getElementById('comparisonTable');
+                const table = document.getElementById('comparisonTableContent');
+                if (!container || !table) return;
+
+                const hasSelected = this.selectedProducts.some((product) => product !== null);
+                if (!hasSelected) {
+                    container.style.display = 'none';
+                    return;
+                }
+
+                container.style.display = 'block';
+                const rows = this.buildComparisonRows();
+
+                const headerHtml = `
+                    <thead>
+                        <tr>
+                            <th class="feature-label">${this.translate('featureColumn')}</th>
+                            ${this.selectedProducts
+                                .map((product) => `
+                                    <th class="product-column">
+                                        ${product ? `
+                                            ${product.foto ? 
+                                                `<img src="${product.foto}" alt="${product.nombre}" style="width:60px;height:60px;border-radius:8px;object-fit:cover;margin-bottom:10px;" onerror="this.style.display='none'">` :
+                                                `<div style="width:60px;height:60px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;border-radius:8px;margin-bottom:10px;">
+                                                    <i class="fas fa-image" style="font-size:1.2rem;color:#9ca3af;"></i>
+                                                </div>`
+                                            }
+                                            <h4 style="margin:0;font-size:1rem;">${product.nombre}</h4>
+                                            <div style="color:#007AFF;font-weight:600;margin-top:5px;">€${product.precio.toFixed(2)}</div>
+                                        ` : `<div style="color:#94a3b8;font-style:italic;">${this.translate('notSelected')}</div>`}
+                                    </th>
+                                `)
+                                .join('')}
+                        </tr>
+                    </thead>
+                `;
+
+                const bodyHtml = rows
+                    .map((row) => `
+                        <tr>
+                            <td class="feature-label">${row.label}</td>
+                            ${this.selectedProducts
+                                .map((product) => `
+                                    <td class="feature-value">
+                                        ${product ? row.render(product) : '<span class="no-data">-</span>'}
+                                    </td>
+                                `)
+                                .join('')}
+                        </tr>
+                    `)
+                    .join('');
+
+                table.innerHTML = `${headerHtml}<tbody>${bodyHtml}</tbody>`;
+            }
+
+            buildComparisonRows() {
+                const rows = [];
+
+                rows.push({
+                    label: this.translate('price'),
+                    render: (product) => `€${product.precio.toFixed(2)}`
+                });
+
+                rows.push({
+                    label: this.translate('brand'),
+                    render: (product) => product.brand || '<span class="no-data">-</span>'
+                });
+
+                rows.push({
+                    label: this.translate('type'),
+                    render: (product) => product.tipo || '<span class="no-data">-</span>'
+                });
+
+                rows.push({
+                    label: this.translate('power'),
+                    render: (product) => (product.potencia ? `${product.potencia}W` : '<span class="no-data">-</span>')
+                });
+
+                rows.push({
+                    label: this.translate('color'),
+                    render: (product) => (product.color ? this.translateColor(product.color) : '<span class="no-data">-</span>')
+                });
+
+                rows.push({
+                    label: this.translate('features'),
+                    render: (product) => (product.features.length ? product.features.join(', ') : '<span class="no-data">-</span>')
+                });
+
+                rows.push({
+                    label: this.translate('characteristics'),
+                    render: (product) => (product.caracteristicas_text ? product.caracteristicas_text : '<span class="no-data">-</span>')
+                });
+
+                rows.push({
+                    label: this.translate('specifications'),
+                    render: (product) => (product.especificaciones_text ? product.especificaciones_text : '<span class="no-data">-</span>')
+                });
+
+                rows.push({
+                    label: this.translate('dimensions'),
+                    render: (product) => (product.dimensiones_peso ? product.dimensiones_peso : '<span class="no-data">-</span>')
+                });
+
+                rows.push({
+                    label: this.translate('priceTiers'),
+                    render: (product) => this.renderPriceTiersCell(product.price_tiers)
+                });
+
+                rows.push({
+                    label: this.translate('datasheet'),
+                    render: (product) =>
+                        product.ficha_tecnica
+                            ? `<a href="${product.ficha_tecnica}" target="_blank" rel="noopener" style="color:#2563eb;">${this.translate('download')}</a>`
+                            : '<span class="no-data">-</span>'
+                });
+
+                return rows;
+            }
+
+            renderPriceTiersCell(tiers) {
+                if (!tiers || tiers.length === 0) {
+                    return '<span class="no-data">-</span>';
+                }
+
+                const items = tiers
+                    .filter((tier) => tier.price !== null)
+                    .map((tier) => {
+                        const min = tier.min_qty !== null ? tier.min_qty : null;
+                        const max = tier.max_qty !== null ? tier.max_qty : null;
+                        let range = '-';
+                        if (min !== null && max !== null) {
+                            range = `${min}-${max}`;
+                        } else if (min !== null) {
+                            range = `${min}+`;
+                        } else if (max !== null) {
+                            range = `≤${max}`;
+                        }
+                        const label = tier.label || this.translate('priceTierDefault');
+                        return `${label} (${range} uds): ${tier.currency} ${tier.price.toFixed(2)}`;
+                    });
+
+                return items.length ? items.join('<br>') : '<span class="no-data">-</span>';
+            }
+
+            changeLanguage(lang) {
+                this.currentLanguage = lang;
+                localStorage.setItem('language', lang);
+                document.documentElement.lang = lang;
+                this.updateLanguageUI();
+                if (this.currentCategory) {
+                    this.updateHeroSection(this.currentCategory);
+                    this.populateDropdowns();
+                    this.updateProductDisplay();
+                    this.updateComparisonTable();
+                }
+            }
+
+            updateLanguageUI() {
+                document.querySelectorAll('.flag-btn').forEach((btn) => {
+                    btn.classList.toggle('active', btn.getAttribute('data-lang') === this.currentLanguage);
+                });
+                this.renderCategoryButtons();
+            }
+
+            setupGlobalLanguageButtons() {
+                document.querySelectorAll('.flag-btn').forEach((btn) => {
+                    btn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const lang = btn.getAttribute('data-lang');
+                        this.changeLanguage(lang);
+                    });
+                });
+            }
+
+            updateHeroSection(categoryId) {
+                const meta = this.categoryMeta[categoryId];
+                const title = meta ? meta.heroTitle[this.currentLanguage] || meta.heroTitle.pt : categoryId;
+                const subtitle = meta ? meta.heroSubtitle[this.currentLanguage] || meta.heroSubtitle.pt : '';
+                document.getElementById('heroTitle').textContent = title;
+                document.getElementById('heroSubtitle').textContent = subtitle;
+            }
+
+            translate(key) {
+                const dictionary = {
+                    featureColumn: { pt: 'Característica', es: 'Característica', en: 'Feature' },
+                    price: { pt: 'Preço', es: 'Precio', en: 'Price' },
+                    brand: { pt: 'Marca', es: 'Marca', en: 'Brand' },
+                    type: { pt: 'Tipo', es: 'Tipo', en: 'Type' },
+                    power: { pt: 'Potência', es: 'Potencia', en: 'Power' },
+                    color: { pt: 'Cor', es: 'Color', en: 'Color' },
+                    features: { pt: 'Características', es: 'Características', en: 'Features' },
+                    characteristics: { pt: 'Características Detalhadas', es: 'Características Detalladas', en: 'Detailed Characteristics' },
+                    specifications: { pt: 'Especificações Técnicas', es: 'Especificaciones Técnicas', en: 'Technical Specifications' },
+                    dimensions: { pt: 'Dimensões e Peso', es: 'Dimensiones y Peso', en: 'Dimensions & Weight' },
+                    priceTiers: { pt: 'Escalões de preço', es: 'Escalones de precio', en: 'Price tiers' },
+                    priceTierDefault: { pt: 'Escalão', es: 'Escalón', en: 'Tier' },
+                    datasheet: { pt: 'Ficha técnica', es: 'Ficha técnica', en: 'Datasheet' },
+                    download: { pt: 'Baixar', es: 'Descargar', en: 'Download' },
+                    notSelected: { pt: 'Não selecionado', es: 'No seleccionado', en: 'Not selected' },
+                    selectPlaceholder: { pt: 'Selecionar', es: 'Seleccionar', en: 'Select' }
+                };
+                return dictionary[key]?.[this.currentLanguage] || dictionary[key]?.pt || key;
+            }
+
+            translateCategoryLabel(categoryId) {
+                const meta = this.categoryMeta[categoryId];
+                return meta ? meta.labels[this.currentLanguage] || meta.labels.pt || categoryId : categoryId;
+            }
+
+            translateColor(color) {
+                const colors = {
+                    pt: { black: 'Preto', white: 'Branco', silver: 'Prata', red: 'Vermelho', blue: 'Azul' },
+                    es: { black: 'Negro', white: 'Blanco', silver: 'Plateado', red: 'Rojo', blue: 'Azul' },
+                    en: { black: 'Black', white: 'White', silver: 'Silver', red: 'Red', blue: 'Blue' }
+                };
+                return colors[this.currentLanguage]?.[color] || color;
+            }
+
+            closeDropdown(index) {
+                const dropdown = document.querySelectorAll('.product-dropdown')[index];
+                const options = document.getElementById(`dropdownOptions${index}`);
+                if (dropdown && options) {
+                    dropdown.classList.remove('active');
+                    options.classList.remove('show');
+                }
+            }
+
+            showError(message) {
+                alert(message);
+            }
+        }
+
+        let comparison;
+
+        function changeLanguage(lang) {
+            if (comparison) {
+                comparison.changeLanguage(lang);
+            }
+            // Actualizar botones de navegación
+            updateNavigationButtons(lang);
+        }
+        
+        // Función para actualizar botones de navegación
+        function updateNavigationButtons(lang) {
+            const navTranslations = {
+                pt: {
+                    budget: 'Orçamento',
+                    history: 'Histórico',
+                    createProduct: 'Criador/Editor'
+                },
+                es: {
+                    budget: 'Presupuesto',
+                    history: 'Histórico',
+                    createProduct: 'Creador/Editor'
+                },
+                en: {
+                    budget: 'Budget',
+                    history: 'History',
+                    createProduct: 'Creator/Editor'
+                }
+            };
+            
+            const t = navTranslations[lang] || navTranslations.pt;
+            
+            const cartLink = document.getElementById('nav-cart-link');
+            const proposalsLink = document.getElementById('nav-proposals-link');
+            const createProductLink = document.getElementById('create-product-text');
+            
+            if (cartLink) cartLink.textContent = t.budget;
+            if (proposalsLink) {
+                const span = proposalsLink.querySelector('span');
+                if (span) span.textContent = t.history;
+            }
+            if (createProductLink) createProductLink.textContent = t.createProduct;
+        }
+
+        function toggleDropdown(index) {
+            const dropdown = document.querySelectorAll('.product-dropdown')[index];
+            const options = document.getElementById(`dropdownOptions${index}`);
+
+            document.querySelectorAll('.product-dropdown').forEach((d, i) => {
+                if (i !== index) {
+                    d.classList.remove('active');
+                    document.getElementById(`dropdownOptions${i}`).classList.remove('show');
+                }
+            });
+
+            if (dropdown && options) {
+                dropdown.classList.toggle('active');
+                options.classList.toggle('show');
+            }
+        }
+
+        function closeDropdown(index) {
+            if (comparison) {
+                comparison.closeDropdown(index);
+            }
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.product-dropdown')) {
+                document.querySelectorAll('.product-dropdown').forEach((dropdown, index) => {
+                    dropdown.classList.remove('active');
+                    const options = document.getElementById(`dropdownOptions${index}`);
+                    if (options) options.classList.remove('show');
+                });
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Verificar autenticación primero
+            const isAuth = await window.authManager.requireAuth('login.html');
+            if (!isAuth) {
+                return; // Redirige a login.html
+            }
+
+            comparison = new ModernProductComparison();
+        });
+    </script>
+    
+    <script>
+        // Función para manejar el cambio de tema
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            
+            // Actualizar el título del botón
+            const toggleButton = document.getElementById('theme-toggle');
+            toggleButton.setAttribute('title', newTheme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro');
+        }
+
+        // Función para inicializar el tema
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const theme = savedTheme || (prefersDark ? 'dark' : 'light');
+            
+            document.documentElement.setAttribute('data-theme', theme);
+            
+            const toggleButton = document.getElementById('theme-toggle');
+            toggleButton.setAttribute('title', theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro');
+        }
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            initTheme();
+            
+            const toggleButton = document.getElementById('theme-toggle');
+            if (toggleButton) {
+                toggleButton.addEventListener('click', toggleTheme);
+            }
+        });
+
+        // Escuchar cambios en las preferencias del sistema
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+            if (!localStorage.getItem('theme')) {
+                const theme = e.matches ? 'dark' : 'light';
+                document.documentElement.setAttribute('data-theme', theme);
+            }
+        });
+    </script>
+    <script src="menu-hamburguesa.js"></script>
+    <script src="theme-common.js"></script>
+</body>
+</html>

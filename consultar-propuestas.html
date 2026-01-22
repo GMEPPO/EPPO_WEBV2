@@ -1,0 +1,1606 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EPPO by Groupe GM - Consultar Propuestas</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="menu-hamburguesa.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- PDF.js para convertir PDFs a imágenes -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" onload="console.log('✅ Script PDF.js cargado en consultar-propuestas'); window.pdfjsLibReady = true;" onerror="console.error('❌ Error cargando PDF.js');"></script>
+    <script>
+        // Verificar que PDF.js se cargó correctamente
+        function checkPdfJsLoaded() {
+            // Intentar múltiples formas de acceder a PDF.js
+            const pdfjs = window.pdfjsLib || window.pdfjs || (typeof pdfjsLib !== 'undefined' ? pdfjsLib : null);
+            
+            if (pdfjs) {
+                console.log('✅ PDF.js disponible en consultar-propuestas:', {
+                    version: pdfjs.version || 'desconocida',
+                    hasGetDocument: typeof pdfjs.getDocument === 'function'
+                });
+                // Configurar worker por defecto
+                if (!pdfjs.GlobalWorkerOptions.workerSrc) {
+                    pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                }
+                window.pdfjsLibReady = true;
+                window.pdfjsLibInstance = pdfjs;
+                return true;
+            }
+            return false;
+        }
+        
+        // Verificar inmediatamente
+        if (checkPdfJsLoaded()) {
+            console.log('✅ PDF.js ya está disponible en consultar-propuestas');
+        } else {
+            // Si no está disponible, esperar a que se cargue
+            window.addEventListener('load', function() {
+                if (checkPdfJsLoaded()) {
+                    console.log('✅ PDF.js cargado después del evento load en consultar-propuestas');
+                } else {
+                    console.error('❌ PDF.js no se cargó correctamente después del evento load en consultar-propuestas');
+                }
+            });
+        }
+    </script>
+    <script src="load-config.js"></script>
+    <script src="supabase-config-universal.js"></script>
+    <script src="translation-system.js"></script>
+    <script src="auth.js"></script>
+    <script src="carrito-compras.js"></script>
+    <script src="stock-warning.js"></script>
+    <style>
+        .proposals-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: var(--space-8) var(--space-6);
+        }
+
+        .proposals-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-8);
+            padding-bottom: var(--space-4);
+            border-bottom: 2px solid var(--bg-gray-200);
+        }
+
+        .proposals-title {
+            font-family: var(--font-display);
+            font-size: 2.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .filters-section {
+            display: flex;
+            gap: var(--space-4);
+            margin-bottom: var(--space-6);
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-input {
+            padding: var(--space-3) var(--space-4);
+            border: 1px solid var(--bg-gray-300);
+            border-radius: var(--radius-md);
+            background: var(--bg-white);
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            min-width: 200px;
+        }
+
+        .filter-input:focus {
+            outline: none;
+            border-color: var(--brand-blue);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .proposals-table-container {
+            background: var(--bg-white);
+            border-radius: var(--radius-xl);
+            padding: var(--space-6);
+            box-shadow: var(--shadow-md);
+            overflow-x: auto;
+        }
+
+        .proposals-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .proposals-table thead {
+            background: var(--bg-gray-100);
+        }
+
+        .proposals-table th {
+            padding: var(--space-4);
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid var(--bg-gray-300);
+        }
+
+        .proposals-table td {
+            padding: var(--space-4);
+            border-bottom: 1px solid var(--bg-gray-200);
+            color: var(--text-primary);
+            font-size: 0.875rem;
+        }
+
+        .proposals-table tbody tr:hover {
+            background: var(--bg-gray-50);
+        }
+
+        .proposals-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: var(--space-1) var(--space-3);
+            border-radius: var(--radius-full);
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-sent {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-approved {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-rejected {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .status-aguarda-pagamento {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-aguarda-aprovacao {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .status-encomendado {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        /* Ajustes para tema oscuro */
+        [data-theme="dark"] .status-sent {
+            background: #065f46;
+            color: #d1fae5;
+        }
+
+        [data-theme="dark"] .status-pending {
+            background: #92400e;
+            color: #fef3c7;
+        }
+
+        [data-theme="dark"] .status-approved {
+            background: #065f46;
+            color: #d1fae5;
+        }
+
+        [data-theme="dark"] .status-rejected {
+            background: #991b1b;
+            color: #fee2e2;
+        }
+
+        [data-theme="dark"] .status-aguarda-pagamento {
+            background: #92400e;
+            color: #fef3c7;
+        }
+
+        [data-theme="dark"] .status-aguarda-aprovacao {
+            background: #1e40af;
+            color: #dbeafe;
+        }
+
+        [data-theme="dark"] .status-encomendado {
+            background: #065f46;
+            color: #d1fae5;
+        }
+
+        .status-select {
+            padding: var(--space-2) var(--space-3);
+            border: 1px solid var(--bg-gray-300);
+            border-radius: var(--radius-md);
+            background: var(--bg-white);
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            cursor: pointer;
+            margin-left: var(--space-2);
+        }
+
+        .status-select:focus {
+            outline: none;
+            border-color: var(--brand-blue);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .status-select-inline {
+            background: var(--bg-white) !important;
+            border: 1px solid var(--bg-gray-300) !important;
+            color: var(--text-primary) !important;
+        }
+
+        [data-theme="dark"] .status-select-inline {
+            background: var(--bg-gray-100) !important;
+            border: 1px solid var(--bg-gray-200) !important;
+            color: var(--text-primary) !important;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23d1d5db' d='M6 9L1 4h10z'/%3E%3C/svg%3E") !important;
+            background-repeat: no-repeat !important;
+            background-position: right 8px center !important;
+        }
+
+        .status-select-inline option {
+            background: var(--bg-white);
+            color: var(--text-primary);
+        }
+
+        [data-theme="dark"] .status-select-inline option {
+            background: var(--bg-gray-100);
+            color: var(--text-primary);
+        }
+
+        .form-group {
+            margin-bottom: var(--space-4);
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: var(--space-2);
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: var(--space-3);
+            border: 1px solid var(--bg-gray-300);
+            border-radius: var(--radius-md);
+            background: var(--bg-white);
+            color: var(--text-primary);
+            font-size: 0.875rem;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--brand-blue);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: var(--space-3);
+            margin-top: var(--space-6);
+            padding-top: var(--space-4);
+            border-top: 1px solid var(--bg-gray-200);
+        }
+
+        .product-checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            padding: var(--space-2);
+            border-bottom: 1px solid var(--bg-gray-200);
+            cursor: pointer;
+        }
+
+        .product-checkbox-item:hover {
+            background: var(--bg-gray-50);
+        }
+
+        .product-checkbox-item:last-child {
+            border-bottom: none;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+
+        .btn-view-details {
+            background: var(--brand-blue);
+            color: var(--text-white);
+            border: none;
+            padding: var(--space-2) var(--space-4);
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-view-details:hover {
+            background: var(--brand-blue-dark);
+        }
+
+        .no-proposals {
+            text-align: center;
+            padding: var(--space-12);
+            color: var(--text-secondary);
+        }
+
+        .no-proposals i {
+            font-size: 4rem;
+            margin-bottom: var(--space-4);
+            opacity: 0.3;
+        }
+
+        .loading {
+            text-align: center;
+            padding: var(--space-12);
+            color: var(--text-secondary);
+        }
+
+        .loading i {
+            font-size: 2rem;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Modal de detalles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: var(--space-4);
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--bg-white);
+            border-radius: var(--radius-xl);
+            padding: var(--space-6);
+            max-width: 900px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-xl);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-6);
+            padding-bottom: var(--space-4);
+            border-bottom: 2px solid var(--bg-gray-200);
+        }
+
+        .modal-title {
+            font-family: var(--font-display);
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: var(--space-2);
+            border-radius: var(--radius-md);
+            transition: all 0.2s ease;
+        }
+
+        .modal-close:hover {
+            background: var(--bg-gray-100);
+            color: var(--text-primary);
+        }
+
+        .proposal-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: var(--space-4);
+            margin-bottom: var(--space-6);
+        }
+
+        .detail-item {
+            padding: var(--space-3);
+            background: var(--bg-gray-50);
+            border-radius: var(--radius-md);
+        }
+
+        .detail-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            margin-bottom: var(--space-1);
+        }
+
+        .detail-value {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .articles-section {
+            margin-top: var(--space-6);
+        }
+
+        .articles-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: var(--space-4);
+        }
+
+        .articles-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+
+        .articles-table th {
+            padding: var(--space-3);
+            text-align: left;
+            background: var(--bg-gray-100);
+            font-weight: 600;
+            color: var(--text-primary);
+            border-bottom: 2px solid var(--bg-gray-300);
+        }
+
+        .articles-table td {
+            padding: var(--space-3);
+            border-bottom: 1px solid var(--bg-gray-200);
+            color: var(--text-primary);
+        }
+
+        .articles-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .personalized-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            background: var(--brand-blue);
+            color: var(--text-white);
+            border-radius: var(--radius-sm);
+            font-size: 0.75rem;
+            margin-left: var(--space-2);
+        }
+
+        /* Estilos para edición de propuesta */
+        .proposal-actions {
+            margin-bottom: var(--space-6);
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .btn-edit-proposal {
+            background: var(--brand-blue);
+            color: var(--text-white);
+            border: none;
+            padding: var(--space-3) var(--space-5);
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .btn-edit-proposal:hover {
+            background: var(--brand-blue-dark);
+        }
+
+        .modal-large {
+            max-width: 1200px;
+        }
+
+        .edit-form-section {
+            margin-bottom: var(--space-6);
+        }
+
+        .edit-form-section h4 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: var(--space-4);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: var(--space-4);
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: var(--space-2);
+        }
+
+        .form-input {
+            padding: var(--space-3) var(--space-4);
+            border: 1px solid var(--bg-gray-300);
+            border-radius: var(--radius-md);
+            background: var(--bg-white);
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--brand-blue);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-4);
+        }
+
+        .btn-add-article {
+            background: var(--success-500);
+            color: var(--text-white);
+            border: none;
+            padding: var(--space-2) var(--space-4);
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .btn-add-article:hover {
+            background: var(--success-600);
+        }
+
+        .articles-edit-container {
+            overflow-x: auto;
+            margin-bottom: var(--space-4);
+        }
+
+        .articles-edit-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+
+        .articles-edit-table th {
+            padding: var(--space-3);
+            text-align: left;
+            background: var(--bg-gray-100);
+            font-weight: 600;
+            color: var(--text-primary);
+            border-bottom: 2px solid var(--bg-gray-300);
+            white-space: nowrap;
+        }
+
+        .articles-edit-table td {
+            padding: var(--space-2);
+            border-bottom: 1px solid var(--bg-gray-200);
+        }
+
+        .form-input-sm {
+            padding: var(--space-2) var(--space-3);
+            border: 1px solid var(--bg-gray-300);
+            border-radius: var(--radius-sm);
+            background: var(--bg-white);
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            width: 100%;
+            transition: all 0.2s ease;
+        }
+
+        .form-input-sm:focus {
+            outline: none;
+            border-color: var(--brand-blue);
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+        }
+
+        .btn-delete-article {
+            background: var(--danger-500);
+            color: var(--text-white);
+            border: none;
+            padding: var(--space-2);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-delete-article:hover {
+            background: var(--danger-600);
+        }
+
+        .total-section {
+            text-align: right;
+            padding: var(--space-4);
+            background: var(--bg-gray-50);
+            border-radius: var(--radius-md);
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .edit-form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: var(--space-4);
+            margin-top: var(--space-6);
+            padding-top: var(--space-4);
+            border-top: 2px solid var(--bg-gray-200);
+        }
+
+        .btn-cancel-edit {
+            background: var(--bg-gray-200);
+            color: var(--text-primary);
+            border: none;
+            padding: var(--space-3) var(--space-5);
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-cancel-edit:hover {
+            background: var(--bg-gray-300);
+        }
+
+        .btn-save-edit {
+            background: var(--brand-blue);
+            color: var(--text-white);
+            border: none;
+            padding: var(--space-3) var(--space-5);
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .btn-save-edit:hover {
+            background: var(--brand-blue-dark);
+        }
+
+        /* Estilos para modal de búsqueda de productos */
+        .product-search-header {
+            margin-bottom: var(--space-6);
+        }
+
+        .product-search-header h4 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .product-search-filters {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: var(--space-4);
+            margin-bottom: var(--space-6);
+            padding: var(--space-4);
+            background: var(--bg-gray-50);
+            border-radius: var(--radius-md);
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .filter-group label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: var(--space-2);
+        }
+
+        .product-search-results {
+            margin-bottom: var(--space-6);
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-4);
+            padding: var(--space-3);
+            background: var(--bg-gray-100);
+            border-radius: var(--radius-md);
+        }
+
+        .results-header span {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: var(--space-4);
+            max-height: 400px;
+            overflow-y: auto;
+            padding: var(--space-2);
+        }
+
+        .product-card-search {
+            background: var(--bg-white);
+            border: 2px solid var(--bg-gray-200);
+            border-radius: var(--radius-md);
+            padding: var(--space-4);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .product-card-search:hover {
+            border-color: var(--brand-blue);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .product-card-name {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: var(--space-2);
+        }
+
+        .product-card-category {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: var(--space-2);
+            text-transform: capitalize;
+        }
+
+        .product-card-price {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--brand-blue);
+            margin-bottom: var(--space-1);
+        }
+
+        .product-card-delivery {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .no-products-found {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: var(--space-8);
+            color: var(--text-secondary);
+        }
+
+        .product-search-actions {
+            display: flex;
+            justify-content: flex-end;
+            padding-top: var(--space-4);
+            border-top: 2px solid var(--bg-gray-200);
+        }
+
+        .btn-cancel-search {
+            background: var(--bg-gray-200);
+            color: var(--text-primary);
+            border: none;
+            padding: var(--space-3) var(--space-5);
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-cancel-search:hover {
+            background: var(--bg-gray-300);
+        }
+
+        /* Menú desplegable hamburguesa */
+        .menu-dropdown {
+            position: relative;
+        }
+
+        .menu-toggle {
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: var(--space-2) var(--space-3);
+            border-radius: var(--radius-md);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .menu-toggle:hover {
+            background: var(--bg-gray-100);
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: var(--space-2);
+            background: var(--bg-white);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-xl);
+            min-width: 220px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            border: 1px solid var(--bg-gray-200);
+        }
+
+        .dropdown-menu.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .dropdown-link {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            padding: var(--space-3) var(--space-4);
+            color: var(--text-primary);
+            text-decoration: none;
+            transition: all 0.2s ease;
+            border-bottom: 1px solid var(--bg-gray-200);
+            font-size: 0.875rem;
+        }
+
+        .dropdown-link:last-child {
+            border-bottom: none;
+        }
+
+        .dropdown-link:hover {
+            background: var(--bg-gray-100);
+            color: var(--brand-blue);
+        }
+
+        .dropdown-link.active {
+            background: var(--primary-500);
+            color: #ffffff;
+            font-weight: 600;
+        }
+
+        [data-theme="dark"] .dropdown-link.active {
+            background: var(--primary-600);
+            color: #ffffff;
+        }
+
+        .dropdown-link i {
+            width: 20px;
+            text-align: center;
+            color: var(--text-secondary);
+        }
+
+        .dropdown-link:hover i {
+            color: var(--brand-blue);
+        }
+
+        .dropdown-link.active i {
+            color: #ffffff;
+        }
+
+        [data-theme="dark"] .dropdown-link.active i {
+            color: #ffffff;
+        }
+
+        @media (max-width: 768px) {
+            .proposals-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: var(--space-4);
+            }
+
+            .filters-section {
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .filter-input {
+                width: 100%;
+            }
+
+            .proposals-table-container {
+                overflow-x: auto;
+            }
+
+            .proposals-table {
+                min-width: 800px;
+            }
+
+            .dropdown-menu {
+                right: auto;
+                left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <span>EPPO by <span class="groupe-gm">Groupe GM</span></span>
+            </div>
+            <nav class="nav">
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="productos-dinamico.html" class="nav-link">Products</a>
+                <a href="carrito-compras.html" class="nav-link" id="nav-cart-link">Presupuesto</a>
+                
+                <!-- Menú hamburguesa -->
+                <div class="menu-dropdown">
+                    <button class="menu-toggle" id="menuToggle" onclick="toggleMenu()" aria-label="Toggle menu">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="dropdown-menu" id="dropdownMenu">
+                        <a href="comparar-productos.html" class="dropdown-link">
+                            <i class="fas fa-balance-scale"></i>
+                            <span>Comparar</span>
+                        </a>
+                        <a href="consultar-propuestas.html" class="dropdown-link active" id="nav-proposals-link">
+                            <i class="fas fa-file-invoice"></i>
+                            <span>Histórico</span>
+                        </a>
+                        <a href="selector-productos.html" class="dropdown-link" id="nav-create-product-link">
+                            <i class="fas fa-edit"></i>
+                            <span id="create-product-text">Creador/Editor</span>
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="language-selector">
+                    <button class="flag-btn active" data-lang="pt" title="Português" onclick="changeLanguage('pt')">
+                        <img src="https://flagcdn.com/w20/pt.png" alt="Portugal">
+                    </button>
+                    <button class="flag-btn" data-lang="es" title="Español" onclick="changeLanguage('es')">
+                        <img src="https://flagcdn.com/w20/es.png" alt="España">
+                    </button>
+                    <button class="flag-btn" data-lang="en" title="English" onclick="changeLanguage('en')">
+                        <img src="https://flagcdn.com/w20/gb.png" alt="Reino Unido">
+                    </button>
+                </div>
+                <button class="theme-toggle" id="theme-toggle" title="Cambiar tema">
+                    <i class="fas fa-sun sun-icon"></i>
+                    <i class="fas fa-moon moon-icon"></i>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="proposals-container">
+            <div class="proposals-header">
+                <h1 class="proposals-title" id="proposals-page-title">Consultar Propuestas</h1>
+            </div>
+
+            <!-- Filtros -->
+            <div class="filters-section">
+                <input type="text" id="searchClientInput" class="filter-input" placeholder="Buscar por cliente...">
+                <input type="text" id="searchCommercialInput" class="filter-input" placeholder="Buscar por comercial...">
+                <input type="date" id="filterDateFrom" class="filter-input">
+                <input type="date" id="filterDateTo" class="filter-input">
+                <select id="filterStatus" class="filter-input">
+                    <option value="">Todos os estados</option>
+                    <option value="propuesta_en_curso">Proposta em Curso</option>
+                    <option value="propuesta_enviada">Proposta Enviada</option>
+                    <option value="propuesta_en_edicion">Proposta em Edição</option>
+                    <option value="muestra_pedida">Amostra Pedida</option>
+                    <option value="muestra_entregada">Amostra Entregue</option>
+                    <option value="aguarda_dossier">Aguarda Dossier</option>
+                    <option value="aguarda_aprovacao_dossier">Aguarda Aprovação de Dossier</option>
+                    <option value="aguarda_creacion_cliente">Aguarda Criação do Cliente</option>
+                    <option value="aguarda_creacion_codigo_phc">Aguarda Criação de Código PHC</option>
+                    <option value="aguarda_pagamento">Aguarda Pagamento</option>
+                    <option value="encomenda_en_curso">Encomenda em Curso</option>
+                    <option value="encomenda_concluida">Encomenda Concluída</option>
+                    <option value="rejeitada">Rejeitada</option>
+                </select>
+            </div>
+
+            <!-- Tabla de propuestas -->
+            <div class="proposals-table-container">
+                <div id="loadingIndicator" class="loading">
+                    <i class="fas fa-spinner"></i>
+                    <p id="loading-text">Cargando propuestas...</p>
+                </div>
+                <div id="noProposals" class="no-proposals" style="display: none;">
+                    <i class="fas fa-inbox"></i>
+                    <p id="no-proposals-text">No se encontraron propuestas</p>
+                </div>
+                <table class="proposals-table" id="proposalsTable" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th id="th-proposal-number">Nº Propuesta</th>
+                            <th id="th-start-date">Data Início</th>
+                            <th id="th-client">Cliente</th>
+                            <th id="th-commercial">Comercial</th>
+                            <th id="th-status">Estado</th>
+                            <th id="th-last-update">Última Actualización</th>
+                            <th id="th-actions">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="proposalsTableBody">
+                        <!-- Se llenará dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal para mostrar descomposición del código de propuesta -->
+    <div class="modal-overlay" id="proposalCodeModal">
+        <div class="modal" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3 id="code-modal-title" class="modal-title">Fórmula del Código de Propuesta</h3>
+                <button class="modal-close" onclick="closeProposalCodeModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body" style="padding: var(--space-6);">
+                <div id="codeBreakdownContent">
+                    <!-- Se llenará dinámicamente -->
+                </div>
+            </div>
+            <div class="modal-actions" style="padding: var(--space-4); border-top: 1px solid var(--bg-gray-200);">
+                <button type="button" class="btn-secondary" onclick="closeProposalCodeModal()" id="close-code-modal-btn">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de detalles -->
+    <div class="modal-overlay" id="proposalDetailsModal">
+        <div class="modal" style="max-width: 900px;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modal-title">Detalles de la Propuesta</h3>
+                <button class="modal-close" onclick="closeProposalDetails()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="proposalDetailsContent">
+                <!-- Se llenará dinámicamente -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para ver logotipos de la propuesta -->
+    <div class="modal-overlay" id="proposalLogosModal">
+        <div class="modal" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="logos-modal-title">Logotipos de la Propuesta</h3>
+                <button class="modal-close" onclick="closeProposalLogosModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body" id="proposalLogosContent">
+                <!-- Se llenará dinámicamente -->
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeProposalLogosModal()" id="close-logos-modal-btn">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para cambiar estado a Encomendado -->
+    <div class="modal-overlay" id="changeStatusEncomendadoModal">
+        <div class="modal" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="encomendado-modal-title">Marcar como Encomendado</h3>
+                <button class="modal-close" onclick="closeEncomendadoModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label" id="encomendado-products-label">Seleccione los productos que fueron encomendados:</label>
+                    <div id="encomendado-products-list" style="max-height: 300px; overflow-y: auto; border: 1px solid var(--bg-gray-300); border-radius: var(--radius-md); padding: var(--space-3);">
+                        <!-- Se llenará dinámicamente -->
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" id="encomendado-number1-label">Número de Encomenda 1 *</label>
+                    <input type="text" class="form-input" id="encomendado-number1-input" placeholder="" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" id="encomendado-number2-label">Número de Encomenda 2 (opcional)</label>
+                    <input type="text" class="form-input" id="encomendado-number2-input" placeholder="">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" id="encomendado-date-label">Data de Encomenda *</label>
+                    <input type="date" class="form-input" id="encomendado-date-input" required>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeEncomendadoModal()" id="encomendado-cancel-btn">Cancelar</button>
+                <button type="button" class="btn-primary" onclick="saveEncomendadoStatus()" id="encomendado-save-btn">
+                    <i class="fas fa-save"></i> <span id="encomendado-save-text">Guardar</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para cambiar estado a Encomenda Concluída (solo productos) -->
+    <div class="modal-overlay" id="changeStatusEncomendaConcluidaModal">
+        <div class="modal" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="concluida-modal-title">Marcar como Encomenda Concluída</h3>
+                <button class="modal-close" onclick="closeEncomendaConcluidaModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label" id="concluida-products-label">Seleccione los productos con los que el cliente avanzó:</label>
+                    <div id="concluida-products-list" style="max-height: 300px; overflow-y: auto; border: 1px solid var(--bg-gray-300); border-radius: var(--radius-md); padding: var(--space-3);">
+                        <!-- Se llenará dinámicamente -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeEncomendaConcluidaModal()" id="concluida-cancel-btn">Cancelar</button>
+                <button type="button" class="btn-primary" onclick="saveEncomendaConcluidaStatus()" id="concluida-save-btn">
+                    <i class="fas fa-save"></i> <span id="concluida-save-text">Guardar</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para cambiar estado a Rejeitada -->
+    <div class="modal-overlay" id="changeStatusRejeitadaModal">
+        <div class="modal" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="rejeitada-modal-title">Marcar como Rejeitada</h3>
+                <button class="modal-close" onclick="closeRejeitadaModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label" id="rejeitada-reason-label">Motivo del Rechazo:</label>
+                    <div id="rejeitada-reasons-list" style="display: flex; flex-direction: column; gap: var(--space-3);">
+                        <label style="display: flex; align-items: center; gap: var(--space-2); cursor: pointer;">
+                            <input type="radio" name="rejeitada-reason" value="precos" id="reason-precos">
+                            <span id="reason-precos-text">Preços</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: var(--space-2); cursor: pointer;">
+                            <input type="radio" name="rejeitada-reason" value="prazo" id="reason-prazo">
+                            <span id="reason-prazo-text">Prazo de entrega</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: var(--space-2); cursor: pointer;">
+                            <input type="radio" name="rejeitada-reason" value="outro" id="reason-outro">
+                            <span id="reason-outro-text">Outro</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group" id="rejeitada-other-reason-group" style="display: none;">
+                    <label class="form-label" id="rejeitada-other-label">Especifique el motivo:</label>
+                    <textarea class="form-input" id="rejeitada-other-input" rows="3" placeholder=""></textarea>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeRejeitadaModal()" id="rejeitada-cancel-btn">Cancelar</button>
+                <button type="button" class="btn-primary" onclick="saveRejeitadaStatus()" id="rejeitada-save-btn">
+                    <i class="fas fa-save"></i> <span id="rejeitada-save-text">Guardar</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para cambiar estado a Amostra Pedida -->
+    <div class="modal-overlay" id="amostraPedidaModal">
+        <div class="modal" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="amostra-pedida-modal-title">Amostra Pedida</h3>
+                <button class="modal-close" onclick="closeAmostraPedidaModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label" id="amostra-pedida-products-label">Selecione os artigos que requerem amostras:</label>
+                    <div id="amostra-pedida-products-list" style="max-height: 300px; overflow-y: auto; border: 1px solid var(--bg-gray-300); border-radius: var(--radius-md); padding: var(--space-3);">
+                        <!-- Se llenará dinámicamente -->
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" id="amostra-pedida-notes-label">Notas (informação adicional sobre os produtos):</label>
+                    <textarea class="form-input" id="amostra-pedida-notes" rows="4" placeholder="Adicione informações sobre os produtos que requerem amostras..."></textarea>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeAmostraPedidaModal()" id="amostra-pedida-cancel-btn">Cancelar</button>
+                <button type="button" class="btn-primary" onclick="saveAmostraPedidaStatus()" id="amostra-pedida-save-btn">
+                    <i class="fas fa-save"></i> <span id="amostra-pedida-save-text">Guardar</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para cambiar estado a Amostra Enviada -->
+    <div class="modal-overlay" id="amostraEnviadaModal">
+        <div class="modal" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="amostra-enviada-modal-title">Amostra Enviada</h3>
+                <button class="modal-close" onclick="closeAmostraEnviadaModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label class="form-label" id="amostra-enviada-products-label" style="font-weight: 600; margin-bottom: 10px; display: block;">Selecione os artigos das amostras enviadas:</label>
+                    <div id="amostra-enviada-products-container" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--bg-gray-300); border-radius: 8px; padding: 10px;">
+                        <!-- Se llenará dinámicamente con los artículos de la propuesta -->
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" id="amostra-enviada-photos-label" style="font-weight: 600; margin-bottom: 10px; display: block;">Fotos das amostras enviadas:</label>
+                    <div id="amostra-enviada-photos-container" style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
+                        <!-- Se llenará dinámicamente con fotos -->
+                    </div>
+                    <button type="button" class="btn-secondary" onclick="addAmostraPhoto()" id="amostra-enviada-add-photo-btn">
+                        <i class="fas fa-plus"></i> Adicionar Foto
+                    </button>
+                    <input type="file" id="amostra-enviada-photo-input" accept="image/*" multiple style="display: none;" onchange="handleAmostraPhotoUpload(event)">
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeAmostraEnviadaModal()" id="amostra-enviada-cancel-btn">Cancelar</button>
+                <button type="button" class="btn-primary" onclick="saveAmostraEnviadaStatus()" id="amostra-enviada-save-btn">
+                    <i class="fas fa-save"></i> <span id="amostra-enviada-save-text">Guardar</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para cambiar estado a Aguarda Aprovação de Dossier -->
+    <div class="modal-overlay" id="aguardaAprovacaoDossierModal">
+        <div class="modal" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="aguarda-dossier-modal-title">Aguarda Aprovação de Dossier</h3>
+                <button class="modal-close" onclick="closeAguardaAprovacaoDossierModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label" id="aguarda-dossier-documents-label">Documentos ou imagens do dossier (máximo 3):</label>
+                    <div id="aguarda-dossier-documents-container" style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
+                        <!-- Se llenará dinámicamente con documentos -->
+                    </div>
+                    <button type="button" class="btn-secondary" onclick="addDossierDocument()" id="aguarda-dossier-add-document-btn">
+                        <i class="fas fa-plus"></i> Adicionar Documento
+                    </button>
+                    <input type="file" id="aguarda-dossier-document-input" accept="image/*,.pdf,.doc,.docx" multiple style="display: none;" onchange="handleDossierDocumentUpload(event)">
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeAguardaAprovacaoDossierModal()" id="aguarda-dossier-cancel-btn">Cancelar</button>
+                <button type="button" class="btn-primary" onclick="saveAguardaAprovacaoDossierStatus()" id="aguarda-dossier-save-btn">
+                    <i class="fas fa-save"></i> <span id="aguarda-dossier-save-text">Guardar</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para cambiar estado a Aguarda Pagamento -->
+    <div class="modal-overlay" id="aguardaPagamentoModal">
+        <div class="modal" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="aguarda-pagamento-modal-title">Aguarda Pagamento</h3>
+                <button class="modal-close" onclick="closeAguardaPagamentoModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label" id="aguarda-pagamento-numero-cliente-label">Número de Cliente:</label>
+                    <input type="text" class="form-input" id="aguarda-pagamento-numero-cliente" placeholder="">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" id="aguarda-pagamento-tipo-cliente-label">Tipo de Cliente:</label>
+                    <input type="text" class="form-input" id="aguarda-pagamento-tipo-cliente" placeholder="">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" id="aguarda-pagamento-numero-factura-label">Número de Factura Proforma:</label>
+                    <input type="text" class="form-input" id="aguarda-pagamento-numero-factura" placeholder="">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" id="aguarda-pagamento-valor-adjudicacion-label">Valor de Adjudicação:</label>
+                    <input type="number" step="0.01" class="form-input" id="aguarda-pagamento-valor-adjudicacion" placeholder="0.00">
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeAguardaPagamentoModal()" id="aguarda-pagamento-cancel-btn">Cancelar</button>
+                <button type="button" class="btn-primary" onclick="saveAguardaPagamentoStatus()" id="aguarda-pagamento-save-btn">
+                    <i class="fas fa-save"></i> <span id="aguarda-pagamento-save-text">Guardar</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para cambiar estado a Encomenda en Curso -->
+    <div class="modal-overlay" id="encomendaEnCursoModal">
+        <div class="modal" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="encomenda-en-curso-modal-title">Encomenda em Curso</h3>
+                <button class="modal-close" onclick="closeEncomendaEnCursoModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label" id="encomenda-en-curso-products-label">Selecione os artigos que foram encomendados:</label>
+                    <div id="encomenda-en-curso-products-list" style="max-height: 300px; overflow-y: auto; border: 1px solid var(--bg-gray-300); border-radius: var(--radius-md); padding: var(--space-3);">
+                        <!-- Se llenará dinámicamente -->
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" id="encomenda-en-curso-fornecedores-label">Números de Encomenda por Fornecedor:</label>
+                    <div id="encomenda-en-curso-fornecedores">
+                        <!-- Se llenará dinámicamente cuando se seleccionen productos -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeEncomendaEnCursoModal()" id="encomenda-en-curso-cancel-btn">Cancelar</button>
+                <button type="button" class="btn-primary" onclick="saveEncomendaEnCursoStatus()" id="encomenda-en-curso-save-btn">
+                    <i class="fas fa-save"></i> <span id="encomenda-en-curso-save-text">Guardar</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de confirmación para eliminar propuesta -->
+    <div class="modal-overlay" id="deleteProposalConfirmModal" style="display: none;">
+        <div class="modal" style="max-width: 500px;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white;">
+                <h3 class="modal-title" id="delete-confirm-title" style="color: white; margin: 0;">Confirmar Eliminación</h3>
+                <button class="modal-close" onclick="window.proposalsManager.closeDeleteConfirmModal()" style="color: white;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body" style="padding: 24px;">
+                <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 20px;">
+                    <div style="
+                        width: 48px;
+                        height: 48px;
+                        background: #fee2e2;
+                        border-radius: 50%;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        flex-shrink: 0;
+                    ">
+                        <i class="fas fa-exclamation-triangle" style="color: #ef4444; font-size: 24px;"></i>
+                    </div>
+                    <div style="flex: 1;">
+                        <p id="delete-confirm-message" style="margin: 0; font-size: 1rem; line-height: 1.5; color: var(--text-primary);">
+                            ¿Estás seguro de que deseas eliminar esta propuesta? Esta acción no se puede deshacer.
+                        </p>
+                    </div>
+                </div>
+                <div style="
+                    background: #fef2f2;
+                    border-left: 4px solid #ef4444;
+                    padding: 12px 16px;
+                    border-radius: 8px;
+                    margin-top: 16px;
+                ">
+                    <p id="delete-confirm-details" style="margin: 0; font-size: 0.875rem; color: #991b1b; font-weight: 500;">
+                        Cliente: <strong id="delete-confirm-client-name"></strong>
+                    </p>
+                </div>
+            </div>
+            <div class="modal-actions" style="padding: 16px 24px; border-top: 1px solid var(--bg-gray-200); display: flex; gap: 12px; justify-content: flex-end;">
+                <button type="button" class="btn-secondary" onclick="window.proposalsManager.closeDeleteConfirmModal()" id="delete-confirm-cancel-btn" style="
+                    background: var(--bg-gray-200);
+                    color: var(--text-primary);
+                    border: none;
+                    padding: 10px 20px;
+                    border-radius: 8px;
+                    font-weight: 600;
+                    cursor: pointer;
+                ">
+                    Cancelar
+                </button>
+                <button type="button" class="btn-primary" onclick="window.proposalsManager.confirmDeleteProposal()" id="delete-confirm-delete-btn" style="
+                    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+                    color: white;
+                    border: none;
+                    padding: 10px 20px;
+                    border-radius: 8px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                ">
+                    <i class="fas fa-trash-alt"></i> <span id="delete-confirm-delete-text">Eliminar</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="consultar-propuestas.js"></script>
+    <script>
+        // Función para cambiar tema
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            
+            const toggleButton = document.getElementById('theme-toggle');
+            toggleButton.setAttribute('title', newTheme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro');
+        }
+
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const theme = savedTheme || (prefersDark ? 'dark' : 'light');
+            
+            document.documentElement.setAttribute('data-theme', theme);
+            
+            const toggleButton = document.getElementById('theme-toggle');
+            toggleButton.setAttribute('title', theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro');
+        }
+
+
+        // Función para actualizar botones de navegación
+        function updateNavigationButtons(lang) {
+            const navTranslations = {
+                pt: {
+                    budget: 'Orçamento',
+                    history: 'Histórico',
+                    createProduct: 'Criador/Editor'
+                },
+                es: {
+                    budget: 'Presupuesto',
+                    history: 'Histórico',
+                    createProduct: 'Creador/Editor'
+                },
+                en: {
+                    budget: 'Budget',
+                    history: 'History',
+                    createProduct: 'Creator/Editor'
+                }
+            };
+            
+            const t = navTranslations[lang] || navTranslations.pt;
+            
+            const cartLink = document.getElementById('nav-cart-link');
+            const proposalsLink = document.getElementById('nav-proposals-link');
+            const createProductLink = document.getElementById('create-product-text');
+            
+            if (cartLink) cartLink.textContent = t.budget;
+            if (proposalsLink) {
+                const span = proposalsLink.querySelector('span');
+                if (span) span.textContent = t.history;
+            }
+            if (createProductLink) createProductLink.textContent = t.createProduct;
+        }
+
+        // Función para cambiar idioma
+        function changeLanguage(lang) {
+            document.documentElement.lang = lang;
+            localStorage.setItem('language', lang);
+            
+            // Actualizar banderas activas
+            document.querySelectorAll('.flag-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            const activeBtn = document.querySelector(`[data-lang="${lang}"]`);
+            if (activeBtn) activeBtn.classList.add('active');
+            
+            // Actualizar botones de navegación
+            updateNavigationButtons(lang);
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Verificar autenticación primero
+            const isAuth = await window.authManager.requireAuth('login.html');
+            if (!isAuth) {
+                return; // Redirige a login.html
+            }
+
+            initTheme();
+            const toggleButton = document.getElementById('theme-toggle');
+            if (toggleButton) {
+                toggleButton.addEventListener('click', toggleTheme);
+            }
+
+            // Inicializar idioma
+            const savedLanguage = localStorage.getItem('language') || 'pt';
+            changeLanguage(savedLanguage);
+            updateNavigationButtons(savedLanguage);
+        });
+
+        // Hacer función global
+        window.changeLanguage = changeLanguage;
+    </script>
+    <script src="menu-hamburguesa.js"></script>
+    <script src="theme-common.js"></script>
+</body>
+</html>
+

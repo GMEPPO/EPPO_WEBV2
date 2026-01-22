@@ -1,0 +1,105 @@
+/* Menú desplegable hamburguesa - Estilos comunes */
+
+.menu-dropdown {
+    position: relative;
+}
+
+.menu-toggle {
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.menu-toggle:hover {
+    background: var(--bg-gray-100);
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: var(--space-2);
+    background: var(--bg-white);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xl);
+    min-width: 220px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.3s ease;
+    z-index: 1000;
+    border: 1px solid var(--bg-gray-200);
+}
+
+.dropdown-menu.active {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.dropdown-link {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    color: var(--text-primary);
+    text-decoration: none;
+    transition: all 0.2s ease;
+    border-bottom: 1px solid var(--bg-gray-200);
+    font-size: 0.875rem;
+}
+
+.dropdown-link:last-child {
+    border-bottom: none;
+}
+
+.dropdown-link:hover {
+    background: var(--bg-gray-100);
+    color: var(--brand-blue);
+}
+
+.dropdown-link.active {
+    background: var(--primary-500);
+    color: #ffffff;
+    font-weight: 600;
+}
+
+/* Asegurar contraste en modo oscuro */
+[data-theme="dark"] .dropdown-link.active {
+    background: var(--primary-600);
+    color: #ffffff;
+}
+
+.dropdown-link i {
+    width: 20px;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.dropdown-link:hover i {
+    color: var(--brand-blue);
+}
+
+.dropdown-link.active i {
+    color: #ffffff;
+}
+
+[data-theme="dark"] .dropdown-link.active i {
+    color: #ffffff;
+}
+
+@media (max-width: 768px) {
+    .dropdown-menu {
+        right: auto;
+        left: 0;
+    }
+}
+

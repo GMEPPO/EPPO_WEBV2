@@ -1,0 +1,1437 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EPPO by Groupe GM - Crear Producto</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="menu-hamburguesa.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="load-config.js"></script>
+    <script src="supabase-config-universal.js"></script>
+    <script src="translation-system.js"></script>
+    <script src="auth.js"></script>
+    <script src="stock-warning.js"></script>
+    <style>
+        .product-form-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: var(--space-8) var(--space-6);
+        }
+
+        .product-form-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-8);
+            padding-bottom: var(--space-4);
+            border-bottom: 2px solid var(--bg-gray-200);
+        }
+
+        .product-form-title {
+            font-family: var(--font-display);
+            font-size: 2.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .product-form-subtitle {
+            color: var(--text-secondary);
+            margin-top: var(--space-2);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: var(--bg-white);
+            border-radius: var(--radius-xl);
+            padding: var(--space-8);
+            box-shadow: var(--shadow-md);
+        }
+
+        .form-section {
+            background: var(--bg-gray-50);
+            padding: var(--space-6);
+            border-radius: var(--radius-lg);
+            margin-bottom: var(--space-6);
+            border: 1px solid var(--bg-gray-200);
+        }
+
+        .form-section h2 {
+            font-family: var(--font-display);
+            color: var(--text-primary);
+            margin-bottom: var(--space-4);
+            font-size: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid var(--bg-gray-200);
+            position: relative;
+        }
+        .form-section h2::before {
+            content: '';
+            display: inline-block;
+            width: 4px;
+            height: 1.5rem;
+            background: var(--primary-color, #1d3557);
+            margin-right: 0.75rem;
+            vertical-align: middle;
+        }
+        .required {
+            font-weight: 600;
+        }
+        .required span {
+            color: #ef4444;
+            margin-left: 4px;
+        }
+            font-weight: 600;
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+        label {
+            font-weight: 600;
+            margin-bottom: var(--space-2);
+            color: var(--text-primary);
+            font-size: 0.875rem;
+        }
+        label.required::after {
+            content: ' *';
+            color: #ef4444;
+            font-weight: bold;
+        }
+        .required {
+            font-weight: 600;
+        }
+        input, select, textarea {
+            padding: var(--space-3) var(--space-4);
+            border: 1px solid var(--bg-gray-300);
+            border-radius: var(--radius-md);
+            font-family: inherit;
+            font-size: 0.9375rem;
+            color: var(--text-primary);
+            background: var(--bg-white);
+            transition: all 0.2s ease;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary-500);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        .category-fields {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .hidden {
+            display: none !important;
+        }
+        .variant-section {
+            background: var(--bg-white);
+            padding: var(--space-6);
+            border-radius: var(--radius-lg);
+            margin-bottom: var(--space-6);
+            border: 2px solid var(--bg-gray-200);
+        }
+        .variant-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: var(--space-4);
+            padding-bottom: var(--space-4);
+            border-bottom: 1px solid var(--bg-gray-200);
+        }
+        .variant-header h3 {
+            margin: 0;
+            color: var(--text-primary);
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+        .price-tiers-container {
+            margin-bottom: var(--space-4);
+        }
+        .price-tier {
+            background: var(--bg-white);
+            padding: var(--space-4);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--space-3);
+            border: 1px solid var(--bg-gray-200);
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr auto;
+            gap: var(--space-3);
+            align-items: center;
+        }
+        .price-tier input {
+            width: 100%;
+        }
+        .btn {
+            padding: var(--space-3) var(--space-6);
+            border: none;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.9375rem;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%);
+            color: var(--text-white);
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+        }
+        .btn-secondary {
+            background: var(--bg-gray-200);
+            color: var(--text-primary);
+        }
+        .btn-secondary:hover {
+            background: var(--bg-gray-300);
+        }
+        .btn-danger {
+            background: linear-gradient(135deg, var(--danger-500) 0%, #dc2626 100%);
+            color: var(--text-white);
+            padding: var(--space-2) var(--space-4);
+            font-size: 0.875rem;
+        }
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+        }
+        .btn-add {
+            background: linear-gradient(135deg, var(--success-500) 0%, #059669 100%);
+            color: var(--text-white);
+            margin-top: var(--space-3);
+        }
+        .btn-add:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+        }
+        .alert {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        .alert-success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #6ee7b7;
+        }
+        .alert-error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fca5a5;
+        }
+        .actions {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+        }
+        .header-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        @media (max-width: 768px) {
+            .form-grid, .category-fields {
+                grid-template-columns: 1fr;
+            }
+            .price-tier {
+                grid-template-columns: 1fr;
+            }
+        }
+        /* Modal para gestionar categorías */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            overflow: auto;
+        }
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background: var(--bg-white);
+            color: var(--text-primary);
+            padding: var(--space-8);
+            border-radius: var(--radius-xl);
+            max-width: 900px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            box-shadow: var(--shadow-xl);
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-6);
+            padding-bottom: var(--space-4);
+            border-bottom: 2px solid var(--bg-gray-200);
+        }
+        .modal-header h2 {
+            margin: 0;
+            color: var(--text-primary);
+            font-family: var(--font-display);
+            font-size: 1.5rem;
+        }
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: all 0.2s ease;
+        }
+        .close-modal:hover {
+            color: var(--text-primary);
+            background: var(--bg-gray-100);
+            border-radius: var(--radius-md);
+        }
+        .category-list {
+            margin-bottom: var(--space-8);
+        }
+        .category-item {
+            background: var(--bg-gray-50);
+            padding: var(--space-4);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--space-3);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid var(--bg-gray-200);
+        }
+        .category-item-name {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .category-item-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .field-editor {
+            background: #f9fafb;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        .field-editor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .field-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr auto;
+            gap: 10px;
+            align-items: end;
+            margin-bottom: 10px;
+        }
+        .field-row input, .field-row select {
+            width: 100%;
+        }
+        .alert {
+            padding: var(--space-4);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--space-4);
+        }
+        .alert-success {
+            background: var(--success-100, #d1fae5);
+            color: var(--success-700, #065f46);
+            border: 1px solid var(--success-300, #6ee7b7);
+        }
+        .alert-error {
+            background: var(--danger-100, #fee2e2);
+            color: var(--danger-700, #991b1b);
+            border: 1px solid var(--danger-300, #fca5a5);
+        }
+        .alert-warning {
+            background: var(--warning-100, #fef3c7);
+            color: var(--warning-700, #92400e);
+            border: 1px solid var(--warning-300, #fde68a);
+        }
+        .actions {
+            display: flex;
+            justify-content: space-between;
+            margin-top: var(--space-8);
+            padding-top: var(--space-6);
+            border-top: 1px solid var(--bg-gray-200);
+            gap: var(--space-4);
+        }
+        .header-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-6);
+        }
+        .field-editor {
+            background: var(--bg-gray-50);
+            padding: var(--space-4);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--space-4);
+        }
+        .field-editor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-3);
+        }
+        .field-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr auto;
+            gap: var(--space-3);
+            align-items: end;
+            margin-bottom: var(--space-3);
+        }
+        .field-row input, .field-row select {
+            width: 100%;
+        }
+        @media (max-width: 768px) {
+            .form-grid, .category-fields {
+                grid-template-columns: 1fr;
+            }
+            .price-tier {
+                grid-template-columns: 1fr;
+            }
+            .actions {
+                flex-direction: column;
+            }
+            .product-form-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <span>EPPO by <span class="groupe-gm">Groupe GM</span></span>
+            </div>
+            <nav class="nav">
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="productos-dinamico.html" class="nav-link">Products</a>
+                
+                <!-- Menú hamburguesa -->
+                <div class="menu-dropdown">
+                    <button class="menu-toggle" id="menuToggle" onclick="toggleMenu()" aria-label="Toggle menu">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="dropdown-menu" id="dropdownMenu">
+                        <a href="comparar-productos.html" class="dropdown-link">
+                            <i class="fas fa-balance-scale"></i>
+                            <span>Comparar</span>
+                        </a>
+                        <a href="carrito-compras.html" class="dropdown-link" id="nav-cart-link">
+                            <i class="fas fa-shopping-cart"></i>
+                            <span>Presupuesto</span>
+                        </a>
+                        <a href="consultar-propuestas.html" class="dropdown-link" id="nav-proposals-link">
+                            <i class="fas fa-file-invoice"></i>
+                            <span>Propuestas</span>
+                        </a>
+                        <a href="selector-productos.html" class="dropdown-link" id="nav-create-product-link">
+                            <i class="fas fa-edit"></i>
+                            <span id="create-product-text">Creador/Editor</span>
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="language-selector">
+                    <button class="flag-btn active" data-lang="pt" title="Português" onclick="changeLanguage('pt')">
+                        <img src="https://flagcdn.com/w20/pt.png" alt="Portugal">
+                    </button>
+                    <button class="flag-btn" data-lang="es" title="Español" onclick="changeLanguage('es')">
+                        <img src="https://flagcdn.com/w20/es.png" alt="España">
+                    </button>
+                    <button class="flag-btn" data-lang="en" title="English" onclick="changeLanguage('en')">
+                        <img src="https://flagcdn.com/w20/gb.png" alt="Reino Unido">
+                    </button>
+                </div>
+                
+                <button class="theme-toggle" id="theme-toggle" title="Cambiar tema">
+                    <i class="fas fa-sun sun-icon"></i>
+                    <i class="fas fa-moon moon-icon"></i>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="product-form-container">
+            <div class="product-form-header">
+                <div>
+                    <h1 class="product-form-title" id="page-title">Crear Nuevo Producto</h1>
+                    <p class="product-form-subtitle" id="page-subtitle">Completa la información del producto según su categoría</p>
+                </div>
+            </div>
+
+            <div class="container">
+                <div id="alert-container"></div>
+
+        <!-- Selector de modo (solo para editar o duplicar) -->
+        <div id="mode-selector" style="display: none; margin-bottom: 20px;">
+            <div style="background: var(--bg-white); padding: 20px; border-radius: 12px; box-shadow: var(--shadow-sm);">
+                <h3 id="selector-title" style="margin-bottom: 15px;">Seleccionar Producto</h3>
+                <input type="text" id="product-search" placeholder="Buscar producto..." style="width: 100%; padding: 10px; border: 1px solid var(--bg-gray-300); border-radius: 6px; margin-bottom: 15px;">
+                <div id="products-list" style="max-height: 400px; overflow-y: auto;">
+                    <!-- Lista de productos se cargará aquí -->
+                </div>
+            </div>
+        </div>
+
+        <form id="productForm">
+            <!-- Información Básica -->
+            <div class="form-section">
+                <h2>Información Básica</h2>
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label for="modelo" class="required">Nombre del Producto <span style="color: #ef4444;">*</span></label>
+                        <input type="text" id="modelo" name="modelo" placeholder="Ej. Secador Premium 5400" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="marca">Marca</label>
+                        <input type="text" id="marca" name="marca" placeholder="Ej. VALERA" list="marcas">
+                    </div>
+                    <datalist id="marcas"></datalist>
+                    <div class="form-group">
+                        <label for="categoria" class="required">Categoría <span style="color: #ef4444;">*</span></label>
+                        <select id="categoria" name="categoria" required>
+                            <option value="">Cargando categorías...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="mercado" class="required">Mercado <span style="color: #ef4444;">*</span></label>
+                        <select id="mercado" name="mercado" required>
+                            <option value="">Selecciona un mercado...</option>
+                            <option value="PT">Portugal (PT)</option>
+                            <option value="ES">España (ES)</option>
+                            <option value="AMBOS">Ambos (PT y ES)</option>
+                        </select>
+                        <small style="color: #6b7280; margin-top: 5px; display: block;">
+                            Selecciona para qué mercado(s) está disponible este producto
+                        </small>
+                    </div>
+                    <div class="form-group">
+                        <label for="badge">Etiqueta Destacada</label>
+                        <select id="badge" name="badge">
+                            <option value="">Sem etiqueta</option>
+                            <option value="NEW">Novo</option>
+                            <option value="PROMOCION">Promoção</option>
+                            <option value="STOCK_LIMITADO">Stock limitado</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="clienteSelect">Cliente Específico (Opcional)</label>
+                        <div style="position: relative;">
+                            <input type="text" id="clienteSelect" name="clienteSelect" 
+                                   placeholder="Buscar cliente..." 
+                                   autocomplete="off"
+                                   style="width: 100%; padding: 10px; border: 1px solid var(--bg-gray-300); border-radius: 6px; background: var(--bg-white); color: var(--text-primary);">
+                            <div id="clienteSuggestions" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: var(--bg-white); border: 1px solid var(--bg-gray-300); border-radius: 6px; max-height: 200px; overflow-y: auto; z-index: 1000; margin-top: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                            </div>
+                        </div>
+                        <small style="color: #6b7280; margin-top: 5px; display: block;">
+                            Si seleccionas un cliente, este producto solo aparecerá en propuestas de ese cliente
+                        </small>
+                        <input type="hidden" id="clienteId" name="clienteId" value="">
+                    </div>
+                    <div class="form-group full-width" style="margin-top: 10px;">
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                            <input type="checkbox" id="visibleEnCatalogo" name="visibleEnCatalogo" checked style="width: 20px; height: 20px; cursor: pointer;">
+                            <span>Mostrar en página de productos (catálogo público)</span>
+                        </label>
+                        <small style="color: #6b7280; margin-top: 5px; display: block;">
+                            Si está desmarcado, el producto solo aparecerá en la lista de productos para presupuestos, pero no en la página pública de productos.
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Descripciones -->
+            <div class="form-section">
+                <h2>Descripciones</h2>
+                <div class="form-grid">
+                    <div class="form-group full-width" id="descripcionEsContainer">
+                        <label for="descripcionEs" class="required">Descripción (Español) <span style="color: #ef4444;">*</span></label>
+                        <textarea id="descripcionEs" name="descripcionEs" placeholder="Describe el producto en español" required></textarea>
+                    </div>
+                    <div class="form-group full-width" id="descripcionPtContainer" style="display: none; width: 100%;">
+                        <label for="descripcionPt" class="required">Descrição (Português) <span style="color: #ef4444;">*</span></label>
+                        <textarea id="descripcionPt" name="descripcionPt" placeholder="Descreva o produto em português" required style="width: 100%; min-height: 100px;"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Campos Específicos de Categoría (Filtros) -->
+            <div class="form-section" id="categoryFieldsSection" style="display: none;">
+                <h2 id="categoryFieldsTitle">Campos de la Categoría</h2>
+                <div id="categoryFields" class="category-fields">
+                    <p style="color: #6b7280; grid-column: 1 / -1;">Cargando campos de la categoría...</p>
+                </div>
+            </div>
+
+            <!-- Multimedia -->
+            <div class="form-section">
+                <h2>Multimedia</h2>
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label for="foto" class="required">Imagen Principal <span style="color: #ef4444;">*</span></label>
+                        <input type="file" id="foto" name="foto" accept="image/*" onchange="handleImageFileChange('foto')" style="margin-bottom: 10px;">
+                        <input type="hidden" id="fotoRequired" value="true">
+                        <div id="fotoPreview" style="margin-top: 10px; display: none;">
+                            <img id="fotoPreviewImg" src="" alt="Vista previa" style="max-width: 300px; max-height: 300px; border-radius: 8px; border: 2px solid #d1d5db;">
+                            <button type="button" onclick="removeImagePreview('foto')" style="margin-top: 10px; padding: 5px 15px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                                <i class="fas fa-times"></i> Eliminar
+                            </button>
+                        </div>
+                        <input type="hidden" id="fotoUrl" name="fotoUrl">
+                        <small style="color: #6b7280; display: block; margin-top: 5px;">
+                            <i class="fas fa-info-circle"></i> Selecciona una imagen desde tu PC. Se subirá automáticamente a Supabase.
+                        </small>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="foto2">Imagen Secundaria</label>
+                        <input type="file" id="foto2" name="foto2" accept="image/*" onchange="handleImageFileChange('foto2')" style="margin-bottom: 10px;">
+                        <div id="foto2Preview" style="margin-top: 10px; display: none;">
+                            <img id="foto2PreviewImg" src="" alt="Vista previa" style="max-width: 300px; max-height: 300px; border-radius: 8px; border: 2px solid #d1d5db;">
+                            <button type="button" onclick="removeImagePreview('foto2')" style="margin-top: 10px; padding: 5px 15px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                                <i class="fas fa-times"></i> Eliminar
+                            </button>
+                        </div>
+                        <input type="hidden" id="foto2Url" name="foto2Url">
+                        <small style="color: #6b7280; display: block; margin-top: 5px;">
+                            <i class="fas fa-info-circle"></i> Opcional: Segunda imagen del producto.
+                        </small>
+                    </div>
+                    <div class="form-group">
+                        <label for="fichaTecnica">URL Ficha Técnica</label>
+                        <input type="url" id="fichaTecnica" name="fichaTecnica" placeholder="https://...">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Especificaciones del Producto -->
+            <div class="form-section">
+                <h2>Especificaciones del Producto</h2>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="plazoEntrega" class="required">Plazo de Entrega <span style="color: #ef4444;">*</span></label>
+                        <input type="text" id="plazoEntrega" name="plazoEntrega" placeholder="Ej: 15-20 días, 2-3 semanas, Inmediato" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="peso" class="required">Peso (kg) <span style="color: #ef4444;">*</span></label>
+                        <input type="number" id="peso" name="peso" step="0.01" min="0" placeholder="Ej: 2.50" required>
+                        <small style="color: #6b7280; margin-top: 5px; display: block;">
+                            Peso del producto en kilogramos
+                        </small>
+                    </div>
+                    <div class="form-group">
+                        <label for="boxSize">Cantidad por Caja</label>
+                        <input type="number" id="boxSize" name="boxSize" min="1" placeholder="Ej: 48">
+                        <small style="color: #6b7280; margin-top: 5px; display: block;">
+                            Si se especifica, el producto solo se podrá comprar en múltiplos de esta cantidad (48, 96, 144, etc.). Dejar vacío para permitir cualquier cantidad.
+                        </small>
+                    </div>
+                    <div class="form-group full-width">
+                        <label id="zones-label">Zonas donde funciona el producto</label>
+                        <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                <input type="checkbox" id="zonaHabitacion" name="zonas" value="habitacion" style="width: 20px; height: 20px; cursor: pointer;">
+                                <span>Habitación</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                <input type="checkbox" id="zonaBano" name="zonas" value="bano" style="width: 20px; height: 20px; cursor: pointer;">
+                                <span>Baño</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                <input type="checkbox" id="zonaComunes" name="zonas" value="zonas_comunes" style="width: 20px; height: 20px; cursor: pointer;">
+                                <span>Zonas Comunes</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                <input type="checkbox" id="zonaRestaurantes" name="zonas" value="restaurantes" style="width: 20px; height: 20px; cursor: pointer;">
+                                <span>Restaurantes</span>
+                            </label>
+                        </div>
+                        <small style="color: #6b7280; margin-top: 10px; display: block;">
+                            Selecciona una o más zonas donde puede utilizarse este producto. Por ejemplo, un secador puede funcionar tanto en el baño como en la habitación.
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Referencias y Proveedores -->
+            <div class="form-section">
+                <h2>Referencias y Proveedores</h2>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="phcRef">Referencia PHC</label>
+                        <input type="text" id="phcRef" name="phcRef" placeholder="Ej: PHC-12345">
+                        <small style="color: #6b7280; margin-top: 5px; display: block;">
+                            Referencia opcional del producto en el sistema PHC
+                        </small>
+                    </div>
+                    <div class="form-group">
+                        <label for="nombreFornecedor">Nombre de Fornecedor</label>
+                        <input type="text" id="nombreFornecedor" name="nombreFornecedor" placeholder="Ej: Fornecedor ABC">
+                        <small style="color: #6b7280; margin-top: 5px; display: block;">
+                            Nombre del fornecedor/proveedor del producto (opcional)
+                        </small>
+                    </div>
+                    <div class="form-group">
+                        <label for="referenciaFornecedor">Referencia Fornecedor</label>
+                        <input type="text" id="referenciaFornecedor" name="referenciaFornecedor" placeholder="Ej: FORN-001">
+                        <small style="color: #6b7280; margin-top: 5px; display: block;">
+                            Referencia del producto en el sistema del fornecedor (opcional)
+                        </small>
+                    </div>
+                    <div class="form-group">
+                        <label for="officeOnly">Referencia Office Only</label>
+                        <input type="text" id="officeOnly" name="officeOnly" placeholder="Ej: OFF-12345">
+                        <small style="color: #6b7280; margin-top: 5px; display: block;">
+                            Referencia opcional para productos de oficina
+                        </small>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="areaNegocio" class="required">Área de Negocio <span style="color: #ef4444;">*</span></label>
+                        <select id="areaNegocio" name="areaNegocio" required>
+                            <option value="">Selecciona un área de negocio...</option>
+                            <option value="accesorios_personalizados">Accesorios Personalizados</option>
+                            <option value="cosmetica_personalizada">Cosmética Personalizada</option>
+                            <option value="equipamiento">Equipamiento</option>
+                        </select>
+                        <small style="color: #6b7280; margin-top: 5px; display: block;">
+                            Área de negocio del producto (obligatorio)
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Referencias y Colores -->
+            <div class="form-section">
+                <h2>Referencias y Colores</h2>
+                <div id="variantesReferenciasContainer">
+                    <!-- Se llenará dinámicamente -->
+                </div>
+                <button type="button" class="btn btn-add" onclick="addVarianteReferencia()" style="margin-top: 15px;">
+                    <i class="fas fa-plus"></i> Agregar Variante de Referencia
+                </button>
+                <small style="color: #6b7280; margin-top: 10px; display: block;">
+                    Agrega variantes de referencias para diferentes colores o versiones del producto (opcional)
+                </small>
+            </div>
+
+            <!-- Precios y Variantes -->
+            <div class="form-section">
+                <h2>Precios y Variantes</h2>
+                <div id="variantsContainer">
+                    <!-- Variante Base (sin variante) -->
+                    <div class="variant-section" data-variant-id="base">
+                        <div class="variant-header">
+                            <h3>Precio Base (Sin variante)</h3>
+                        </div>
+                        <div id="basePriceTiers" class="price-tiers-container">
+                            <!-- Se llenará dinámicamente -->
+                        </div>
+                        <button type="button" class="btn btn-add" onclick="addPriceTier('base')">
+                            <i class="fas fa-plus"></i> Agregar Escalón de Precio
+                        </button>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-add" onclick="addVariant()" style="margin-top: 20px;">
+                    <i class="fas fa-plus"></i> Agregar Variante Personalizada
+                </button>
+            </div>
+
+            <!-- Acciones -->
+            <div class="actions">
+                <button type="button" class="btn btn-secondary" onclick="resetForm()">
+                    <i class="fas fa-redo"></i> Limpiar Formulario
+                </button>
+                <button type="button" id="deleteProductBtn" class="btn btn-danger" onclick="deleteProduct()" style="display: none;">
+                    <i class="fas fa-trash"></i> <span id="delete-text">Eliminar Producto</span>
+                </button>
+                <button type="submit" id="saveProductBtn" class="btn btn-primary">
+                    <i class="fas fa-save"></i> <span id="saveProductBtnText">Guardar Producto</span>
+                </button>
+            </div>
+        </form>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal para Gestionar Categorías del Home -->
+    <div id="homeCategoryModal" class="modal" onclick="handleModalOverlayClick(event)">
+        <div class="modal-content" style="max-width: 900px;" onclick="event.stopPropagation();">
+            <div class="modal-header">
+                <h2>Categorías del Home</h2>
+                <button class="close-modal" onclick="closeHomeCategoryManager()">&times;</button>
+            </div>
+            
+            <div style="margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
+                <button class="btn btn-primary" onclick="showCreateHomeCategoryForm()">
+                    <i class="fas fa-plus"></i> Crear Nueva Categoría Home
+                </button>
+                <button class="btn btn-primary" onclick="openCreateSubcategoryFromHomeManager()" id="createSubcategoryFromHomeBtn" style="display: inline-flex !important; visibility: visible !important; align-items: center; gap: 8px;">
+                    <i class="fas fa-tags"></i> Crear Subcategoría
+                </button>
+            </div>
+
+            <!-- Lista de categorías del home -->
+            <div class="category-list" id="homeCategoryList">
+                <p>Cargando categorías...</p>
+            </div>
+
+            <!-- Formulario para crear/editar categoría del home -->
+            <div id="homeCategoryFormSection" style="display: none;">
+                <div style="background: white; padding: 40px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); max-width: 1000px; margin: 0 auto;">
+                    
+                    <!-- Título -->
+                    <h2 id="homeCategoryFormTitle" style="color: #1d3557; margin-bottom: 30px; font-size: 1.75rem; font-weight: 700; border-bottom: 3px solid #1d3557; padding-bottom: 15px;">
+                        <i class="fas fa-folder-plus" style="margin-right: 10px;"></i>
+                        Nueva Categoría Home
+                    </h2>
+                    
+                    <!-- INFORMACIÓN BÁSICA -->
+                    <div style="background: #f8fafc; padding: 25px; border-radius: 12px; margin-bottom: 30px; border: 2px solid #e2e8f0;">
+                        <h3 style="color: #1d3557; margin-bottom: 20px; font-size: 1.3rem; font-weight: 600; display: flex; align-items: center; gap: 10px;">
+                            <i class="fas fa-info-circle" style="color: #1d3557;"></i>
+                            Información Básica
+                        </h3>
+                        
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
+                            <!-- Nombre Español -->
+                            <div>
+                                <label for="homeCategoryNameEs" style="display: block; font-weight: 600; color: #1d3557; margin-bottom: 8px; font-size: 0.95rem;">
+                                    Nombre (Español) <span style="color: #ef4444;">*</span>
+                                </label>
+                                <input type="text" id="homeCategoryNameEs" name="homeCategoryNameEs" placeholder="Ej. Secadores" 
+                                       style="width: 100%; padding: 12px 16px; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 15px; transition: all 0.2s; background: white;"
+                                       onfocus="this.style.borderColor='#1d3557'; this.style.boxShadow='0 0 0 3px rgba(29, 53, 87, 0.1)';" 
+                                       onblur="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';">
+                            </div>
+                            
+                            <!-- Nombre Portugués -->
+                            <div>
+                                <label for="homeCategoryNamePt" style="display: block; font-weight: 600; color: #1d3557; margin-bottom: 8px; font-size: 0.95rem;">
+                                    Nome (Português) <span style="color: #ef4444;">*</span>
+                                </label>
+                                <input type="text" id="homeCategoryNamePt" name="homeCategoryNamePt" placeholder="Ex. Secadores" 
+                                       style="width: 100%; padding: 12px 16px; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 15px; transition: all 0.2s; background: white;"
+                                       onfocus="this.style.borderColor='#1d3557'; this.style.boxShadow='0 0 0 3px rgba(29, 53, 87, 0.1)';" 
+                                       onblur="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';">
+                            </div>
+                            
+                            <!-- URL Foto -->
+                            <div style="grid-column: 1 / -1;">
+                                <label for="homeCategoryFoto" style="display: block; font-weight: 600; color: #1d3557; margin-bottom: 8px; font-size: 0.95rem;">
+                                    URL de la Foto <span style="color: #ef4444;">*</span>
+                                </label>
+                                <input type="url" id="homeCategoryFoto" name="homeCategoryFoto" placeholder="https://ejemplo.com/imagen.jpg" 
+                                       style="width: 100%; padding: 12px 16px; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 15px; transition: all 0.2s; background: white;"
+                                       onfocus="this.style.borderColor='#1d3557'; this.style.boxShadow='0 0 0 3px rgba(29, 53, 87, 0.1)';" 
+                                       onblur="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';">
+                                <small style="color: #64748b; font-size: 0.85rem; margin-top: 6px; display: block;">
+                                    <i class="fas fa-link" style="margin-right: 5px;"></i>
+                                    Ingresa la URL completa de la imagen
+                                </small>
+                            </div>
+                            
+                            <!-- Orden -->
+                            <div>
+                                <label for="homeCategoryOrden" style="display: block; font-weight: 600; color: #1d3557; margin-bottom: 8px; font-size: 0.95rem;">
+                                    Orden de Visualización
+                                </label>
+                                <input type="number" id="homeCategoryOrden" name="homeCategoryOrden" value="0" min="0" placeholder="0 = primero" 
+                                       style="width: 100%; padding: 12px 16px; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 15px; transition: all 0.2s; background: white;"
+                                       onfocus="this.style.borderColor='#1d3557'; this.style.boxShadow='0 0 0 3px rgba(29, 53, 87, 0.1)';" 
+                                       onblur="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';">
+                            </div>
+                            
+                            <!-- Activa -->
+                            <div style="display: flex; align-items: center; padding-top: 32px;">
+                                <label style="display: flex; align-items: center; gap: 12px; cursor: pointer; user-select: none;">
+                                    <input type="checkbox" id="homeCategoryActive" name="homeCategoryActive" checked 
+                                           style="width: 22px; height: 22px; cursor: pointer; accent-color: #1d3557;">
+                                    <span style="font-weight: 600; color: #1d3557; font-size: 0.95rem;">Categoría Activa</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CAMPOS/FILTROS -->
+                    <div id="categoryFiltersSection" style="display: block !important; visibility: visible !important; background: #f8fafc; padding: 25px; border-radius: 12px; margin-bottom: 30px; border: 2px solid #e2e8f0;">
+                        <h3 style="color: #1d3557; margin-bottom: 25px; font-size: 1.3rem; font-weight: 600; display: flex; align-items: center; gap: 10px; border-bottom: 2px solid #cbd5e1; padding-bottom: 15px;">
+                            <i class="fas fa-filter" style="color: #1d3557;"></i>
+                            Campos/Filtros de la Categoría
+                        </h3>
+                        
+                        <!-- Formulario para agregar filtro -->
+                        <div style="background: white; padding: 25px; border-radius: 10px; margin-bottom: 25px; border: 2px solid #e2e8f0; box-shadow: 0 2px 6px rgba(0,0,0,0.08);">
+                            <h4 style="color: #1d3557; margin-bottom: 20px; font-size: 1.1rem; font-weight: 600; display: flex; align-items: center; gap: 10px;">
+                                <i class="fas fa-plus-circle" style="color: #10b981;"></i>
+                                Agregar Nuevo Filtro
+                            </h4>
+                            
+                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px;">
+                                <!-- ID del Campo -->
+                                <div>
+                                    <label for="newFieldId" style="display: block; font-weight: 600; color: #1d3557; margin-bottom: 8px; font-size: 0.9rem;">
+                                        ID del Campo <span style="color: #ef4444;">*</span>
+                                    </label>
+                                    <input type="text" id="newFieldId" placeholder="ej: potencia, color" 
+                                           style="width: 100%; padding: 11px 14px; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 14px; text-transform: lowercase; background: white; transition: all 0.2s;"
+                                           onfocus="this.style.borderColor='#1d3557'; this.style.boxShadow='0 0 0 3px rgba(29, 53, 87, 0.1)';" 
+                                           onblur="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';">
+                                    <small style="color: #64748b; font-size: 0.75rem; margin-top: 5px; display: block;">
+                                        Solo letras minúsculas, números y guiones bajos
+                                    </small>
+                                </div>
+                                
+                                <!-- Tipo de Campo -->
+                                <div>
+                                    <label for="newFieldType" style="display: block; font-weight: 600; color: #1d3557; margin-bottom: 8px; font-size: 0.9rem;">
+                                        Tipo de Campo
+                                    </label>
+                                    <select id="newFieldType" 
+                                            style="width: 100%; padding: 11px 14px; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: white; cursor: pointer; transition: all 0.2s;"
+                                            onfocus="this.style.borderColor='#1d3557'; this.style.boxShadow='0 0 0 3px rgba(29, 53, 87, 0.1)';" 
+                                            onblur="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';">
+                                        <option value="text">Texto</option>
+                                        <option value="number">Número</option>
+                                        <option value="select">Select (Lista desplegable)</option>
+                                        <option value="textarea">Área de texto</option>
+                                    </select>
+                                </div>
+                                
+                                <!-- Etiqueta Español -->
+                                <div>
+                                    <label for="newFieldLabelEs" style="display: block; font-weight: 600; color: #1d3557; margin-bottom: 8px; font-size: 0.9rem;">
+                                        Etiqueta (Español) <span style="color: #ef4444;">*</span>
+                                    </label>
+                                    <input type="text" id="newFieldLabelEs" placeholder="Ej. Potencia" 
+                                           style="width: 100%; padding: 11px 14px; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: white; transition: all 0.2s;"
+                                           onfocus="this.style.borderColor='#1d3557'; this.style.boxShadow='0 0 0 3px rgba(29, 53, 87, 0.1)';" 
+                                           onblur="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';">
+                                </div>
+                                
+                                <!-- Etiqueta Portugués -->
+                                <div>
+                                    <label for="newFieldLabelPt" style="display: block; font-weight: 600; color: #1d3557; margin-bottom: 8px; font-size: 0.9rem;">
+                                        Etiqueta (Português) <span style="color: #ef4444;">*</span>
+                                    </label>
+                                    <input type="text" id="newFieldLabelPt" placeholder="Ex. Potência" 
+                                           style="width: 100%; padding: 11px 14px; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: white; transition: all 0.2s;"
+                                           onfocus="this.style.borderColor='#1d3557'; this.style.boxShadow='0 0 0 3px rgba(29, 53, 87, 0.1)';" 
+                                           onblur="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';">
+                                </div>
+                                
+                                <!-- Placeholder Español -->
+                                <div>
+                                    <label for="newFieldPlaceholderEs" style="display: block; font-weight: 600; color: #1d3557; margin-bottom: 8px; font-size: 0.9rem;">
+                                        Placeholder (Español)
+                                    </label>
+                                    <input type="text" id="newFieldPlaceholderEs" placeholder="Ej. Ingrese la potencia" 
+                                           style="width: 100%; padding: 11px 14px; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: white; transition: all 0.2s;"
+                                           onfocus="this.style.borderColor='#1d3557'; this.style.boxShadow='0 0 0 3px rgba(29, 53, 87, 0.1)';" 
+                                           onblur="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';">
+                                </div>
+                                
+                                <!-- Placeholder Portugués -->
+                                <div>
+                                    <label for="newFieldPlaceholderPt" style="display: block; font-weight: 600; color: #1d3557; margin-bottom: 8px; font-size: 0.9rem;">
+                                        Placeholder (Português)
+                                    </label>
+                                    <input type="text" id="newFieldPlaceholderPt" placeholder="Ex. Digite a potência" 
+                                           style="width: 100%; padding: 11px 14px; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: white; transition: all 0.2s;"
+                                           onfocus="this.style.borderColor='#1d3557'; this.style.boxShadow='0 0 0 3px rgba(29, 53, 87, 0.1)';" 
+                                           onblur="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';">
+                                </div>
+                                
+                                <!-- Orden -->
+                                <div>
+                                    <label for="newFieldOrden" style="display: block; font-weight: 600; color: #1d3557; margin-bottom: 8px; font-size: 0.9rem;">
+                                        Orden
+                                    </label>
+                                    <input type="number" id="newFieldOrden" value="0" min="0" 
+                                           style="width: 100%; padding: 11px 14px; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: white; transition: all 0.2s;"
+                                           onfocus="this.style.borderColor='#1d3557'; this.style.boxShadow='0 0 0 3px rgba(29, 53, 87, 0.1)';" 
+                                           onblur="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';">
+                                </div>
+                                
+                                <!-- Campo obligatorio -->
+                                <div style="display: flex; align-items: center; padding-top: 32px;">
+                                    <label style="display: flex; align-items: center; gap: 12px; cursor: pointer; user-select: none;">
+                                        <input type="checkbox" id="newFieldRequired" 
+                                               style="width: 22px; height: 22px; cursor: pointer; accent-color: #1d3557;">
+                                        <span style="font-weight: 600; color: #1d3557; font-size: 0.9rem;">Campo obligatorio</span>
+                                    </label>
+                                </div>
+                                
+                                <!-- Mostrar en filtros -->
+                                <div style="display: flex; align-items: center; padding-top: 32px;">
+                                    <label style="display: flex; align-items: center; gap: 12px; cursor: pointer; user-select: none;">
+                                        <input type="checkbox" id="newFieldShowInFilters" checked
+                                               style="width: 22px; height: 22px; cursor: pointer; accent-color: #1d3557;">
+                                        <span style="font-weight: 600; color: #1d3557; font-size: 0.9rem;">Mostrar en filtros de búsqueda</span>
+                                    </label>
+                                    <small style="color: #64748b; font-size: 0.75rem; margin-top: 5px; display: block; width: 100%; margin-left: 34px; margin-top: 8px;">
+                                        Si está marcado, el campo aparecerá como filtro en la barra lateral. Si está desmarcado, solo será un atributo interno.
+                                    </small>
+                                </div>
+                            </div>
+                            
+                            <!-- Opciones para Select -->
+                            <div id="newFieldOptionsContainer" style="display: none; margin-top: 20px; padding: 20px; background: #f8fafc; border-radius: 8px; border: 2px solid #cbd5e1;">
+                                <label style="font-weight: 600; color: #1d3557; margin-bottom: 15px; display: block; font-size: 1rem;">
+                                    <i class="fas fa-list" style="margin-right: 8px;"></i>
+                                    Opciones del Select
+                                </label>
+                                <div id="newFieldOptionsList" style="margin-bottom: 15px;"></div>
+                                <button type="button" onclick="addNewFieldOption()" 
+                                        style="padding: 10px 20px; background: #6b7280; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.9rem; transition: all 0.2s;"
+                                        onmouseover="this.style.background='#4b5563'; this.style.transform='translateY(-1px)';" 
+                                        onmouseout="this.style.background='#6b7280'; this.style.transform='translateY(0)';">
+                                    <i class="fas fa-plus" style="margin-right: 6px;"></i>
+                                    Agregar Opción
+                                </button>
+                            </div>
+                            
+                            <!-- Botón Agregar Filtro -->
+                            <button type="button" onclick="addFieldToCategoryForm()" 
+                                    style="margin-top: 20px; padding: 12px 24px; background: #1d3557; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 1rem; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"
+                                    onmouseover="this.style.background='#0f172a'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.15)';" 
+                                    onmouseout="this.style.background='#1d3557'; this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)';">
+                                <i class="fas fa-plus" style="margin-right: 8px;"></i>
+                                Agregar Filtro a la Categoría
+                            </button>
+                        </div>
+                        
+                        <!-- Lista de Filtros Agregados -->
+                        <div>
+                            <h4 style="color: #1d3557; margin-bottom: 15px; font-size: 1.1rem; font-weight: 600; display: flex; align-items: center; gap: 10px;">
+                                <i class="fas fa-list-check" style="color: #10b981;"></i>
+                                Filtros Agregados
+                            </h4>
+                            <div id="categoryFieldsFormContainer" style="min-height: 100px; background: white; padding: 20px; border-radius: 10px; border: 2px dashed #cbd5e1;">
+                                <p style="color: #64748b; text-align: center; padding: 30px; margin: 0; font-size: 0.95rem;">
+                                    <i class="fas fa-info-circle" style="margin-right: 8px; color: #94a3b8;"></i>
+                                    No hay campos agregados. Completa el formulario arriba y haz clic en "Agregar Filtro a la Categoría".
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- BOTONES DE ACCIÓN -->
+                    <div style="margin-top: 30px; padding-top: 25px; border-top: 3px solid #e2e8f0; display: flex; gap: 15px; flex-wrap: wrap; justify-content: flex-end;">
+                        <button type="button" onclick="cancelHomeCategoryEdit()" 
+                                style="padding: 14px 28px; background: #6b7280; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 1rem; transition: all 0.2s;"
+                                onmouseover="this.style.background='#4b5563'; this.style.transform='translateY(-2px)';" 
+                                onmouseout="this.style.background='#6b7280'; this.style.transform='translateY(0)';">
+                            <i class="fas fa-times" style="margin-right: 8px;"></i>
+                            Cancelar
+                        </button>
+                        <button type="button" onclick="openCategoryFieldsManager()" id="manageCategoryFieldsBtn" 
+                                style="padding: 14px 28px; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 1rem; transition: all 0.2s; display: none;"
+                                onmouseover="this.style.background='#059669'; this.style.transform='translateY(-2px)';" 
+                                onmouseout="this.style.background='#10b981'; this.style.transform='translateY(0)';">
+                            <i class="fas fa-filter" style="margin-right: 8px;"></i>
+                            Gestionar Campos/Filtros
+                        </button>
+                        <button type="button" onclick="openCreateSubcategoryFromCategoryForm()" id="createSubcategoryFromFormBtn" 
+                                style="padding: 14px 28px; background: #8b5cf6; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 1rem; transition: all 0.2s; display: none;"
+                                onmouseover="this.style.background='#7c3aed'; this.style.transform='translateY(-2px)';" 
+                                onmouseout="this.style.background='#8b5cf6'; this.style.transform='translateY(0)';">
+                            <i class="fas fa-tags" style="margin-right: 8px;"></i>
+                            Crear Subcategoría
+                        </button>
+                        <button type="button" onclick="saveHomeCategory()" 
+                                style="padding: 14px 28px; background: #1d3557; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 1rem; transition: all 0.2s; box-shadow: 0 2px 6px rgba(0,0,0,0.15);"
+                                onmouseover="this.style.background='#0f172a'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.2)';" 
+                                onmouseout="this.style.background='#1d3557'; this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 6px rgba(0,0,0,0.15)';">
+                            <i class="fas fa-save" style="margin-right: 8px;"></i>
+                            Guardar Categoría Home
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Gestionar Campos/Filtros de Categoría -->
+    <div id="categoryFieldsModal" class="modal">
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="modal-header">
+                <h2 id="categoryFieldsModalTitle">Gestionar Campos/Filtros de Categoría</h2>
+                <button class="close-modal" onclick="closeCategoryFieldsManager()">&times;</button>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <button class="btn btn-primary" onclick="showCreateCategoryFieldForm()">
+                    <i class="fas fa-plus"></i> Crear Nuevo Campo
+                </button>
+            </div>
+
+            <!-- Lista de campos -->
+            <div class="category-list" id="categoryFieldsList">
+                <p>Cargando campos...</p>
+            </div>
+
+            <!-- Formulario para crear/editar campo -->
+            <div id="categoryFieldFormSection" style="display: none;">
+                <div class="form-section">
+                    <h3 id="categoryFieldFormTitle">Nuevo Campo</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="required">ID del Campo</label>
+                            <input type="text" id="categoryFieldId" placeholder="Ej. potencia, color" pattern="[a-z0-9_]+" title="Solo letras minúsculas, números y guiones bajos">
+                            <small style="color: #6b7280;">Sin espacios, solo minúsculas, números y guiones bajos</small>
+                        </div>
+                        <div class="form-group">
+                            <label class="required">Etiqueta (Español)</label>
+                            <input type="text" id="categoryFieldLabelEs" placeholder="Ej. Potencia (W)">
+                        </div>
+                        <div class="form-group">
+                            <label class="required">Etiqueta (Português)</label>
+                            <input type="text" id="categoryFieldLabelPt" placeholder="Ex. Potência (W)">
+                        </div>
+                        <div class="form-group">
+                            <label class="required">Tipo de Campo</label>
+                            <select id="categoryFieldType" onchange="toggleFieldOptions()">
+                                <option value="text">Texto</option>
+                                <option value="number">Número</option>
+                                <option value="select">Lista desplegable (Select)</option>
+                                <option value="textarea">Área de texto</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="fieldPlaceholderEsGroup">
+                            <label>Placeholder (Español)</label>
+                            <input type="text" id="categoryFieldPlaceholderEs" placeholder="Ej. Ej. 1800">
+                        </div>
+                        <div class="form-group" id="fieldPlaceholderPtGroup">
+                            <label>Placeholder (Português)</label>
+                            <input type="text" id="categoryFieldPlaceholderPt" placeholder="Ex. Ex. 1800">
+                        </div>
+                        <div class="form-group full-width" id="fieldOptionsGroup" style="display: none;">
+                            <label>Opciones (para tipo Select)</label>
+                            <div id="fieldOptionsContainer">
+                                <div class="field-option-row" style="display: flex; gap: 10px; margin-bottom: 10px; align-items: end;">
+                                    <input type="text" class="option-value" placeholder="Valor (ej: si, no)" style="flex: 1;">
+                                    <input type="text" class="option-label-es" placeholder="Etiqueta ES" style="flex: 1;">
+                                    <input type="text" class="option-label-pt" placeholder="Etiqueta PT" style="flex: 1;">
+                                    <button type="button" class="btn btn-danger" onclick="removeFieldOption(this)" style="padding: 8px 12px;">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-secondary" onclick="addFieldOption()" style="margin-top: 10px;">
+                                <i class="fas fa-plus"></i> Agregar Opción
+                            </button>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="categoryFieldRequired"> Campo obligatorio
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="categoryFieldShowInFilters" checked> Mostrar en filtros de búsqueda
+                            </label>
+                            <small style="color: #6b7280; margin-top: 5px; display: block;">
+                                Si está marcado, el campo aparecerá como filtro en la barra lateral de búsqueda. Si está desmarcado, solo será un atributo interno del producto.
+                            </small>
+                        </div>
+                        <div class="form-group">
+                            <label>Orden de Visualización</label>
+                            <input type="number" id="categoryFieldOrden" value="0" min="0" placeholder="0 = primero">
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 20px; display: flex; gap: 10px;">
+                        <button class="btn btn-primary" onclick="saveCategoryField()">
+                            <i class="fas fa-save"></i> Guardar Campo
+                        </button>
+                        <button class="btn btn-secondary" onclick="cancelCategoryFieldEdit()">
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Gestionar Subcategorías -->
+    <div id="subcategoryModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="subcategoryModalTitle">Gestionar Subcategorías</h2>
+                <button class="close-modal" onclick="closeSubcategoryManager()">&times;</button>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <button class="btn btn-primary" onclick="showCreateSubcategoryForm()">
+                    <i class="fas fa-plus"></i> Crear Nueva Subcategoría
+                </button>
+            </div>
+
+            <!-- Lista de subcategorías -->
+            <div class="category-list" id="subcategoryList">
+                <p>Cargando subcategorías...</p>
+            </div>
+
+            <!-- Formulario para crear/editar subcategoría -->
+            <div id="subcategoryFormSection" style="display: none;">
+                <div class="form-section">
+                    <h3 id="subcategoryFormTitle">Nueva Subcategoría</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="required">Nombre (Español)</label>
+                            <input type="text" id="subcategoryNameEs" placeholder="Ej. Paraguas">
+                        </div>
+                        <div class="form-group">
+                            <label class="required">Nome (Português)</label>
+                            <input type="text" id="subcategoryNamePt" placeholder="Ex. Guardachuvas">
+                        </div>
+                        <div class="form-group">
+                            <label>Orden de Visualización</label>
+                            <input type="number" id="subcategoryOrden" value="0" min="0" placeholder="0 = primero">
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="subcategoryActive" checked> Activa
+                            </label>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 20px; display: flex; gap: 10px;">
+                        <button class="btn btn-primary" onclick="saveSubcategory()">
+                            <i class="fas fa-save"></i> Guardar Subcategoría
+                        </button>
+                        <button class="btn btn-secondary" onclick="cancelSubcategoryEdit()">
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Gestionar Categorías -->
+    <div id="categoryModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Gestionar Categorías</h2>
+                <button class="close-modal" onclick="closeCategoryManager()">&times;</button>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <button class="btn btn-primary" onclick="showCreateCategoryForm()">
+                    <i class="fas fa-plus"></i> Crear Nueva Categoría
+                </button>
+            </div>
+
+            <!-- Lista de categorías -->
+            <div class="category-list" id="categoryList">
+                <p>Cargando categorías...</p>
+            </div>
+
+            <!-- Formulario para crear/editar categoría -->
+            <div id="categoryFormSection" style="display: none;">
+                <div class="form-section">
+                    <h3 id="categoryFormTitle">Nueva Categoría</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="required">Nombre de la Categoría</label>
+                            <input type="text" id="categoryName" placeholder="Ej. Cargadores">
+                        </div>
+                        <div class="form-group">
+                            <label class="required">ID (sin espacios, minúsculas)</label>
+                            <input type="text" id="categoryId" placeholder="Ej. cargadores" pattern="[a-z0-9-]+">
+                        </div>
+                    </div>
+                    
+                    <h4 style="margin-top: 20px; margin-bottom: 15px;">Campos Personalizados</h4>
+                    <div id="categoryFieldsEditor">
+                        <!-- Los campos se agregarán aquí dinámicamente -->
+                    </div>
+                    <button type="button" class="btn btn-add" onclick="addFieldToCategory()">
+                        <i class="fas fa-plus"></i> Agregar Campo
+                    </button>
+
+                    <div style="margin-top: 20px; display: flex; gap: 10px;">
+                        <button class="btn btn-primary" onclick="saveCategory()">
+                            <i class="fas fa-save"></i> Guardar Categoría
+                        </button>
+                        <button class="btn btn-secondary" onclick="cancelCategoryEdit()">
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin-productos.js"></script>
+    <script>
+        // Función para toggle del menú hamburguesa
+        function toggleMenu() {
+            const menu = document.getElementById('dropdownMenu');
+            if (menu) {
+                menu.classList.toggle('active');
+            }
+        }
+
+        // Cerrar menú al hacer clic fuera
+        document.addEventListener('click', function(e) {
+            const menu = document.getElementById('dropdownMenu');
+            const toggle = document.getElementById('menuToggle');
+            if (menu && toggle && !menu.contains(e.target) && !toggle.contains(e.target)) {
+                menu.classList.remove('active');
+            }
+        });
+
+        // Función para manejar el cambio de tema
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            
+            // Actualizar el título del botón
+            const toggleButton = document.getElementById('theme-toggle');
+            if (toggleButton) {
+                toggleButton.setAttribute('title', newTheme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro');
+            }
+        }
+
+        // Función para inicializar el tema
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const theme = savedTheme || (prefersDark ? 'dark' : 'light');
+            
+            document.documentElement.setAttribute('data-theme', theme);
+            
+            const toggleButton = document.getElementById('theme-toggle');
+            if (toggleButton) {
+                toggleButton.setAttribute('title', theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro');
+            }
+        }
+
+        // Inicializar sistema de traducciones y tema
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Verificar autenticación primero
+            const isAuth = await window.authManager.requireAuth('login.html');
+            if (!isAuth) {
+                return; // Redirige a login.html
+            }
+
+            // Inicializar tema
+            initTheme();
+            
+            const toggleButton = document.getElementById('theme-toggle');
+            if (toggleButton) {
+                toggleButton.addEventListener('click', toggleTheme);
+            }
+            
+            // Escuchar cambios en las preferencias del sistema
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+                if (!localStorage.getItem('theme')) {
+                    const theme = e.matches ? 'dark' : 'light';
+                    document.documentElement.setAttribute('data-theme', theme);
+                }
+            });
+            
+            // Cargar idioma guardado
+            const savedLang = localStorage.getItem('language') || 'pt';
+            if (window.translationSystem && window.translationSystem.changeLanguage) {
+                window.translationSystem.changeLanguage(savedLang);
+            }
+            // Actualizar traducciones del formulario
+            if (window.updateProductFormTranslations) {
+                window.updateProductFormTranslations();
+            }
+            
+            // Actualizar botones de idioma
+            document.querySelectorAll('.flag-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.lang === savedLang) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            // Actualizar traducciones del formulario
+            if (window.updateProductFormTranslations) {
+                window.updateProductFormTranslations();
+            }
+        });
+        
+        // Sobrescribir función changeLanguage para actualizar traducciones
+        const originalChangeLanguage = window.changeLanguage;
+        window.changeLanguage = function(lang) {
+            if (originalChangeLanguage) {
+                originalChangeLanguage(lang);
+            }
+            if (window.translationSystem && window.translationSystem.changeLanguage) {
+                window.translationSystem.changeLanguage(lang);
+            }
+            
+            // Actualizar botones de idioma
+            document.querySelectorAll('.flag-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.lang === lang) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            // Actualizar traducciones del formulario
+            if (window.updateProductFormTranslations) {
+                window.updateProductFormTranslations();
+            }
+            
+            // Actualizar traducciones del formulario
+            if (window.updateProductFormTranslations) {
+                window.updateProductFormTranslations();
+            }
+        };
+    </script>
+</body>
+</html>

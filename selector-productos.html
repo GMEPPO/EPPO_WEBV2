@@ -1,0 +1,2350 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Creador/Editor de Artículos - EPPO</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="menu-hamburguesa.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="load-config.js"></script>
+    <script src="supabase-config-universal.js"></script>
+    <script src="translation-system.js"></script>
+    <script src="stock-warning.js"></script>
+    <!-- SheetJS para leer Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        .selector-container {
+            max-width: 800px;
+            margin: 80px auto;
+            padding: var(--space-8);
+        }
+
+        .selector-header {
+            text-align: center;
+            margin-bottom: var(--space-8);
+        }
+
+        .selector-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: var(--space-4);
+        }
+
+        .selector-subtitle {
+            font-size: 1.125rem;
+            color: var(--text-secondary);
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--space-6);
+            margin-top: var(--space-8);
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .option-card {
+            background: var(--bg-white);
+            border: 2px solid var(--bg-gray-200);
+            border-radius: var(--radius-xl);
+            padding: var(--space-4);
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .option-card:hover {
+            border-color: var(--primary-500);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-4px);
+        }
+
+        .option-icon {
+            font-size: 2.25rem;
+            color: var(--primary-500);
+            margin-bottom: var(--space-3);
+        }
+
+        .option-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: var(--space-2);
+        }
+
+        .option-description {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-2);
+            color: var(--text-secondary);
+            text-decoration: none;
+            margin-bottom: var(--space-6);
+            transition: color 0.2s ease;
+        }
+
+        .back-button:hover {
+            color: var(--primary-500);
+        }
+
+        @media (max-width: 768px) {
+            .options-grid {
+                grid-template-columns: 1fr;
+                max-width: 100%;
+            }
+        }
+        
+        .main-action-card {
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <span>EPPO by <span class="groupe-gm">Groupe GM</span></span>
+            </div>
+            <nav class="nav">
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="productos-dinamico.html" class="nav-link">Products</a>
+                <a href="carrito-compras.html" class="nav-link" id="nav-cart-link">Presupuesto</a>
+                
+                <!-- Menú hamburguesa -->
+                <div class="menu-dropdown">
+                    <button class="menu-toggle" id="menuToggle" onclick="toggleMenu()" aria-label="Toggle menu">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="dropdown-menu" id="dropdownMenu">
+                        <a href="comparar-productos.html" class="dropdown-link">
+                            <i class="fas fa-balance-scale"></i>
+                            <span>Comparar</span>
+                        </a>
+                        <a href="consultar-propuestas.html" class="dropdown-link" id="nav-proposals-link">
+                            <i class="fas fa-file-invoice"></i>
+                            <span>Histórico</span>
+                        </a>
+                        <a href="selector-productos.html" class="dropdown-link active" id="nav-create-product-link">
+                            <i class="fas fa-edit"></i>
+                            <span id="create-product-text">Creador/Editor</span>
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="language-selector">
+                    <button class="flag-btn active" data-lang="pt" title="Português" onclick="changeLanguage('pt')">
+                        <img src="https://flagcdn.com/w20/pt.png" alt="Portugal">
+                    </button>
+                    <button class="flag-btn" data-lang="es" title="Español" onclick="changeLanguage('es')">
+                        <img src="https://flagcdn.com/w20/es.png" alt="España">
+                    </button>
+                    <button class="flag-btn" data-lang="en" title="English" onclick="changeLanguage('en')">
+                        <img src="https://flagcdn.com/w20/gb.png" alt="Reino Unido">
+                    </button>
+                </div>
+                <button class="theme-toggle" id="theme-toggle" title="Cambiar tema">
+                    <i class="fas fa-sun sun-icon"></i>
+                    <i class="fas fa-moon moon-icon"></i>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="selector-container">
+            <a href="index.html" class="back-button">
+                <i class="fas fa-arrow-left"></i>
+                <span id="back-text">Volver</span>
+            </a>
+
+            <div class="selector-header">
+                <h1 class="selector-title" id="selector-title">Creador/Editor de Artículos</h1>
+                <p class="selector-subtitle" id="selector-subtitle">Selecciona la opción que deseas realizar</p>
+            </div>
+
+            <div class="options-grid">
+                <!-- Botón para Crear/Editar Producto -->
+                <div class="option-card main-action-card" onclick="openProductActionModal()">
+                    <div class="option-icon" style="font-size: 3rem;">
+                        <i class="fas fa-box"></i>
+                    </div>
+                    <h3 class="option-title" id="main-product-action-title">Crear/Editar Producto</h3>
+                    <p class="option-description" id="main-product-action-desc">Gestionar productos del catálogo</p>
+                </div>
+
+                <!-- Botón para Crear Nueva Categoría -->
+                <div class="option-card" onclick="openHomeCategoryManagerFromSelector()">
+                    <div class="option-icon" style="font-size: 3rem;">
+                        <i class="fas fa-home"></i>
+                    </div>
+                    <h3 class="option-title" id="option-category-title">Crear Nueva Categoría</h3>
+                    <p class="option-description" id="option-category-desc">Crear o editar categorías que aparecen en la página principal</p>
+                </div>
+
+                <!-- Botón para Cargar Stock -->
+                <div class="option-card" onclick="openStockUploadModal()" style="border-color: #10b981;">
+                    <div class="option-icon" style="font-size: 3rem; color: #10b981;">
+                        <i class="fas fa-boxes-stacked"></i>
+                    </div>
+                    <h3 class="option-title" id="option-stock-title">Cargar Stock</h3>
+                    <p class="option-description" id="option-stock-desc">Actualizar stock desde archivo Excel PHC</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal para seleccionar acción de producto -->
+    <div id="productActionModal" class="modal" style="display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); overflow: auto;">
+        <div class="modal-content" style="background: var(--bg-white); margin: 5% auto; padding: 30px; border-radius: 12px; max-width: 600px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+                <h2 style="color: var(--text-primary); margin: 0; font-size: 1.5rem;" id="product-action-modal-title">¿Qué deseas hacer?</h2>
+                <button onclick="closeProductActionModal()" style="background: none; border: none; font-size: 1.5rem; color: var(--text-secondary); cursor: pointer; padding: 5px 10px;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+                <button class="action-option-btn" onclick="event.preventDefault(); event.stopPropagation(); selectProductAction('edit'); return false;" style="display: flex; align-items: center; gap: 15px; padding: 20px; background: var(--bg-white); border: 2px solid var(--border-color); border-radius: 8px; cursor: pointer; transition: all 0.2s; text-align: left; width: 100%;">
+                    <div style="width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; background: #1d3557; border-radius: 8px; color: white; font-size: 1.5rem;">
+                        <i class="fas fa-edit"></i>
+                    </div>
+                    <div style="flex: 1;">
+                        <h3 style="margin: 0 0 5px 0; color: var(--text-primary); font-size: 1.1rem;" id="modal-option-edit-title">Editar Producto</h3>
+                        <p style="margin: 0; color: var(--text-secondary); font-size: 0.9rem;" id="modal-option-edit-desc">Editar un producto ya creado en el sistema</p>
+                    </div>
+                    <i class="fas fa-chevron-right" style="color: var(--text-secondary);"></i>
+                </button>
+
+                <button class="action-option-btn" onclick="event.preventDefault(); event.stopPropagation(); selectProductAction('duplicate'); return false;" style="display: flex; align-items: center; gap: 15px; padding: 20px; background: var(--bg-white); border: 2px solid var(--border-color); border-radius: 8px; cursor: pointer; transition: all 0.2s; text-align: left; width: 100%;">
+                    <div style="width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; background: #1d3557; border-radius: 8px; color: white; font-size: 1.5rem;">
+                        <i class="fas fa-copy"></i>
+                    </div>
+                    <div style="flex: 1;">
+                        <h3 style="margin: 0 0 5px 0; color: var(--text-primary); font-size: 1.1rem;" id="modal-option-duplicate-title">Crear desde Otro</h3>
+                        <p style="margin: 0; color: var(--text-secondary); font-size: 0.9rem;" id="modal-option-duplicate-desc">Crear un nuevo producto basado en uno existente</p>
+                    </div>
+                    <i class="fas fa-chevron-right" style="color: var(--text-secondary);"></i>
+                </button>
+
+                <button class="action-option-btn" onclick="event.preventDefault(); event.stopPropagation(); selectProductAction('new'); return false;" style="display: flex; align-items: center; gap: 15px; padding: 20px; background: var(--bg-white); border: 2px solid var(--border-color); border-radius: 8px; cursor: pointer; transition: all 0.2s; text-align: left; width: 100%;">
+                    <div style="width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; background: #1d3557; border-radius: 8px; color: white; font-size: 1.5rem;">
+                        <i class="fas fa-plus-circle"></i>
+                    </div>
+                    <div style="flex: 1;">
+                        <h3 style="margin: 0 0 5px 0; color: var(--text-primary); font-size: 1.1rem;" id="modal-option-new-title">Crear Nuevo</h3>
+                        <p style="margin: 0; color: var(--text-secondary); font-size: 0.9rem;" id="modal-option-new-desc">Crear un producto completamente nuevo desde cero</p>
+                    </div>
+                    <i class="fas fa-chevron-right" style="color: var(--text-secondary);"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Gestionar Categorías del Home (copiado desde admin-productos.html) -->
+    <div id="homeCategoryModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5);" onclick="console.log('🖱️ CLIC EN MODAL - onclick disparado'); handleModalOverlayClickFromSelector(event)">
+        <div class="modal-content" style="background: white; margin: 5% auto; padding: 20px; border-radius: 12px; max-width: 900px; max-height: 90vh; overflow-y: auto;" onclick="console.log('🖱️ CLIC EN CONTENIDO - stopPropagation'); event.stopPropagation();">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="color: #1d3557; margin: 0;">Categorías del Home</h2>
+                <button onclick="closeHomeCategoryManagerFromSelector()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #1d3557;">&times;</button>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <button onclick="showCreateHomeCategoryFormFromSelector()" style="background: #1d3557; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">
+                    <i class="fas fa-plus"></i> Crear Nueva Categoría Home
+                </button>
+            </div>
+
+            <div id="homeCategoryList">
+                <p>Cargando categorías...</p>
+            </div>
+
+            <div id="homeCategoryFormSection" style="display: none;">
+                <div style="background: white; padding: 40px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); max-width: 1000px; margin: 0 auto;">
+                    
+                    <!-- Título -->
+                    <h2 id="homeCategoryFormTitle" style="color: #1d3557; margin-bottom: 30px; font-size: 1.75rem; font-weight: 700; border-bottom: 3px solid #1d3557; padding-bottom: 15px;">
+                        <i class="fas fa-folder-plus" style="margin-right: 10px;"></i>
+                        Nueva Categoría Home
+                    </h2>
+                    
+                    <!-- INFORMACIÓN BÁSICA -->
+                    <div style="background: #f8fafc; padding: 25px; border-radius: 12px; margin-bottom: 30px; border: 2px solid #e2e8f0;">
+                        <h3 style="color: #1d3557; margin-bottom: 20px; font-size: 1.3rem; font-weight: 600; display: flex; align-items: center; gap: 10px;">
+                            <i class="fas fa-info-circle" style="color: #1d3557;"></i>
+                            Información Básica
+                        </h3>
+                        
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
+                            <!-- Nombre Español -->
+                            <div>
+                                <label for="homeCategoryNameEs" style="display: block; font-weight: 600; color: #1d3557; margin-bottom: 8px; font-size: 0.95rem;">
+                                    Nombre (Español) <span style="color: #ef4444;">*</span>
+                                </label>
+                                <input type="text" id="homeCategoryNameEs" name="homeCategoryNameEs" placeholder="Ej. Secadores" 
+                                       style="width: 100%; padding: 12px 16px; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 15px; transition: all 0.2s; background: white;"
+                                       onfocus="this.style.borderColor='#1d3557'; this.style.boxShadow='0 0 0 3px rgba(29, 53, 87, 0.1)';" 
+                                       onblur="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';">
+                            </div>
+                            
+                            <!-- Nombre Portugués -->
+                            <div>
+                                <label for="homeCategoryNamePt" style="display: block; font-weight: 600; color: #1d3557; margin-bottom: 8px; font-size: 0.95rem;">
+                                    Nome (Português) <span style="color: #ef4444;">*</span>
+                                </label>
+                                <input type="text" id="homeCategoryNamePt" name="homeCategoryNamePt" placeholder="Ex. Secadores" 
+                                       style="width: 100%; padding: 12px 16px; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 15px; transition: all 0.2s; background: white;"
+                                       onfocus="this.style.borderColor='#1d3557'; this.style.boxShadow='0 0 0 3px rgba(29, 53, 87, 0.1)';" 
+                                       onblur="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';">
+                            </div>
+                            
+                            <!-- URL Foto -->
+                            <div style="grid-column: 1 / -1;">
+                                <label for="homeCategoryFoto" style="display: block; font-weight: 600; color: #1d3557; margin-bottom: 8px; font-size: 0.95rem;">
+                                    URL de la Foto <span style="color: #ef4444;">*</span>
+                                </label>
+                                <input type="url" id="homeCategoryFoto" name="homeCategoryFoto" placeholder="https://ejemplo.com/imagen.jpg" 
+                                       style="width: 100%; padding: 12px 16px; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 15px; transition: all 0.2s; background: white;"
+                                       onfocus="this.style.borderColor='#1d3557'; this.style.boxShadow='0 0 0 3px rgba(29, 53, 87, 0.1)';" 
+                                       onblur="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';">
+                                <small style="color: #64748b; font-size: 0.85rem; margin-top: 6px; display: block;">
+                                    <i class="fas fa-link" style="margin-right: 5px;"></i>
+                                    Ingresa la URL completa de la imagen
+                                </small>
+                            </div>
+                            
+                            <!-- Orden -->
+                            <div>
+                                <label for="homeCategoryOrden" style="display: block; font-weight: 600; color: #1d3557; margin-bottom: 8px; font-size: 0.95rem;">
+                                    Orden de Visualización
+                                </label>
+                                <input type="number" id="homeCategoryOrden" name="homeCategoryOrden" value="0" min="0" placeholder="0 = primero" 
+                                       style="width: 100%; padding: 12px 16px; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 15px; transition: all 0.2s; background: white;"
+                                       onfocus="this.style.borderColor='#1d3557'; this.style.boxShadow='0 0 0 3px rgba(29, 53, 87, 0.1)';" 
+                                       onblur="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';">
+                            </div>
+                            
+                            <!-- Activa -->
+                            <div style="display: flex; align-items: center; padding-top: 32px;">
+                                <label style="display: flex; align-items: center; gap: 12px; cursor: pointer; user-select: none;">
+                                    <input type="checkbox" id="homeCategoryActive" name="homeCategoryActive" checked 
+                                           style="width: 22px; height: 22px; cursor: pointer; accent-color: #1d3557;">
+                                    <span style="font-weight: 600; color: #1d3557; font-size: 0.95rem;">Categoría Activa</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CAMPOS/FILTROS -->
+                    <div id="categoryFiltersSection" style="display: block !important; visibility: visible !important; background: #f8fafc; padding: 25px; border-radius: 12px; margin-bottom: 30px; border: 2px solid #e2e8f0;">
+                        <h3 style="color: #1d3557; margin-bottom: 25px; font-size: 1.3rem; font-weight: 600; display: flex; align-items: center; gap: 10px; border-bottom: 2px solid #cbd5e1; padding-bottom: 15px;">
+                            <i class="fas fa-filter" style="color: #1d3557;"></i>
+                            Campos/Filtros de la Categoría
+                        </h3>
+                        
+                        <!-- Formulario para agregar filtro -->
+                        <div style="background: white; padding: 25px; border-radius: 10px; margin-bottom: 25px; border: 2px solid #e2e8f0; box-shadow: 0 2px 6px rgba(0,0,0,0.08);">
+                            <h4 style="color: #1d3557; margin-bottom: 20px; font-size: 1.1rem; font-weight: 600; display: flex; align-items: center; gap: 10px;">
+                                <i class="fas fa-plus-circle" style="color: #10b981;"></i>
+                                Agregar Nuevo Filtro
+                            </h4>
+                            
+                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px;">
+                                <!-- ID del Campo (oculto, se genera automáticamente) -->
+                                <input type="hidden" id="newFieldId">
+                                
+                                <!-- Tipo de Campo -->
+                                <div>
+                                    <label for="newFieldType" style="display: block; font-weight: 600; color: #1d3557; margin-bottom: 8px; font-size: 0.9rem;">
+                                        Tipo de Campo
+                                    </label>
+                                    <select id="newFieldType" 
+                                            style="width: 100%; padding: 11px 14px; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: white; cursor: pointer; transition: all 0.2s;"
+                                            onchange="togglePlaceholderFields()"
+                                            onfocus="this.style.borderColor='#1d3557'; this.style.boxShadow='0 0 0 3px rgba(29, 53, 87, 0.1)';" 
+                                            onblur="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';">
+                                        <option value="text">Texto</option>
+                                        <option value="number">Número</option>
+                                        <option value="select">Select (Lista desplegable)</option>
+                                        <option value="textarea">Área de texto</option>
+                                    </select>
+                                </div>
+                                
+                                <!-- Etiqueta Español -->
+                                <div>
+                                    <label for="newFieldLabelEs" style="display: block; font-weight: 600; color: #1d3557; margin-bottom: 8px; font-size: 0.9rem;">
+                                        Etiqueta (Español) <span style="color: #ef4444;">*</span>
+                                    </label>
+                                    <input type="text" id="newFieldLabelEs" placeholder="Ej. Potencia" 
+                                           style="width: 100%; padding: 11px 14px; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: white; transition: all 0.2s;"
+                                           onfocus="this.style.borderColor='#1d3557'; this.style.boxShadow='0 0 0 3px rgba(29, 53, 87, 0.1)';" 
+                                           onblur="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';"
+                                           oninput="autoGenerateFieldId()">
+                                </div>
+                                
+                                <!-- Etiqueta Portugués -->
+                                <div>
+                                    <label for="newFieldLabelPt" style="display: block; font-weight: 600; color: #1d3557; margin-bottom: 8px; font-size: 0.9rem;">
+                                        Etiqueta (Português) <span style="color: #ef4444;">*</span>
+                                    </label>
+                                    <input type="text" id="newFieldLabelPt" placeholder="Ex. Potência" 
+                                           style="width: 100%; padding: 11px 14px; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: white; transition: all 0.2s;"
+                                           onfocus="this.style.borderColor='#1d3557'; this.style.boxShadow='0 0 0 3px rgba(29, 53, 87, 0.1)';" 
+                                           onblur="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';">
+                                </div>
+                                
+                                <!-- Placeholder Español (solo para tipos no numéricos) -->
+                                <div id="newFieldPlaceholderEsContainer">
+                                    <label for="newFieldPlaceholderEs" style="display: block; font-weight: 600; color: #1d3557; margin-bottom: 8px; font-size: 0.9rem;">
+                                        Placeholder (Español)
+                                    </label>
+                                    <input type="text" id="newFieldPlaceholderEs" placeholder="Ej. Ingrese la potencia" 
+                                           style="width: 100%; padding: 11px 14px; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: white; transition: all 0.2s;"
+                                           onfocus="this.style.borderColor='#1d3557'; this.style.boxShadow='0 0 0 3px rgba(29, 53, 87, 0.1)';" 
+                                           onblur="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';">
+                                </div>
+                                
+                                <!-- Placeholder Portugués (solo para tipos no numéricos) -->
+                                <div id="newFieldPlaceholderPtContainer">
+                                    <label for="newFieldPlaceholderPt" style="display: block; font-weight: 600; color: #1d3557; margin-bottom: 8px; font-size: 0.9rem;">
+                                        Placeholder (Português)
+                                    </label>
+                                    <input type="text" id="newFieldPlaceholderPt" placeholder="Ex. Digite a potência" 
+                                           style="width: 100%; padding: 11px 14px; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: white; transition: all 0.2s;"
+                                           onfocus="this.style.borderColor='#1d3557'; this.style.boxShadow='0 0 0 3px rgba(29, 53, 87, 0.1)';" 
+                                           onblur="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';">
+                                </div>
+                                
+                                <!-- Placeholder genérico (solo para tipo numérico) -->
+                                <div id="newFieldPlaceholderGenericContainer" style="display: none;">
+                                    <label for="newFieldPlaceholderGeneric" style="display: block; font-weight: 600; color: #1d3557; margin-bottom: 8px; font-size: 0.9rem;">
+                                        Placeholder (opcional)
+                                    </label>
+                                    <input type="text" id="newFieldPlaceholderGeneric" placeholder="Ej. 1800" 
+                                           style="width: 100%; padding: 11px 14px; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: white; transition: all 0.2s;"
+                                           onfocus="this.style.borderColor='#1d3557'; this.style.boxShadow='0 0 0 3px rgba(29, 53, 87, 0.1)';" 
+                                           onblur="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';">
+                                    <small style="color: #64748b; font-size: 0.75rem; margin-top: 5px; display: block;">
+                                        Para campos numéricos, solo se necesita un placeholder genérico
+                                    </small>
+                                </div>
+                                
+                                <!-- Orden -->
+                                <div>
+                                    <label for="newFieldOrden" style="display: block; font-weight: 600; color: #1d3557; margin-bottom: 8px; font-size: 0.9rem;">
+                                        Orden
+                                    </label>
+                                    <input type="number" id="newFieldOrden" value="0" min="0" 
+                                           style="width: 100%; padding: 11px 14px; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: white; transition: all 0.2s;"
+                                           onfocus="this.style.borderColor='#1d3557'; this.style.boxShadow='0 0 0 3px rgba(29, 53, 87, 0.1)';" 
+                                           onblur="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';">
+                                </div>
+                                
+                                <!-- Campo obligatorio -->
+                                <div style="display: flex; align-items: center; padding-top: 32px;">
+                                    <label style="display: flex; align-items: center; gap: 12px; cursor: pointer; user-select: none;">
+                                        <input type="checkbox" id="newFieldRequired" 
+                                               style="width: 22px; height: 22px; cursor: pointer; accent-color: #1d3557;">
+                                        <span style="font-weight: 600; color: #1d3557; font-size: 0.9rem;">Campo obligatorio</span>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <!-- Opciones para Select -->
+                            <div id="newFieldOptionsContainer" style="display: none; margin-top: 20px; padding: 20px; background: #f8fafc; border-radius: 8px; border: 2px solid #cbd5e1;">
+                                <label style="font-weight: 600; color: #1d3557; margin-bottom: 15px; display: block; font-size: 1rem;">
+                                    <i class="fas fa-list" style="margin-right: 8px;"></i>
+                                    Opciones del Select
+                                </label>
+                                <div id="newFieldOptionsList" style="margin-bottom: 15px;"></div>
+                                <button type="button" onclick="addNewFieldOption()" 
+                                        style="padding: 10px 20px; background: #6b7280; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.9rem; transition: all 0.2s;"
+                                        onmouseover="this.style.background='#4b5563'; this.style.transform='translateY(-1px)';" 
+                                        onmouseout="this.style.background='#6b7280'; this.style.transform='translateY(0)';">
+                                    <i class="fas fa-plus" style="margin-right: 6px;"></i>
+                                    Agregar Opción
+                                </button>
+                            </div>
+                            
+                            <!-- Botón Agregar Filtro (modo creación) -->
+                            <button type="button" id="btnAddField" onclick="addFieldToCategoryForm()" 
+                                    style="margin-top: 20px; padding: 12px 24px; background: #1d3557; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 1rem; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: block;"
+                                    onmouseover="this.style.background='#0f172a'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.15)';" 
+                                    onmouseout="this.style.background='#1d3557'; this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)';">
+                                <i class="fas fa-plus" style="margin-right: 8px;"></i>
+                                Agregar Filtro a la Categoría
+                            </button>
+                            
+                            <!-- Botón Guardar Alteraciones (modo edición) -->
+                            <div id="btnSaveFieldChanges" style="display: none; margin-top: 20px;">
+                                <button type="button" onclick="saveFieldChanges()" 
+                                        style="padding: 12px 24px; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 1rem; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.1); width: 100%;"
+                                        onmouseover="this.style.background='#059669'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.15)';" 
+                                        onmouseout="this.style.background='#10b981'; this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)';">
+                                    <i class="fas fa-save" style="margin-right: 8px;"></i>
+                                    Guardar Alteraciones
+                                </button>
+                                <button type="button" onclick="cancelFieldEdit()" 
+                                        style="margin-top: 10px; padding: 10px 20px; background: #6b7280; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.9rem; transition: all 0.2s; width: 100%;"
+                                        onmouseover="this.style.background='#4b5563';" 
+                                        onmouseout="this.style.background='#6b7280';">
+                                    <i class="fas fa-times" style="margin-right: 6px;"></i>
+                                    Cancelar Edición
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Lista de Filtros Agregados -->
+                        <div>
+                            <h4 style="color: #1d3557; margin-bottom: 15px; font-size: 1.1rem; font-weight: 600; display: flex; align-items: center; gap: 10px;">
+                                <i class="fas fa-list-check" style="color: #10b981;"></i>
+                                Filtros Agregados
+                            </h4>
+                            <div id="categoryFieldsFormContainer" style="min-height: 100px; background: white; padding: 20px; border-radius: 10px; border: 2px dashed #cbd5e1;">
+                                <p style="color: #64748b; text-align: center; padding: 30px; margin: 0; font-size: 0.95rem;">
+                                    <i class="fas fa-info-circle" style="margin-right: 8px; color: #94a3b8;"></i>
+                                    No hay campos agregados. Completa el formulario arriba y haz clic en "Agregar Filtro a la Categoría".
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- BOTONES DE ACCIÓN -->
+                    <div style="margin-top: 30px; padding-top: 25px; border-top: 3px solid #e2e8f0; display: flex; gap: 15px; flex-wrap: wrap; justify-content: flex-end;">
+                        <button type="button" onclick="cancelHomeCategoryEditFromSelector()" 
+                                style="padding: 14px 28px; background: #6b7280; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 1rem; transition: all 0.2s;"
+                                onmouseover="this.style.background='#4b5563'; this.style.transform='translateY(-2px)';" 
+                                onmouseout="this.style.background='#6b7280'; this.style.transform='translateY(0)';">
+                            <i class="fas fa-times" style="margin-right: 8px;"></i>
+                            Cancelar
+                        </button>
+                        <button type="button" onclick="saveHomeCategoryFromSelector()" 
+                                style="padding: 14px 28px; background: #1d3557; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 1rem; transition: all 0.2s; box-shadow: 0 2px 6px rgba(0,0,0,0.15);"
+                                onmouseover="this.style.background='#0f172a'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.2)';" 
+                                onmouseout="this.style.background='#1d3557'; this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 6px rgba(0,0,0,0.15)';">
+                            <i class="fas fa-save" style="margin-right: 8px;"></i>
+                            Guardar Categoría Home
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="load-config.js"></script>
+    <script src="supabase-config-universal.js"></script>
+    <script>
+        // ============================================
+        // DEFINIR FUNCIONES GLOBALES PRIMERO (antes de cualquier otra cosa)
+        // ============================================
+        
+        // Variables globales para el modal
+        let editingHomeCategoryId = null;
+        let homeCategories = [];
+        let supabaseClient = null;
+        let categoryFieldsInForm = []; // Campos que se están agregando en el formulario de categoría
+        let editingFieldId = null; // ID del filtro que se está editando (null = modo creación)
+        
+        // Función para generar automáticamente el ID del campo basado en la etiqueta
+        window.autoGenerateFieldId = function() {
+            // Solo generar si no estamos en modo edición
+            if (editingFieldId !== null) {
+                return; // No generar ID si estamos editando
+            }
+            
+            const labelEsInput = document.getElementById('newFieldLabelEs');
+            const fieldIdInput = document.getElementById('newFieldId');
+            
+            if (!labelEsInput || !fieldIdInput) {
+                return;
+            }
+            
+            const labelEs = labelEsInput.value.trim();
+            
+            if (!labelEs) {
+                fieldIdInput.value = '';
+                return;
+            }
+            
+            // Generar ID automáticamente basado en la etiqueta en español
+            const generateFieldId = (label) => {
+                if (!label) return '';
+                // Convertir a minúsculas, normalizar, quitar acentos, reemplazar espacios y caracteres especiales por guiones bajos
+                return label.toLowerCase()
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '') // Quitar acentos
+                    .replace(/[^a-z0-9\s]/g, '') // Quitar caracteres especiales excepto espacios
+                    .replace(/\s+/g, '_') // Reemplazar espacios por guiones bajos
+                    .replace(/_+/g, '_') // Reemplazar múltiples guiones bajos por uno solo
+                    .replace(/^_|_$/g, ''); // Quitar guiones bajos al inicio y final
+            };
+            
+            const generatedId = generateFieldId(labelEs);
+            if (generatedId) {
+                fieldIdInput.value = generatedId;
+            }
+        };
+
+        // DEFINIR FUNCIONES GLOBALES INMEDIATAMENTE
+        window.openHomeCategoryManagerFromSelector = async function() {
+            try {
+                const client = await initSupabase();
+                if (!client) {
+                    alert('Error: No se pudo conectar con la base de datos. Por favor, recarga la página.');
+                    return;
+                }
+                
+                const modal = document.getElementById('homeCategoryModal');
+                if (!modal) {
+                    alert('❌ Error: No se encontró el modal. Verifica que el HTML esté correcto.');
+                    return;
+                }
+                
+                // Forzar que el modal sea visible usando múltiples métodos
+                modal.style.display = 'block';
+                modal.style.visibility = 'visible';
+                modal.style.opacity = '1';
+                modal.style.position = 'fixed';
+                modal.style.zIndex = '10000';
+                modal.style.left = '0';
+                modal.style.top = '0';
+                modal.style.width = '100%';
+                modal.style.height = '100%';
+                modal.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+                modal.style.pointerEvents = 'auto'; // Asegurar que los eventos de clic funcionen
+                
+                // Asegurar que el modal esté visible usando classList
+                if (modal.classList) {
+                    modal.classList.add('active');
+                }
+                
+                
+                await loadHomeCategoryListFromSelector();
+            } catch (error) {
+                alert('Error al abrir el gestor de categorías: ' + error.message);
+            }
+        };
+
+        window.openSubcategoryCreatorFromSelector = async function() {
+            const client = await initSupabase();
+            if (!client) {
+                alert('Error: No se pudo conectar con la base de datos. Por favor, recarga la página.');
+                return;
+            }
+            
+            // Buscar la categoría "Personalizados"
+            try {
+                const { data: categories, error } = await client
+                    .from('categorias_geral')
+                    .select('*')
+                    .eq('tipo', 'home')
+                    .eq('is_active', true)
+                    .order('orden', { ascending: true });
+                
+                if (error) throw error;
+                
+                const personalizadosCategory = categories.find(cat => {
+                    const nombreEsLower = (cat.nombre_es || '').toLowerCase().trim();
+                    const nombrePtLower = (cat.nombre_pt || '').toLowerCase().trim();
+                    return nombreEsLower.includes('personalizado') || nombrePtLower.includes('personalizado');
+                });
+                
+                if (!personalizadosCategory) {
+                    alert('No se encontró la categoría "Personalizados". Por favor, créala primero en "Crear Nueva Categoría".');
+                    return;
+                }
+                
+                window.location.href = `admin-productos.html?openSubcategoryModal=true&categoryId=${personalizadosCategory.id}`;
+            } catch (error) {
+                alert('Error al buscar la categoría Personalizados. Por favor, intenta de nuevo.');
+            }
+        };
+
+        // Inicializar Supabase (mismo método que admin-productos.js)
+        async function initSupabase() {
+            try {
+                if (supabaseClient) {
+                    return supabaseClient; // Ya está inicializado
+                }
+
+                if (window.universalSupabase) {
+                    supabaseClient = await window.universalSupabase.getClient();
+                } else {
+                    // Esperar un momento para que universalSupabase se inicialice
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                    if (window.universalSupabase) {
+                        supabaseClient = await window.universalSupabase.getClient();
+                    } else {
+                        throw new Error('Supabase no está disponible. Asegúrate de que supabase-config-universal.js se cargue antes.');
+                    }
+                }
+                
+                if (supabaseClient) {
+                } else {
+                    // No se pudo inicializar
+                }
+                
+                return supabaseClient;
+            } catch (error) {
+                // Error al inicializar
+                alert('Error al inicializar Supabase: ' + error.message);
+                return null;
+            }
+        }
+
+        // Inicializar al cargar
+        document.addEventListener('DOMContentLoaded', async () => {
+            await initSupabase();
+        });
+
+        /**
+         * Manejar clic en el overlay del modal (llamado desde el HTML)
+         */
+        window.handleModalOverlayClickFromSelector = function(event) {
+            console.log('🔍 handleModalOverlayClickFromSelector - FUNCIÓN LLAMADA');
+            console.log('🔍 event.target:', event.target);
+            console.log('🔍 event.target.tagName:', event.target.tagName);
+            console.log('🔍 event.target.id:', event.target.id);
+            console.log('🔍 event.target.className:', event.target.className);
+            
+            // Esta función se llama desde el onclick inline del modal
+            const modal = document.getElementById('homeCategoryModal');
+            const modalContent = modal ? modal.querySelector('.modal-content') : null;
+            
+            console.log('🔍 modal existe?', !!modal);
+            console.log('🔍 modalContent existe?', !!modalContent);
+            
+            if (!modal) {
+                console.log('❌ Modal no encontrado');
+                return;
+            }
+            
+            console.log('🔍 event.target === modal?', event.target === modal);
+            console.log('🔍 modal contiene event.target?', modal.contains(event.target));
+            
+            if (modalContent) {
+                console.log('🔍 modalContent contiene event.target?', modalContent.contains(event.target));
+            }
+            
+            // Si el clic es directamente en el modal (overlay) y no dentro del contenido, cerrar
+            // El event.stopPropagation() en el contenido previene que el evento llegue aquí
+            // cuando se hace clic dentro del contenido
+            if (event.target === modal) {
+                console.log('✅ Clic directamente en modal - CERRANDO');
+                event.preventDefault();
+                event.stopPropagation();
+                closeHomeCategoryManagerFromSelector();
+                return;
+            }
+            
+            // Verificación adicional: si el clic no está dentro del contenido, también cerrar
+            if (modalContent && !modalContent.contains(event.target)) {
+                console.log('✅ Clic fuera del contenido - CERRANDO');
+                event.preventDefault();
+                event.stopPropagation();
+                closeHomeCategoryManagerFromSelector();
+            } else {
+                console.log('⚠️ Clic dentro del contenido - NO CERRAR');
+            }
+        }
+
+        window.closeHomeCategoryManagerFromSelector = function() {
+            const modal = document.getElementById('homeCategoryModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+            cancelHomeCategoryEditFromSelector();
+        }
+
+        async function loadHomeCategoryListFromSelector() {
+            const container = document.getElementById('homeCategoryList');
+            container.innerHTML = '<p>Cargando categorías...</p>';
+            
+            const client = await initSupabase();
+            if (!client) {
+                container.innerHTML = '<p style="color: #ef4444;">Error: No se pudo conectar con la base de datos</p>';
+                return;
+            }
+            
+            try {
+                const { data, error } = await client
+                    .from('categorias_geral')
+                    .select('*')
+                    .eq('tipo', 'home')
+                    .order('orden', { ascending: true });
+                
+                if (error) throw error;
+                
+                homeCategories = data || [];
+                
+                if (homeCategories.length === 0) {
+                    container.innerHTML = '<p style="color: #6b7280; text-align: center; padding: 20px;">No hay categorías del home creadas aún.</p>';
+                    return;
+                }
+                
+                let html = '<div style="display: grid; gap: 15px;">';
+                homeCategories.forEach(cat => {
+                    const activeBadge = cat.is_active ? 
+                        '<span style="background: #10b981; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem;">Activa</span>' :
+                        '<span style="background: #6b7280; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem;">Inactiva</span>';
+                    
+                    html += `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb;">
+                            <div style="flex: 1;">
+                                <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 8px;">
+                                    ${cat.foto ? `<img src="${cat.foto}" alt="${cat.nombre_es}" style="width: 80px; height: 60px; object-fit: cover; border-radius: 6px;">` : ''}
+                                    <div>
+                                        <div style="font-weight: 600; color: #1d3557; margin-bottom: 4px;">
+                                            ${cat.nombre_es} / ${cat.nombre_pt}
+                                        </div>
+                                        <div style="font-size: 0.875rem; color: #6b7280;">
+                                            Orden: ${cat.orden} | ${activeBadge}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 10px;">
+                                <button onclick="editHomeCategoryFromSelector('${cat.id}')" style="background: #6b7280; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">
+                                    <i class="fas fa-edit"></i> Editar
+                                </button>
+                                <button onclick="deleteHomeCategoryFromSelector('${cat.id}')" style="background: #ef4444; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">
+                                    <i class="fas fa-trash"></i> Eliminar
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                container.innerHTML = html;
+            } catch (error) {
+                container.innerHTML = `<p style="color: #ef4444;">Error al cargar: ${error.message}</p>`;
+            }
+        }
+
+        window.showCreateHomeCategoryFormFromSelector = function() {
+            // Asegurar que estamos en modo creación (no edición de filtro)
+            editingFieldId = null;
+            const btnAdd = document.getElementById('btnAddField');
+            const btnSave = document.getElementById('btnSaveFieldChanges');
+            if (btnAdd) btnAdd.style.display = 'block';
+            if (btnSave) btnSave.style.display = 'none';
+            
+            // Asegurar que el campo ID esté habilitado
+            const fieldIdInput = document.getElementById('newFieldId');
+            if (fieldIdInput) {
+                fieldIdInput.disabled = false;
+                fieldIdInput.style.backgroundColor = 'white';
+                fieldIdInput.style.cursor = 'text';
+            }
+            editingHomeCategoryId = null;
+            document.getElementById('homeCategoryFormTitle').textContent = 'Nueva Categoría Home';
+            document.getElementById('homeCategoryNameEs').value = '';
+            document.getElementById('homeCategoryNamePt').value = '';
+            document.getElementById('homeCategoryFoto').value = '';
+            document.getElementById('homeCategoryOrden').value = homeCategories.length;
+            document.getElementById('homeCategoryActive').checked = true;
+            document.getElementById('homeCategoryFormSection').style.display = 'block';
+            document.getElementById('homeCategoryList').style.display = 'none';
+            
+            // FORZAR que la sección de filtros esté visible SIEMPRE
+            setTimeout(() => {
+                const filtersSection = document.getElementById('categoryFiltersSection');
+                if (filtersSection) {
+                    filtersSection.style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important; background: #f8fafc; padding: 25px; border-radius: 12px; margin-bottom: 30px; border: 2px solid #e2e8f0;';
+                    filtersSection.style.display = 'block';
+                    filtersSection.style.visibility = 'visible';
+                }
+                
+                // Configurar event listener para el select de tipo de campo
+                setupFieldTypeListener();
+                
+                // Limpiar y renderizar campos del formulario
+                // Si estamos creando una nueva categoría, limpiar los campos
+                // Si estamos editando, cargar los campos guardados
+                if (!editingHomeCategoryId) {
+                    categoryFieldsInForm = [];
+                } else {
+                    // Cargar los filtros guardados
+                    loadCategoryFieldsForEdit(editingHomeCategoryId);
+                }
+                renderCategoryFieldsInForm();
+            }, 100);
+        }
+
+        window.editHomeCategoryFromSelector = async function(categoryId) {
+            // Asegurar que estamos en modo creación (no edición de filtro)
+            editingFieldId = null;
+            const btnAdd = document.getElementById('btnAddField');
+            const btnSave = document.getElementById('btnSaveFieldChanges');
+            if (btnAdd) btnAdd.style.display = 'block';
+            if (btnSave) btnSave.style.display = 'none';
+            
+            // Asegurar que el campo ID esté habilitado
+            const fieldIdInput = document.getElementById('newFieldId');
+            if (fieldIdInput) {
+                fieldIdInput.disabled = false;
+                fieldIdInput.style.backgroundColor = 'white';
+                fieldIdInput.style.cursor = 'text';
+            }
+            
+            const cat = homeCategories.find(c => c.id === categoryId);
+            if (!cat) return;
+            
+            editingHomeCategoryId = categoryId;
+            document.getElementById('homeCategoryFormTitle').textContent = `Editar: ${cat.nombre_es}`;
+            document.getElementById('homeCategoryNameEs').value = cat.nombre_es || '';
+            document.getElementById('homeCategoryNamePt').value = cat.nombre_pt || '';
+            document.getElementById('homeCategoryFoto').value = cat.foto || '';
+            document.getElementById('homeCategoryOrden').value = cat.orden || 0;
+            document.getElementById('homeCategoryActive').checked = cat.is_active !== false;
+            document.getElementById('homeCategoryFormSection').style.display = 'block';
+            document.getElementById('homeCategoryList').style.display = 'none';
+            
+            // FORZAR que la sección de filtros esté visible
+            setTimeout(() => {
+                const filtersSection = document.getElementById('categoryFiltersSection');
+                if (filtersSection) {
+                    filtersSection.style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important; background: #f8fafc; padding: 25px; border-radius: 12px; margin-bottom: 30px; border: 2px solid #e2e8f0;';
+                    filtersSection.style.display = 'block';
+                    filtersSection.style.visibility = 'visible';
+                }
+                
+                // Cargar los filtros guardados para esta categoría
+                loadCategoryFieldsForEdit(categoryId);
+            }, 100);
+        }
+        
+        // Función para cargar los filtros guardados de una categoría
+        async function loadCategoryFieldsForEdit(categoryId) {
+            const client = await initSupabase();
+            if (!client) {
+                // No se pudo inicializar
+                categoryFieldsInForm = [];
+                renderCategoryFieldsInForm();
+                return;
+            }
+            
+            try {
+                const { data: fields, error } = await client
+                    .from('category_fields')
+                    .select('*')
+                    .eq('categoria_id', categoryId)
+                    .order('orden', { ascending: true });
+                
+                if (error) {
+                    categoryFieldsInForm = [];
+                    renderCategoryFieldsInForm();
+                    return;
+                }
+                
+                if (fields && fields.length > 0) {
+                    categoryFieldsInForm = fields.map(field => ({
+                        id: field.id,
+                        field_id: field.field_id,
+                        label_es: field.label_es,
+                        label_pt: field.label_pt,
+                        field_type: field.field_type,
+                        placeholder_es: field.placeholder_es || '',
+                        placeholder_pt: field.placeholder_pt || '',
+                        options: field.options || [],
+                        is_required: field.is_required || false,
+                        show_in_filters: field.show_in_filters !== undefined ? field.show_in_filters : true,
+                        orden: field.orden || 0
+                    }));
+                } else {
+                    categoryFieldsInForm = [];
+                }
+                
+                renderCategoryFieldsInForm();
+            } catch (error) {
+                categoryFieldsInForm = [];
+                renderCategoryFieldsInForm();
+            }
+        }
+
+        window.cancelHomeCategoryEditFromSelector = function() {
+            editingHomeCategoryId = null;
+            editingFieldId = null; // Limpiar también el modo edición de filtro
+            document.getElementById('homeCategoryFormSection').style.display = 'none';
+            document.getElementById('homeCategoryList').style.display = 'block';
+            
+            // Asegurar que estamos en modo creación
+            const btnAdd = document.getElementById('btnAddField');
+            const btnSave = document.getElementById('btnSaveFieldChanges');
+            if (btnAdd) btnAdd.style.display = 'block';
+            if (btnSave) btnSave.style.display = 'none';
+        }
+
+        window.saveHomeCategoryFromSelector = async function() {
+            const client = await initSupabase();
+            if (!client) {
+                alert('Error: No se pudo conectar con la base de datos');
+                return;
+            }
+
+            const nombreEs = document.getElementById('homeCategoryNameEs').value.trim();
+            const nombrePt = document.getElementById('homeCategoryNamePt').value.trim();
+            const foto = document.getElementById('homeCategoryFoto').value.trim();
+            const orden = parseInt(document.getElementById('homeCategoryOrden').value) || 0;
+            const isActive = document.getElementById('homeCategoryActive').checked;
+            if (!nombreEs || !nombrePt || !foto) {
+                alert('Debes completar el nombre en ambos idiomas y la foto');
+                return;
+            }
+            
+            try {
+                const categoryData = {
+                    tipo: 'home', // ← IMPORTANTE: Agregar tipo
+                    nombre_es: nombreEs,
+                    nombre_pt: nombrePt,
+                    foto: foto,
+                    orden: orden,
+                    is_active: isActive
+                };
+                
+                // Debug: mostrar qué datos se están guardando
+                
+                if (editingHomeCategoryId) {
+                    const { error } = await client
+                        .from('categorias_geral')
+                        .update(categoryData)
+                        .eq('id', editingHomeCategoryId)
+                        .eq('tipo', 'home');
+                    
+                    if (error) throw error;
+                    alert('✅ Categoría del home actualizada correctamente');
+                } else {
+                    const { data: newCategory, error } = await client
+                        .from('categorias_geral')
+                        .insert(categoryData)
+                        .select()
+                        .single();
+                    
+                    if (error) throw error;
+                    
+                    // Asignar el ID de la nueva categoría para poder agregar filtros
+                    editingHomeCategoryId = newCategory.id;
+                    alert('✅ Categoría del home creada correctamente. Ahora puedes agregar filtros.');
+                    
+                    // Cargar los filtros si hay alguno en categoryFieldsInForm
+                    if (categoryFieldsInForm && categoryFieldsInForm.length > 0) {
+                        for (const field of categoryFieldsInForm) {
+                            if (!field.id) { // Solo guardar si no tiene ID (no está guardado)
+                                const fieldData = {
+                                    categoria_id: newCategory.id,
+                                    field_id: field.field_id,
+                                    label_es: field.label_es,
+                                    label_pt: field.label_pt,
+                                    field_type: field.field_type,
+                                    placeholder_es: field.placeholder_es || null,
+                                    placeholder_pt: field.placeholder_pt || null,
+                                    options: field.options && field.options.length > 0 ? field.options : null,
+                                    is_required: field.is_required || false,
+                                    show_in_filters: field.show_in_filters !== false,
+                                    orden: field.orden || 0
+                                };
+                                
+                                const { data: savedField, error: fieldError } = await client
+                                    .from('category_fields')
+                                    .insert([fieldData])
+                                    .select()
+                                    .single();
+                                
+                                if (!fieldError && savedField) {
+                                    field.id = savedField.id;
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Recargar los filtros guardados
+                if (editingHomeCategoryId) {
+                    await loadCategoryFieldsForEdit(editingHomeCategoryId);
+                }
+                
+                // No cancelar la edición para que el usuario pueda seguir agregando filtros
+                // cancelHomeCategoryEditFromSelector();
+                await loadHomeCategoryListFromSelector();
+            } catch (error) {
+                alert('Error al guardar: ' + error.message);
+            }
+        }
+
+        window.deleteHomeCategoryFromSelector = async function(categoryId) {
+            const client = await initSupabase();
+            if (!client) {
+                alert('Error: No se pudo conectar con la base de datos');
+                return;
+            }
+
+            const cat = homeCategories.find(c => c.id === categoryId);
+            if (!cat) return;
+            
+            if (!confirm(`¿Estás seguro de que quieres eliminar la categoría "${cat.nombre_es}"?`)) {
+                return;
+            }
+            
+            try {
+                const { error } = await client
+                    .from('categorias_geral')
+                    .delete()
+                    .eq('id', categoryId)
+                    .eq('tipo', 'home');
+                
+                if (error) throw error;
+                
+                alert('✅ Categoría del home eliminada');
+                await loadHomeCategoryListFromSelector();
+            } catch (error) {
+                alert('Error al eliminar: ' + error.message);
+            }
+        }
+
+        // ============================================
+        // FUNCIONES PARA GESTIONAR FILTROS DE CATEGORÍAS
+        // ============================================
+
+        // Agregar opción para campos tipo Select
+        window.addNewFieldOption = function() {
+            const container = document.getElementById('newFieldOptionsList');
+            if (!container) return;
+            
+            const optionDiv = document.createElement('div');
+            optionDiv.className = 'field-option-row';
+            optionDiv.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 15px; align-items: center; margin-bottom: 15px; padding: 15px; background: #f9fafb; border-radius: 8px; border: 2px solid #e5e7eb;';
+            
+            optionDiv.innerHTML = `
+                <input type="text" class="new-option-value" placeholder="Valor (ej: si, no)" 
+                       style="padding: 10px; border: 2px solid #d1d5db; border-radius: 6px; font-size: 14px; transition: border-color 0.2s;"
+                       onfocus="this.style.borderColor='#1d3557';" 
+                       onblur="this.style.borderColor='#d1d5db';">
+                <input type="text" class="new-option-label-es" placeholder="Etiqueta ES" 
+                       style="padding: 10px; border: 2px solid #d1d5db; border-radius: 6px; font-size: 14px; transition: border-color 0.2s;"
+                       onfocus="this.style.borderColor='#1d3557';" 
+                       onblur="this.style.borderColor='#d1d5db';">
+                <input type="text" class="new-option-label-pt" placeholder="Etiqueta PT" 
+                       style="padding: 10px; border: 2px solid #d1d5db; border-radius: 6px; font-size: 14px; transition: border-color 0.2s;"
+                       onfocus="this.style.borderColor='#1d3557';" 
+                       onblur="this.style.borderColor='#d1d5db';">
+                <button type="button" class="btn btn-danger" onclick="removeNewFieldOption(this)" 
+                        style="padding: 10px 15px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; transition: background 0.2s;"
+                        onmouseover="this.style.background='#dc2626';" 
+                        onmouseout="this.style.background='#ef4444';">
+                    <i class="fas fa-trash"></i>
+                </button>
+            `;
+            
+            container.appendChild(optionDiv);
+        }
+
+        window.removeNewFieldOption = function(button) {
+            button.closest('.field-option-row').remove();
+        }
+
+        // ============================================
+        // FUNCIÓN PARA ALTERNAR CAMPOS DE PLACEHOLDER
+        // ============================================
+        window.togglePlaceholderFields = function() {
+            const fieldType = document.getElementById('newFieldType').value;
+            const placeholderEsContainer = document.getElementById('newFieldPlaceholderEsContainer');
+            const placeholderPtContainer = document.getElementById('newFieldPlaceholderPtContainer');
+            const placeholderGenericContainer = document.getElementById('newFieldPlaceholderGenericContainer');
+            
+            if (fieldType === 'number') {
+                // Para campos numéricos: mostrar solo placeholder genérico
+                if (placeholderEsContainer) placeholderEsContainer.style.display = 'none';
+                if (placeholderPtContainer) placeholderPtContainer.style.display = 'none';
+                if (placeholderGenericContainer) placeholderGenericContainer.style.display = 'block';
+            } else {
+                // Para otros tipos: mostrar placeholders en ES y PT
+                if (placeholderEsContainer) placeholderEsContainer.style.display = 'block';
+                if (placeholderPtContainer) placeholderPtContainer.style.display = 'block';
+                if (placeholderGenericContainer) placeholderGenericContainer.style.display = 'none';
+                
+                // Limpiar el placeholder genérico si se cambia a otro tipo
+                const placeholderGeneric = document.getElementById('newFieldPlaceholderGeneric');
+                if (placeholderGeneric) placeholderGeneric.value = '';
+            }
+        }
+
+        // ============================================
+        // FUNCIÓN PARA AGREGAR FILTROS A CATEGORÍAS
+        // ============================================
+        window.addFieldToCategoryForm = async function() {
+            const isEditMode = editingFieldId !== null;
+            
+            // 1. VALIDAR QUE HAY UNA CATEGORÍA GUARDADA
+            if (!editingHomeCategoryId) {
+                alert('⚠️ Primero debes guardar la categoría antes de agregar filtros.\n\nGuarda la categoría y luego agrega los filtros.');
+                return;
+            }
+            
+            // 2. VALIDAR SUPABASE CLIENT
+            const client = await initSupabase();
+            if (!client) {
+                alert('❌ Error: No se pudo conectar con la base de datos. Recarga la página.');
+                return;
+            }
+            
+            // 3. OBTENER Y VALIDAR DATOS DEL FORMULARIO
+            const labelEs = document.getElementById('newFieldLabelEs').value.trim();
+            const labelPt = document.getElementById('newFieldLabelPt').value.trim();
+            
+            // Generar ID automáticamente basado en la etiqueta en español
+            const generateFieldId = (label) => {
+                if (!label) return '';
+                // Convertir a minúsculas, normalizar, quitar acentos, reemplazar espacios y caracteres especiales por guiones bajos
+                return label.toLowerCase()
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '') // Quitar acentos
+                    .replace(/[^a-z0-9\s]/g, '') // Quitar caracteres especiales excepto espacios
+                    .replace(/\s+/g, '_') // Reemplazar espacios por guiones bajos
+                    .replace(/_+/g, '_') // Reemplazar múltiples guiones bajos por uno solo
+                    .replace(/^_|_$/g, ''); // Quitar guiones bajos al inicio y final
+            };
+            
+            const fieldIdInput = document.getElementById('newFieldId');
+            let fieldId = fieldIdInput.value.trim();
+            
+            // Si no hay ID o estamos en modo creación, generarlo automáticamente
+            if (!fieldId || !isEditMode) {
+                fieldId = generateFieldId(labelEs);
+                if (!fieldId) {
+                    // Si no se puede generar desde español, intentar desde portugués
+                    fieldId = generateFieldId(labelPt);
+                }
+                // Si aún no hay ID, usar un ID único basado en timestamp
+                if (!fieldId) {
+                    fieldId = 'campo_' + Date.now();
+                }
+                fieldIdInput.value = fieldId;
+            }
+            
+            // Normalizar el ID generado
+            fieldId = fieldId.toLowerCase().replace(/\s+/g, '_');
+            const fieldType = document.getElementById('newFieldType').value;
+            let placeholderEs = '';
+            let placeholderPt = '';
+            
+            // Si es numérico, usar el placeholder genérico para ambos idiomas
+            if (fieldType === 'number') {
+                const placeholderGeneric = document.getElementById('newFieldPlaceholderGeneric').value.trim();
+                placeholderEs = placeholderGeneric;
+                placeholderPt = placeholderGeneric;
+            } else {
+                // Para otros tipos, usar los placeholders específicos de cada idioma
+                placeholderEs = document.getElementById('newFieldPlaceholderEs').value.trim();
+                placeholderPt = document.getElementById('newFieldPlaceholderPt').value.trim();
+            }
+            const isRequired = document.getElementById('newFieldRequired').checked;
+            const showInFilters = document.getElementById('newFieldShowInFilters')?.checked ?? true;
+            const orden = parseInt(document.getElementById('newFieldOrden').value) || categoryFieldsInForm.length;
+            
+            // Validaciones básicas
+            if (!labelEs || !labelPt) {
+                alert('❌ Debes completar las etiquetas en ambos idiomas');
+                return;
+            }
+            
+            // Asegurar que el ID esté generado
+            if (!fieldId) {
+                fieldId = generateFieldId(labelEs) || generateFieldId(labelPt) || 'campo_' + Date.now();
+                fieldIdInput.value = fieldId;
+            }
+            
+            // En modo edición, verificar que el ID no haya cambiado
+            if (isEditMode && editingFieldId) {
+                // Buscar el campo original para verificar el ID
+                const originalField = categoryFieldsInForm.find(f => f.id === editingFieldId);
+                if (originalField && originalField.field_id !== fieldId) {
+                    alert('⚠️ No puedes cambiar el ID del campo. El ID debe permanecer igual.');
+                    fieldIdInput.value = originalField.field_id;
+                    return;
+                }
+            }
+            
+            if (!/^[a-z0-9_]+$/.test(fieldId)) {
+                alert('❌ El ID del campo solo puede contener letras minúsculas, números y guiones bajos');
+                return;
+            }
+            
+            // Verificar duplicados en el array local (solo si no estamos editando)
+            if (!isEditMode) {
+                const existingFieldIndex = categoryFieldsInForm.findIndex(f => f.field_id === fieldId);
+                if (existingFieldIndex !== -1) {
+                    alert('❌ Ya existe un campo con ese ID en esta categoría. Usa otro ID.');
+                    return;
+                }
+            }
+            
+            // 4. OBTENER OPCIONES SI ES TIPO SELECT
+            let options = null;
+            if (fieldType === 'select') {
+                const optionRows = document.querySelectorAll('#newFieldOptionsList .field-option-row');
+                const parsedOptions = Array.from(optionRows)
+                    .map(row => {
+                        const value = row.querySelector('.new-option-value')?.value.trim();
+                        const labelEs = row.querySelector('.new-option-label-es')?.value.trim();
+                        const labelPt = row.querySelector('.new-option-label-pt')?.value.trim();
+                        if (value && labelEs && labelPt) {
+                            return { value, label_es: labelEs, label_pt: labelPt };
+                        }
+                        return null;
+                    })
+                    .filter(opt => opt !== null);
+                
+                if (parsedOptions.length === 0) {
+                    alert('❌ Para campos tipo Select, debes agregar al menos una opción');
+                    return;
+                }
+                options = parsedOptions;
+            }
+            
+            // 5. VERIFICAR QUE LA CATEGORÍA EXISTE EN categorias_geral
+            const { data: categoriaCheck, error: categoriaError } = await client
+                .from('categorias_geral')
+                .select('id')
+                .eq('id', editingHomeCategoryId)
+                .single();
+            
+            if (categoriaError || !categoriaCheck) {
+                alert(`❌ Error: La categoría no existe en la base de datos.\n\nID: ${editingHomeCategoryId}\n\nGuarda la categoría primero.`);
+                return;
+            }
+            
+            // 6. PREPARAR DATOS PARA INSERTAR
+            const fieldData = {
+                categoria_id: editingHomeCategoryId,
+                field_id: fieldId,
+                label_es: labelEs,
+                label_pt: labelPt,
+                field_type: fieldType,
+                placeholder_es: placeholderEs || null,
+                placeholder_pt: placeholderPt || null,
+                options: options,
+                is_required: isRequired,
+                show_in_filters: showInFilters,
+                orden: orden
+            };
+            
+            // 7. INSERTAR O ACTUALIZAR EN SUPABASE
+            try {
+                let data;
+                let isUpdate = isEditMode && editingFieldId !== null;
+                
+                if (isUpdate) {
+                    // ACTUALIZAR campo existente (modo edición)
+                    
+                    const { data: updateData, error: updateError } = await client
+                        .from('category_fields')
+                        .update(fieldData)
+                        .eq('id', editingFieldId)
+                        .select()
+                        .single();
+                    
+                    if (updateError) {
+                        alert(`❌ Error al actualizar: ${updateError.message}`);
+                        return;
+                    }
+                    
+                    data = updateData;
+                } else {
+                    // INSERTAR nuevo campo
+                    const { data: insertData, error: insertError } = await client
+                        .from('category_fields')
+                        .insert([fieldData])
+                        .select()
+                        .single();
+                    
+                    if (insertError) {
+                        // Error al insertar
+                        
+                        if (insertError.code === '23505') {
+                            alert(`❌ Ya existe un campo con el ID "${fieldId}" para esta categoría.`);
+                        } else if (insertError.code === '23503') {
+                            alert(`❌ Error de Foreign Key: La categoría no existe.\n\nEjecuta el script: supabase-fix-category-fields-foreign-key-complete.sql`);
+                        } else if (insertError.message?.includes('RLS') || insertError.message?.includes('policy')) {
+                            alert(`❌ Error de permisos (RLS): ${insertError.message}\n\nConfigura las políticas RLS en Supabase.`);
+                        } else {
+                            alert(`❌ Error al guardar: ${insertError.message}\n\nCódigo: ${insertError.code || 'N/A'}`);
+                        }
+                        return;
+                    }
+                    
+                    data = insertData;
+                }
+                
+                // 8. VERIFICAR QUE REALMENTE SE GUARDÓ
+                if (!data || !data.id) {
+                    alert('❌ Error: No se recibieron datos del servidor. El campo NO se guardó.');
+                    return;
+                }
+                
+                
+                // 9. VERIFICAR QUE EL REGISTRO EXISTE
+                const { data: verifyData, error: verifyError } = await client
+                    .from('category_fields')
+                    .select('id, field_id, label_es')
+                    .eq('id', data.id)
+                    .single();
+                
+                if (verifyError || !verifyData) {
+                    alert('⚠️ El campo se guardó pero no se pudo verificar. Revisa la base de datos manualmente.');
+                    return;
+                }
+                
+                
+                // 10. AGREGAR O ACTUALIZAR EN EL ARRAY LOCAL
+                if (isUpdate) {
+                    // Actualizar el campo existente en el array
+                    const index = categoryFieldsInForm.findIndex(f => f.id === data.id);
+                    if (index !== -1) {
+                        categoryFieldsInForm[index] = {
+                            id: data.id,
+                            ...fieldData
+                        };
+                    }
+                } else {
+                    // Agregar nuevo campo al array
+                    const newField = {
+                        id: data.id,
+                        ...fieldData
+                    };
+                    categoryFieldsInForm.push(newField);
+                }
+                
+                // 11. LIMPIAR FORMULARIO Y VOLVER A MODO CREACIÓN
+                const fieldIdInput = document.getElementById('newFieldId');
+                fieldIdInput.value = '';
+                fieldIdInput.disabled = false;
+                fieldIdInput.style.backgroundColor = 'white';
+                fieldIdInput.style.cursor = 'text';
+                
+                document.getElementById('newFieldLabelEs').value = '';
+                document.getElementById('newFieldLabelPt').value = '';
+                document.getElementById('newFieldPlaceholderEs').value = '';
+                document.getElementById('newFieldPlaceholderPt').value = '';
+                const placeholderGeneric = document.getElementById('newFieldPlaceholderGeneric');
+                if (placeholderGeneric) placeholderGeneric.value = '';
+                document.getElementById('newFieldType').value = 'text';
+                document.getElementById('newFieldRequired').checked = false;
+                // Asegurar que los campos de placeholder estén en el estado correcto
+                togglePlaceholderFields();
+                if (document.getElementById('newFieldShowInFilters')) {
+                    document.getElementById('newFieldShowInFilters').checked = true;
+                }
+                document.getElementById('newFieldOrden').value = categoryFieldsInForm.length;
+                
+                const optionsList = document.getElementById('newFieldOptionsList');
+                if (optionsList) optionsList.innerHTML = '';
+                const optionsContainer = document.getElementById('newFieldOptionsContainer');
+                if (optionsContainer) optionsContainer.style.display = 'none';
+                
+                // Limpiar modo edición
+                editingFieldId = null;
+                
+                // Cambiar botones: mostrar "Agregar Filtro" y ocultar "Guardar Alteraciones"
+                const btnAdd = document.getElementById('btnAddField');
+                const btnSave = document.getElementById('btnSaveFieldChanges');
+                if (btnAdd) btnAdd.style.display = 'block';
+                if (btnSave) btnSave.style.display = 'none';
+                
+                // 12. ACTUALIZAR VISUALIZACIÓN
+                renderCategoryFieldsInForm();
+                
+                // 13. MOSTRAR MENSAJE DE ÉXITO
+                alert(`✅ Campo "${labelEs}" ${isUpdate ? 'actualizado' : 'guardado'} y verificado correctamente en Supabase.\n\nID: ${data.id}`);
+                
+            } catch (error) {
+                alert(`❌ Error inesperado: ${error.message}\n\nEl campo NO se guardó.`);
+            }
+        }
+
+        // Renderizar lista de filtros agregados
+        function renderCategoryFieldsInForm() {
+            const container = document.getElementById('categoryFieldsFormContainer');
+            if (!container) {
+                console.warn('Contenedor categoryFieldsFormContainer no encontrado');
+                return;
+            }
+            
+            if (!categoryFieldsInForm || categoryFieldsInForm.length === 0) {
+                container.innerHTML = '<p style="color: #64748b; text-align: center; padding: 30px; margin: 0; font-size: 0.95rem;"><i class="fas fa-info-circle" style="margin-right: 8px; color: #94a3b8;"></i>No hay campos agregados. Completa el formulario arriba y haz clic en "Agregar Filtro a la Categoría".</p>';
+                return;
+            }
+            
+            const typeLabels = {
+                'text': 'Texto',
+                'number': 'Número',
+                'select': 'Select',
+                'textarea': 'Área de texto'
+            };
+            
+            let html = '<div style="display: grid; gap: 15px;">';
+            categoryFieldsInForm.forEach((field, index) => {
+                const showInFiltersBadge = field.show_in_filters !== false 
+                    ? '<span style="background: #10b981; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; margin-left: 8px;">En filtros</span>'
+                    : '<span style="background: #6b7280; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; margin-left: 8px;">Solo atributo</span>';
+                
+                html += `
+                    <div style="padding: 15px; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb;">
+                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: #1d3557; margin-bottom: 8px;">
+                                    ${field.label_es || '(Sin nombre)'} / ${field.label_pt || '(Sin nome)'}
+                                    ${showInFiltersBadge}
+                                </div>
+                                <div style="font-size: 0.875rem; color: #6b7280;">
+                                    ID: <code>${field.field_id || '(sin ID)'}</code> | Tipo: ${typeLabels[field.field_type] || field.field_type} | Orden: ${field.orden || 0}
+                                    ${field.is_required ? ' | <span style="color: #ef4444;">Obligatorio</span>' : ''}
+                                    ${field.id ? ' | <span style="color: #10b981;">✓ Guardado</span>' : ''}
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 5px;">
+                                <button type="button" onclick="editCategoryFieldInForm(${index})" style="padding: 6px 12px; font-size: 0.875rem; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button type="button" onclick="removeCategoryFieldFromForm(${index})" style="padding: 6px 12px; font-size: 0.875rem; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        }
+        
+        // Función para editar un filtro existente
+        window.editCategoryFieldInForm = function(index) {
+            const field = categoryFieldsInForm[index];
+            if (!field) return;
+            
+            
+            // Guardar el ID del filtro que se está editando
+            editingFieldId = field.id || null;
+            
+            // Llenar el formulario con los datos del campo
+            const fieldIdInput = document.getElementById('newFieldId');
+            fieldIdInput.value = field.field_id;
+            // El campo está oculto, no necesitamos deshabilitarlo visualmente
+            
+            document.getElementById('newFieldLabelEs').value = field.label_es;
+            document.getElementById('newFieldLabelPt').value = field.label_pt;
+            document.getElementById('newFieldType').value = field.field_type;
+            
+            // Si es numérico, usar el placeholder genérico
+            if (field.field_type === 'number') {
+                // Para campos numéricos, usar placeholder_es o placeholder_pt (ambos deberían ser iguales)
+                const placeholderGeneric = field.placeholder_es || field.placeholder_pt || '';
+                const placeholderGenericInput = document.getElementById('newFieldPlaceholderGeneric');
+                if (placeholderGenericInput) placeholderGenericInput.value = placeholderGeneric;
+            } else {
+                // Para otros tipos, usar los placeholders específicos
+                document.getElementById('newFieldPlaceholderEs').value = field.placeholder_es || '';
+                document.getElementById('newFieldPlaceholderPt').value = field.placeholder_pt || '';
+            }
+            
+            // Asegurar que los campos de placeholder estén en el estado correcto
+            togglePlaceholderFields();
+            document.getElementById('newFieldRequired').checked = field.is_required || false;
+            if (document.getElementById('newFieldShowInFilters')) {
+                document.getElementById('newFieldShowInFilters').checked = field.show_in_filters !== false;
+            }
+            document.getElementById('newFieldOrden').value = field.orden || index;
+            
+            // Cargar opciones si es tipo select
+            const optionsList = document.getElementById('newFieldOptionsList');
+            const optionsContainer = document.getElementById('newFieldOptionsContainer');
+            if (field.field_type === 'select' && field.options && field.options.length > 0) {
+                if (optionsList) optionsList.innerHTML = '';
+                field.options.forEach(opt => {
+                    addNewFieldOption();
+                    const rows = optionsList.querySelectorAll('.field-option-row');
+                    const lastRow = rows[rows.length - 1];
+                    if (lastRow) {
+                        lastRow.querySelector('.new-option-value').value = opt.value || '';
+                        lastRow.querySelector('.new-option-label-es').value = opt.label_es || '';
+                        lastRow.querySelector('.new-option-label-pt').value = opt.label_pt || '';
+                    }
+                });
+                if (optionsContainer) optionsContainer.style.display = 'block';
+            } else {
+                if (optionsList) optionsList.innerHTML = '';
+                if (optionsContainer) optionsContainer.style.display = 'none';
+            }
+            
+            // Cambiar a modo edición: mostrar botón "Guardar Alteraciones" y ocultar "Agregar Filtro"
+            const btnAdd = document.getElementById('btnAddField');
+            const btnSave = document.getElementById('btnSaveFieldChanges');
+            if (btnAdd) btnAdd.style.display = 'none';
+            if (btnSave) btnSave.style.display = 'block';
+            
+            // NO eliminar el campo de la lista (se mantiene hasta guardar)
+            // categoryFieldsInForm.splice(index, 1);
+            // renderCategoryFieldsInForm();
+            
+            // Scroll al formulario
+            fieldIdInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        
+        // Función para cancelar la edición de un filtro
+        window.cancelFieldEdit = function() {
+            editingFieldId = null;
+            
+            // Limpiar el formulario
+            const fieldIdInput = document.getElementById('newFieldId');
+            fieldIdInput.value = ''; // Limpiar el ID
+            document.getElementById('newFieldLabelEs').value = '';
+            document.getElementById('newFieldLabelPt').value = '';
+            document.getElementById('newFieldType').value = 'text';
+            document.getElementById('newFieldPlaceholderEs').value = '';
+            document.getElementById('newFieldPlaceholderPt').value = '';
+            document.getElementById('newFieldRequired').checked = false;
+            if (document.getElementById('newFieldShowInFilters')) {
+                document.getElementById('newFieldShowInFilters').checked = true;
+            }
+            document.getElementById('newFieldOrden').value = categoryFieldsInForm.length;
+            
+            const optionsList = document.getElementById('newFieldOptionsList');
+            const optionsContainer = document.getElementById('newFieldOptionsContainer');
+            if (optionsList) optionsList.innerHTML = '';
+            if (optionsContainer) optionsContainer.style.display = 'none';
+            
+            // Volver a modo creación: mostrar botón "Agregar Filtro" y ocultar "Guardar Alteraciones"
+            const btnAdd = document.getElementById('btnAddField');
+            const btnSave = document.getElementById('btnSaveFieldChanges');
+            if (btnAdd) btnAdd.style.display = 'block';
+            if (btnSave) btnSave.style.display = 'none';
+        }
+        
+        // Función para guardar las alteraciones de un filtro existente
+        window.saveFieldChanges = async function() {
+            // Reutilizar la misma lógica de addFieldToCategoryForm pero forzando modo actualización
+            const originalEditingFieldId = editingFieldId;
+            
+            if (!originalEditingFieldId) {
+                alert('⚠️ Error: No se detectó un filtro en modo edición. Usa "Agregar Filtro" para crear uno nuevo.');
+                return;
+            }
+            
+            // Llamar a addFieldToCategoryForm que detectará que estamos en modo edición
+            await addFieldToCategoryForm();
+        }
+        
+        // Función para eliminar un filtro
+        window.removeCategoryFieldFromForm = async function(index) {
+            const field = categoryFieldsInForm[index];
+            if (!field) return;
+            
+            if (!confirm(`¿Estás seguro de que deseas eliminar el filtro "${field.label_es}"?`)) {
+                return;
+            }
+            
+            // Si el filtro ya está guardado en Supabase, eliminarlo también
+            if (field.id) {
+                const client = await initSupabase();
+                if (client) {
+                    try {
+                        const { error } = await client
+                            .from('category_fields')
+                            .delete()
+                            .eq('id', field.id);
+                        
+                        if (error) {
+                            // Error eliminando filtro
+                            alert(`Error al eliminar el filtro de la base de datos: ${error.message}`);
+                            return;
+                        }
+                    } catch (error) {
+                        alert(`Error inesperado: ${error.message}`);
+                        return;
+                    }
+                }
+            }
+            
+            // Eliminar del array local
+            categoryFieldsInForm.splice(index, 1);
+            renderCategoryFieldsInForm();
+            alert('✅ Filtro eliminado correctamente');
+        }
+
+        // Alias para compatibilidad: editCategoryFieldInFormSimple = editCategoryFieldInForm
+        window.editCategoryFieldInFormSimple = window.editCategoryFieldInForm;
+
+        // Configurar event listener para el select de tipo de campo cuando se muestra el formulario
+        function setupFieldTypeListener() {
+            const newFieldType = document.getElementById('newFieldType');
+            if (newFieldType) {
+                // Asegurar estado inicial correcto
+                togglePlaceholderFields();
+                
+                newFieldType.addEventListener('change', function() {
+                    const optionsContainer = document.getElementById('newFieldOptionsContainer');
+                    if (this.value === 'select') {
+                        if (optionsContainer) optionsContainer.style.display = 'block';
+                        const optionsList = document.getElementById('newFieldOptionsList');
+                        if (optionsList && optionsList.children.length === 0) {
+                            addNewFieldOption();
+                        }
+                    } else {
+                        if (optionsContainer) optionsContainer.style.display = 'none';
+                    }
+                    // Actualizar campos de placeholder según el tipo
+                    togglePlaceholderFields();
+                });
+            }
+        }
+    </script>
+
+    <script>
+        // Traducciones
+        const translations = {
+            pt: {
+                title: 'Criador/Editor de Artigos',
+                subtitle: 'Selecione a opção que deseja realizar',
+                back: 'Voltar',
+                mainProductActionTitle: 'Criar/Editar Produto',
+                mainProductActionDesc: 'Gerir produtos do catálogo',
+                modalTitle: 'O que deseja fazer?',
+                editTitle: 'Editar Produto',
+                editDesc: 'Editar um produto já criado no sistema',
+                duplicateTitle: 'Criar a partir de Outro',
+                duplicateDesc: 'Criar um novo produto baseado em um existente',
+                newTitle: 'Criar Novo',
+                newDesc: 'Criar um produto completamente novo do zero',
+                categoryTitle: 'Criar Nova Categoria',
+                categoryDesc: 'Criar ou editar categorias que aparecem na página principal',
+                createProduct: 'Criador/Editor',
+                stockTitle: 'Carregar Stock',
+                stockDesc: 'Atualizar stock desde ficheiro Excel PHC'
+            },
+            es: {
+                title: 'Creador/Editor de Artículos',
+                subtitle: 'Selecciona la opción que deseas realizar',
+                back: 'Volver',
+                mainProductActionTitle: 'Crear/Editar Producto',
+                mainProductActionDesc: 'Gestionar productos del catálogo',
+                modalTitle: '¿Qué deseas hacer?',
+                editTitle: 'Editar Producto',
+                editDesc: 'Editar un producto ya creado en el sistema',
+                duplicateTitle: 'Crear desde Otro',
+                duplicateDesc: 'Crear un nuevo producto basado en uno existente',
+                newTitle: 'Crear Nuevo',
+                newDesc: 'Crear un producto completamente nuevo desde cero',
+                categoryTitle: 'Crear Nueva Categoría',
+                categoryDesc: 'Crear o editar categorías que aparecen en la página principal',
+                createProduct: 'Creador/Editor',
+                stockTitle: 'Cargar Stock',
+                stockDesc: 'Actualizar stock desde archivo Excel PHC'
+            },
+            en: {
+                title: 'Product Creator/Editor',
+                subtitle: 'Select the option you want to perform',
+                back: 'Back',
+                mainProductActionTitle: 'Create/Edit Product',
+                mainProductActionDesc: 'Manage catalog products',
+                modalTitle: 'What would you like to do?',
+                editTitle: 'Edit Product',
+                editDesc: 'Edit a product already created in the system',
+                duplicateTitle: 'Create from Another',
+                duplicateDesc: 'Create a new product based on an existing one',
+                newTitle: 'Create New',
+                newDesc: 'Create a completely new product from scratch',
+                categoryTitle: 'Create New Category',
+                categoryDesc: 'Create or edit categories that appear on the main page',
+                createProduct: 'Creator/Editor',
+                stockTitle: 'Load Stock',
+                stockDesc: 'Update stock from Excel PHC file'
+            }
+        };
+
+        function updateTranslations(lang) {
+            const t = translations[lang] || translations.pt;
+            
+            document.getElementById('selector-title').textContent = t.title;
+            document.getElementById('selector-subtitle').textContent = t.subtitle;
+            document.getElementById('back-text').textContent = t.back;
+            
+            // Botón principal
+            const mainTitle = document.getElementById('main-product-action-title');
+            const mainDesc = document.getElementById('main-product-action-desc');
+            if (mainTitle) mainTitle.textContent = t.mainProductActionTitle || 'Crear/Editar Producto';
+            if (mainDesc) mainDesc.textContent = t.mainProductActionDesc || 'Gestionar productos del catálogo';
+            
+            // Opciones del modal
+            const modalEditTitle = document.getElementById('modal-option-edit-title');
+            const modalEditDesc = document.getElementById('modal-option-edit-desc');
+            if (modalEditTitle) modalEditTitle.textContent = t.editTitle;
+            if (modalEditDesc) modalEditDesc.textContent = t.editDesc;
+            
+            const modalDuplicateTitle = document.getElementById('modal-option-duplicate-title');
+            const modalDuplicateDesc = document.getElementById('modal-option-duplicate-desc');
+            if (modalDuplicateTitle) modalDuplicateTitle.textContent = t.duplicateTitle;
+            if (modalDuplicateDesc) modalDuplicateDesc.textContent = t.duplicateDesc;
+            
+            const modalNewTitle = document.getElementById('modal-option-new-title');
+            const modalNewDesc = document.getElementById('modal-option-new-desc');
+            if (modalNewTitle) modalNewTitle.textContent = t.newTitle;
+            if (modalNewDesc) modalNewDesc.textContent = t.newDesc;
+            
+            const modalTitle = document.getElementById('product-action-modal-title');
+            if (modalTitle) modalTitle.textContent = t.modalTitle || '¿Qué deseas hacer?';
+            
+            const categoryTitle = document.getElementById('option-category-title');
+            const categoryDesc = document.getElementById('option-category-desc');
+            if (categoryTitle) categoryTitle.textContent = t.categoryTitle;
+            if (categoryDesc) categoryDesc.textContent = t.categoryDesc;
+            
+            // Traducciones del botón de Stock
+            const stockTitle = document.getElementById('option-stock-title');
+            const stockDesc = document.getElementById('option-stock-desc');
+            if (stockTitle) stockTitle.textContent = t.stockTitle;
+            if (stockDesc) stockDesc.textContent = t.stockDesc;
+            
+            const createProductText = document.getElementById('create-product-text');
+            if (createProductText) {
+                createProductText.textContent = t.createProduct;
+            }
+        }
+
+        // Función para cambiar idioma
+        // Función para actualizar botones de navegación
+        function updateNavigationButtons(lang) {
+            const navTranslations = {
+                pt: {
+                    budget: 'Orçamento',
+                    history: 'Histórico',
+                    createProduct: 'Criador/Editor'
+                },
+                es: {
+                    budget: 'Presupuesto',
+                    history: 'Histórico',
+                    createProduct: 'Creador/Editor'
+                },
+                en: {
+                    budget: 'Budget',
+                    history: 'History',
+                    createProduct: 'Creator/Editor'
+                }
+            };
+            
+            const t = navTranslations[lang] || navTranslations.pt;
+            
+            const cartLink = document.getElementById('nav-cart-link');
+            const proposalsLink = document.getElementById('nav-proposals-link');
+            const createProductLink = document.getElementById('create-product-text');
+            
+            if (cartLink) cartLink.textContent = t.budget;
+            if (proposalsLink) {
+                const span = proposalsLink.querySelector('span');
+                if (span) span.textContent = t.history;
+            }
+            if (createProductLink) createProductLink.textContent = t.createProduct;
+        }
+
+        function changeLanguage(lang) {
+            localStorage.setItem('language', lang);
+            document.documentElement.lang = lang;
+            
+            // Actualizar banderas activas
+            document.querySelectorAll('.flag-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-lang="${lang}"]`).classList.add('active');
+            
+            // Actualizar traducciones
+            updateTranslations(lang);
+            
+            // Actualizar botones de navegación
+            updateNavigationButtons(lang);
+            
+            // Actualizar sistema de traducción global
+            if (window.translationSystem) {
+                window.translationSystem.setLanguage(lang);
+            }
+            
+            // Disparar evento
+            window.dispatchEvent(new CustomEvent('languageChanged', { 
+                detail: { language: lang } 
+            }));
+        }
+
+        // Inicializar
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedLanguage = localStorage.getItem('language') || 'pt';
+            changeLanguage(savedLanguage);
+            updateNavigationButtons(savedLanguage);
+            
+            // Inicializar tema
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const theme = savedTheme || (prefersDark ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', theme);
+            
+            // Toggle de tema
+            const themeToggle = document.getElementById('theme-toggle');
+            if (themeToggle) {
+                themeToggle.addEventListener('click', function() {
+                    const currentTheme = document.documentElement.getAttribute('data-theme');
+                    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                    document.documentElement.setAttribute('data-theme', newTheme);
+                    localStorage.setItem('theme', newTheme);
+                });
+            }
+        });
+
+        // Hacer función global
+        window.changeLanguage = changeLanguage;
+        
+        // ==================== MODAL DE ACCIÓN DE PRODUCTO ====================
+        // Definir funciones globalmente para que estén disponibles desde el inicio
+        
+        window.openProductActionModal = function() {
+            const modal = document.getElementById('productActionModal');
+            if (modal) {
+                modal.style.display = 'block';
+                modal.style.visibility = 'visible';
+                modal.style.opacity = '1';
+                modal.style.zIndex = '10000';
+                document.body.style.overflow = 'hidden';
+            } else {
+            }
+        };
+        
+        window.closeProductActionModal = function() {
+            const modal = document.getElementById('productActionModal');
+            if (modal) {
+                modal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
+        };
+        
+        window.selectProductAction = function(action) {
+            console.log('🔵 selectProductAction llamado con acción:', action);
+            window.closeProductActionModal();
+            // Redirigir según la acción seleccionada
+            if (action === 'edit') {
+                console.log('✅ Redirigiendo a admin-productos.html?mode=edit');
+                window.location.href = 'admin-productos.html?mode=edit';
+            } else if (action === 'duplicate') {
+                console.log('✅ Redirigiendo a admin-productos.html?mode=duplicate');
+                window.location.href = 'admin-productos.html?mode=duplicate';
+            } else if (action === 'new') {
+                console.log('✅ Redirigiendo a admin-productos.html?mode=new');
+                window.location.href = 'admin-productos.html?mode=new';
+            } else {
+                console.error('❌ Acción desconocida:', action);
+            }
+        };
+        
+        // Cerrar modal al hacer clic fuera
+        window.addEventListener('click', function(event) {
+            const modal = document.getElementById('productActionModal');
+            if (event.target === modal) {
+                closeProductActionModal();
+            }
+        });
+        
+        // Agregar estilos hover a los botones de acción
+        document.addEventListener('DOMContentLoaded', function() {
+            const actionButtons = document.querySelectorAll('.action-option-btn');
+            actionButtons.forEach(btn => {
+                btn.addEventListener('mouseenter', function() {
+                    this.style.borderColor = '#1d3557';
+                    this.style.boxShadow = '0 2px 8px rgba(29, 53, 87, 0.2)';
+                    this.style.transform = 'translateY(-2px)';
+                });
+                btn.addEventListener('mouseleave', function() {
+                    this.style.borderColor = 'var(--border-color)';
+                    this.style.boxShadow = 'none';
+                    this.style.transform = 'translateY(0)';
+                });
+            });
+        });
+    </script>
+    <script src="menu-hamburguesa.js"></script>
+    <script src="theme-common.js"></script>
+
+    <!-- Modal para Cargar Stock -->
+    <div id="stockUploadModal" class="modal" style="display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); overflow: auto;">
+        <div class="modal-content" style="background: var(--bg-white); margin: 3% auto; padding: 0; border-radius: 16px; max-width: 800px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+            <!-- Header -->
+            <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 25px 30px; border-radius: 16px 16px 0 0; display: flex; justify-content: space-between; align-items: center;">
+                <h2 style="color: white; margin: 0; font-size: 1.4rem; display: flex; align-items: center; gap: 12px;">
+                    <i class="fas fa-boxes-stacked"></i>
+                    <span id="stock-modal-title">Cargar Stock desde Excel</span>
+                </h2>
+                <button onclick="closeStockUploadModal()" style="background: rgba(255,255,255,0.2); border: none; font-size: 1.2rem; color: white; cursor: pointer; padding: 8px 12px; border-radius: 8px; transition: all 0.2s;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <!-- Content -->
+            <div style="padding: 30px;">
+                <!-- Last Update Info -->
+                <div id="stockLastUpdateInfo" style="background: var(--bg-light, #f8fafc); padding: 15px 20px; border-radius: 10px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border-color, #e2e8f0);">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <i class="fas fa-clock" style="color: #f59e0b; font-size: 1.3rem;"></i>
+                        <div>
+                            <div style="color: var(--text-primary); font-weight: 500;" id="stock-last-update-label">Última actualización: <span id="stockLastUpdateDate" style="color: #10b981; font-weight: 600;">Cargando...</span></div>
+                            <div style="font-size: 0.85rem; color: var(--text-secondary);">Total registros: <span id="stockTotalRecords">-</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Upload Zone -->
+                <div id="stockDropZone" onclick="document.getElementById('stockFileInput').click()" style="border: 3px dashed var(--border-color, #cbd5e1); border-radius: 12px; padding: 50px 30px; cursor: pointer; transition: all 0.3s; text-align: center; background: var(--bg-light, #f8fafc);">
+                    <i class="fas fa-file-excel" style="font-size: 3.5rem; color: #10b981; margin-bottom: 15px; display: block;"></i>
+                    <h3 style="font-size: 1.2rem; margin-bottom: 8px; color: var(--text-primary);" id="stock-drop-title">Arrastra tu archivo Excel aquí</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.9rem; margin: 0;" id="stock-drop-desc">o haz clic para seleccionar (.xlsx, .xls)</p>
+                </div>
+                <input type="file" id="stockFileInput" accept=".xlsx,.xls" style="display: none;" />
+
+                <!-- File Info (hidden by default) -->
+                <div id="stockFileInfo" style="display: none; margin-top: 25px;">
+                    <div style="background: var(--bg-light, #f0fdf4); padding: 20px; border-radius: 10px; border: 2px solid #10b981;">
+                        <h4 style="display: flex; align-items: center; gap: 10px; margin: 0 0 15px 0; color: #059669;">
+                            <i class="fas fa-check-circle"></i> <span id="stock-file-loaded">Archivo cargado</span>
+                        </h4>
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
+                            <div style="background: var(--bg-white); padding: 12px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 1.5rem; font-weight: 700; color: #3b82f6;" id="stockStatRows">0</div>
+                                <div style="font-size: 0.8rem; color: var(--text-secondary);" id="stock-stat-records">Registros</div>
+                            </div>
+                            <div style="background: var(--bg-white); padding: 12px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;" id="stockStatWithStock">0</div>
+                                <div style="font-size: 0.8rem; color: var(--text-secondary);" id="stock-stat-with">Con Stock</div>
+                            </div>
+                            <div style="background: var(--bg-white); padding: 12px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 1.5rem; font-weight: 700; color: #94a3b8;" id="stockStatZeroStock">0</div>
+                                <div style="font-size: 0.8rem; color: var(--text-secondary);" id="stock-stat-zero">Sin Stock</div>
+                            </div>
+                            <div style="background: var(--bg-white); padding: 12px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 1.5rem; font-weight: 700; color: #ef4444;" id="stockStatNegative">0</div>
+                                <div style="font-size: 0.8rem; color: var(--text-secondary);" id="stock-stat-negative">Negativos</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Preview Table -->
+                    <div style="margin-top: 20px; max-height: 200px; overflow-y: auto; border-radius: 8px; border: 1px solid var(--border-color, #e2e8f0);">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                            <thead>
+                                <tr style="background: var(--bg-light, #f8fafc);">
+                                    <th style="padding: 10px 15px; text-align: left; font-weight: 600; color: var(--text-primary); position: sticky; top: 0; background: var(--bg-light, #f8fafc);">#</th>
+                                    <th style="padding: 10px 15px; text-align: left; font-weight: 600; color: var(--text-primary); position: sticky; top: 0; background: var(--bg-light, #f8fafc);" id="stock-th-ref">Referencia PHC</th>
+                                    <th style="padding: 10px 15px; text-align: right; font-weight: 600; color: var(--text-primary); position: sticky; top: 0; background: var(--bg-light, #f8fafc);" id="stock-th-stock">Stock</th>
+                                </tr>
+                            </thead>
+                            <tbody id="stockPreviewBody"></tbody>
+                        </table>
+                    </div>
+
+                    <!-- Actions -->
+                    <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px;">
+                        <button onclick="resetStockUpload()" style="padding: 12px 24px; background: var(--bg-light, #f1f5f9); color: var(--text-primary); border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-times"></i> <span id="stock-btn-cancel">Cancelar</span>
+                        </button>
+                        <button id="stockUploadBtn" onclick="uploadStockToSupabase()" style="padding: 12px 24px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s;">
+                            <i class="fas fa-cloud-upload-alt"></i> <span id="stock-btn-upload">Subir a Base de Datos</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Progress (hidden by default) -->
+                <div id="stockProgressSection" style="display: none; margin-top: 25px;">
+                    <h4 style="display: flex; align-items: center; gap: 10px; margin: 0 0 15px 0; color: var(--text-primary);">
+                        <i class="fas fa-spinner fa-spin"></i> <span id="stock-progress-title">Actualizando stock...</span>
+                    </h4>
+                    <div style="background: var(--bg-light, #e2e8f0); border-radius: 10px; height: 16px; overflow: hidden;">
+                        <div id="stockProgressBar" style="height: 100%; background: linear-gradient(90deg, #10b981, #3b82f6); border-radius: 10px; transition: width 0.3s; width: 0%;"></div>
+                    </div>
+                    <div id="stockProgressText" style="text-align: center; color: var(--text-secondary); margin-top: 10px; font-size: 0.9rem;">0 de 0</div>
+                </div>
+
+                <!-- Results (hidden by default) -->
+                <div id="stockResultsSection" style="display: none; margin-top: 25px; text-align: center; padding: 30px; background: var(--bg-light, #f0fdf4); border-radius: 12px;">
+                    <i class="fas fa-check-circle" style="font-size: 3rem; color: #10b981; margin-bottom: 15px;"></i>
+                    <h3 style="margin: 0 0 10px 0; color: var(--text-primary);" id="stock-result-title">¡Actualización completada!</h3>
+                    <p style="color: var(--text-secondary); margin: 0 0 20px 0;" id="stock-result-desc">El stock ha sido actualizado correctamente.</p>
+                    <div style="display: flex; justify-content: center; gap: 30px;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 2rem; font-weight: 700; color: #10b981;" id="stockResultUpdated">0</div>
+                            <div style="font-size: 0.85rem; color: var(--text-secondary);" id="stock-result-updated">Actualizados</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 2rem; font-weight: 700; color: #ef4444;" id="stockResultErrors">0</div>
+                            <div style="font-size: 0.85rem; color: var(--text-secondary);" id="stock-result-errors">Errores</div>
+                        </div>
+                    </div>
+                    <button onclick="resetStockUpload()" style="margin-top: 25px; padding: 12px 30px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                        <i class="fas fa-check"></i> <span id="stock-btn-done">Cerrar</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ============================================
+    // FUNCIONES PARA CARGAR STOCK
+    // ============================================
+    let stockData = [];
+
+    function openStockUploadModal() {
+        document.getElementById('stockUploadModal').style.display = 'block';
+        document.body.style.overflow = 'hidden';
+        loadStockLastUpdateInfo();
+        setupStockDragAndDrop();
+        setupStockFileInput();
+    }
+
+    function closeStockUploadModal() {
+        document.getElementById('stockUploadModal').style.display = 'none';
+        document.body.style.overflow = '';
+        resetStockUpload();
+    }
+
+    function setupStockDragAndDrop() {
+        const dropZone = document.getElementById('stockDropZone');
+        if (!dropZone || dropZone.dataset.initialized) return;
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            }, false);
+        });
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => {
+                dropZone.style.borderColor = '#10b981';
+                dropZone.style.background = 'rgba(16, 185, 129, 0.1)';
+            }, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => {
+                dropZone.style.borderColor = '';
+                dropZone.style.background = '';
+            }, false);
+        });
+        
+        dropZone.addEventListener('drop', (e) => {
+            const files = e.dataTransfer.files;
+            if (files.length > 0) handleStockFile(files[0]);
+        }, false);
+        
+        dropZone.dataset.initialized = 'true';
+    }
+
+    function setupStockFileInput() {
+        const fileInput = document.getElementById('stockFileInput');
+        if (!fileInput || fileInput.dataset.initialized) return;
+        
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) handleStockFile(e.target.files[0]);
+        });
+        
+        fileInput.dataset.initialized = 'true';
+    }
+
+    async function handleStockFile(file) {
+        if (!file.name.match(/\.(xlsx|xls)$/i)) {
+            alert('Por favor, selecciona un archivo Excel (.xlsx o .xls)');
+            return;
+        }
+        
+        try {
+            const data = await file.arrayBuffer();
+            const workbook = XLSX.read(data);
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            
+            stockData = [];
+            for (let i = 1; i < jsonData.length; i++) {
+                const row = jsonData[i];
+                if (row[0]) {
+                    const referencia = String(row[0]).trim();
+                    const stock = parseInt(row[1]) || 0;
+                    stockData.push({ referencia_phc: referencia, stock_disponible: stock });
+                }
+            }
+            
+            const withStock = stockData.filter(d => d.stock_disponible > 0).length;
+            const zeroStock = stockData.filter(d => d.stock_disponible === 0).length;
+            const negative = stockData.filter(d => d.stock_disponible < 0).length;
+            
+            document.getElementById('stockStatRows').textContent = stockData.length.toLocaleString();
+            document.getElementById('stockStatWithStock').textContent = withStock.toLocaleString();
+            document.getElementById('stockStatZeroStock').textContent = zeroStock.toLocaleString();
+            document.getElementById('stockStatNegative').textContent = negative.toLocaleString();
+            
+            // Preview
+            const previewBody = document.getElementById('stockPreviewBody');
+            previewBody.innerHTML = '';
+            stockData.slice(0, 50).forEach((item, index) => {
+                const stockColor = item.stock_disponible > 0 ? '#10b981' : item.stock_disponible < 0 ? '#ef4444' : '#94a3b8';
+                previewBody.innerHTML += `
+                    <tr style="border-bottom: 1px solid var(--border-color, #e2e8f0);">
+                        <td style="padding: 8px 15px; color: var(--text-secondary);">${index + 1}</td>
+                        <td style="padding: 8px 15px; color: var(--text-primary);">${item.referencia_phc}</td>
+                        <td style="padding: 8px 15px; text-align: right; font-weight: 600; color: ${stockColor};">${item.stock_disponible.toLocaleString()}</td>
+                    </tr>
+                `;
+            });
+            
+            document.getElementById('stockDropZone').style.display = 'none';
+            document.getElementById('stockFileInfo').style.display = 'block';
+            
+        } catch (error) {
+            console.error('Error leyendo Excel:', error);
+            alert('Error al leer el archivo: ' + error.message);
+        }
+    }
+
+    async function uploadStockToSupabase() {
+        if (stockData.length === 0) return;
+        
+        document.getElementById('stockFileInfo').style.display = 'none';
+        document.getElementById('stockProgressSection').style.display = 'block';
+        
+        const progressBar = document.getElementById('stockProgressBar');
+        const progressText = document.getElementById('stockProgressText');
+        
+        let processed = 0;
+        let updated = 0;
+        let errors = 0;
+        const batchSize = 100;
+        
+        const client = supabaseClient || await initSupabase();
+        
+        for (let i = 0; i < stockData.length; i += batchSize) {
+            const batch = stockData.slice(i, i + batchSize);
+            
+            try {
+                // Preparar datos para upsert (el trigger actualizará fecha_actualizacion automáticamente)
+                const upsertData = batch.map(item => ({
+                    referencia_phc: String(item.referencia_phc).trim().toUpperCase(), // Normalizar referencia
+                    stock_disponible: parseInt(item.stock_disponible) || 0
+                    // No incluir fecha_actualizacion - el trigger la actualiza automáticamente
+                }));
+                
+                const { data, error } = await client
+                    .from('stock_productos')
+                    .upsert(
+                        upsertData,
+                        { 
+                            onConflict: 'referencia_phc', 
+                            ignoreDuplicates: false 
+                        }
+                    )
+                    .select();
+                
+                if (error) {
+                    console.error('Error en lote:', error);
+                    console.error('Detalles del error:', JSON.stringify(error, null, 2));
+                    errors += batch.length;
+                } else {
+                    updated += batch.length;
+                    console.log(`✅ Lote procesado: ${batch.length} registros (${data?.length || 0} afectados)`);
+                }
+            } catch (err) {
+                console.error('Error procesando lote:', err);
+                console.error('Stack trace:', err.stack);
+                errors += batch.length;
+            }
+            
+            processed += batch.length;
+            const progress = (processed / stockData.length) * 100;
+            progressBar.style.width = progress + '%';
+            progressText.textContent = `${processed.toLocaleString()} de ${stockData.length.toLocaleString()}`;
+            
+            await new Promise(resolve => setTimeout(resolve, 30));
+        }
+        
+        document.getElementById('stockProgressSection').style.display = 'none';
+        document.getElementById('stockResultsSection').style.display = 'block';
+        document.getElementById('stockResultUpdated').textContent = updated.toLocaleString();
+        document.getElementById('stockResultErrors').textContent = errors.toLocaleString();
+        
+        loadStockLastUpdateInfo();
+    }
+
+    function resetStockUpload() {
+        stockData = [];
+        document.getElementById('stockFileInput').value = '';
+        document.getElementById('stockDropZone').style.display = 'block';
+        document.getElementById('stockFileInfo').style.display = 'none';
+        document.getElementById('stockProgressSection').style.display = 'none';
+        document.getElementById('stockResultsSection').style.display = 'none';
+    }
+
+    async function loadStockLastUpdateInfo() {
+        try {
+            const client = supabaseClient || await initSupabase();
+            
+            const { data: lastUpdate } = await client
+                .from('stock_productos')
+                .select('fecha_actualizacion')
+                .order('fecha_actualizacion', { ascending: false })
+                .limit(1)
+                .single();
+            
+            if (lastUpdate) {
+                const date = new Date(lastUpdate.fecha_actualizacion);
+                document.getElementById('stockLastUpdateDate').textContent = date.toLocaleString('es-ES', {
+                    day: '2-digit', month: '2-digit', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit'
+                });
+            } else {
+                document.getElementById('stockLastUpdateDate').textContent = 'Nunca';
+            }
+            
+            const { count } = await client
+                .from('stock_productos')
+                .select('*', { count: 'exact', head: true });
+            
+            document.getElementById('stockTotalRecords').textContent = (count || 0).toLocaleString();
+            
+        } catch (error) {
+            console.error('Error cargando info stock:', error);
+            document.getElementById('stockLastUpdateDate').textContent = 'Error';
+        }
+    }
+
+    // Cerrar modal al hacer clic fuera
+    document.getElementById('stockUploadModal')?.addEventListener('click', (e) => {
+        if (e.target.id === 'stockUploadModal') closeStockUploadModal();
+    });
+    </script>
+</body>
+</html>
+
+
