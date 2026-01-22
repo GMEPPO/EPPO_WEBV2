@@ -670,28 +670,8 @@
             
             console.log('✅ Continuando con la carga de la página...');
 
-            // Inicializar rolesManager en paralelo (NO bloquear la carga de categorías)
-            if (window.rolesManager) {
-                // Ejecutar de forma asíncrona sin bloquear
-                (async () => {
-                    try {
-                        console.log('🔐 Inicializando rolesManager (en paralelo)...');
-                        await window.rolesManager.initialize();
-                        const role = await window.rolesManager.getCurrentUserRole();
-                        console.log('🔐 Rol del usuario cargado:', role);
-                        
-                        // Ocultar opciones del menú según el rol (solo una vez)
-                        if (typeof hideMenuItemsByRole === 'function') {
-                            // Esperar un momento para que el DOM esté completamente listo
-                            setTimeout(hideMenuItemsByRole, 500);
-                        }
-                    } catch (error) {
-                        console.error('⚠️ Error inicializando rolesManager (continuando):', error);
-                    }
-                })();
-            } else {
-                console.warn('⚠️ rolesManager no disponible - continuando sin verificación de roles');
-            }
+            // Sistema de roles desactivado - todos los usuarios tienen acceso completo
+            console.log('ℹ️ Sistema de roles desactivado - acceso completo para todos los usuarios');
 
             // Configurar idioma (no bloquea)
             const savedLanguage = localStorage.getItem('language') || 'pt';

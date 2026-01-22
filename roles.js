@@ -270,16 +270,11 @@ class RolesManager {
 
     /**
      * Requerir acceso a una página (redirige si no tiene acceso)
+     * DESACTIVADO: Sistema de roles eliminado - todos tienen acceso completo
      */
     async requireAccess(pagePath, redirectTo = 'index.html') {
-        const hasAccess = await this.hasPageAccess(pagePath);
-        if (!hasAccess) {
-            const role = await this.getCurrentUserRole();
-            const roleName = this.roles[role]?.name || role;
-            alert(`No tienes permiso para acceder a esta página.\n\nTu rol actual: ${roleName}`);
-            window.location.href = redirectTo;
-            return false;
-        }
+        // Sistema de roles desactivado - siempre permitir acceso
+        console.log('ℹ️ Sistema de roles desactivado - acceso permitido a:', pagePath);
         return true;
     }
 

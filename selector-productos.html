@@ -722,14 +722,14 @@
             const isAuth = await window.authManager?.requireAuth('login.html');
             if (!isAuth) return;
             
-            // Verificar que sea admin (solo admin puede acceder a Creador/Editor)
-            if (window.rolesManager) {
-                const hasAccess = await window.rolesManager.requireAccess(
-                    window.location.pathname,
-                    'index.html'
-                );
-                if (!hasAccess) return;
-            }
+            // Sistema de roles desactivado - todos tienen acceso completo
+            // if (window.rolesManager) {
+            //     const hasAccess = await window.rolesManager.requireAccess(
+            //         window.location.pathname,
+            //         'index.html'
+            //     );
+            //     if (!hasAccess) return;
+            // }
             await initSupabase();
         });
 

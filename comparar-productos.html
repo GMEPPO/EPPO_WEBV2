@@ -1222,14 +1222,14 @@
                 return; // Redirige a login.html
             }
             
-            // Verificar que sea admin (solo admin puede acceder a comparar productos)
-            if (window.rolesManager) {
-                const hasAccess = await window.rolesManager.requireAccess(
-                    window.location.pathname,
-                    'index.html'
-                );
-                if (!hasAccess) return;
-            }
+            // Sistema de roles desactivado - todos tienen acceso completo
+            // if (window.rolesManager) {
+            //     const hasAccess = await window.rolesManager.requireAccess(
+            //         window.location.pathname,
+            //         'index.html'
+            //     );
+            //     if (!hasAccess) return;
+            // }
 
             comparison = new ModernProductComparison();
         });

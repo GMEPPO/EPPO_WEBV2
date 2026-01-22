@@ -332,11 +332,11 @@
                 return;
             }
 
-            // Verificar acceso a esta página (solo admins)
-            const hasAccess = await window.rolesManager.requireAccess('gestion-usuarios.html');
-            if (!hasAccess) {
-                return;
-            }
+            // Sistema de roles desactivado - todos tienen acceso completo
+            // const hasAccess = await window.rolesManager.requireAccess('gestion-usuarios.html');
+            // if (!hasAccess) {
+            //     return;
+            // }
 
             // Inicializar Supabase - usar siempre el cliente compartido
             if (window.universalSupabase) {
