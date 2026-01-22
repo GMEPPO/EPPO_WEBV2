@@ -79,15 +79,9 @@ class AuthManager {
                         if (event === 'SIGNED_IN') {
                             this.currentUser = session?.user || null;
                             // Sistema de roles desactivado - no se carga el rol
-                            // if (window.rolesManager && this.currentUser) {
-                            //     await window.rolesManager.loadCurrentUserRole();
-                            // }
                         } else if (event === 'SIGNED_OUT') {
                             this.currentUser = null;
-                            // Sistema de roles desactivado - no se limpia el rol
-                            // if (window.rolesManager) {
-                            //     window.rolesManager.currentUserRole = null;
-                            // }
+                            // Sistema de roles desactivado
                         }
                     });
                 } catch (error) {
@@ -151,10 +145,7 @@ class AuthManager {
 
             this.currentUser = data.user;
             
-            // Sistema de roles desactivado - no se carga el rol después del login
-            // if (window.rolesManager) {
-            //     await window.rolesManager.loadCurrentUserRole();
-            // }
+            // Sistema de roles desactivado - no se carga el rol
             
             return {
                 success: true,

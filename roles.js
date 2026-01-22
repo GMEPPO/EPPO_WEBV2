@@ -114,61 +114,10 @@ class RolesManager {
      * Cargar rol del usuario actual
      */
     async loadCurrentUserRole() {
-        try {
-            // Sistema de roles desactivado - retornar inmediatamente sin hacer nada
-            // console.log('🔍 [loadCurrentUserRole] Iniciando carga de rol...');
-            
-            // Si estamos usando file://, usar rol por defecto
-            if (window.location.protocol === 'file:') {
-                // console.warn('⚠️ [loadCurrentUserRole] file:// protocol - usando rol por defecto');
-                this.currentUserRole = 'comercial';
-                return 'comercial';
-            }
-
-            const user = await window.authManager?.getCurrentUser();
-            if (!user) {
-                // console.warn('⚠️ [loadCurrentUserRole] No hay usuario autenticado');
-                this.currentUserRole = 'comercial';
-                return 'comercial';
-            }
-
-            // console.log('🔍 [loadCurrentUserRole] Usuario encontrado:', {
-            //     id: user.id,
-            //     email: user.email
-            // });
-
-            const client = await this.getClient();
-            if (!client) {
-                // console.error('❌ [loadCurrentUserRole] No hay cliente de Supabase');
-                this.currentUserRole = 'comercial';
-                return 'comercial';
-            }
-
-            // console.log('🔍 [loadCurrentUserRole] Consultando tabla user_roles para user_id:', user.id);
-            
-            // Sistema de roles desactivado - no consultar la tabla
-            // const { data, error } = await client
-            //     .from('user_roles')
-            //     .select('role')
-            //     .eq('user_id', user.id)
-            //     .single();
-
-            // console.log('🔍 [loadCurrentUserRole] Respuesta de Supabase:', {
-            //     data: data,
-            //     error: error,
-            //     errorCode: error?.code,
-            //     errorMessage: error?.message
-            // });
-            
-            // Retornar directamente sin consultar (sistema de roles desactivado)
-            this.currentUserRole = 'comercial';
-            return 'comercial';
-        } catch (error) {
-            // Sistema de roles desactivado - solo retornar rol por defecto
-            // console.error('❌ [loadCurrentUserRole] Error en catch:', error);
-            this.currentUserRole = 'comercial'; // Rol por defecto
-            return 'comercial';
-        }
+        // Sistema de roles desactivado - retornar inmediatamente sin hacer consultas
+        // Esto evita bloqueos y problemas de rendimiento
+        this.currentUserRole = 'comercial';
+        return 'comercial';
     }
 
     /**
