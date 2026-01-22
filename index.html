@@ -416,6 +416,9 @@
 
             try {
                 console.log('🔄 Cargando categorías desde Supabase...');
+                console.log('📋 Tabla: categorias_geral');
+                console.log('📋 Filtros: tipo=home, is_active=true');
+                
                 // Cargar solo categorías activas, ordenadas por orden
                 const { data, error } = await client
                     .from('categorias_geral')
@@ -424,8 +427,23 @@
                     .eq('is_active', true)
                     .order('orden', { ascending: true });
 
+                console.log('📊 Respuesta de Supabase recibida');
+                console.log('📊 Data:', data);
+                console.log('📊 Error:', error);
+
                 if (error) {
                     console.error('❌ Error de Supabase:', error);
+                    console.error('❌ Código de error:', error.code);
+                    console.error('❌ Mensaje:', error.message);
+                    console.error('❌ Detalles:', error.details);
+                    console.error('❌ Hint:', error.hint);
+                    
+                    // Si es error de permisos RLS, mostrar mensaje específico
+                    if (error.code === '42501' || error.message?.includes('permission denied') || error.message?.includes('row-level security')) {
+                        grid.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-danger);"><p>❌ Error de permisos en la base de datos</p><p style="margin-top: 10px; font-size: 0.9rem;">Necesitas configurar las políticas RLS en Supabase para permitir lectura de categorias_geral a usuarios autenticados.</p><p style="margin-top: 10px; font-size: 0.85rem; color: var(--text-secondary);">Consulta SOLUCION-CATEGORIAS.md para más información.</p></div>';
+                        return;
+                    }
+                    
                     throw error;
                 }
 
@@ -565,15 +583,40 @@
 
         // Inicializar idioma y cargar categorías al cargar la página
         document.addEventListener('DOMContentLoaded', async function() {
-            // Verificar autenticación primero
-            const isAuth = await window.authManager.requireAuth('login.html');
-            if (!isAuth) {
-                return; // Redirige a login.html
+            console.log('🚀 DOMContentLoaded - Iniciando carga de index.html');
+            
+            // Verificar autenticación primero (pero no bloquear si hay problemas)
+            console.log('🔐 Verificando autenticación...');
+            let isAuth = false;
+            try {
+                // Verificar directamente sin redirección para evitar bloqueos
+                if (window.authManager && typeof window.authManager.isAuthenticated === 'function') {
+                    isAuth = await window.authManager.isAuthenticated();
+                    console.log('🔐 Estado de autenticación:', isAuth ? '✅ Autenticado' : '❌ No autenticado');
+                } else {
+                    console.warn('⚠️ authManager no disponible');
+                }
+                
+                // Solo redirigir si NO estamos usando file:// y NO está autenticado
+                if (!isAuth && window.location.protocol !== 'file:') {
+                    console.log('❌ Usuario no autenticado, redirigiendo...');
+                    if (!window.location.pathname.includes('login.html')) {
+                        window.location.href = 'login.html';
+                    }
+                    return;
+                } else if (!isAuth && window.location.protocol === 'file:') {
+                    console.warn('⚠️ Usando file:// protocol - continuando sin verificación de autenticación estricta');
+                    console.warn('💡 Usa un servidor HTTP local (python -m http.server 8000) para mejor funcionamiento');
+                }
+            } catch (error) {
+                console.error('⚠️ Error verificando autenticación (continuando):', error);
+                // Continuar aunque haya error en autenticación
             }
 
-            // Inicializar rolesManager si está disponible
+            // Inicializar rolesManager si está disponible (pero NO bloquear la carga de categorías)
             if (window.rolesManager) {
                 try {
+                    console.log('🔐 Inicializando rolesManager...');
                     await window.rolesManager.initialize();
                     const role = await window.rolesManager.getCurrentUserRole();
                     console.log('🔐 Rol del usuario cargado:', role);
@@ -585,10 +628,11 @@
                         }
                     }, 300);
                 } catch (error) {
-                    console.error('Error inicializando rolesManager:', error);
+                    console.error('⚠️ Error inicializando rolesManager (continuando):', error);
+                    // Continuar aunque haya error en roles - NO bloquear carga de categorías
                 }
             } else {
-                console.warn('⚠️ rolesManager no disponible');
+                console.warn('⚠️ rolesManager no disponible - continuando sin verificación de roles');
             }
 
             const savedLanguage = localStorage.getItem('language') || 'pt';
@@ -597,14 +641,17 @@
             updateNavigationButtons(savedLanguage);
             
             // Inicializar Supabase y cargar categorías del home
+            // IMPORTANTE: Esto se ejecuta SIEMPRE, independientemente de los roles
+            console.log('🔄 Iniciando carga de categorías (sin bloqueo por roles)...');
             try {
                 await initSupabase();
                 await loadHomeCategories();
             } catch (error) {
-                console.error('Error inicializando Supabase o cargando categorías:', error);
+                console.error('❌ Error inicializando Supabase o cargando categorías:', error);
+                console.error('❌ Stack trace:', error.stack);
                 const grid = document.getElementById('categoriesGrid');
                 if (grid) {
-                    grid.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-danger);"><p>Error al cargar las categorías. Por favor, recarga la página.</p></div>';
+                    grid.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-danger);"><p>Error al cargar las categorías. Por favor, recarga la página.</p><p style="margin-top: 10px; font-size: 0.9rem;">Error: ' + (error.message || 'Desconocido') + '</p></div>';
                 }
             }
         });

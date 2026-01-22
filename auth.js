@@ -210,18 +210,24 @@ class AuthManager {
      * Requerir autenticación (redirige a login si no está autenticado)
      */
     async requireAuth(redirectTo = 'login.html') {
-        // Esperar un momento para que la sesión se cargue desde localStorage
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        const isAuth = await this.isAuthenticated();
-        if (!isAuth) {
-            // Solo redirigir si no estamos ya en la página de login
-            if (!window.location.pathname.includes('login.html')) {
-                window.location.href = redirectTo;
+        try {
+            // Esperar un momento para que la sesión se cargue desde localStorage
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            const isAuth = await this.isAuthenticated();
+            if (!isAuth) {
+                // Solo redirigir si no estamos ya en la página de login Y no estamos usando file://
+                if (!window.location.pathname.includes('login.html') && window.location.protocol !== 'file:') {
+                    window.location.href = redirectTo;
+                }
+                return false;
             }
+            return true;
+        } catch (error) {
+            console.error('Error en requireAuth:', error);
+            // Si hay error, retornar false pero no bloquear
             return false;
         }
-        return true;
     }
 
     /**
