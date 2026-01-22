@@ -588,14 +588,20 @@
             // Verificar autenticación primero (pero no bloquear si hay problemas)
             console.log('🔐 Verificando autenticación...');
             let isAuth = false;
+            
+            // Usar Promise.race con timeout para evitar bloqueos
             try {
-                // Verificar directamente sin redirección para evitar bloqueos
-                if (window.authManager && typeof window.authManager.isAuthenticated === 'function') {
-                    isAuth = await window.authManager.isAuthenticated();
-                    console.log('🔐 Estado de autenticación:', isAuth ? '✅ Autenticado' : '❌ No autenticado');
-                } else {
-                    console.warn('⚠️ authManager no disponible');
-                }
+                const authCheck = window.authManager && typeof window.authManager.isAuthenticated === 'function'
+                    ? window.authManager.isAuthenticated()
+                    : Promise.resolve(false);
+                
+                const timeout = new Promise(resolve => setTimeout(() => {
+                    console.warn('⚠️ Timeout en verificación de autenticación (continuando)');
+                    resolve(false);
+                }, 2000)); // Timeout de 2 segundos
+                
+                isAuth = await Promise.race([authCheck, timeout]);
+                console.log('🔐 Estado de autenticación:', isAuth ? '✅ Autenticado' : '⚠️ No autenticado o timeout');
                 
                 // Solo redirigir si NO estamos usando file:// y NO está autenticado
                 if (!isAuth && window.location.protocol !== 'file:') {
@@ -612,36 +618,40 @@
                 console.error('⚠️ Error verificando autenticación (continuando):', error);
                 // Continuar aunque haya error en autenticación
             }
+            
+            console.log('✅ Continuando con la carga de la página...');
 
-            // Inicializar rolesManager si está disponible (pero NO bloquear la carga de categorías)
+            // Inicializar rolesManager en paralelo (NO bloquear la carga de categorías)
             if (window.rolesManager) {
-                try {
-                    console.log('🔐 Inicializando rolesManager...');
-                    await window.rolesManager.initialize();
-                    const role = await window.rolesManager.getCurrentUserRole();
-                    console.log('🔐 Rol del usuario cargado:', role);
-                    
-                    // Ocultar opciones del menú según el rol (con retraso para asegurar que el DOM esté listo)
-                    setTimeout(async () => {
-                        if (typeof hideMenuItemsByRole === 'function') {
-                            await hideMenuItemsByRole();
-                        }
-                    }, 300);
-                } catch (error) {
-                    console.error('⚠️ Error inicializando rolesManager (continuando):', error);
-                    // Continuar aunque haya error en roles - NO bloquear carga de categorías
-                }
+                // Ejecutar de forma asíncrona sin bloquear
+                (async () => {
+                    try {
+                        console.log('🔐 Inicializando rolesManager (en paralelo)...');
+                        await window.rolesManager.initialize();
+                        const role = await window.rolesManager.getCurrentUserRole();
+                        console.log('🔐 Rol del usuario cargado:', role);
+                        
+                        // Ocultar opciones del menú según el rol
+                        setTimeout(async () => {
+                            if (typeof hideMenuItemsByRole === 'function') {
+                                await hideMenuItemsByRole();
+                            }
+                        }, 500);
+                    } catch (error) {
+                        console.error('⚠️ Error inicializando rolesManager (continuando):', error);
+                    }
+                })();
             } else {
                 console.warn('⚠️ rolesManager no disponible - continuando sin verificación de roles');
             }
 
+            // Configurar idioma (no bloquea)
             const savedLanguage = localStorage.getItem('language') || 'pt';
             changeLanguage(savedLanguage);
-            // Asegurar que los botones de navegación se traduzcan
             updateNavigationButtons(savedLanguage);
             
             // Inicializar Supabase y cargar categorías del home
-            // IMPORTANTE: Esto se ejecuta SIEMPRE, independientemente de los roles
+            // IMPORTANTE: Esto se ejecuta INMEDIATAMENTE, sin esperar a rolesManager
             console.log('🔄 Iniciando carga de categorías (sin bloqueo por roles)...');
             try {
                 await initSupabase();
