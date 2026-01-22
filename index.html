@@ -581,6 +581,9 @@
             updateNavigationButtons(lang);
         }
 
+        // Bandera para evitar redirecciones múltiples
+        let isRedirecting = false;
+
         // Inicializar idioma y cargar categorías al cargar la página
         document.addEventListener('DOMContentLoaded', async function() {
             console.log('🚀 DOMContentLoaded - Iniciando carga de index.html');
@@ -602,20 +605,31 @@
                 console.warn('⚠️ Continuando sin autenticación (funcionalidad limitada)');
             }
             
+            // Esperar un momento para que authManager se inicialice completamente
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
             // Usar Promise.race con timeout para evitar bloqueos
             try {
-                const authCheck = window.authManager && typeof window.authManager.isAuthenticated === 'function'
-                    ? window.authManager.isAuthenticated()
-                    : Promise.resolve(false);
+                // Verificar múltiples veces para asegurar resultado correcto
+                let authChecks = 0;
+                const maxChecks = 3;
                 
-                const timeout = new Promise(resolve => setTimeout(() => {
-                    if (window.location.protocol !== 'file:') {
-                        console.warn('⚠️ Timeout en verificación de autenticación (continuando)');
+                while (authChecks < maxChecks && !isAuth) {
+                    if (window.authManager && typeof window.authManager.isAuthenticated === 'function') {
+                        try {
+                            isAuth = await Promise.race([
+                                window.authManager.isAuthenticated(),
+                                new Promise(resolve => setTimeout(() => resolve(false), 3000))
+                            ]);
+                        } catch (e) {
+                            console.warn('⚠️ Error en verificación de autenticación, intento', authChecks + 1);
+                        }
                     }
-                    resolve(false);
-                }, 2000)); // Timeout de 2 segundos
-                
-                isAuth = await Promise.race([authCheck, timeout]);
+                    authChecks++;
+                    if (!isAuth && authChecks < maxChecks) {
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                    }
+                }
                 
                 if (window.location.protocol === 'file:') {
                     console.log('🔐 Estado: No autenticado (esperado con file://)');
@@ -624,12 +638,21 @@
                 }
                 
                 // Solo redirigir si NO estamos usando file:// y NO está autenticado
-                if (!isAuth && window.location.protocol !== 'file:') {
-                    console.log('❌ Usuario no autenticado, redirigiendo...');
-                    if (!window.location.pathname.includes('login.html')) {
-                        window.location.href = 'login.html';
+                // Y solo si no estamos ya redirigiendo
+                if (!isAuth && window.location.protocol !== 'file:' && !isRedirecting) {
+                    // Verificar que no estemos ya en login.html
+                    const currentPath = window.location.pathname || window.location.href;
+                    if (!currentPath.includes('login.html')) {
+                        console.log('❌ Usuario no autenticado, redirigiendo a login...');
+                        isRedirecting = true;
+                        // Agregar un pequeño delay para evitar bucles
+                        setTimeout(() => {
+                            if (!isAuth) {
+                                window.location.href = 'login.html';
+                            }
+                        }, 100);
+                        return;
                     }
-                    return;
                 }
             } catch (error) {
                 if (window.location.protocol !== 'file:') {

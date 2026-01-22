@@ -301,15 +301,41 @@
                 }
             }
             
-            // Verificar si ya está autenticado
+            // Verificar si ya está autenticado (con múltiples intentos y delay)
             try {
-                const isAuth = await window.authManager.isAuthenticated();
+                // Esperar un momento para que la sesión se cargue completamente
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Verificar múltiples veces para evitar falsos negativos
+                let isAuth = false;
+                for (let i = 0; i < 3; i++) {
+                    try {
+                        isAuth = await Promise.race([
+                            window.authManager.isAuthenticated(),
+                            new Promise(resolve => setTimeout(() => resolve(false), 2000))
+                        ]);
+                        if (isAuth) break;
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                    } catch (e) {
+                        console.warn('⚠️ Error verificando autenticación en login, intento', i + 1);
+                    }
+                }
+                
                 if (isAuth) {
-                    window.location.href = 'index.html';
+                    console.log('✅ Usuario ya autenticado, redirigiendo a index...');
+                    // Verificar que no estemos ya en index.html
+                    const currentPath = window.location.pathname || window.location.href;
+                    if (!currentPath.includes('index.html')) {
+                        // Agregar un pequeño delay para evitar bucles
+                        setTimeout(() => {
+                            window.location.href = 'index.html';
+                        }, 100);
+                    }
                     return;
                 }
             } catch (error) {
                 // Si hay error, continuar con el login normal
+                console.log('ℹ️ Continuando con login normal');
             }
 
             // Configurar formulario
