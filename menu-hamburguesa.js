@@ -27,39 +27,52 @@ let isHidingMenuItems = false;
 let lastHideExecution = 0;
 const HIDE_COOLDOWN = 2000; // 2 segundos entre ejecuciones
 
+// Bandera para evitar ejecuciones múltiples
+let isHidingDropdown = false;
+let lastDropdownHide = 0;
+const DROPDOWN_HIDE_COOLDOWN = 3000; // 3 segundos entre ejecuciones
+
 /**
  * Ocultar el menú desplegable completo si el usuario es "comercial"
  */
 async function hideMenuDropdownByRole() {
+    // Evitar ejecuciones múltiples simultáneas
+    const now = Date.now();
+    if (isHidingDropdown || (now - lastDropdownHide) < DROPDOWN_HIDE_COOLDOWN) {
+        return;
+    }
+
+    isHidingDropdown = true;
+    lastDropdownHide = now;
+
     try {
-        console.log('🔍 hideMenuDropdownByRole() ejecutándose...');
-        
         // Esperar a que authManager y rolesManager estén inicializados
         let retries = 0;
-        const maxRetries = 10;
+        const maxRetries = 5; // Reducir retries
         
         while ((!window.authManager || !window.rolesManager) && retries < maxRetries) {
-            await new Promise(resolve => setTimeout(resolve, 200));
+            await new Promise(resolve => setTimeout(resolve, 300));
             retries++;
         }
 
         if (!window.rolesManager) {
-            console.warn('⚠️ rolesManager no disponible después de esperar');
+            isHidingDropdown = false;
             return;
         }
 
-        // Asegurar que el rol esté cargado
-        try {
-            await window.rolesManager.initialize();
-        } catch (error) {
-            console.warn('⚠️ Error inicializando rolesManager:', error);
-            return;
+        // Asegurar que el rol esté cargado (solo una vez)
+        if (!window.rolesManager.isInitialized) {
+            try {
+                await window.rolesManager.initialize();
+            } catch (error) {
+                isHidingDropdown = false;
+                return;
+            }
         }
         
+        // Obtener rol (usa caché, no hace consultas repetitivas)
         const role = await window.rolesManager.getCurrentUserRole();
         const isComercial = role === 'comercial';
-
-        console.log('🔐 Rol del usuario:', role, '| Es comercial:', isComercial);
 
         // Obtener el contenedor del menú desplegable
         const menuDropdown = document.querySelector('.menu-dropdown');
@@ -68,18 +81,16 @@ async function hideMenuDropdownByRole() {
             if (isComercial) {
                 // Ocultar el menú desplegable completo para usuarios comerciales
                 menuDropdown.style.display = 'none';
-                console.log('✅ Menú desplegable oculto para usuario comercial');
             } else {
                 // Mostrar el menú desplegable para admins
                 menuDropdown.style.display = '';
-                console.log('✅ Menú desplegable visible para usuario admin');
             }
-        } else {
-            console.warn('⚠️ No se encontró el elemento .menu-dropdown');
         }
 
     } catch (error) {
         console.error('❌ Error al ocultar menú desplegable:', error);
+    } finally {
+        isHidingDropdown = false;
     }
 }
 
@@ -116,19 +127,20 @@ if (!window.menuDropdownHidingInitialized) {
     window.menuDropdownHidingInitialized = true;
 }
 
-// También ejecutar cuando cambie el estado de autenticación
-// Usar un listener global para evitar duplicados
+// También ejecutar cuando cambie el estado de autenticación (solo una vez)
 if (!window.menuDropdownAuthListenerAdded) {
-    // Esperar a que authManager esté disponible
     const setupAuthListener = () => {
         if (window.authManager && window.authManager.supabase) {
             window.authManager.supabase.auth.onAuthStateChange(() => {
                 // Esperar un momento antes de ocultar para que el rol se cargue
-                setTimeout(hideMenuDropdownByRole, 1000);
+                // Solo ejecutar si no se ejecutó recientemente
+                const now = Date.now();
+                if (now - lastDropdownHide > DROPDOWN_HIDE_COOLDOWN) {
+                    setTimeout(hideMenuDropdownByRole, 1500);
+                }
             });
             window.menuDropdownAuthListenerAdded = true;
         } else {
-            // Intentar de nuevo después de un momento
             setTimeout(setupAuthListener, 500);
         }
     };

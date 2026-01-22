@@ -8,6 +8,10 @@ class RolesManager {
         this.supabase = null;
         this.currentUserRole = null;
         this.isInitialized = false;
+        this.isLoadingRole = false; // Bandera para evitar consultas simultáneas
+        this.roleLoadPromise = null; // Promise para cachear la consulta en curso
+        this.isLoadingRole = false; // Bandera para evitar consultas simultáneas
+        this.roleLoadPromise = null; // Promise para cachear la consulta en curso
         
         // Definir roles y permisos
         this.roles = {
@@ -111,113 +115,127 @@ class RolesManager {
     }
 
     /**
-     * Cargar rol del usuario actual
+     * Cargar rol del usuario actual (con caché para evitar consultas repetitivas)
      */
     async loadCurrentUserRole() {
-        try {
-            console.log('🔍 [loadCurrentUserRole] Iniciando carga de rol...');
-            
-            // Si estamos usando file://, usar rol por defecto
-            if (window.location.protocol === 'file:') {
-                console.warn('⚠️ [loadCurrentUserRole] file:// protocol - usando rol por defecto');
-                this.currentUserRole = 'comercial';
-                return 'comercial';
+        // Si ya hay una consulta en curso, esperar a que termine
+        if (this.roleLoadPromise) {
+            return await this.roleLoadPromise;
+        }
+        
+        // Si ya tenemos el rol cargado, retornarlo inmediatamente
+        if (this.currentUserRole) {
+            return this.currentUserRole;
+        }
+        
+        // Si ya estamos cargando, esperar
+        if (this.isLoadingRole) {
+            // Esperar a que termine la carga actual
+            while (this.isLoadingRole) {
+                await new Promise(resolve => setTimeout(resolve, 100));
             }
-
-            const user = await window.authManager?.getCurrentUser();
-            if (!user) {
-                console.warn('⚠️ [loadCurrentUserRole] No hay usuario autenticado');
-                this.currentUserRole = 'comercial';
-                return 'comercial';
-            }
-
-            console.log('🔍 [loadCurrentUserRole] Usuario encontrado:', {
-                id: user.id,
-                email: user.email
-            });
-
-            const client = await this.getClient();
-            if (!client) {
-                console.error('❌ [loadCurrentUserRole] No hay cliente de Supabase');
-                this.currentUserRole = 'comercial';
-                return 'comercial';
-            }
-
-            console.log('🔍 [loadCurrentUserRole] Consultando tabla user_roles para user_id:', user.id);
-            
-            const { data, error } = await client
-                .from('user_roles')
-                .select('role')
-                .eq('user_id', user.id)
-                .single();
-
-            console.log('🔍 [loadCurrentUserRole] Respuesta de Supabase:', {
-                data: data,
-                error: error,
-                errorCode: error?.code,
-                errorMessage: error?.message
-            });
-
-            // PGRST116 = no rows returned (usuario sin rol asignado)
-            if (error && error.code === 'PGRST116') {
-                console.warn(`⚠️ [loadCurrentUserRole] Usuario ${user.email} (${user.id}) no tiene rol asignado en user_roles. Asignando 'comercial' por defecto.`);
-                this.currentUserRole = 'comercial';
-                return 'comercial';
-            }
-
-            if (error) {
-                // Si es error de CORS, es porque estamos en file://
-                if (error.message && (error.message.includes('CORS') || error.message.includes('Failed to fetch') || error.message.includes('ERR_NAME_NOT_RESOLVED'))) {
-                    console.warn('⚠️ [loadCurrentUserRole] Error de red al cargar rol:', error.message);
-                } else {
-                    console.error('❌ [loadCurrentUserRole] Error al cargar rol del usuario:', error);
-                }
-                this.currentUserRole = 'comercial'; // Rol por defecto en caso de error
-                return 'comercial';
-            }
-
-            // Validar que el rol existe
-            const role = data?.role;
-            console.log('🔍 [loadCurrentUserRole] Rol encontrado en BD:', role);
-            
-            // Aceptar 'admin', 'comercial', 'editor', 'viewer'
-            if (role && (role === 'admin' || role === 'comercial' || role === 'editor' || role === 'viewer')) {
-                // Si es 'editor' o 'viewer', mapear a 'comercial' (roles deprecados)
-                if (role === 'editor' || role === 'viewer') {
-                    console.warn(`⚠️ [loadCurrentUserRole] Rol "${role}" está deprecado. Mapeando a 'comercial'.`);
+            return this.currentUserRole || 'comercial';
+        }
+        
+        // Marcar que estamos cargando
+        this.isLoadingRole = true;
+        
+        // Crear promise para cachear la consulta
+        this.roleLoadPromise = (async () => {
+            try {
+                // Si estamos usando file://, usar rol por defecto
+                if (window.location.protocol === 'file:') {
                     this.currentUserRole = 'comercial';
                     return 'comercial';
                 }
-                this.currentUserRole = role;
-                console.log('✅ [loadCurrentUserRole] Rol asignado:', role);
-                return role;
-            }
 
-            if (role) {
-                console.warn(`⚠️ [loadCurrentUserRole] Rol "${role}" no es válido. Asignando 'comercial' por defecto.`);
+                const user = await window.authManager?.getCurrentUser();
+                if (!user) {
+                    this.currentUserRole = 'comercial';
+                    return 'comercial';
+                }
+
+                const client = await this.getClient();
+                if (!client) {
+                    this.currentUserRole = 'comercial';
+                    return 'comercial';
+                }
+
+                // Consultar solo una vez
+                const { data, error } = await client
+                    .from('user_roles')
+                    .select('role')
+                    .eq('user_id', user.id)
+                    .single();
+
+                // PGRST116 = no rows returned (usuario sin rol asignado)
+                if (error && error.code === 'PGRST116') {
+                    this.currentUserRole = 'comercial';
+                    return 'comercial';
+                }
+
+                if (error) {
+                    // Si es error de CORS, usar rol por defecto
+                    if (error.message && (error.message.includes('CORS') || error.message.includes('Failed to fetch') || error.message.includes('ERR_NAME_NOT_RESOLVED'))) {
+                        // Error de red esperado
+                    }
+                    this.currentUserRole = 'comercial';
+                    return 'comercial';
+                }
+
+                // Validar que el rol existe
+                const role = data?.role;
+                
+                // Aceptar 'admin', 'comercial', 'editor', 'viewer'
+                if (role && (role === 'admin' || role === 'comercial' || role === 'editor' || role === 'viewer')) {
+                    // Si es 'editor' o 'viewer', mapear a 'comercial'
+                    if (role === 'editor' || role === 'viewer') {
+                        this.currentUserRole = 'comercial';
+                        return 'comercial';
+                    }
+                    this.currentUserRole = role;
+                    return role;
+                }
+                
+                this.currentUserRole = 'comercial';
+                return 'comercial';
+            } catch (error) {
+                // Si es error de CORS, usar rol por defecto
+                if (error.message && (error.message.includes('CORS') || error.message.includes('Failed to fetch') || error.message.includes('ERR_NAME_NOT_RESOLVED'))) {
+                    // Error de red esperado
+                }
+                this.currentUserRole = 'comercial';
+                return 'comercial';
+            } finally {
+                // Limpiar flags
+                this.isLoadingRole = false;
+                this.roleLoadPromise = null;
             }
-            
-            this.currentUserRole = 'comercial';
-            return 'comercial';
-        } catch (error) {
-            console.error('❌ [loadCurrentUserRole] Error en catch:', error);
-            // Si es error de CORS, es porque estamos en file://
-            if (error.message && (error.message.includes('CORS') || error.message.includes('Failed to fetch') || error.message.includes('ERR_NAME_NOT_RESOLVED'))) {
-                console.warn('⚠️ [loadCurrentUserRole] Error de red - usando rol por defecto');
-            }
-            this.currentUserRole = 'comercial'; // Rol por defecto
-            return 'comercial';
-        }
+        })();
+        
+        return await this.roleLoadPromise;
     }
 
     /**
-     * Obtener rol del usuario actual
+     * Obtener rol del usuario actual (usa caché, no hace consultas repetitivas)
      */
     async getCurrentUserRole() {
-        if (!this.currentUserRole) {
+        // Si ya tenemos el rol, retornarlo inmediatamente
+        if (this.currentUserRole) {
+            return this.currentUserRole;
+        }
+        
+        // Si hay una consulta en curso, esperar a que termine
+        if (this.roleLoadPromise) {
+            return await this.roleLoadPromise;
+        }
+        
+        // Si no hay rol y no hay consulta en curso, cargar
+        if (!this.isLoadingRole) {
             await this.loadCurrentUserRole();
         }
-        return this.currentUserRole;
+        
+        return this.currentUserRole || 'comercial';
     }
 
     /**
