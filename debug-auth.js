@@ -60,6 +60,7 @@ async function debugAuth() {
         
         let roleFromDB = null;
         let roleError = null;
+        let userName = null;
         
         try {
             const client = await window.universalSupabase?.getClient();
@@ -69,7 +70,7 @@ async function debugAuth() {
             } else {
                 const { data, error } = await client
                     .from('user_roles')
-                    .select('role, created_at, updated_at')
+                    .select('role, Name, created_at, updated_at')
                     .eq('user_id', user.id)
                     .single();
                 
@@ -77,9 +78,9 @@ async function debugAuth() {
                     if (error.code === 'PGRST116') {
                         console.log('  ⚠️ Estado: NO TIENE ROL ASIGNADO en la tabla user_roles');
                         console.log('  💡 Para asignar un rol, ejecuta en Supabase SQL Editor:');
-                        console.log(`     INSERT INTO user_roles (user_id, role) VALUES ('${user.id}', 'admin');`);
+                        console.log(`     INSERT INTO user_roles (user_id, role, "Name") VALUES ('${user.id}', 'admin', 'Tu Nombre');`);
                         console.log('     o');
-                        console.log(`     INSERT INTO user_roles (user_id, role) VALUES ('${user.id}', 'comercial');`);
+                        console.log(`     INSERT INTO user_roles (user_id, role, "Name") VALUES ('${user.id}', 'comercial', 'Tu Nombre');`);
                     } else {
                         roleError = error;
                         console.error('  ❌ Error al consultar rol:', error.message);
@@ -87,7 +88,15 @@ async function debugAuth() {
                     }
                 } else if (data) {
                     roleFromDB = data.role;
+                    userName = data.Name || null;
                     console.log('  ✅ Rol en BD:', roleFromDB);
+                    if (data.Name) {
+                        console.log('  👤 Nombre:', data.Name);
+                    } else {
+                        console.log('  ⚠️ Nombre: NO ASIGNADO');
+                        console.log('  💡 Para asignar un nombre, ejecuta:');
+                        console.log(`     UPDATE user_roles SET "Name" = 'Tu Nombre' WHERE user_id = '${user.id}';`);
+                    }
                     console.log('  📅 Rol asignado:', data.created_at ? new Date(data.created_at).toLocaleString() : 'N/A');
                     console.log('  🔄 Última actualización:', data.updated_at ? new Date(data.updated_at).toLocaleString() : 'N/A');
                 }
@@ -119,6 +128,7 @@ async function debugAuth() {
         console.log('📊 RESUMEN:');
         console.log('───────────────────────────────────────────────────────────────');
         console.log('  Usuario:', user.email);
+        console.log('  Nombre:', userName || '❌ NO ASIGNADO');
         console.log('  Rol en BD:', roleFromDB || '❌ NO ASIGNADO');
         console.log('  Rol en Manager:', window.rolesManager?.currentUserRole || 'N/A');
         console.log('  Estado:', isAuth ? '✅ Autenticado' : '❌ No autenticado');
