@@ -251,24 +251,102 @@ class TranslationSystem {
 // Crear instancia global
 window.translationSystem = new TranslationSystem();
 
-// Función global para cambiar idioma
+// Función global para cambiar idioma (unificada)
+// Esta función debe ser llamada desde todas las páginas
 window.changeLanguage = function(lang) {
-    window.translationSystem.setLanguage(lang);
+    if (!lang) return;
+    
+    // Actualizar el sistema de traducción
+    if (window.translationSystem) {
+        window.translationSystem.setLanguage(lang);
+    }
+    
+    // Actualizar atributo lang del HTML
+    document.documentElement.lang = lang;
+    
+    // Guardar en localStorage
+    localStorage.setItem('language', lang);
     
     // Actualizar banderas activas
     document.querySelectorAll('.flag-btn').forEach(btn => {
         btn.classList.remove('active');
     });
-    document.querySelector(`[data-lang="${lang}"]`).classList.add('active');
+    const langButton = document.querySelector(`[data-lang="${lang}"]`);
+    if (langButton) {
+        langButton.classList.add('active');
+    }
     
-    // Actualizar atributo lang del HTML
-    document.documentElement.lang = lang;
+    // Actualizar elementos de navegación inmediatamente
+    updateNavigationElements(lang);
     
     // Disparar evento personalizado para que otras partes de la aplicación reaccionen
     window.dispatchEvent(new CustomEvent('languageChanged', { 
         detail: { language: lang } 
     }));
+    
+    console.log('🌐 Idioma cambiado a:', lang);
 };
+
+// Función para actualizar elementos de navegación en todas las páginas
+function updateNavigationElements(lang) {
+    const navTranslations = {
+        pt: {
+            budget: 'Orçamento',
+            history: 'Histórico',
+            createProduct: 'Criador/Editor',
+            home: 'Home',
+            products: 'Products',
+            compare: 'Comparar'
+        },
+        es: {
+            budget: 'Presupuesto',
+            history: 'Histórico',
+            createProduct: 'Creador/Editor',
+            home: 'Home',
+            products: 'Products',
+            compare: 'Comparar'
+        },
+        en: {
+            budget: 'Budget',
+            history: 'History',
+            createProduct: 'Creator/Editor',
+            home: 'Home',
+            products: 'Products',
+            compare: 'Compare'
+        }
+    };
+    
+    const t = navTranslations[lang] || navTranslations.pt;
+    
+    // Actualizar enlaces de navegación
+    const cartLink = document.getElementById('nav-cart-link');
+    const proposalsLink = document.getElementById('nav-proposals-link');
+    const createProductLink = document.getElementById('create-product-text');
+    const homeLink = document.querySelector('a[href="index.html"].nav-link');
+    const productsLink = document.querySelector('a[href="productos-dinamico.html"].nav-link');
+    const compareLinks = document.querySelectorAll('a[href="comparar-productos.html"]');
+    
+    if (cartLink) cartLink.textContent = t.budget;
+    if (proposalsLink) {
+        // Ahora es un link directo, no tiene span dentro
+        proposalsLink.textContent = t.history;
+    }
+    if (createProductLink) createProductLink.textContent = t.createProduct;
+    if (homeLink) homeLink.textContent = t.home;
+    if (productsLink) productsLink.textContent = t.products;
+    
+    // Actualizar links de comparar en el dropdown
+    compareLinks.forEach(link => {
+        const span = link.querySelector('span');
+        if (span) span.textContent = t.compare;
+    });
+}
+
+// Escuchar cambios de idioma globalmente
+window.addEventListener('languageChanged', function(event) {
+    const lang = event.detail.language;
+    updateNavigationElements(lang);
+});
 
 // Inicializar idioma al cargar
 document.addEventListener('DOMContentLoaded', function() {
@@ -284,6 +362,9 @@ document.addEventListener('DOMContentLoaded', function() {
     if (activeButton) {
         activeButton.classList.add('active');
     }
+    
+    // Actualizar elementos de navegación
+    updateNavigationElements(savedLanguage);
 });
 
 

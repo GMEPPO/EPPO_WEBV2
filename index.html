@@ -158,6 +158,7 @@
                 <a href="index.html" class="nav-link">Home</a>
                 <a href="productos-dinamico.html" class="nav-link">Products</a>
                 <a href="carrito-compras.html" class="nav-link" id="nav-cart-link">Presupuesto</a>
+                <a href="consultar-propuestas.html" class="nav-link" id="nav-proposals-link">Histórico</a>
                 
                 <!-- Menú hamburguesa -->
                 <div class="menu-dropdown">
@@ -168,10 +169,6 @@
                         <a href="comparar-productos.html" class="dropdown-link">
                             <i class="fas fa-balance-scale"></i>
                             <span>Comparar</span>
-                        </a>
-                        <a href="consultar-propuestas.html" class="dropdown-link" id="nav-proposals-link">
-                            <i class="fas fa-file-invoice"></i>
-                            <span>Histórico</span>
                         </a>
                         <a href="selector-productos.html" class="dropdown-link" id="nav-create-product-link">
                             <i class="fas fa-edit"></i>
@@ -265,21 +262,19 @@
         });
 
         // Función para cambiar idioma
-        function changeLanguage(lang) {
-            document.documentElement.lang = lang;
-            localStorage.setItem('language', lang);
-            
-            // Actualizar banderas activas
-            document.querySelectorAll('.flag-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            document.querySelector(`[data-lang="${lang}"]`).classList.add('active');
-            
-            // Actualizar contenido según el idioma
+        // NO sobrescribir la función global changeLanguage
+        // En su lugar, escuchar el evento languageChanged para actualizar elementos específicos
+        window.addEventListener('languageChanged', function(event) {
+            const lang = event.detail.language;
             updatePageContent(lang);
-            
-            // Actualizar botones de navegación
             updateNavigationButtons(lang);
+        });
+        
+        // Función local solo para inicialización (no sobrescribe la global)
+        function initPageLanguage() {
+            const savedLanguage = localStorage.getItem('language') || 'pt';
+            updatePageContent(savedLanguage);
+            updateNavigationButtons(savedLanguage);
         }
 
         // Función para actualizar el contenido de la página según el idioma
@@ -335,32 +330,43 @@
                 pt: {
                     budget: 'Orçamento',
                     history: 'Histórico',
-                    createProduct: 'Criador/Editor'
+                    createProduct: 'Criador/Editor',
+                    home: 'Home',
+                    products: 'Products'
                 },
                 es: {
                     budget: 'Presupuesto',
                     history: 'Histórico',
-                    createProduct: 'Creador/Editor'
+                    createProduct: 'Creador/Editor',
+                    home: 'Home',
+                    products: 'Products'
                 },
                 en: {
                     budget: 'Budget',
                     history: 'History',
-                    createProduct: 'Creator/Editor'
+                    createProduct: 'Creator/Editor',
+                    home: 'Home',
+                    products: 'Products'
                 }
             };
             
             const t = navTranslations[lang] || navTranslations.pt;
             
+            // Actualizar enlaces de navegación
             const cartLink = document.getElementById('nav-cart-link');
             const proposalsLink = document.getElementById('nav-proposals-link');
             const createProductLink = document.getElementById('create-product-text');
+            const homeLink = document.querySelector('a[href="index.html"].nav-link');
+            const productsLink = document.querySelector('a[href="productos-dinamico.html"].nav-link');
             
             if (cartLink) cartLink.textContent = t.budget;
             if (proposalsLink) {
-                const span = proposalsLink.querySelector('span');
-                if (span) span.textContent = t.history;
+                // Ahora es un link directo, no tiene span dentro
+                proposalsLink.textContent = t.history;
             }
             if (createProductLink) createProductLink.textContent = t.createProduct;
+            if (homeLink) homeLink.textContent = t.home;
+            if (productsLink) productsLink.textContent = t.products;
         }
 
         // Variables globales
@@ -671,13 +677,29 @@
             
             console.log('✅ Continuando con la carga de la página...');
 
-            // Sistema de roles desactivado - todos los usuarios tienen acceso completo
-            console.log('ℹ️ Sistema de roles desactivado - acceso completo para todos los usuarios');
+            // Inicializar rolesManager para ocultar menú desplegable si es comercial
+            if (window.rolesManager) {
+                // Ejecutar de forma asíncrona sin bloquear
+                (async () => {
+                    try {
+                        console.log('🔐 Inicializando rolesManager para verificar rol...');
+                        await window.rolesManager.initialize();
+                        const role = await window.rolesManager.getCurrentUserRole();
+                        console.log('🔐 Rol del usuario cargado:', role);
+                        
+                        // La función hideMenuDropdownByRole se ejecutará automáticamente desde menu-hamburguesa.js
+                    } catch (error) {
+                        console.error('⚠️ Error inicializando rolesManager (continuando):', error);
+                    }
+                })();
+            } else {
+                console.warn('⚠️ rolesManager no disponible - continuando sin verificación de roles');
+            }
 
             // Configurar idioma (no bloquea)
-            const savedLanguage = localStorage.getItem('language') || 'pt';
-            changeLanguage(savedLanguage);
-            updateNavigationButtons(savedLanguage);
+            // La función global changeLanguage se inicializa automáticamente desde translation-system.js
+            // Solo inicializar elementos específicos de esta página
+            initPageLanguage();
             
             // Inicializar Supabase y cargar categorías del home
             // IMPORTANTE: Esto se ejecuta INMEDIATAMENTE, sin esperar a rolesManager

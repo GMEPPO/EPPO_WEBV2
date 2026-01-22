@@ -1282,6 +1282,7 @@
                 <a href="index.html" class="nav-link">Home</a>
                 <a href="productos-dinamico.html" class="nav-link">Products</a>
                 <a href="carrito-compras.html" class="nav-link active" id="nav-cart-link">Presupuesto</a>
+                <a href="consultar-propuestas.html" class="nav-link" id="nav-proposals-link">Histórico</a>
                 
                 <!-- Menú hamburguesa -->
                 <div class="menu-dropdown">
@@ -1292,10 +1293,6 @@
                         <a href="comparar-productos.html" class="dropdown-link">
                             <i class="fas fa-balance-scale"></i>
                             <span>Comparar</span>
-                        </a>
-                        <a href="consultar-propuestas.html" class="dropdown-link" id="nav-proposals-link">
-                            <i class="fas fa-file-invoice"></i>
-                            <span>Histórico</span>
                         </a>
                         <a href="selector-productos.html" class="dropdown-link" id="nav-create-product-link">
                             <i class="fas fa-edit"></i>
@@ -1921,32 +1918,26 @@
             });
         }
 
-        // Función para cambiar idioma
-        function changeLanguage(lang) {
-            document.documentElement.lang = lang;
-            localStorage.setItem('language', lang);
-            
-            // Actualizar banderas activas
-            document.querySelectorAll('.flag-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            document.querySelector(`[data-lang="${lang}"]`).classList.add('active');
-            
-            // Traducir página del carrito
-            translateCartPage(lang);
-            
-            // Actualizar botones de navegación
-            updateNavigationButtons(lang);
-            
-            // Actualizar sistema de traducción global
-            if (window.translationSystem) {
-                window.translationSystem.setLanguage(lang);
+        // NO sobrescribir la función global changeLanguage
+        // En su lugar, escuchar el evento languageChanged para actualizar elementos específicos
+        window.addEventListener('languageChanged', function(event) {
+            const lang = event.detail.language;
+            if (typeof translateCartPage === 'function') {
+                translateCartPage(lang);
             }
-            
-            // Actualizar carrito si está disponible
+            updateNavigationButtons(lang);
             if (window.cartManager) {
                 window.cartManager.updateLanguage(lang);
             }
+        });
+        
+        // Función local solo para inicialización (no sobrescribe la global)
+        function initCartPageLanguage() {
+            const savedLanguage = localStorage.getItem('language') || 'pt';
+            if (typeof translateCartPage === 'function') {
+                translateCartPage(savedLanguage);
+            }
+            updateNavigationButtons(savedLanguage);
         }
         
         // Función para actualizar botones de navegación
@@ -1955,32 +1946,43 @@
                 pt: {
                     budget: 'Orçamento',
                     history: 'Histórico',
-                    createProduct: 'Criador/Editor'
+                    createProduct: 'Criador/Editor',
+                    home: 'Home',
+                    products: 'Products'
                 },
                 es: {
                     budget: 'Presupuesto',
                     history: 'Histórico',
-                    createProduct: 'Creador/Editor'
+                    createProduct: 'Creador/Editor',
+                    home: 'Home',
+                    products: 'Products'
                 },
                 en: {
                     budget: 'Budget',
                     history: 'History',
-                    createProduct: 'Creator/Editor'
+                    createProduct: 'Creator/Editor',
+                    home: 'Home',
+                    products: 'Products'
                 }
             };
             
             const t = navTranslations[lang] || navTranslations.pt;
             
+            // Actualizar enlaces de navegación
             const cartLink = document.getElementById('nav-cart-link');
             const proposalsLink = document.getElementById('nav-proposals-link');
             const createProductLink = document.getElementById('create-product-text');
+            const homeLink = document.querySelector('a[href="index.html"].nav-link');
+            const productsLink = document.querySelector('a[href="productos-dinamico.html"].nav-link');
             
             if (cartLink) cartLink.textContent = t.budget;
             if (proposalsLink) {
-                const span = proposalsLink.querySelector('span');
-                if (span) span.textContent = t.history;
+                // Ahora es un link directo, no tiene span dentro
+                proposalsLink.textContent = t.history;
             }
             if (createProductLink) createProductLink.textContent = t.createProduct;
+            if (homeLink) homeLink.textContent = t.home;
+            if (productsLink) productsLink.textContent = t.products;
         }
 
         // Event listeners
@@ -1999,10 +2001,9 @@
             }
 
             // Inicializar idioma
-            const savedLanguage = localStorage.getItem('language') || 'pt';
-            changeLanguage(savedLanguage);
-            // Asegurar que los botones de navegación se traduzcan
-            updateNavigationButtons(savedLanguage);
+            // La función global changeLanguage se inicializa automáticamente desde translation-system.js
+            // Solo inicializar elementos específicos de esta página
+            initCartPageLanguage();
         });
 
         // Escuchar cambios en las preferencias del sistema

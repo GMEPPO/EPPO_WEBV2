@@ -114,10 +114,100 @@ class RolesManager {
      * Cargar rol del usuario actual
      */
     async loadCurrentUserRole() {
-        // Sistema de roles desactivado - retornar inmediatamente sin hacer consultas
-        // Esto evita bloqueos y problemas de rendimiento
-        this.currentUserRole = 'comercial';
-        return 'comercial';
+        try {
+            console.log('🔍 [loadCurrentUserRole] Iniciando carga de rol...');
+            
+            // Si estamos usando file://, usar rol por defecto
+            if (window.location.protocol === 'file:') {
+                console.warn('⚠️ [loadCurrentUserRole] file:// protocol - usando rol por defecto');
+                this.currentUserRole = 'comercial';
+                return 'comercial';
+            }
+
+            const user = await window.authManager?.getCurrentUser();
+            if (!user) {
+                console.warn('⚠️ [loadCurrentUserRole] No hay usuario autenticado');
+                this.currentUserRole = 'comercial';
+                return 'comercial';
+            }
+
+            console.log('🔍 [loadCurrentUserRole] Usuario encontrado:', {
+                id: user.id,
+                email: user.email
+            });
+
+            const client = await this.getClient();
+            if (!client) {
+                console.error('❌ [loadCurrentUserRole] No hay cliente de Supabase');
+                this.currentUserRole = 'comercial';
+                return 'comercial';
+            }
+
+            console.log('🔍 [loadCurrentUserRole] Consultando tabla user_roles para user_id:', user.id);
+            
+            const { data, error } = await client
+                .from('user_roles')
+                .select('role')
+                .eq('user_id', user.id)
+                .single();
+
+            console.log('🔍 [loadCurrentUserRole] Respuesta de Supabase:', {
+                data: data,
+                error: error,
+                errorCode: error?.code,
+                errorMessage: error?.message
+            });
+
+            // PGRST116 = no rows returned (usuario sin rol asignado)
+            if (error && error.code === 'PGRST116') {
+                console.warn(`⚠️ [loadCurrentUserRole] Usuario ${user.email} (${user.id}) no tiene rol asignado en user_roles. Asignando 'comercial' por defecto.`);
+                this.currentUserRole = 'comercial';
+                return 'comercial';
+            }
+
+            if (error) {
+                // Si es error de CORS, es porque estamos en file://
+                if (error.message && (error.message.includes('CORS') || error.message.includes('Failed to fetch') || error.message.includes('ERR_NAME_NOT_RESOLVED'))) {
+                    console.warn('⚠️ [loadCurrentUserRole] Error de red al cargar rol:', error.message);
+                } else {
+                    console.error('❌ [loadCurrentUserRole] Error al cargar rol del usuario:', error);
+                }
+                this.currentUserRole = 'comercial'; // Rol por defecto en caso de error
+                return 'comercial';
+            }
+
+            // Validar que el rol existe
+            const role = data?.role;
+            console.log('🔍 [loadCurrentUserRole] Rol encontrado en BD:', role);
+            
+            // Aceptar 'admin', 'comercial', 'editor', 'viewer'
+            if (role && (role === 'admin' || role === 'comercial' || role === 'editor' || role === 'viewer')) {
+                // Si es 'editor' o 'viewer', mapear a 'comercial' (roles deprecados)
+                if (role === 'editor' || role === 'viewer') {
+                    console.warn(`⚠️ [loadCurrentUserRole] Rol "${role}" está deprecado. Mapeando a 'comercial'.`);
+                    this.currentUserRole = 'comercial';
+                    return 'comercial';
+                }
+                this.currentUserRole = role;
+                console.log('✅ [loadCurrentUserRole] Rol asignado:', role);
+                return role;
+            }
+
+            if (role) {
+                console.warn(`⚠️ [loadCurrentUserRole] Rol "${role}" no es válido. Asignando 'comercial' por defecto.`);
+            }
+            
+            this.currentUserRole = 'comercial';
+            return 'comercial';
+        } catch (error) {
+            console.error('❌ [loadCurrentUserRole] Error en catch:', error);
+            // Si es error de CORS, es porque estamos en file://
+            if (error.message && (error.message.includes('CORS') || error.message.includes('Failed to fetch') || error.message.includes('ERR_NAME_NOT_RESOLVED'))) {
+                console.warn('⚠️ [loadCurrentUserRole] Error de red - usando rol por defecto');
+            }
+            this.currentUserRole = 'comercial'; // Rol por defecto
+            return 'comercial';
+        }
     }
 
     /**
