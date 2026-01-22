@@ -51,11 +51,32 @@ class RolesManager {
         }
 
         try {
+            // Si estamos usando file://, no podemos obtener roles
+            if (window.location.protocol === 'file:') {
+                console.warn('⚠️ rolesManager: file:// detectado - asignando rol por defecto "comercial"');
+                this.currentUserRole = 'comercial';
+                this.isInitialized = true;
+                return null;
+            }
+
             // Obtener cliente Supabase - usar siempre el cliente compartido
             if (window.universalSupabase) {
                 this.supabase = await window.universalSupabase.getClient();
             } else {
+                // Si no hay Supabase y estamos en file://, usar rol por defecto
+                if (window.location.protocol === 'file:') {
+                    this.currentUserRole = 'comercial';
+                    this.isInitialized = true;
+                    return null;
+                }
                 throw new Error('Supabase no está disponible. Asegúrate de que supabase-config-universal.js se cargue antes.');
+            }
+
+            // Si no hay cliente (file://), usar rol por defecto
+            if (!this.supabase) {
+                this.currentUserRole = 'comercial';
+                this.isInitialized = true;
+                return null;
             }
 
             // Cargar rol del usuario actual
@@ -64,7 +85,18 @@ class RolesManager {
             this.isInitialized = true;
             return this.supabase;
         } catch (error) {
-            throw error;
+            // Si es error de CORS y estamos en file://, usar rol por defecto
+            if (window.location.protocol === 'file:' && error.message && (error.message.includes('CORS') || error.message.includes('Failed to fetch'))) {
+                console.warn('⚠️ rolesManager: Error de CORS esperado con file:// - usando rol por defecto');
+                this.currentUserRole = 'comercial';
+                this.isInitialized = true;
+                return null;
+            }
+            // En otros casos, asignar rol por defecto pero marcar como inicializado
+            console.warn('⚠️ Error inicializando rolesManager, usando rol por defecto:', error);
+            this.currentUserRole = 'comercial';
+            this.isInitialized = true;
+            return null;
         }
     }
 
@@ -83,13 +115,26 @@ class RolesManager {
      */
     async loadCurrentUserRole() {
         try {
+            // Si estamos usando file://, usar rol por defecto
+            if (window.location.protocol === 'file:') {
+                this.currentUserRole = 'comercial';
+                return 'comercial';
+            }
+
             const user = await window.authManager?.getCurrentUser();
             if (!user) {
-                this.currentUserRole = null;
-                return null;
+                // Si no hay usuario pero no estamos en file://, usar rol por defecto
+                this.currentUserRole = 'comercial';
+                return 'comercial';
             }
 
             const client = await this.getClient();
+            if (!client) {
+                // Si no hay cliente, usar rol por defecto
+                this.currentUserRole = 'comercial';
+                return 'comercial';
+            }
+
             const { data, error } = await client
                 .from('user_roles')
                 .select('role')
@@ -106,7 +151,12 @@ class RolesManager {
             }
 
             if (error) {
-                console.error('Error al cargar rol del usuario:', error);
+                // Si es error de CORS, es porque estamos en file://
+                if (error.message && (error.message.includes('CORS') || error.message.includes('Failed to fetch'))) {
+                    console.warn('⚠️ Error de CORS al cargar rol - usando rol por defecto');
+                } else {
+                    console.error('Error al cargar rol del usuario:', error);
+                }
                 this.currentUserRole = 'comercial'; // Rol por defecto en caso de error
                 return 'comercial';
             }
@@ -122,7 +172,12 @@ class RolesManager {
             this.currentUserRole = role || 'comercial';
             return this.currentUserRole;
         } catch (error) {
-            console.error('Error al cargar rol del usuario:', error);
+            // Si es error de CORS, es porque estamos en file://
+            if (error.message && (error.message.includes('CORS') || error.message.includes('Failed to fetch'))) {
+                console.warn('⚠️ Error de CORS al cargar rol - usando rol por defecto');
+            } else {
+                console.error('Error al cargar rol del usuario:', error);
+            }
             this.currentUserRole = 'comercial'; // Rol por defecto
             return 'comercial';
         }

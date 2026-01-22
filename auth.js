@@ -19,6 +19,15 @@ class AuthManager {
         }
 
         try {
+            // Si estamos usando file://, mostrar advertencia pero intentar continuar
+            if (window.location.protocol === 'file:') {
+                console.warn('⚠️ ADVERTENCIA: Estás usando file:// protocol');
+                console.warn('⚠️ Supabase NO puede funcionar correctamente con file://');
+                console.warn('💡 SOLUCIÓN: Usa un servidor HTTP local');
+                console.warn('   Ejecuta: python -m http.server 8000');
+                console.warn('   Luego abre: http://localhost:8000');
+            }
+
             // Obtener cliente Supabase - usar siempre el cliente compartido
             if (window.universalSupabase) {
                 this.supabase = await window.universalSupabase.getClient();
@@ -28,40 +37,73 @@ class AuthManager {
                 if (window.universalSupabase) {
                     this.supabase = await window.universalSupabase.getClient();
                 } else {
+                    // Si estamos en file://, no lanzar error fatal
+                    if (window.location.protocol === 'file:') {
+                        console.warn('⚠️ Supabase no disponible en file:// - la autenticación no funcionará');
+                        this.isInitialized = true; // Marcar como inicializado para evitar reintentos
+                        return null;
+                    }
                     throw new Error('Supabase no está disponible. Asegúrate de que supabase-config-universal.js se cargue antes.');
                 }
             }
 
-            // Verificar sesión actual
-            const { data: { session } } = await this.supabase.auth.getSession();
-            if (session) {
-                this.currentUser = session.user;
-                // Cargar rol del usuario si existe
-                if (window.rolesManager) {
-                    await window.rolesManager.loadCurrentUserRole();
-                }
+            // Si no hay cliente (file://), salir temprano
+            if (!this.supabase) {
+                this.isInitialized = true;
+                return null;
             }
 
-            // Escuchar cambios de autenticación
-            this.supabase.auth.onAuthStateChange(async (event, session) => {
-                if (event === 'SIGNED_IN') {
-                    this.currentUser = session?.user || null;
-                    // Cargar rol del usuario después de iniciar sesión
-                    if (window.rolesManager && this.currentUser) {
-                        await window.rolesManager.loadCurrentUserRole();
+            // Verificar sesión actual (solo si no estamos en file://)
+            if (window.location.protocol !== 'file:') {
+                try {
+                    const { data: { session } } = await this.supabase.auth.getSession();
+                    if (session) {
+                        this.currentUser = session.user;
+                        // Cargar rol del usuario si existe
+                        if (window.rolesManager) {
+                            await window.rolesManager.loadCurrentUserRole();
+                        }
                     }
-                } else if (event === 'SIGNED_OUT') {
-                    this.currentUser = null;
-                    // Limpiar rol al cerrar sesión
-                    if (window.rolesManager) {
-                        window.rolesManager.currentUserRole = null;
+                } catch (error) {
+                    // Si falla por CORS, es porque estamos en file://
+                    if (error.message && (error.message.includes('CORS') || error.message.includes('Failed to fetch'))) {
+                        console.warn('⚠️ Error de CORS - Supabase no puede funcionar con file://');
+                    } else {
+                        console.error('Error obteniendo sesión:', error);
                     }
                 }
-            });
+
+                // Escuchar cambios de autenticación
+                try {
+                    this.supabase.auth.onAuthStateChange(async (event, session) => {
+                        if (event === 'SIGNED_IN') {
+                            this.currentUser = session?.user || null;
+                            // Cargar rol del usuario después de iniciar sesión
+                            if (window.rolesManager && this.currentUser) {
+                                await window.rolesManager.loadCurrentUserRole();
+                            }
+                        } else if (event === 'SIGNED_OUT') {
+                            this.currentUser = null;
+                            // Limpiar rol al cerrar sesión
+                            if (window.rolesManager) {
+                                window.rolesManager.currentUserRole = null;
+                            }
+                        }
+                    });
+                } catch (error) {
+                    console.warn('No se pudo configurar listener de autenticación:', error);
+                }
+            }
 
             this.isInitialized = true;
             return this.supabase;
         } catch (error) {
+            // Si es error de CORS y estamos en file://, no es crítico
+            if (window.location.protocol === 'file:' && error.message && (error.message.includes('CORS') || error.message.includes('Failed to fetch'))) {
+                console.warn('⚠️ Error de CORS esperado con file:// - la autenticación no funcionará');
+                this.isInitialized = true;
+                return null;
+            }
             throw error;
         }
     }
@@ -187,6 +229,28 @@ class AuthManager {
      */
     async isAuthenticated() {
         try {
+            // Si estamos usando file://, Supabase no puede funcionar correctamente
+            if (window.location.protocol === 'file:') {
+                console.warn('⚠️ file:// protocol detectado - Supabase requiere un servidor HTTP local');
+                console.warn('💡 Ejecuta: python -m http.server 8000');
+                console.warn('💡 Luego abre: http://localhost:8000');
+                // Intentar leer sesión desde localStorage directamente
+                try {
+                    const sessionData = localStorage.getItem('sb-' + (window.SUPABASE_CONFIG?.url?.split('//')[1]?.split('.')[0] || 'default') + '-auth-token');
+                    if (sessionData) {
+                        const session = JSON.parse(sessionData);
+                        if (session && session.user) {
+                            this.currentUser = session.user;
+                            console.log('✅ Sesión encontrada en localStorage (file:// mode)');
+                            return true;
+                        }
+                    }
+                } catch (e) {
+                    // Ignorar errores de localStorage
+                }
+                return false;
+            }
+
             if (!this.isInitialized) {
                 await this.initialize();
             }
@@ -202,6 +266,13 @@ class AuthManager {
             
             return false;
         } catch (error) {
+            // Detectar errores de CORS que indican uso de file://
+            if (error.message && (error.message.includes('CORS') || error.message.includes('Failed to fetch') || error.message.includes('NetworkError'))) {
+                console.error('❌ Error de CORS - Supabase no puede funcionar con file:// protocol');
+                console.error('💡 SOLUCIÓN: Usa un servidor HTTP local');
+                console.error('   Windows: python -m http.server 8000');
+                console.error('   Luego abre: http://localhost:8000');
+            }
             return false;
         }
     }

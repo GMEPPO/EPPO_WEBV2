@@ -589,6 +589,19 @@
             console.log('🔐 Verificando autenticación...');
             let isAuth = false;
             
+            // Si estamos usando file://, mostrar mensaje claro
+            if (window.location.protocol === 'file:') {
+                console.error('❌ PROBLEMA: Estás usando file:// protocol');
+                console.error('❌ Supabase NO puede autenticar usuarios con file://');
+                console.error('');
+                console.error('💡 SOLUCIÓN: Usa un servidor HTTP local');
+                console.error('   1. Abre PowerShell o CMD en esta carpeta');
+                console.error('   2. Ejecuta: python -m http.server 8000');
+                console.error('   3. Abre en el navegador: http://localhost:8000');
+                console.error('');
+                console.warn('⚠️ Continuando sin autenticación (funcionalidad limitada)');
+            }
+            
             // Usar Promise.race con timeout para evitar bloqueos
             try {
                 const authCheck = window.authManager && typeof window.authManager.isAuthenticated === 'function'
@@ -596,12 +609,19 @@
                     : Promise.resolve(false);
                 
                 const timeout = new Promise(resolve => setTimeout(() => {
-                    console.warn('⚠️ Timeout en verificación de autenticación (continuando)');
+                    if (window.location.protocol !== 'file:') {
+                        console.warn('⚠️ Timeout en verificación de autenticación (continuando)');
+                    }
                     resolve(false);
                 }, 2000)); // Timeout de 2 segundos
                 
                 isAuth = await Promise.race([authCheck, timeout]);
-                console.log('🔐 Estado de autenticación:', isAuth ? '✅ Autenticado' : '⚠️ No autenticado o timeout');
+                
+                if (window.location.protocol === 'file:') {
+                    console.log('🔐 Estado: No autenticado (esperado con file://)');
+                } else {
+                    console.log('🔐 Estado de autenticación:', isAuth ? '✅ Autenticado' : '⚠️ No autenticado');
+                }
                 
                 // Solo redirigir si NO estamos usando file:// y NO está autenticado
                 if (!isAuth && window.location.protocol !== 'file:') {
@@ -610,12 +630,11 @@
                         window.location.href = 'login.html';
                     }
                     return;
-                } else if (!isAuth && window.location.protocol === 'file:') {
-                    console.warn('⚠️ Usando file:// protocol - continuando sin verificación de autenticación estricta');
-                    console.warn('💡 Usa un servidor HTTP local (python -m http.server 8000) para mejor funcionamiento');
                 }
             } catch (error) {
-                console.error('⚠️ Error verificando autenticación (continuando):', error);
+                if (window.location.protocol !== 'file:') {
+                    console.error('⚠️ Error verificando autenticación (continuando):', error);
+                }
                 // Continuar aunque haya error en autenticación
             }
             
@@ -631,12 +650,12 @@
                         const role = await window.rolesManager.getCurrentUserRole();
                         console.log('🔐 Rol del usuario cargado:', role);
                         
-                        // Ocultar opciones del menú según el rol
-                        setTimeout(async () => {
-                            if (typeof hideMenuItemsByRole === 'function') {
-                                await hideMenuItemsByRole();
-                            }
-                        }, 500);
+                        // Ocultar opciones del menú según el rol (ejecutar inmediatamente y también después)
+                        if (typeof hideMenuItemsByRole === 'function') {
+                            await hideMenuItemsByRole();
+                            // También ejecutar después de un momento por si acaso
+                            setTimeout(hideMenuItemsByRole, 1000);
+                        }
                     } catch (error) {
                         console.error('⚠️ Error inicializando rolesManager (continuando):', error);
                     }
