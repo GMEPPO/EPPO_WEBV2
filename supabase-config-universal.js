@@ -5,6 +5,37 @@
  * que funciona en todos los entornos: local, Netlify, y otras plataformas.
  */
 
+// Variable para almacenar la configuración cargada desde la API
+let configFromAPI = null;
+let configLoadPromise = null;
+
+/**
+ * Cargar configuración desde API de Vercel (solo en producción)
+ */
+async function loadConfigFromAPI() {
+    if (configLoadPromise) {
+        return configLoadPromise;
+    }
+
+    configLoadPromise = (async () => {
+        try {
+            // Intentar cargar desde API de Vercel
+            const response = await fetch('/api/config');
+            if (response.ok) {
+                const data = await response.json();
+                configFromAPI = data;
+                return data;
+            }
+        } catch (error) {
+            // API no disponible, continuar con otros métodos
+            console.log('ℹ️ API de configuración no disponible, usando otros métodos');
+        }
+        return null;
+    })();
+
+    return configLoadPromise;
+}
+
 function readEnvVariable(key) {
     try {
         // 1. Variables inyectadas manualmente en window (para desarrollo local con config.local.js)
@@ -17,12 +48,22 @@ function readEnvVariable(key) {
             return window.__ENV__[key];
         }
 
-        // 3. Entornos con process.env (Netlify, Node, Vercel, etc.)
+        // 3. Configuración cargada desde API (para Vercel)
+        if (configFromAPI) {
+            if (key === 'VITE_SUPABASE_URL' || key === 'SUPABASE_URL') {
+                return configFromAPI.url;
+            }
+            if (key === 'VITE_SUPABASE_ANON_KEY' || key === 'SUPABASE_ANON_KEY') {
+                return configFromAPI.anonKey;
+            }
+        }
+
+        // 4. Entornos con process.env (Netlify, Node, Vercel, etc.)
         if (typeof process !== 'undefined' && process.env && process.env[key]) {
             return process.env[key];
         }
 
-        // 4. Vercel inyecta variables en window durante el build
+        // 5. Vercel inyecta variables en window durante el build
         // Intentar leer también sin prefijo VITE_ para compatibilidad con Vercel
         if (key.startsWith('VITE_')) {
             const keyWithoutPrefix = key.replace('VITE_', '');
@@ -41,22 +82,45 @@ function readEnvVariable(key) {
 
 // Configuración base de Supabase
 if (typeof window.SUPABASE_CONFIG === 'undefined') {
-    const supabaseUrl = readEnvVariable('VITE_SUPABASE_URL');
-    const supabaseAnonKey = readEnvVariable('VITE_SUPABASE_ANON_KEY');
+    // Intentar leer configuración inmediatamente
+    let supabaseUrl = readEnvVariable('VITE_SUPABASE_URL');
+    let supabaseAnonKey = readEnvVariable('VITE_SUPABASE_ANON_KEY');
     
-    // Validar que las variables de entorno estén configuradas
+    // Si no están disponibles, intentar cargar desde API (para Vercel)
     if (!supabaseUrl || !supabaseAnonKey) {
-        console.error('❌ ERROR: Variables de entorno de Supabase no configuradas');
-        console.error('Por favor, configura VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY');
-        console.error('En desarrollo local: crea un archivo .env con estas variables');
-        console.error('En producción: configura las variables en tu plataforma de despliegue (Netlify/Vercel)');
-        throw new Error('Configuración de Supabase faltante. Verifica las variables de entorno.');
+        // Cargar desde API de forma síncrona usando fetch (pero no bloqueante)
+        loadConfigFromAPI().then(data => {
+            if (data) {
+                window.SUPABASE_CONFIG = {
+                    url: data.url,
+                    anonKey: data.anonKey
+                };
+                // Disparar evento para notificar que la configuración está lista
+                if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new CustomEvent('supabase-config-ready'));
+                }
+            } else {
+                // Si la API tampoco funciona, mostrar error
+                console.error('❌ ERROR: Variables de entorno de Supabase no configuradas');
+                console.error('Por favor, configura VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY');
+                console.error('En desarrollo local: crea un archivo config.local.js con estas variables');
+                console.error('En producción (Vercel): configura las variables en Vercel Dashboard → Settings → Environment Variables');
+            }
+        }).catch(error => {
+            console.error('Error al cargar configuración desde API:', error);
+        });
     }
     
-    window.SUPABASE_CONFIG = {
-        url: supabaseUrl,
-        anonKey: supabaseAnonKey
-    };
+    // Si tenemos configuración, usarla inmediatamente
+    if (supabaseUrl && supabaseAnonKey) {
+        window.SUPABASE_CONFIG = {
+            url: supabaseUrl,
+            anonKey: supabaseAnonKey
+        };
+    } else {
+        // Configuración temporal vacía hasta que se cargue desde API
+        window.SUPABASE_CONFIG = null;
+    }
 }
 // Usar window.SUPABASE_CONFIG directamente o crear variable solo si no existe
 var SUPABASE_CONFIG = window.SUPABASE_CONFIG;
@@ -85,8 +149,28 @@ if (typeof UniversalSupabaseClient === 'undefined') {
                 throw new Error('Error de configuración: La biblioteca requerida no está disponible.');
             }
 
+            // Esperar a que la configuración esté disponible
+            let config = window.SUPABASE_CONFIG;
+            if (!config) {
+                // Si no está disponible, esperar a que se cargue desde API
+                await new Promise((resolve) => {
+                    if (window.SUPABASE_CONFIG) {
+                        resolve();
+                    } else {
+                        window.addEventListener('supabase-config-ready', resolve, { once: true });
+                        // Timeout de seguridad
+                        setTimeout(resolve, 5000);
+                    }
+                });
+                config = window.SUPABASE_CONFIG;
+            }
+
+            if (!config || !config.url || !config.anonKey) {
+                throw new Error('Configuración de Supabase no disponible. Verifica las variables de entorno.');
+            }
+
             // Crear cliente con configuración optimizada
-            this.client = supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey, {
+            this.client = supabase.createClient(config.url, config.anonKey, {
                 auth: {
                     persistSession: true, // Persistir sesión para mantener login entre recargas
                     autoRefreshToken: true, // Refrescar token automáticamente
