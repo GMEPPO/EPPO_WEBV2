@@ -36,14 +36,26 @@ class AuthManager {
             const { data: { session } } = await this.supabase.auth.getSession();
             if (session) {
                 this.currentUser = session.user;
+                // Cargar rol del usuario si existe
+                if (window.rolesManager) {
+                    await window.rolesManager.loadCurrentUserRole();
+                }
             }
 
             // Escuchar cambios de autenticación
-            this.supabase.auth.onAuthStateChange((event, session) => {
+            this.supabase.auth.onAuthStateChange(async (event, session) => {
                 if (event === 'SIGNED_IN') {
                     this.currentUser = session?.user || null;
+                    // Cargar rol del usuario después de iniciar sesión
+                    if (window.rolesManager && this.currentUser) {
+                        await window.rolesManager.loadCurrentUserRole();
+                    }
                 } else if (event === 'SIGNED_OUT') {
                     this.currentUser = null;
+                    // Limpiar rol al cerrar sesión
+                    if (window.rolesManager) {
+                        window.rolesManager.currentUserRole = null;
+                    }
                 }
             });
 
@@ -78,6 +90,12 @@ class AuthManager {
             if (error) throw error;
 
             this.currentUser = data.user;
+            
+            // Cargar rol del usuario después del login
+            if (window.rolesManager) {
+                await window.rolesManager.loadCurrentUserRole();
+            }
+            
             return {
                 success: true,
                 user: data.user,

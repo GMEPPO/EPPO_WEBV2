@@ -17,6 +17,7 @@
     <script src="supabase-config-universal.js"></script>
     <script src="translation-system.js"></script>
     <script src="auth.js"></script>
+    <script src="roles.js"></script>
     <script src="stock-warning.js"></script>
     <style>
         /* =====================================================
@@ -1219,6 +1220,15 @@
             const isAuth = await window.authManager.requireAuth('login.html');
             if (!isAuth) {
                 return; // Redirige a login.html
+            }
+            
+            // Verificar que sea admin (solo admin puede acceder a comparar productos)
+            if (window.rolesManager) {
+                const hasAccess = await window.rolesManager.requireAccess(
+                    window.location.pathname,
+                    'index.html'
+                );
+                if (!hasAccess) return;
             }
 
             comparison = new ModernProductComparison();

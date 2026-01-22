@@ -10,9 +10,26 @@ let configFromAPI = null;
 let configLoadPromise = null;
 
 /**
+ * Detectar si estamos en desarrollo local
+ */
+function isLocalDevelopment() {
+    if (typeof window === 'undefined') return false;
+    const location = window.location;
+    return location.protocol === 'file:' || 
+           location.hostname === 'localhost' || 
+           location.hostname === '127.0.0.1' ||
+           location.hostname === '';
+}
+
+/**
  * Cargar configuración desde API de Vercel (solo en producción)
  */
 async function loadConfigFromAPI() {
+    // No intentar cargar desde API si estamos en desarrollo local
+    if (isLocalDevelopment()) {
+        return null;
+    }
+
     if (configLoadPromise) {
         return configLoadPromise;
     }
@@ -82,44 +99,57 @@ function readEnvVariable(key) {
 
 // Configuración base de Supabase
 if (typeof window.SUPABASE_CONFIG === 'undefined') {
-    // Intentar leer configuración inmediatamente
-    let supabaseUrl = readEnvVariable('VITE_SUPABASE_URL');
-    let supabaseAnonKey = readEnvVariable('VITE_SUPABASE_ANON_KEY');
-    
-    // Si no están disponibles, intentar cargar desde API (para Vercel)
-    if (!supabaseUrl || !supabaseAnonKey) {
-        // Cargar desde API de forma síncrona usando fetch (pero no bloqueante)
-        loadConfigFromAPI().then(data => {
-            if (data) {
-                window.SUPABASE_CONFIG = {
-                    url: data.url,
-                    anonKey: data.anonKey
-                };
-                // Disparar evento para notificar que la configuración está lista
-                if (typeof window !== 'undefined') {
-                    window.dispatchEvent(new CustomEvent('supabase-config-ready'));
+    // Esperar un momento para que config.local.js se cargue si existe
+    // (solo en desarrollo local)
+    const initConfig = () => {
+        // Intentar leer configuración
+        let supabaseUrl = readEnvVariable('VITE_SUPABASE_URL');
+        let supabaseAnonKey = readEnvVariable('VITE_SUPABASE_ANON_KEY');
+        
+        // Si tenemos configuración, usarla inmediatamente
+        if (supabaseUrl && supabaseAnonKey) {
+            window.SUPABASE_CONFIG = {
+                url: supabaseUrl,
+                anonKey: supabaseAnonKey
+            };
+            return;
+        }
+        
+        // Si no están disponibles y NO estamos en desarrollo local, intentar cargar desde API (para Vercel)
+        if (!isLocalDevelopment()) {
+            loadConfigFromAPI().then(data => {
+                if (data) {
+                    window.SUPABASE_CONFIG = {
+                        url: data.url,
+                        anonKey: data.anonKey
+                    };
+                    // Disparar evento para notificar que la configuración está lista
+                    if (typeof window !== 'undefined') {
+                        window.dispatchEvent(new CustomEvent('supabase-config-ready'));
+                    }
+                } else {
+                    // Si la API tampoco funciona, mostrar error
+                    console.error('❌ ERROR: Variables de entorno de Supabase no configuradas');
+                    console.error('Por favor, configura VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY');
+                    console.error('En producción (Vercel): configura las variables en Vercel Dashboard → Settings → Environment Variables');
                 }
-            } else {
-                // Si la API tampoco funciona, mostrar error
-                console.error('❌ ERROR: Variables de entorno de Supabase no configuradas');
-                console.error('Por favor, configura VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY');
-                console.error('En desarrollo local: crea un archivo config.local.js con estas variables');
-                console.error('En producción (Vercel): configura las variables en Vercel Dashboard → Settings → Environment Variables');
-            }
-        }).catch(error => {
-            console.error('Error al cargar configuración desde API:', error);
-        });
-    }
+            }).catch(error => {
+                console.error('Error al cargar configuración desde API:', error);
+            });
+        } else {
+            // En desarrollo local, mostrar error si no se encontró config.local.js
+            console.error('❌ ERROR: Variables de entorno de Supabase no configuradas');
+            console.error('Por favor, crea un archivo config.local.js con estas variables:');
+            console.error('  window.VITE_SUPABASE_URL = "https://tu-proyecto.supabase.co";');
+            console.error('  window.VITE_SUPABASE_ANON_KEY = "tu-api-key-aqui";');
+        }
+    };
     
-    // Si tenemos configuración, usarla inmediatamente
-    if (supabaseUrl && supabaseAnonKey) {
-        window.SUPABASE_CONFIG = {
-            url: supabaseUrl,
-            anonKey: supabaseAnonKey
-        };
+    // En desarrollo local, esperar un momento para que config.local.js se cargue
+    if (isLocalDevelopment()) {
+        setTimeout(initConfig, 100);
     } else {
-        // Configuración temporal vacía hasta que se cargue desde API
-        window.SUPABASE_CONFIG = null;
+        initConfig();
     }
 }
 // Usar window.SUPABASE_CONFIG directamente o crear variable solo si no existe

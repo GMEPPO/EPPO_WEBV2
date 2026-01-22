@@ -15,25 +15,6 @@ class RolesManager {
                 name: 'Administrador',
                 permissions: ['*'] // Todos los permisos
             },
-            'editor': {
-                name: 'Editor',
-                permissions: [
-                    'view-products',
-                    'edit-products',
-                    'view-proposals',
-                    'create-proposals',
-                    'edit-proposals',
-                    'view-stock'
-                ]
-            },
-            'viewer': {
-                name: 'Visualizador',
-                permissions: [
-                    'view-products',
-                    'view-proposals',
-                    'view-stock'
-                ]
-            },
             'comercial': {
                 name: 'Comercial',
                 permissions: [
@@ -53,11 +34,11 @@ class RolesManager {
             'producto-detalle.html': ['view-products'],
             'carrito-compras.html': ['create-proposals', 'edit-proposals'],
             'consultar-propuestas.html': ['view-proposals'],
-            'admin-productos.html': ['edit-products'],
-            'selector-productos.html': ['view-stock'],
+            'admin-productos.html': ['*'], // Solo admin
+            'selector-productos.html': ['*'], // Solo admin (Creador/Editor)
             'gestion-usuarios.html': ['*'], // Solo admin
             'gestion-logos-propuesta.html': ['edit-proposals'],
-            'comparar-productos.html': ['view-products']
+            'comparar-productos.html': ['*'] // Solo admin
         };
     }
 
@@ -115,17 +96,35 @@ class RolesManager {
                 .eq('user_id', user.id)
                 .single();
 
-            if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-                // Si no hay rol asignado, asignar 'viewer' por defecto
-                this.currentUserRole = 'viewer';
-                return 'viewer';
+            // PGRST116 = no rows returned (usuario sin rol asignado)
+            if (error && error.code === 'PGRST116') {
+                // Si no hay rol asignado, asignar 'comercial' por defecto
+                // Pero NO crear el registro automáticamente (debe hacerlo un admin)
+                console.warn(`Usuario ${user.email} no tiene rol asignado. Asignando 'comercial' por defecto.`);
+                this.currentUserRole = 'comercial';
+                return 'comercial';
             }
 
-            this.currentUserRole = data?.role || 'viewer';
+            if (error) {
+                console.error('Error al cargar rol del usuario:', error);
+                this.currentUserRole = 'comercial'; // Rol por defecto en caso de error
+                return 'comercial';
+            }
+
+            // Validar que el rol existe (solo 'admin' o 'comercial')
+            const role = data?.role;
+            if (role && !this.roles[role]) {
+                console.warn(`Rol "${role}" no existe. Asignando 'comercial' por defecto.`);
+                this.currentUserRole = 'comercial';
+                return 'comercial';
+            }
+
+            this.currentUserRole = role || 'comercial';
             return this.currentUserRole;
         } catch (error) {
-            this.currentUserRole = 'viewer'; // Rol por defecto
-            return 'viewer';
+            console.error('Error al cargar rol del usuario:', error);
+            this.currentUserRole = 'comercial'; // Rol por defecto
+            return 'comercial';
         }
     }
 
@@ -191,11 +190,66 @@ class RolesManager {
     async requireAccess(pagePath, redirectTo = 'index.html') {
         const hasAccess = await this.hasPageAccess(pagePath);
         if (!hasAccess) {
-            alert('No tienes permiso para acceder a esta página.');
+            const role = await this.getCurrentUserRole();
+            const roleName = this.roles[role]?.name || role;
+            alert(`No tienes permiso para acceder a esta página.\n\nTu rol actual: ${roleName}`);
             window.location.href = redirectTo;
             return false;
         }
         return true;
+    }
+
+    /**
+     * Verificar si el usuario tiene un rol específico
+     */
+    async hasRole(role) {
+        const currentRole = await this.getCurrentUserRole();
+        return currentRole === role;
+    }
+
+    /**
+     * Verificar si el usuario es administrador
+     */
+    async isAdmin() {
+        return await this.hasRole('admin');
+    }
+
+    /**
+     * Obtener todos los usuarios con sus roles
+     */
+    async getAllUsersWithRoles() {
+        try {
+            const client = await this.getClient();
+            
+            // Obtener todos los usuarios de auth.users (requiere función RPC o vista)
+            // Como no podemos acceder directamente a auth.users desde el cliente,
+            // necesitamos crear una función RPC en Supabase o usar una vista
+            
+            // Por ahora, obtenemos solo los usuarios que tienen roles asignados
+            const { data: userRoles, error } = await client
+                .from('user_roles')
+                .select(`
+                    id,
+                    user_id,
+                    role,
+                    created_at,
+                    updated_at
+                `)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            return {
+                success: true,
+                users: userRoles || []
+            };
+        } catch (error) {
+            return {
+                success: false,
+                error: error.message,
+                users: []
+            };
+        }
     }
 
     /**
@@ -205,23 +259,36 @@ class RolesManager {
         try {
             // Verificar que el rol existe
             if (!this.roles[role]) {
-                throw new Error(`Rol "${role}" no existe`);
+                throw new Error(`Rol "${role}" no existe. Roles válidos: ${Object.keys(this.roles).join(', ')}`);
+            }
+
+            // Verificar permisos: solo admin puede asignar roles
+            const currentRole = await this.getCurrentUserRole();
+            if (currentRole !== 'admin') {
+                throw new Error('Solo los administradores pueden asignar roles');
             }
 
             const client = await this.getClient();
             
             // Verificar si el usuario ya tiene un rol asignado
-            const { data: existing } = await client
+            const { data: existing, error: checkError } = await client
                 .from('user_roles')
                 .select('id')
                 .eq('user_id', userId)
-                .single();
+                .maybeSingle(); // maybeSingle() no lanza error si no hay resultados
+
+            if (checkError && checkError.code !== 'PGRST116') {
+                throw checkError;
+            }
 
             if (existing) {
                 // Actualizar rol existente
                 const { error } = await client
                     .from('user_roles')
-                    .update({ role: role, updated_at: new Date().toISOString() })
+                    .update({ 
+                        role: role, 
+                        updated_at: new Date().toISOString() 
+                    })
                     .eq('user_id', userId);
 
                 if (error) throw error;
@@ -231,9 +298,8 @@ class RolesManager {
                     .from('user_roles')
                     .insert({
                         user_id: userId,
-                        role: role,
-                        created_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString()
+                        role: role
+                        // created_at y updated_at se asignan automáticamente por la base de datos
                     });
 
                 if (error) throw error;
@@ -246,7 +312,8 @@ class RolesManager {
             }
 
             return {
-                success: true
+                success: true,
+                message: `Rol "${this.roles[role].name}" asignado correctamente`
             };
         } catch (error) {
             return {
@@ -272,9 +339,14 @@ class RolesManager {
                 throw error;
             }
 
-            return data?.role || 'viewer';
+            const role = data?.role;
+            // Validar que el rol existe
+            if (role && !this.roles[role]) {
+                return 'comercial';
+            }
+            return role || 'comercial';
         } catch (error) {
-            return 'viewer';
+            return 'comercial';
         }
     }
 
