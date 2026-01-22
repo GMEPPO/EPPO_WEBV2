@@ -8516,7 +8516,7 @@ async function sendProposalToSupabase() {
 
         if (isEditing) {
             // Cuando se edita, obtener el nombre del responsable desde user_roles
-            let responsableName = commercialName; // Fallback al valor existente
+            let responsableName = null;
             try {
                 const user = await window.authManager?.getCurrentUser();
                 if (user && window.cartManager.supabase) {
@@ -8528,13 +8528,13 @@ async function sendProposalToSupabase() {
                     
                     if (!roleError && userRoleData && userRoleData.Name) {
                         responsableName = userRoleData.Name;
-                        console.log('✅ Nombre del responsable actualizado desde user_roles:', responsableName);
+                        console.log('✅ Nombre del responsable obtenido desde user_roles:', responsableName);
                     } else {
-                        console.warn('⚠️ No se encontró nombre en user_roles, manteniendo valor existente:', commercialName);
+                        console.warn('⚠️ No se encontró nombre en user_roles para el responsable');
                     }
                 }
             } catch (error) {
-                console.warn('⚠️ Error al obtener nombre del responsable, manteniendo valor existente:', error);
+                console.warn('⚠️ Error al obtener nombre del responsable:', error);
             }
             
             // Cuando se edita, solo actualizar los artículos
@@ -8544,21 +8544,23 @@ async function sendProposalToSupabase() {
             presupuesto = {
                 id: window.cartManager.editingProposalId,
                 nombre_cliente: clientName,
-                nombre_comercial: responsableName, // Usar el nombre del usuario autenticado
+                nombre_comercial: commercialName, // Mantener el valor existente para nombre_comercial
                 fecha_inicial: proposalDate,
                 numero_cliente: clientNumber || '0'
             };
             
-            // Actualizar también el nombre_comercial en la base de datos
-            const { error: updateNameError } = await window.cartManager.supabase
-                .from('presupuestos')
-                .update({ nombre_comercial: responsableName })
-                .eq('id', window.cartManager.editingProposalId);
-            
-            if (updateNameError) {
-                console.warn('⚠️ Error al actualizar nombre_comercial:', updateNameError);
-            } else {
-                console.log('✅ Nombre del responsable actualizado en la propuesta');
+            // Actualizar el campo responsavel con el nombre del usuario autenticado
+            if (responsableName) {
+                const { error: updateResponsavelError } = await window.cartManager.supabase
+                    .from('presupuestos')
+                    .update({ responsavel: responsableName })
+                    .eq('id', window.cartManager.editingProposalId);
+                
+                if (updateResponsavelError) {
+                    console.warn('⚠️ Error al actualizar responsavel:', updateResponsavelError);
+                } else {
+                    console.log('✅ Campo responsavel actualizado en la propuesta:', responsableName);
+                }
             }
 
 
@@ -8655,8 +8657,8 @@ async function sendProposalToSupabase() {
             
             console.log('📋 Estado inicial de la propuesta:', estadoInicial);
             
-            // Obtener el nombre del usuario autenticado desde user_roles
-            let responsableName = commercialName; // Fallback al valor del input
+            // Obtener el nombre del usuario autenticado desde user_roles para el campo responsavel
+            let responsableName = null;
             try {
                 const user = await window.authManager?.getCurrentUser();
                 if (user && window.cartManager.supabase) {
@@ -8670,28 +8672,29 @@ async function sendProposalToSupabase() {
                         responsableName = userRoleData.Name;
                         console.log('✅ Nombre del responsable obtenido desde user_roles:', responsableName);
                     } else {
-                        console.warn('⚠️ No se encontró nombre en user_roles, usando valor del input:', commercialName);
+                        console.warn('⚠️ No se encontró nombre en user_roles para el responsable');
                     }
                 }
             } catch (error) {
-                console.warn('⚠️ Error al obtener nombre del responsable, usando valor del input:', error);
+                console.warn('⚠️ Error al obtener nombre del responsable:', error);
             }
             
-            // Generar código identificador de la propuesta
-            const codigoPropuesta = await generateProposalCode(proposalDate, responsableName, clientName);
+            // Generar código identificador de la propuesta (usar commercialName para el código)
+            const codigoPropuesta = await generateProposalCode(proposalDate, commercialName, clientName);
             
             // Determinar país completo según selección
             const paisCompleto = proposalCountry === 'es' ? 'España' : 'Portugal';
             
             const presupuestoData = {
                 nombre_cliente: clientName,
-                nombre_comercial: responsableName, // Usar el nombre del usuario autenticado
+                nombre_comercial: commercialName, // Mantener el valor del input para nombre_comercial
                 fecha_inicial: proposalDate,
                 estado_propuesta: estadoInicial,
                 codigo_propuesta: codigoPropuesta,
                 pais: paisCompleto,
                 numero_cliente: clientNumber || '0',
-                modo_200_plus: window.cartManager?.modo200 || false
+                modo_200_plus: window.cartManager?.modo200 || false,
+                responsavel: responsableName // Guardar el nombre del usuario autenticado en responsavel
             };
 
 
