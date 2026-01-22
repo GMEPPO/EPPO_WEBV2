@@ -212,14 +212,14 @@ if (typeof UniversalSupabaseClient === 'undefined') {
             }
 
             // Crear cliente con configuración optimizada
-            // Usar una clave de almacenamiento única para evitar conflictos
-            const storageKey = `sb-${config.url.split('//')[1]?.split('.')[0] || 'default'}-auth-token`;
+            // NO especificar storageKey para usar la clave por defecto de Supabase
+            // Esto asegura que las sesiones guardadas anteriormente se encuentren
             this.client = supabase.createClient(config.url, config.anonKey, {
                 auth: {
                     persistSession: true, // Persistir sesión para mantener login entre recargas
                     autoRefreshToken: true, // Refrescar token automáticamente
                     detectSessionInUrl: true, // Detectar sesión en URL (para callbacks)
-                    storageKey: storageKey, // Clave única para evitar conflictos
+                    // NO especificar storageKey - usar el por defecto de Supabase
                     storage: window.localStorage // Usar localStorage explícitamente
                 },
                 global: {
@@ -283,9 +283,23 @@ if (typeof UniversalSupabaseClient === 'undefined') {
      * Obtener cliente (inicializar si es necesario)
      */
     async getClient() {
+        // Si ya tenemos un cliente inicializado, retornarlo
+        if (this.isInitialized && this.client) {
+            return this.client;
+        }
+        
+        // Si no está inicializado, inicializar
         if (!this.isInitialized) {
+            console.log('🔍 [getClient] Cliente no inicializado, inicializando...');
             await this.initialize();
         }
+        
+        // Si después de inicializar aún no hay cliente, hay un problema
+        if (!this.client) {
+            console.error('❌ [getClient] Cliente no disponible después de inicializar');
+            throw new Error('Cliente de Supabase no disponible');
+        }
+        
         return this.client;
     }
 

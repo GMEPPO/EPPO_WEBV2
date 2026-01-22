@@ -680,11 +680,10 @@
                         const role = await window.rolesManager.getCurrentUserRole();
                         console.log('🔐 Rol del usuario cargado:', role);
                         
-                        // Ocultar opciones del menú según el rol (ejecutar inmediatamente y también después)
+                        // Ocultar opciones del menú según el rol (solo una vez)
                         if (typeof hideMenuItemsByRole === 'function') {
-                            await hideMenuItemsByRole();
-                            // También ejecutar después de un momento por si acaso
-                            setTimeout(hideMenuItemsByRole, 1000);
+                            // Esperar un momento para que el DOM esté completamente listo
+                            setTimeout(hideMenuItemsByRole, 500);
                         }
                     } catch (error) {
                         console.error('⚠️ Error inicializando rolesManager (continuando):', error);

@@ -22,37 +22,53 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+// Bandera para evitar ejecuciones múltiples simultáneas
+let isHidingMenuItems = false;
+let lastHideExecution = 0;
+const HIDE_COOLDOWN = 2000; // 2 segundos entre ejecuciones
+
 /**
  * Ocultar opciones del menú según el rol del usuario
  * Solo admin puede ver "Comparar" y "Creador/Editor"
  */
 async function hideMenuItemsByRole() {
+    // Evitar ejecuciones múltiples simultáneas
+    const now = Date.now();
+    if (isHidingMenuItems || (now - lastHideExecution) < HIDE_COOLDOWN) {
+        if (isHidingMenuItems) {
+            console.log('⏸️ hideMenuItemsByRole() ya está ejecutándose, omitiendo...');
+        }
+        return;
+    }
+
+    isHidingMenuItems = true;
+    lastHideExecution = now;
+
     try {
         console.log('🔍 hideMenuItemsByRole() ejecutándose...');
         
         // Esperar a que authManager y rolesManager estén inicializados
         let retries = 0;
-        const maxRetries = 15; // Aumentar retries
+        const maxRetries = 10; // Reducir retries
         
         while ((!window.authManager || !window.rolesManager) && retries < maxRetries) {
-            await new Promise(resolve => setTimeout(resolve, 300));
+            await new Promise(resolve => setTimeout(resolve, 200));
             retries++;
         }
 
         if (!window.rolesManager) {
             console.warn('⚠️ rolesManager no disponible después de esperar');
-            // Intentar de nuevo más tarde
-            setTimeout(hideMenuItemsByRole, 1000);
-            return;
+            isHidingMenuItems = false;
+            return; // NO reintentar automáticamente
         }
 
         // Asegurar que el rol esté cargado
         try {
             await window.rolesManager.initialize();
         } catch (error) {
-            console.warn('⚠️ Error inicializando rolesManager, intentando de nuevo:', error);
-            setTimeout(hideMenuItemsByRole, 1000);
-            return;
+            console.warn('⚠️ Error inicializando rolesManager:', error);
+            isHidingMenuItems = false;
+            return; // NO reintentar automáticamente
         }
         
         const role = await window.rolesManager.getCurrentUserRole();
@@ -126,8 +142,8 @@ async function hideMenuItemsByRole() {
 
     } catch (error) {
         console.error('❌ Error al ocultar elementos del menú:', error);
-        // Intentar de nuevo después de un momento
-        setTimeout(hideMenuItemsByRole, 2000);
+    } finally {
+        isHidingMenuItems = false;
     }
 }
 
@@ -138,40 +154,39 @@ function initMenuRoleHiding() {
         if (window.rolesManager) {
             hideMenuItemsByRole();
         } else {
-            // Intentar de nuevo después de un momento
-            setTimeout(executeHiding, 500);
+            // Intentar solo una vez más después de un momento
+            setTimeout(() => {
+                if (window.rolesManager) {
+                    hideMenuItemsByRole();
+                }
+            }, 2000);
         }
     };
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
             // Esperar un poco más para que todos los scripts se carguen
-            setTimeout(executeHiding, 1000);
+            setTimeout(executeHiding, 1500);
         });
     } else {
         // DOM ya está listo, esperar a que los scripts se carguen
-        setTimeout(executeHiding, 1000);
+        setTimeout(executeHiding, 1500);
     }
 }
 
-// Inicializar
-initMenuRoleHiding();
-
-// También ejecutar cuando cambie el estado de autenticación
-if (window.authManager && window.authManager.supabase) {
-    window.authManager.supabase.auth.onAuthStateChange(() => {
-        setTimeout(hideMenuItemsByRole, 500);
-    });
+// Inicializar solo una vez
+if (!window.menuRoleHidingInitialized) {
+    initMenuRoleHiding();
+    window.menuRoleHidingInitialized = true;
 }
 
-// Ejecutar también cuando rolesManager se inicialice
-const originalInit = window.rolesManager?.initialize;
-if (window.rolesManager && typeof originalInit === 'function') {
-    window.rolesManager.initialize = async function(...args) {
-        const result = await originalInit.apply(this, args);
-        setTimeout(hideMenuItemsByRole, 300);
-        return result;
-    };
+// También ejecutar cuando cambie el estado de autenticación (solo una vez)
+if (window.authManager && window.authManager.supabase && !window.authStateListenerAdded) {
+    window.authManager.supabase.auth.onAuthStateChange(() => {
+        // Esperar un momento antes de ocultar para que el rol se cargue
+        setTimeout(hideMenuItemsByRole, 1000);
+    });
+    window.authStateListenerAdded = true;
 }
 
 

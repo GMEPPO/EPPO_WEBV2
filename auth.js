@@ -113,8 +113,26 @@ class AuthManager {
      */
     async getClient() {
         if (!this.isInitialized) {
+            console.log('🔍 [getClient] Inicializando porque no está inicializado...');
             await this.initialize();
         }
+        
+        if (!this.supabase) {
+            console.error('❌ [getClient] Supabase no está disponible después de inicializar');
+            // Intentar obtener directamente desde universalSupabase
+            if (window.universalSupabase) {
+                console.log('🔍 [getClient] Intentando obtener desde universalSupabase directamente...');
+                try {
+                    this.supabase = await window.universalSupabase.getClient();
+                    if (this.supabase) {
+                        console.log('✅ [getClient] Cliente obtenido desde universalSupabase');
+                    }
+                } catch (error) {
+                    console.error('❌ [getClient] Error obteniendo cliente:', error);
+                }
+            }
+        }
+        
         return this.supabase;
     }
 
@@ -229,43 +247,58 @@ class AuthManager {
      */
     async isAuthenticated() {
         try {
+            console.log('🔍 [isAuthenticated] Iniciando verificación...');
+            console.log('🔍 [isAuthenticated] isInitialized:', this.isInitialized);
+            console.log('🔍 [isAuthenticated] supabase disponible:', !!this.supabase);
+            console.log('🔍 [isAuthenticated] universalSupabase disponible:', !!window.universalSupabase);
+            
             // Si estamos usando file://, Supabase no puede funcionar correctamente
             if (window.location.protocol === 'file:') {
                 console.warn('⚠️ file:// protocol detectado - Supabase requiere un servidor HTTP local');
                 console.warn('💡 Ejecuta: python -m http.server 8000');
                 console.warn('💡 Luego abre: http://localhost:8000');
-                // Intentar leer sesión desde localStorage directamente
-                try {
-                    const sessionData = localStorage.getItem('sb-' + (window.SUPABASE_CONFIG?.url?.split('//')[1]?.split('.')[0] || 'default') + '-auth-token');
-                    if (sessionData) {
-                        const session = JSON.parse(sessionData);
-                        if (session && session.user) {
-                            this.currentUser = session.user;
-                            console.log('✅ Sesión encontrada en localStorage (file:// mode)');
-                            return true;
-                        }
-                    }
-                } catch (e) {
-                    // Ignorar errores de localStorage
-                }
                 return false;
             }
 
+            // Asegurar que esté inicializado
             if (!this.isInitialized) {
+                console.log('🔍 [isAuthenticated] Inicializando authManager...');
                 await this.initialize();
             }
 
+            // Obtener cliente
             const client = await this.getClient();
-            // Usar getSession() que lee de localStorage y es más confiable
-            const { data: { session } } = await client.auth.getSession();
+            if (!client) {
+                console.error('❌ [isAuthenticated] No se pudo obtener cliente de Supabase');
+                return false;
+            }
+
+            console.log('🔍 [isAuthenticated] Cliente obtenido, verificando sesión...');
             
-            if (session && session.user) {
-                this.currentUser = session.user;
+            // Usar getSession() que lee de localStorage y es más confiable
+            const { data, error } = await client.auth.getSession();
+            
+            if (error) {
+                console.error('❌ [isAuthenticated] Error al obtener sesión:', error);
+                return false;
+            }
+
+            console.log('🔍 [isAuthenticated] Respuesta de getSession:', {
+                hasSession: !!data?.session,
+                hasUser: !!data?.session?.user,
+                userEmail: data?.session?.user?.email
+            });
+            
+            if (data?.session && data.session.user) {
+                this.currentUser = data.session.user;
+                console.log('✅ [isAuthenticated] Usuario autenticado:', data.session.user.email);
                 return true;
             }
             
+            console.log('⚠️ [isAuthenticated] No hay sesión activa');
             return false;
         } catch (error) {
+            console.error('❌ [isAuthenticated] Error en verificación:', error);
             // Detectar errores de CORS que indican uso de file://
             if (error.message && (error.message.includes('CORS') || error.message.includes('Failed to fetch') || error.message.includes('NetworkError'))) {
                 console.error('❌ Error de CORS - Supabase no puede funcionar con file:// protocol');
