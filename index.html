@@ -672,26 +672,40 @@
                 // Ejecutar de forma asíncrona sin bloquear la carga de la página
                 (async () => {
                     try {
+                        console.log('🔄 [index.html] Inicializando rolesManager para ocultar menú...');
+                        
                         // Esperar un momento para que la autenticación se estabilice
                         await new Promise(resolve => setTimeout(resolve, 500));
                         
                         // Inicializar rolesManager (ya optimizado para evitar consultas repetitivas)
                         if (!window.rolesManager.isInitialized) {
+                            console.log('🔄 [index.html] Inicializando rolesManager...');
                             await window.rolesManager.initialize();
                         }
                         
                         // Obtener rol (usa caché, no hace consultas repetitivas)
                         const role = await window.rolesManager.getCurrentUserRole();
-                        console.log('🔐 Rol del usuario cargado:', role);
+                        console.log('🔐 [index.html] Rol del usuario cargado:', role);
+                        
+                        // Esperar un momento para asegurar que el DOM esté listo
+                        await new Promise(resolve => setTimeout(resolve, 300));
                         
                         // Ejecutar ocultación del menú después de cargar el rol
-                        if (typeof hideMenuDropdownByRole === 'function') {
-                            await hideMenuDropdownByRole();
+                        if (typeof window.hideMenuDropdownByRole === 'function') {
+                            console.log('🔄 [index.html] Ejecutando hideMenuDropdownByRole...');
+                            await window.hideMenuDropdownByRole();
+                        } else {
+                            console.warn('⚠️ [index.html] hideMenuDropdownByRole no está disponible');
                         }
                     } catch (error) {
-                        console.error('⚠️ Error inicializando rolesManager (continuando):', error);
+                        console.error('⚠️ [index.html] Error inicializando rolesManager (continuando):', error);
                     }
                 })();
+            } else {
+                console.log('⏭️ [index.html] Saltando inicialización de rolesManager:', {
+                    isAuth: isAuth,
+                    hasRolesManager: !!window.rolesManager
+                });
             }
 
             // Configurar idioma (no bloquea)
