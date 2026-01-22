@@ -78,10 +78,25 @@ class AuthManager {
                     this.supabase.auth.onAuthStateChange(async (event, session) => {
                         if (event === 'SIGNED_IN') {
                             this.currentUser = session?.user || null;
-                            // Sistema de roles desactivado - no se carga el rol
+                            // Cargar rol después de autenticación (de forma asíncrona, sin bloquear)
+                            if (window.rolesManager && this.currentUser) {
+                                setTimeout(async () => {
+                                    try {
+                                        if (!window.rolesManager.isInitialized) {
+                                            await window.rolesManager.initialize();
+                                        }
+                                        await window.rolesManager.getCurrentUserRole();
+                                    } catch (error) {
+                                        // Silenciar errores de carga de rol
+                                    }
+                                }, 500);
+                            }
                         } else if (event === 'SIGNED_OUT') {
                             this.currentUser = null;
-                            // Sistema de roles desactivado
+                            // Limpiar rol al cerrar sesión
+                            if (window.rolesManager) {
+                                window.rolesManager.currentUserRole = null;
+                            }
                         }
                     });
                 } catch (error) {
@@ -234,68 +249,67 @@ class AuthManager {
     }
 
     /**
-     * Verificar si el usuario está autenticado
+     * Verificar si el usuario está autenticado (optimizado para evitar timeouts)
      */
     async isAuthenticated() {
         try {
-            console.log('🔍 [isAuthenticated] Iniciando verificación...');
-            console.log('🔍 [isAuthenticated] isInitialized:', this.isInitialized);
-            console.log('🔍 [isAuthenticated] supabase disponible:', !!this.supabase);
-            console.log('🔍 [isAuthenticated] universalSupabase disponible:', !!window.universalSupabase);
-            
             // Si estamos usando file://, Supabase no puede funcionar correctamente
             if (window.location.protocol === 'file:') {
-                console.warn('⚠️ file:// protocol detectado - Supabase requiere un servidor HTTP local');
-                console.warn('💡 Ejecuta: python -m http.server 8000');
-                console.warn('💡 Luego abre: http://localhost:8000');
                 return false;
             }
 
-            // Asegurar que esté inicializado
+            // Si ya tenemos el usuario en memoria, retornar inmediatamente
+            if (this.currentUser) {
+                return true;
+            }
+
+            // Asegurar que esté inicializado (sin bloquear)
             if (!this.isInitialized) {
-                console.log('🔍 [isAuthenticated] Inicializando authManager...');
-                await this.initialize();
+                // Inicializar con timeout para evitar bloqueos
+                await Promise.race([
+                    this.initialize(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
+                ]).catch(() => {
+                    // Si hay timeout, continuar con verificación básica
+                });
             }
 
-            // Obtener cliente
-            const client = await this.getClient();
+            // Obtener cliente (rápido, sin esperar mucho)
+            const client = this.supabase || await this.getClient();
             if (!client) {
-                console.error('❌ [isAuthenticated] No se pudo obtener cliente de Supabase');
                 return false;
             }
-
-            console.log('🔍 [isAuthenticated] Cliente obtenido, verificando sesión...');
             
             // Usar getSession() que lee de localStorage y es más confiable
-            const { data, error } = await client.auth.getSession();
+            // Con timeout para evitar bloqueos
+            const sessionPromise = client.auth.getSession();
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Session timeout')), 2000)
+            );
+            
+            const { data, error } = await Promise.race([sessionPromise, timeoutPromise]).catch(() => {
+                return { data: null, error: { message: 'Timeout' } };
+            });
             
             if (error) {
-                console.error('❌ [isAuthenticated] Error al obtener sesión:', error);
                 return false;
             }
-
-            console.log('🔍 [isAuthenticated] Respuesta de getSession:', {
-                hasSession: !!data?.session,
-                hasUser: !!data?.session?.user,
-                userEmail: data?.session?.user?.email
-            });
             
             if (data?.session && data.session.user) {
                 this.currentUser = data.session.user;
-                console.log('✅ [isAuthenticated] Usuario autenticado:', data.session.user.email);
                 return true;
             }
             
-            console.log('⚠️ [isAuthenticated] No hay sesión activa');
             return false;
         } catch (error) {
-            console.error('❌ [isAuthenticated] Error en verificación:', error);
-            // Detectar errores de CORS que indican uso de file://
-            if (error.message && (error.message.includes('CORS') || error.message.includes('Failed to fetch') || error.message.includes('NetworkError'))) {
-                console.error('❌ Error de CORS - Supabase no puede funcionar con file:// protocol');
-                console.error('💡 SOLUCIÓN: Usa un servidor HTTP local');
-                console.error('   Windows: python -m http.server 8000');
-                console.error('   Luego abre: http://localhost:8000');
+            // Silenciar errores de timeout o CORS
+            if (error.message && (
+                error.message.includes('Timeout') || 
+                error.message.includes('CORS') || 
+                error.message.includes('Failed to fetch') || 
+                error.message.includes('NetworkError')
+            )) {
+                return false;
             }
             return false;
         }

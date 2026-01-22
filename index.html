@@ -621,22 +621,11 @@
             // Esperar un momento para que authManager se inicialice completamente
             await new Promise(resolve => setTimeout(resolve, 1000));
             
-            // Usar Promise.race con timeout para evitar bloqueos
+            // Verificar autenticación de forma optimizada
             try {
-                // Verificar autenticación una sola vez con timeout más largo
                 if (window.authManager && typeof window.authManager.isAuthenticated === 'function') {
-                    try {
-                        isAuth = await Promise.race([
-                            window.authManager.isAuthenticated(),
-                            new Promise(resolve => setTimeout(() => {
-                                console.warn('⚠️ Timeout en verificación de autenticación');
-                                resolve(false);
-                            }, 5000)) // Timeout de 5 segundos
-                        ]);
-                    } catch (e) {
-                        console.warn('⚠️ Error en verificación de autenticación:', e);
-                        isAuth = false;
-                    }
+                    // La función isAuthenticated ya tiene su propio timeout interno
+                    isAuth = await window.authManager.isAuthenticated();
                 } else {
                     console.warn('⚠️ authManager no disponible');
                     isAuth = false;
@@ -678,12 +667,20 @@
             console.log('✅ Continuando con la carga de la página...');
 
             // Inicializar rolesManager para ocultar menú desplegable si es comercial
-            if (window.rolesManager) {
-                // Ejecutar de forma asíncrona sin bloquear
+            // Solo si el usuario está autenticado
+            if (isAuth && window.rolesManager) {
+                // Ejecutar de forma asíncrona sin bloquear la carga de la página
                 (async () => {
                     try {
-                        console.log('🔐 Inicializando rolesManager para verificar rol...');
-                        await window.rolesManager.initialize();
+                        // Esperar un momento para que la autenticación se estabilice
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        
+                        // Inicializar rolesManager (ya optimizado para evitar consultas repetitivas)
+                        if (!window.rolesManager.isInitialized) {
+                            await window.rolesManager.initialize();
+                        }
+                        
+                        // Obtener rol (usa caché, no hace consultas repetitivas)
                         const role = await window.rolesManager.getCurrentUserRole();
                         console.log('🔐 Rol del usuario cargado:', role);
                         
@@ -692,8 +689,6 @@
                         console.error('⚠️ Error inicializando rolesManager (continuando):', error);
                     }
                 })();
-            } else {
-                console.warn('⚠️ rolesManager no disponible - continuando sin verificación de roles');
             }
 
             // Configurar idioma (no bloquea)
