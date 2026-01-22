@@ -373,19 +373,24 @@
                     return supabaseClient;
                 }
 
+                // Asegurar que universalSupabase esté disponible
+                if (!window.universalSupabase) {
+                    console.warn('universalSupabase no disponible, esperando...');
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+
                 if (window.universalSupabase) {
                     supabaseClient = await window.universalSupabase.getClient();
-                } else {
-                    // Esperar un momento para que universalSupabase se inicialice
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                    if (window.universalSupabase) {
-                        supabaseClient = await window.universalSupabase.getClient();
+                    if (supabaseClient) {
+                        console.log('✅ Supabase inicializado correctamente');
+                        return supabaseClient;
                     }
                 }
                 
-                return supabaseClient;
+                console.error('❌ No se pudo inicializar Supabase');
+                return null;
             } catch (error) {
-                // Error al inicializar
+                console.error('❌ Error al inicializar Supabase:', error);
                 return null;
             }
         }
@@ -393,18 +398,24 @@
         // Cargar categorías del home desde Supabase
         async function loadHomeCategories() {
             const grid = document.getElementById('categoriesGrid');
-            if (!grid) return;
+            if (!grid) {
+                console.error('❌ No se encontró el elemento categoriesGrid');
+                return;
+            }
 
             // Mostrar indicador de carga
             grid.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-secondary);"><i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 10px;"></i><p>Cargando categorías...</p></div>';
 
+            console.log('🔄 Inicializando Supabase...');
             const client = await initSupabase();
             if (!client) {
-                grid.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-danger);"><p>Error al cargar las categorías</p></div>';
+                console.error('❌ No se pudo obtener el cliente de Supabase');
+                grid.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-danger);"><p>Error al conectar con la base de datos. Por favor, recarga la página.</p></div>';
                 return;
             }
 
             try {
+                console.log('🔄 Cargando categorías desde Supabase...');
                 // Cargar solo categorías activas, ordenadas por orden
                 const { data, error } = await client
                     .from('categorias_geral')
@@ -413,25 +424,34 @@
                     .eq('is_active', true)
                     .order('orden', { ascending: true });
 
-                if (error) throw error;
+                if (error) {
+                    console.error('❌ Error de Supabase:', error);
+                    throw error;
+                }
 
                 homeCategories = data || [];
+                console.log(`✅ Categorías cargadas: ${homeCategories.length}`);
 
                 // Categorías cargadas
-                homeCategories.forEach(cat => {
-                    console.log(`  - ${cat.nombre_es}: foto = "${cat.foto}"`);
-                });
+                if (homeCategories.length > 0) {
+                    homeCategories.forEach(cat => {
+                        console.log(`  - ${cat.nombre_es}: foto = "${cat.foto}"`);
+                    });
+                }
 
                 if (homeCategories.length === 0) {
-                    grid.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-secondary);"><p>No hay categorías disponibles</p></div>';
+                    console.warn('⚠️ No hay categorías disponibles en la base de datos');
+                    grid.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-secondary);"><p>No hay categorías disponibles. Contacta al administrador.</p></div>';
                     return;
                 }
 
                 // Renderizar categorías
+                console.log('🔄 Renderizando categorías...');
                 renderHomeCategories();
+                console.log('✅ Categorías renderizadas correctamente');
             } catch (error) {
-                console.error('Error cargando categorías del home:', error);
-                grid.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-danger);"><p>Error al cargar las categorías: ' + error.message + '</p></div>';
+                console.error('❌ Error cargando categorías del home:', error);
+                grid.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-danger);"><p>Error al cargar las categorías: ' + (error.message || 'Error desconocido') + '</p><p style="margin-top: 10px; font-size: 0.9rem;">Por favor, recarga la página.</p></div>';
             }
         }
 
@@ -551,14 +571,42 @@
                 return; // Redirige a login.html
             }
 
+            // Inicializar rolesManager si está disponible
+            if (window.rolesManager) {
+                try {
+                    await window.rolesManager.initialize();
+                    const role = await window.rolesManager.getCurrentUserRole();
+                    console.log('🔐 Rol del usuario cargado:', role);
+                    
+                    // Ocultar opciones del menú según el rol (con retraso para asegurar que el DOM esté listo)
+                    setTimeout(async () => {
+                        if (typeof hideMenuItemsByRole === 'function') {
+                            await hideMenuItemsByRole();
+                        }
+                    }, 300);
+                } catch (error) {
+                    console.error('Error inicializando rolesManager:', error);
+                }
+            } else {
+                console.warn('⚠️ rolesManager no disponible');
+            }
+
             const savedLanguage = localStorage.getItem('language') || 'pt';
             changeLanguage(savedLanguage);
             // Asegurar que los botones de navegación se traduzcan
             updateNavigationButtons(savedLanguage);
             
             // Inicializar Supabase y cargar categorías del home
-            await initSupabase();
-            await loadHomeCategories();
+            try {
+                await initSupabase();
+                await loadHomeCategories();
+            } catch (error) {
+                console.error('Error inicializando Supabase o cargando categorías:', error);
+                const grid = document.getElementById('categoriesGrid');
+                if (grid) {
+                    grid.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-danger);"><p>Error al cargar las categorías. Por favor, recarga la página.</p></div>';
+                }
+            }
         });
     </script>
     <script src="menu-hamburguesa.js"></script>

@@ -28,24 +28,33 @@ document.addEventListener('DOMContentLoaded', () => {
  */
 async function hideMenuItemsByRole() {
     try {
-        // Esperar a que rolesManager esté inicializado
-        if (!window.rolesManager) {
-            await new Promise(resolve => setTimeout(resolve, 500));
+        // Esperar a que authManager y rolesManager estén inicializados
+        let retries = 0;
+        const maxRetries = 10;
+        
+        while ((!window.authManager || !window.rolesManager) && retries < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, 200));
+            retries++;
         }
 
         if (!window.rolesManager) {
-            console.warn('rolesManager no disponible');
+            console.warn('rolesManager no disponible después de esperar');
             return;
         }
 
+        // Asegurar que el rol esté cargado
+        await window.rolesManager.initialize();
         const role = await window.rolesManager.getCurrentUserRole();
         const isAdmin = role === 'admin';
+
+        console.log('🔐 Rol del usuario:', role, '| Es admin:', isAdmin);
 
         // Ocultar "Comparar" si no es admin
         const compararLinks = document.querySelectorAll('a[href="comparar-productos.html"]');
         compararLinks.forEach(link => {
             if (!isAdmin) {
                 link.style.display = 'none';
+                console.log('✅ Ocultado: Comparar');
             } else {
                 link.style.display = '';
             }
@@ -56,6 +65,7 @@ async function hideMenuItemsByRole() {
         creadorLinks.forEach(link => {
             if (!isAdmin) {
                 link.style.display = 'none';
+                console.log('✅ Ocultado: Creador/Editor');
             } else {
                 link.style.display = '';
             }
@@ -63,8 +73,13 @@ async function hideMenuItemsByRole() {
 
         // También ocultar por ID si existe
         const navCreateProductLink = document.getElementById('nav-create-product-link');
-        if (navCreateProductLink && !isAdmin) {
-            navCreateProductLink.style.display = 'none';
+        if (navCreateProductLink) {
+            if (!isAdmin) {
+                navCreateProductLink.style.display = 'none';
+                console.log('✅ Ocultado: nav-create-product-link');
+            } else {
+                navCreateProductLink.style.display = '';
+            }
         }
 
     } catch (error) {
@@ -72,12 +87,27 @@ async function hideMenuItemsByRole() {
     }
 }
 
-// Ejecutar cuando el DOM esté listo
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', hideMenuItemsByRole);
-} else {
-    // DOM ya está listo
-    hideMenuItemsByRole();
+// Ejecutar cuando el DOM esté listo y después de que los scripts se carguen
+function initMenuRoleHiding() {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            // Esperar un poco más para que todos los scripts se carguen
+            setTimeout(hideMenuItemsByRole, 500);
+        });
+    } else {
+        // DOM ya está listo, esperar a que los scripts se carguen
+        setTimeout(hideMenuItemsByRole, 500);
+    }
+}
+
+// Inicializar
+initMenuRoleHiding();
+
+// También ejecutar cuando cambie el estado de autenticación
+if (window.authManager) {
+    window.authManager.supabase?.auth.onAuthStateChange(() => {
+        setTimeout(hideMenuItemsByRole, 300);
+    });
 }
 
 
