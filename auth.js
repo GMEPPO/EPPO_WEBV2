@@ -59,10 +59,10 @@ class AuthManager {
                     const { data: { session } } = await this.supabase.auth.getSession();
                     if (session) {
                         this.currentUser = session.user;
-                        // Cargar rol del usuario si existe
-                        if (window.rolesManager) {
-                            await window.rolesManager.loadCurrentUserRole();
-                        }
+                        // Sistema de roles desactivado - no se carga el rol
+                        // if (window.rolesManager) {
+                        //     await window.rolesManager.loadCurrentUserRole();
+                        // }
                     }
                 } catch (error) {
                     // Si falla por CORS, es porque estamos en file://
@@ -78,16 +78,16 @@ class AuthManager {
                     this.supabase.auth.onAuthStateChange(async (event, session) => {
                         if (event === 'SIGNED_IN') {
                             this.currentUser = session?.user || null;
-                            // Cargar rol del usuario después de iniciar sesión
-                            if (window.rolesManager && this.currentUser) {
-                                await window.rolesManager.loadCurrentUserRole();
-                            }
+                            // Sistema de roles desactivado - no se carga el rol
+                            // if (window.rolesManager && this.currentUser) {
+                            //     await window.rolesManager.loadCurrentUserRole();
+                            // }
                         } else if (event === 'SIGNED_OUT') {
                             this.currentUser = null;
-                            // Limpiar rol al cerrar sesión
-                            if (window.rolesManager) {
-                                window.rolesManager.currentUserRole = null;
-                            }
+                            // Sistema de roles desactivado - no se limpia el rol
+                            // if (window.rolesManager) {
+                            //     window.rolesManager.currentUserRole = null;
+                            // }
                         }
                     });
                 } catch (error) {
@@ -151,10 +151,10 @@ class AuthManager {
 
             this.currentUser = data.user;
             
-            // Cargar rol del usuario después del login
-            if (window.rolesManager) {
-                await window.rolesManager.loadCurrentUserRole();
-            }
+            // Sistema de roles desactivado - no se carga el rol después del login
+            // if (window.rolesManager) {
+            //     await window.rolesManager.loadCurrentUserRole();
+            // }
             
             return {
                 success: true,
