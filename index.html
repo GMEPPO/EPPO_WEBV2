@@ -684,7 +684,10 @@
                         const role = await window.rolesManager.getCurrentUserRole();
                         console.log('🔐 Rol del usuario cargado:', role);
                         
-                        // La función hideMenuDropdownByRole se ejecutará automáticamente desde menu-hamburguesa.js
+                        // Ejecutar ocultación del menú después de cargar el rol
+                        if (typeof hideMenuDropdownByRole === 'function') {
+                            await hideMenuDropdownByRole();
+                        }
                     } catch (error) {
                         console.error('⚠️ Error inicializando rolesManager (continuando):', error);
                     }

@@ -86,6 +86,11 @@ class AuthManager {
                                             await window.rolesManager.initialize();
                                         }
                                         await window.rolesManager.getCurrentUserRole();
+                                        
+                                        // Ocultar/mostrar menú según el rol
+                                        if (typeof window.hideMenuDropdownByRole === 'function') {
+                                            await window.hideMenuDropdownByRole();
+                                        }
                                     } catch (error) {
                                         // Silenciar errores de carga de rol
                                     }
@@ -97,6 +102,11 @@ class AuthManager {
                             if (window.rolesManager) {
                                 window.rolesManager.currentUserRole = null;
                             }
+                            // Mostrar menú al cerrar sesión
+                            const menuDropdown = document.querySelector('.menu-dropdown');
+                            const menuToggle = document.getElementById('menuToggle');
+                            if (menuDropdown) menuDropdown.style.display = '';
+                            if (menuToggle) menuToggle.style.display = '';
                         }
                     });
                 } catch (error) {

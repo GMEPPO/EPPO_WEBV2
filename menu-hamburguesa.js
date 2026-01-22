@@ -48,14 +48,15 @@ async function hideMenuDropdownByRole() {
     try {
         // Esperar a que authManager y rolesManager estén inicializados
         let retries = 0;
-        const maxRetries = 5; // Reducir retries
+        const maxRetries = 10;
         
         while ((!window.authManager || !window.rolesManager) && retries < maxRetries) {
-            await new Promise(resolve => setTimeout(resolve, 300));
+            await new Promise(resolve => setTimeout(resolve, 200));
             retries++;
         }
 
         if (!window.rolesManager) {
+            console.warn('⚠️ rolesManager no disponible para ocultar menú');
             isHidingDropdown = false;
             return;
         }
@@ -65,6 +66,7 @@ async function hideMenuDropdownByRole() {
             try {
                 await window.rolesManager.initialize();
             } catch (error) {
+                console.warn('⚠️ Error inicializando rolesManager:', error);
                 isHidingDropdown = false;
                 return;
             }
@@ -74,16 +76,34 @@ async function hideMenuDropdownByRole() {
         const role = await window.rolesManager.getCurrentUserRole();
         const isComercial = role === 'comercial';
 
-        // Obtener el contenedor del menú desplegable
+        console.log('🔐 Verificando rol para menú desplegable:', role, '| Es comercial:', isComercial);
+
+        // Obtener el contenedor del menú desplegable y el botón hamburguesa
         const menuDropdown = document.querySelector('.menu-dropdown');
+        const menuToggle = document.getElementById('menuToggle');
         
         if (menuDropdown) {
             if (isComercial) {
                 // Ocultar el menú desplegable completo para usuarios comerciales
                 menuDropdown.style.display = 'none';
+                console.log('✅ Menú desplegable ocultado para usuario comercial');
             } else {
                 // Mostrar el menú desplegable para admins
                 menuDropdown.style.display = '';
+                console.log('✅ Menú desplegable visible para usuario admin');
+            }
+        } else {
+            console.warn('⚠️ No se encontró el elemento .menu-dropdown');
+        }
+
+        // También ocultar el botón hamburguesa si es comercial
+        if (menuToggle) {
+            if (isComercial) {
+                menuToggle.style.display = 'none';
+                console.log('✅ Botón hamburguesa ocultado para usuario comercial');
+            } else {
+                menuToggle.style.display = '';
+                console.log('✅ Botón hamburguesa visible para usuario admin');
             }
         }
 
@@ -96,30 +116,50 @@ async function hideMenuDropdownByRole() {
 
 // Ejecutar cuando el DOM esté listo y después de que los scripts se carguen
 function initMenuDropdownHiding() {
-    const executeHiding = () => {
-        // Esperar a que rolesManager esté disponible
-        if (window.rolesManager) {
-            hideMenuDropdownByRole();
-        } else {
-            // Intentar solo una vez más después de un momento
-            setTimeout(() => {
-                if (window.rolesManager) {
-                    hideMenuDropdownByRole();
+    const executeHiding = async () => {
+        // Esperar a que rolesManager esté disponible y autenticado
+        let attempts = 0;
+        const maxAttempts = 20; // 4 segundos máximo (200ms * 20)
+        
+        while (attempts < maxAttempts) {
+            // Verificar que authManager y rolesManager estén disponibles
+            if (window.authManager && window.rolesManager) {
+                // Verificar que el usuario esté autenticado
+                try {
+                    const isAuth = await window.authManager.isAuthenticated();
+                    if (isAuth) {
+                        // Usuario autenticado, ejecutar ocultación
+                        await hideMenuDropdownByRole();
+                        return;
+                    }
+                } catch (error) {
+                    // Continuar intentando
                 }
-            }, 2000);
+            }
+            
+            await new Promise(resolve => setTimeout(resolve, 200));
+            attempts++;
+        }
+        
+        // Si después de todos los intentos no se pudo, intentar una vez más
+        if (window.rolesManager) {
+            setTimeout(() => hideMenuDropdownByRole(), 1000);
         }
     };
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
             // Esperar un poco más para que todos los scripts se carguen
-            setTimeout(executeHiding, 1500);
+            setTimeout(executeHiding, 1000);
         });
     } else {
         // DOM ya está listo, esperar a que los scripts se carguen
-        setTimeout(executeHiding, 1500);
+        setTimeout(executeHiding, 1000);
     }
 }
+
+// Hacer la función disponible globalmente
+window.hideMenuDropdownByRole = hideMenuDropdownByRole;
 
 // Inicializar solo una vez
 if (!window.menuDropdownHidingInitialized) {
