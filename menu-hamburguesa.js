@@ -27,10 +27,8 @@ let isHidingMenuItems = false;
 let lastHideExecution = 0;
 const HIDE_COOLDOWN = 2000; // 2 segundos entre ejecuciones
 
-// Bandera para evitar ejecuciones múltiples
+// Bandera para evitar ejecuciones múltiples simultáneas
 let isHidingDropdown = false;
-let lastDropdownHide = 0;
-const DROPDOWN_HIDE_COOLDOWN = 3000; // 3 segundos entre ejecuciones
 
 /**
  * Ocultar el menú desplegable completo si el usuario es "comercial"
@@ -38,21 +36,13 @@ const DROPDOWN_HIDE_COOLDOWN = 3000; // 3 segundos entre ejecuciones
 async function hideMenuDropdownByRole() {
     console.log('🔍 [hideMenuDropdownByRole] Iniciando ejecución...');
     
-    // Evitar ejecuciones múltiples simultáneas (pero permitir si han pasado más de 1 segundo)
-    const now = Date.now();
+    // Evitar ejecuciones múltiples simultáneas
     if (isHidingDropdown) {
-        console.log('⏸️ [hideMenuDropdownByRole] Ya hay una ejecución en curso, esperando...');
-        return;
-    }
-    
-    // Permitir ejecución si han pasado más de 1 segundo desde la última
-    if ((now - lastDropdownHide) < 1000 && lastDropdownHide > 0) {
-        console.log('⏸️ [hideMenuDropdownByRole] Cooldown activo, esperando...');
+        console.log('⏸️ [hideMenuDropdownByRole] Ya hay una ejecución en curso');
         return;
     }
 
     isHidingDropdown = true;
-    lastDropdownHide = now;
 
     try {
         console.log('🔍 [hideMenuDropdownByRole] Verificando managers...');
@@ -97,13 +87,25 @@ async function hideMenuDropdownByRole() {
         // Esperar un momento para asegurar que el DOM esté listo
         await new Promise(resolve => setTimeout(resolve, 100));
 
+        // Esperar un momento adicional para asegurar que el DOM esté completamente renderizado
+        await new Promise(resolve => setTimeout(resolve, 200));
+
         // Obtener el contenedor del menú desplegable y el botón hamburguesa
-        const menuDropdown = document.querySelector('.menu-dropdown');
-        const menuToggle = document.getElementById('menuToggle');
+        // Intentar múltiples selectores por si acaso
+        let menuDropdown = document.querySelector('.menu-dropdown');
+        if (!menuDropdown) {
+            menuDropdown = document.querySelector('div.menu-dropdown');
+        }
+        
+        let menuToggle = document.getElementById('menuToggle');
+        if (!menuToggle) {
+            menuToggle = document.querySelector('button.menu-toggle');
+        }
         
         console.log('🔍 [hideMenuDropdownByRole] Elementos encontrados:', {
             menuDropdown: !!menuDropdown,
-            menuToggle: !!menuToggle
+            menuToggle: !!menuToggle,
+            isComercial: isComercial
         });
         
         if (menuDropdown) {
@@ -111,11 +113,13 @@ async function hideMenuDropdownByRole() {
                 // Ocultar el menú desplegable completo para usuarios comerciales
                 menuDropdown.style.display = 'none';
                 menuDropdown.style.visibility = 'hidden';
+                menuDropdown.setAttribute('data-hidden-by-role', 'true');
                 console.log('✅ [hideMenuDropdownByRole] Menú desplegable OCULTADO para usuario comercial');
             } else {
                 // Mostrar el menú desplegable para admins
                 menuDropdown.style.display = '';
                 menuDropdown.style.visibility = '';
+                menuDropdown.removeAttribute('data-hidden-by-role');
                 console.log('✅ [hideMenuDropdownByRole] Menú desplegable VISIBLE para usuario admin');
             }
         } else {
@@ -123,6 +127,15 @@ async function hideMenuDropdownByRole() {
             // Intentar buscar todos los elementos con esa clase
             const allDropdowns = document.querySelectorAll('.menu-dropdown');
             console.log('🔍 [hideMenuDropdownByRole] Elementos .menu-dropdown encontrados:', allDropdowns.length);
+            if (allDropdowns.length > 0) {
+                allDropdowns.forEach((dropdown, index) => {
+                    console.log(`  - Dropdown ${index}:`, dropdown);
+                    if (isComercial) {
+                        dropdown.style.display = 'none';
+                        dropdown.style.visibility = 'hidden';
+                    }
+                });
+            }
         }
 
         // También ocultar el botón hamburguesa si es comercial
@@ -130,14 +143,28 @@ async function hideMenuDropdownByRole() {
             if (isComercial) {
                 menuToggle.style.display = 'none';
                 menuToggle.style.visibility = 'hidden';
+                menuToggle.setAttribute('data-hidden-by-role', 'true');
                 console.log('✅ [hideMenuDropdownByRole] Botón hamburguesa OCULTADO para usuario comercial');
             } else {
                 menuToggle.style.display = '';
                 menuToggle.style.visibility = '';
+                menuToggle.removeAttribute('data-hidden-by-role');
                 console.log('✅ [hideMenuDropdownByRole] Botón hamburguesa VISIBLE para usuario admin');
             }
         } else {
             console.warn('⚠️ [hideMenuDropdownByRole] No se encontró el elemento #menuToggle');
+            // Intentar buscar el botón por clase
+            const allToggles = document.querySelectorAll('button.menu-toggle, .menu-toggle');
+            console.log('🔍 [hideMenuDropdownByRole] Botones toggle encontrados:', allToggles.length);
+            if (allToggles.length > 0) {
+                allToggles.forEach((toggle, index) => {
+                    console.log(`  - Toggle ${index}:`, toggle);
+                    if (isComercial) {
+                        toggle.style.display = 'none';
+                        toggle.style.visibility = 'hidden';
+                    }
+                });
+            }
         }
 
     } catch (error) {
@@ -224,15 +251,18 @@ if (!window.menuDropdownHidingInitialized) {
 if (!window.menuDropdownAuthListenerAdded) {
     const setupAuthListener = () => {
         if (window.authManager && window.authManager.supabase) {
-            window.authManager.supabase.auth.onAuthStateChange(() => {
-                // Esperar un momento antes de ocultar para que el rol se cargue
-                // Solo ejecutar si no se ejecutó recientemente
-                const now = Date.now();
-                if (now - lastDropdownHide > DROPDOWN_HIDE_COOLDOWN) {
-                    setTimeout(hideMenuDropdownByRole, 1500);
+            window.authManager.supabase.auth.onAuthStateChange(async (event, session) => {
+                console.log('🔄 [menu-hamburguesa] Cambio de estado de autenticación:', event);
+                if (event === 'SIGNED_IN' && session) {
+                    // Esperar un momento antes de ocultar para que el rol se cargue
+                    setTimeout(async () => {
+                        console.log('🔄 [menu-hamburguesa] Ejecutando ocultación después de SIGNED_IN...');
+                        await hideMenuDropdownByRole();
+                    }, 2000);
                 }
             });
             window.menuDropdownAuthListenerAdded = true;
+            console.log('✅ [menu-hamburguesa] Listener de autenticación configurado');
         } else {
             setTimeout(setupAuthListener, 500);
         }
@@ -244,6 +274,12 @@ if (!window.menuDropdownAuthListenerAdded) {
         setupAuthListener();
     }
 }
+
+// Ejecutar también cuando el rol se carga (evento personalizado)
+document.addEventListener('roleLoaded', async (event) => {
+    console.log('🔄 [menu-hamburguesa] Evento roleLoaded recibido, ejecutando ocultación...');
+    await hideMenuDropdownByRole();
+});
 
 
 
