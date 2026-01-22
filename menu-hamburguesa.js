@@ -29,20 +29,29 @@ const HIDE_COOLDOWN = 2000; // 2 segundos entre ejecuciones
 
 // Bandera para evitar ejecuciones múltiples simultáneas
 let isHidingDropdown = false;
+let lastRoleChecked = null; // Cache del último rol verificado
 
 /**
  * Ocultar el menú desplegable completo si el usuario es "comercial"
  */
 async function hideMenuDropdownByRole() {
-    console.log('🔍 [hideMenuDropdownByRole] Iniciando ejecución...');
-    
-    // Evitar ejecuciones múltiples simultáneas
+    // Si ya hay una ejecución en curso, esperar a que termine en lugar de retornar
     if (isHidingDropdown) {
-        console.log('⏸️ [hideMenuDropdownByRole] Ya hay una ejecución en curso');
-        return;
+        console.log('⏳ [hideMenuDropdownByRole] Esperando a que termine la ejecución anterior...');
+        // Esperar hasta 3 segundos a que termine
+        let waitCount = 0;
+        while (isHidingDropdown && waitCount < 15) {
+            await new Promise(resolve => setTimeout(resolve, 200));
+            waitCount++;
+        }
+        if (isHidingDropdown) {
+            console.warn('⚠️ [hideMenuDropdownByRole] Timeout esperando ejecución anterior, continuando...');
+            isHidingDropdown = false; // Forzar reset si hay timeout
+        }
     }
 
     isHidingDropdown = true;
+    console.log('🔍 [hideMenuDropdownByRole] Iniciando ejecución...');
 
     try {
         console.log('🔍 [hideMenuDropdownByRole] Verificando managers...');
@@ -83,6 +92,21 @@ async function hideMenuDropdownByRole() {
         const isComercial = role === 'comercial';
 
         console.log('🔐 [hideMenuDropdownByRole] Rol detectado:', role, '| Es comercial:', isComercial);
+        
+        // Si el rol no ha cambiado y ya aplicamos el estilo, no hacer nada
+        if (lastRoleChecked === role) {
+            const menuDropdown = document.querySelector('.menu-dropdown');
+            if (menuDropdown) {
+                const isHidden = menuDropdown.style.display === 'none' || menuDropdown.hasAttribute('data-hidden-by-role');
+                if ((isComercial && isHidden) || (!isComercial && !isHidden)) {
+                    console.log('⏭️ [hideMenuDropdownByRole] El menú ya está en el estado correcto, saltando...');
+                    isHidingDropdown = false;
+                    return;
+                }
+            }
+        }
+        
+        lastRoleChecked = role;
 
         // Esperar un momento para asegurar que el DOM esté listo
         await new Promise(resolve => setTimeout(resolve, 100));
@@ -170,8 +194,11 @@ async function hideMenuDropdownByRole() {
     } catch (error) {
         console.error('❌ [hideMenuDropdownByRole] Error al ocultar menú desplegable:', error);
     } finally {
-        isHidingDropdown = false;
-        console.log('✅ [hideMenuDropdownByRole] Ejecución completada');
+        // Asegurar que la bandera se resetee siempre
+        setTimeout(() => {
+            isHidingDropdown = false;
+            console.log('✅ [hideMenuDropdownByRole] Ejecución completada y bandera reseteada');
+        }, 100);
     }
 }
 
@@ -251,11 +278,16 @@ if (!window.menuDropdownHidingInitialized) {
 if (!window.menuDropdownAuthListenerAdded) {
     const setupAuthListener = () => {
         if (window.authManager && window.authManager.supabase) {
+            let authStateChangeTimeout = null;
             window.authManager.supabase.auth.onAuthStateChange(async (event, session) => {
                 console.log('🔄 [menu-hamburguesa] Cambio de estado de autenticación:', event);
                 if (event === 'SIGNED_IN' && session) {
+                    // Cancelar timeout anterior si existe
+                    if (authStateChangeTimeout) {
+                        clearTimeout(authStateChangeTimeout);
+                    }
                     // Esperar un momento antes de ocultar para que el rol se cargue
-                    setTimeout(async () => {
+                    authStateChangeTimeout = setTimeout(async () => {
                         console.log('🔄 [menu-hamburguesa] Ejecutando ocultación después de SIGNED_IN...');
                         await hideMenuDropdownByRole();
                     }, 2000);
@@ -275,10 +307,19 @@ if (!window.menuDropdownAuthListenerAdded) {
     }
 }
 
-// Ejecutar también cuando el rol se carga (evento personalizado)
+// Ejecutar también cuando el rol se carga (evento personalizado) - con debounce
+let roleLoadedTimeout = null;
 document.addEventListener('roleLoaded', async (event) => {
-    console.log('🔄 [menu-hamburguesa] Evento roleLoaded recibido, ejecutando ocultación...');
-    await hideMenuDropdownByRole();
+    console.log('🔄 [menu-hamburguesa] Evento roleLoaded recibido');
+    // Cancelar timeout anterior si existe
+    if (roleLoadedTimeout) {
+        clearTimeout(roleLoadedTimeout);
+    }
+    // Esperar un momento antes de ejecutar (debounce)
+    roleLoadedTimeout = setTimeout(async () => {
+        console.log('🔄 [menu-hamburguesa] Ejecutando ocultación después de roleLoaded...');
+        await hideMenuDropdownByRole();
+    }, 500);
 });
 
 
