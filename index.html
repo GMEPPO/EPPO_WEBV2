@@ -666,44 +666,60 @@
             
             console.log('✅ Continuando con la carga de la página...');
 
-            // Inicializar rolesManager para ocultar menú desplegable si es comercial
-            // Solo si el usuario está autenticado
             // NOTA: El rol se carga automáticamente en auth.js cuando hay SIGNED_IN
-            // Aquí solo verificamos si ya está autenticado al cargar la página
+            // Aquí solo esperamos a que el rol esté cargado y deshabilitamos el menú
+            // NO cargamos el rol aquí para evitar consultas duplicadas
             if (isAuth && window.rolesManager) {
                 // Ejecutar de forma asíncrona sin bloquear la carga de la página
                 (async () => {
                     try {
-                        console.log('🔄 [index.html] Usuario ya autenticado, cargando rol...');
+                        console.log('🔄 [index.html] Usuario ya autenticado, esperando a que el rol se cargue...');
                         
-                        // Inicializar rolesManager si no está inicializado
-                        if (!window.rolesManager.isInitialized) {
-                            console.log('🔄 [index.html] Inicializando rolesManager...');
-                            await window.rolesManager.initialize();
+                        // NO inicializar rolesManager aquí - auth.js ya lo hace
+                        // Solo esperar a que el rol esté disponible
+                        let role = null;
+                        let retries = 0;
+                        const maxRetries = 20; // 4 segundos máximo (200ms * 20)
+                        
+                        while (!role && retries < maxRetries) {
+                            // Esperar a que auth.js cargue el rol
+                            if (window.rolesManager.currentUserRole) {
+                                role = window.rolesManager.currentUserRole;
+                                break;
+                            }
+                            
+                            // Si hay una carga en curso, esperar a que termine
+                            if (window.rolesManager.roleLoadPromise) {
+                                role = await window.rolesManager.roleLoadPromise;
+                                break;
+                            }
+                            
+                            await new Promise(resolve => setTimeout(resolve, 200));
+                            retries++;
                         }
                         
-                        // Obtener rol (usa caché, no hace consultas repetitivas)
-                        const role = await window.rolesManager.getCurrentUserRole();
-                        console.log('🔐 [index.html] Rol del usuario cargado:', role);
+                        // Si aún no hay rol, obtenerlo (pero solo si no hay carga en curso)
+                        if (!role && !window.rolesManager.isLoadingRole) {
+                            role = await window.rolesManager.getCurrentUserRole();
+                        }
                         
-                        // Disparar evento personalizado para que menu-hamburguesa.js lo capture
-                        document.dispatchEvent(new CustomEvent('roleLoaded', { 
-                            detail: { role: role } 
-                        }));
-                        
-                        // Deshabilitar menú para usuarios comerciales
-                        if (typeof window.disableMenuForComercial === 'function') {
-                            console.log('🔄 [index.html] Ejecutando disableMenuForComercial...');
-                            await window.disableMenuForComercial();
+                        if (role) {
+                            console.log('🔐 [index.html] Rol obtenido:', role);
+                            
+                            // Deshabilitar menú para usuarios comerciales
+                            if (typeof window.disableMenuForComercial === 'function') {
+                                console.log('🔄 [index.html] Ejecutando disableMenuForComercial...');
+                                await window.disableMenuForComercial();
+                            }
                         } else {
-                            console.warn('⚠️ [index.html] disableMenuForComercial no está disponible');
+                            console.warn('⚠️ [index.html] No se pudo obtener el rol, se intentará cuando se dispare roleLoaded');
                         }
                     } catch (error) {
-                        console.error('⚠️ [index.html] Error inicializando rolesManager (continuando):', error);
+                        console.error('⚠️ [index.html] Error esperando rol (continuando):', error);
                     }
                 })();
             } else {
-                console.log('⏭️ [index.html] Saltando inicialización de rolesManager:', {
+                console.log('⏭️ [index.html] Saltando espera de rol:', {
                     isAuth: isAuth,
                     hasRolesManager: !!window.rolesManager
                 });

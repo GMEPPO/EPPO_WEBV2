@@ -42,35 +42,56 @@ async function disableMenuForComercial() {
             return;
         }
 
-        // Asegurar que el rol esté cargado
-        if (!window.rolesManager.isInitialized) {
-            console.log('🔄 [disableMenuForComercial] Inicializando rolesManager...');
-            await window.rolesManager.initialize();
-            console.log('✅ [disableMenuForComercial] rolesManager inicializado');
-        }
-
-        // Esperar a que el rol se cargue completamente
-        // Primero verificar si hay una carga en curso
-        if (window.rolesManager.isLoadingRole && window.rolesManager.roleLoadPromise) {
-            console.log('⏳ [disableMenuForComercial] Rol se está cargando, esperando a que termine...');
-            try {
-                await window.rolesManager.roleLoadPromise;
-                console.log('✅ [disableMenuForComercial] Carga de rol completada');
-            } catch (error) {
-                console.warn('⚠️ [disableMenuForComercial] Error esperando carga de rol:', error);
-            }
-        }
-
-        // Obtener rol del usuario (ahora debería estar cargado)
-        console.log('🔍 [disableMenuForComercial] Obteniendo rol del usuario...');
-        console.log('🔍 [DEBUG] Estado antes de getCurrentUserRole:', {
+        // NO inicializar rolesManager aquí - auth.js ya lo hace
+        // Solo esperar a que el rol esté disponible (evitar consultas duplicadas)
+        console.log('🔍 [disableMenuForComercial] Esperando a que el rol esté disponible...');
+        console.log('🔍 [DEBUG] Estado inicial:', {
             isInitialized: window.rolesManager.isInitialized,
             currentUserRole: window.rolesManager.currentUserRole,
             isLoadingRole: window.rolesManager.isLoadingRole,
             hasRoleLoadPromise: !!window.rolesManager.roleLoadPromise
         });
 
-        let role = await window.rolesManager.getCurrentUserRole();
+        let role = null;
+        
+        // Primero verificar si el rol ya está en caché
+        if (window.rolesManager.currentUserRole) {
+            role = window.rolesManager.currentUserRole;
+            console.log('✅ [disableMenuForComercial] Rol encontrado en caché:', role);
+        }
+        // Si hay una carga en curso, esperar a que termine
+        else if (window.rolesManager.roleLoadPromise) {
+            console.log('⏳ [disableMenuForComercial] Rol se está cargando, esperando a que termine...');
+            try {
+                role = await window.rolesManager.roleLoadPromise;
+                console.log('✅ [disableMenuForComercial] Carga de rol completada:', role);
+            } catch (error) {
+                console.warn('⚠️ [disableMenuForComercial] Error esperando carga de rol:', error);
+            }
+        }
+        // Si no hay carga en curso y no está inicializado, esperar un momento
+        // (auth.js debería estar cargándolo)
+        else if (!window.rolesManager.isInitialized) {
+            console.log('⏳ [disableMenuForComercial] rolesManager no inicializado, esperando a que auth.js lo inicialice...');
+            let retries = 0;
+            const maxRetries = 15;
+            while (!window.rolesManager.isInitialized && retries < maxRetries) {
+                await new Promise(resolve => setTimeout(resolve, 200));
+                retries++;
+            }
+            // Después de esperar, intentar obtener el rol
+            if (window.rolesManager.currentUserRole) {
+                role = window.rolesManager.currentUserRole;
+            } else if (window.rolesManager.roleLoadPromise) {
+                role = await window.rolesManager.roleLoadPromise;
+            }
+        }
+        
+        // Solo si aún no tenemos el rol y no hay carga en curso, obtenerlo
+        if (!role && !window.rolesManager.isLoadingRole) {
+            console.log('🔍 [disableMenuForComercial] Obteniendo rol del usuario...');
+            role = await window.rolesManager.getCurrentUserRole();
+        }
         
         // Si el rol aún es null o undefined, esperar un poco más y reintentar
         let retries = 0;
