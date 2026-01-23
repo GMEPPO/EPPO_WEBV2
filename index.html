@@ -17,7 +17,6 @@
     <script src="supabase-config-universal.js"></script>
     <script src="translation-system.js"></script>
     <script src="auth.js"></script>
-    <script src="roles.js"></script>
     <script src="debug-auth.js"></script>
     <script src="stock-warning.js"></script>
     <style>
@@ -666,60 +665,11 @@
             
             console.log('✅ Continuando con la carga de la página...');
 
-            // NOTA: El rol se carga automáticamente en auth.js cuando hay SIGNED_IN
-            // Aquí solo esperamos a que el rol esté cargado y deshabilitamos el menú
-            // NO cargamos el rol aquí para evitar consultas duplicadas
-            if (isAuth && window.rolesManager) {
-                // Ejecutar de forma asíncrona sin bloquear la carga de la página
-                (async () => {
-                    try {
-                        console.log('🔄 [index.html] Usuario ya autenticado, esperando a que el rol se cargue...');
-                        
-                        // NO inicializar rolesManager aquí - auth.js ya lo hace
-                        // Solo esperar a que el rol esté disponible
-                        let role = null;
-                        let retries = 0;
-                        const maxRetries = 20; // 4 segundos máximo (200ms * 20)
-                        
-                        while (!role && retries < maxRetries) {
-                            // Esperar a que auth.js cargue el rol
-                            if (window.rolesManager.currentUserRole) {
-                                role = window.rolesManager.currentUserRole;
-                                break;
-                            }
-                            
-                            // Si hay una carga en curso, esperar a que termine
-                            if (window.rolesManager.roleLoadPromise) {
-                                role = await window.rolesManager.roleLoadPromise;
-                                break;
-                            }
-                            
-                            await new Promise(resolve => setTimeout(resolve, 200));
-                            retries++;
-                        }
-                        
-                        // Si aún no hay rol, obtenerlo (pero solo si no hay carga en curso)
-                        if (!role && !window.rolesManager.isLoadingRole) {
-                            role = await window.rolesManager.getCurrentUserRole();
-                        }
-                        
-                        if (role) {
-                            console.log('🔐 [index.html] Rol obtenido:', role);
-                            // El rol está cargado y disponible en caché
-                            // toggleMenu() verificará el rol cuando el usuario intente abrir el menú
-                            console.log('✅ [index.html] Rol disponible en caché, toggleMenu() lo verificará al hacer clic');
-                        } else {
-                            console.warn('⚠️ [index.html] No se pudo obtener el rol, toggleMenu() lo cargará cuando sea necesario');
-                        }
-                    } catch (error) {
-                        console.error('⚠️ [index.html] Error esperando rol (continuando):', error);
-                    }
-                })();
-            } else {
-                console.log('⏭️ [index.html] Saltando espera de rol:', {
-                    isAuth: isAuth,
-                    hasRolesManager: !!window.rolesManager
-                });
+            // El rol se consultará directamente desde Supabase cuando sea necesario
+            // (en toggleMenu() cuando el usuario intente abrir el menú)
+            // No necesitamos cargar el rol aquí
+            if (isAuth) {
+                console.log('✅ [index.html] Usuario autenticado, el rol se consultará cuando sea necesario');
             }
 
             // Configurar idioma (no bloquea)

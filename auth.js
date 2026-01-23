@@ -61,10 +61,6 @@ class AuthManager {
                     const { data: { session } } = await this.supabase.auth.getSession();
                     if (session) {
                         this.currentUser = session.user;
-                        // Sistema de roles desactivado - no se carga el rol
-                        // if (window.rolesManager) {
-                        //     await window.rolesManager.loadCurrentUserRole();
-                        // }
                     }
                 } catch (error) {
                     // Si falla por CORS, es porque estamos en file://
@@ -90,67 +86,17 @@ class AuthManager {
                                 this.currentUser = session?.user || null;
                                 console.log('✅ [auth.js] Usuario autenticado:', this.currentUser?.email);
                                 
-                                // Cargar rol INMEDIATAMENTE después de autenticación (solo una vez)
-                                if (window.rolesManager && this.currentUser) {
-                                    try {
-                                        // Verificar si ya hay una carga en curso
-                                        if (window.rolesManager.isLoadingRole && window.rolesManager.roleLoadPromise) {
-                                            console.log('⏳ [auth.js] Rol ya se está cargando, esperando...');
-                                            const role = await window.rolesManager.roleLoadPromise;
-                                            console.log('✅ [auth.js] Rol obtenido de carga en curso:', role);
-                                            
-                                            // El rol ya está cargado
-                                            this.processingSignIn = false;
-                                            return;
-                                        }
-                                        
-                                        // Si el rol ya está cargado, no hacer nada más
-                                        if (window.rolesManager.currentUserRole) {
-                                            const role = window.rolesManager.currentUserRole;
-                                            console.log('✅ [auth.js] Rol ya estaba cargado:', role);
-                                            this.processingSignIn = false;
-                                            return;
-                                        }
-                                        
-                                        console.log('🔄 [auth.js] Cargando rol después de SIGNED_IN...');
-                                        
-                                        // Inicializar rolesManager si no está inicializado (solo una vez)
-                                        if (!window.rolesManager.isInitialized) {
-                                            console.log('🔄 [auth.js] Inicializando rolesManager...');
-                                            await window.rolesManager.initialize();
-                                            console.log('✅ [auth.js] rolesManager inicializado');
-                                        }
-                                        
-                                        // Obtener rol (usa caché, no hace consultas duplicadas)
-                                        const role = await window.rolesManager.getCurrentUserRole();
-                                        console.log('🔐 [auth.js] Rol cargado:', role);
-                                        
-                                        // El rol ya está cargado y en caché
-                                        // toggleMenu() verificará el rol cuando el usuario intente abrir el menú
-                                        console.log('✅ [auth.js] Rol cargado y disponible en caché');
-                                    } catch (error) {
-                                        console.error('❌ [auth.js] Error cargando rol:', error);
-                                    } finally {
-                                        this.processingSignIn = false;
-                                    }
-                                } else {
-                                    console.warn('⚠️ [auth.js] No se puede cargar rol:', {
-                                        hasRolesManager: !!window.rolesManager,
-                                        hasCurrentUser: !!this.currentUser
-                                    });
-                                    this.processingSignIn = false;
-                                }
+                                // El rol se consultará directamente desde Supabase cuando sea necesario
+                                // (en toggleMenu() cuando el usuario intente abrir el menú)
+                                // No necesitamos cargar el rol aquí
+                                console.log('✅ [auth.js] Usuario autenticado, el rol se consultará cuando sea necesario');
+                                this.processingSignIn = false;
                             } else if (event === 'SIGNED_OUT') {
                             this.currentUser = null;
-                            // Limpiar rol al cerrar sesión
-                            if (window.rolesManager) {
-                                window.rolesManager.currentUserRole = null;
+                            // Limpiar caché de rol al cerrar sesión
+                            if (typeof window.clearRoleCache === 'function') {
+                                window.clearRoleCache();
                             }
-                            // Mostrar menú al cerrar sesión
-                            const menuDropdown = document.querySelector('.menu-dropdown');
-                            const menuToggle = document.getElementById('menuToggle');
-                            if (menuDropdown) menuDropdown.style.display = '';
-                            if (menuToggle) menuToggle.style.display = '';
                         }
                     });
                     this.authStateChangeListenerAdded = true;

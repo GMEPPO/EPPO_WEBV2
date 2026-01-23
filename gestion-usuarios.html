@@ -320,7 +320,7 @@
     <script src="supabase-config-universal.js"></script>
     <script src="stock-warning.js"></script>
     <script src="auth.js"></script>
-    <script src="roles.js"></script>
+    <!-- roles.js eliminado - usando función simple para asignar roles -->
     <script>
         let supabaseClient = null;
 
@@ -337,6 +337,64 @@
             // if (!hasAccess) {
             //     return;
             // }
+
+            // Función simple para asignar rol a un usuario (reemplaza rolesManager.assignRole)
+            window.assignRoleToUser = async function(userId, role) {
+                try {
+                    // Verificar que el rol es válido
+                    const validRoles = ['admin', 'comercial'];
+                    if (!validRoles.includes(role)) {
+                        return { success: false, error: `Rol "${role}" no válido. Roles válidos: ${validRoles.join(', ')}` };
+                    }
+
+                    const client = await window.universalSupabase?.getClient();
+                    if (!client) {
+                        return { success: false, error: 'Supabase no disponible' };
+                    }
+
+                    // Verificar si el usuario ya tiene un rol asignado
+                    const { data: existing, error: checkError } = await client
+                        .from('user_roles')
+                        .select('id')
+                        .eq('user_id', userId)
+                        .maybeSingle();
+
+                    if (checkError && checkError.code !== 'PGRST116') {
+                        return { success: false, error: checkError.message };
+                    }
+
+                    if (existing) {
+                        // Actualizar rol existente
+                        const { error } = await client
+                            .from('user_roles')
+                            .update({
+                                role: role,
+                                updated_at: new Date().toISOString()
+                            })
+                            .eq('user_id', userId);
+
+                        if (error) {
+                            return { success: false, error: error.message };
+                        }
+                        return { success: true };
+                    } else {
+                        // Crear nuevo rol
+                        const { error } = await client
+                            .from('user_roles')
+                            .insert({
+                                user_id: userId,
+                                role: role
+                            });
+
+                        if (error) {
+                            return { success: false, error: error.message };
+                        }
+                        return { success: true };
+                    }
+                } catch (error) {
+                    return { success: false, error: error.message || 'Error desconocido' };
+                }
+            };
 
             // Inicializar Supabase - usar siempre el cliente compartido
             if (window.universalSupabase) {
@@ -472,7 +530,7 @@
 
                 // Si el usuario se creó correctamente, asignar rol
                 if (data.user) {
-                    const roleResult = await window.rolesManager.assignRole(data.user.id, role);
+                    const roleResult = await window.assignRoleToUser(data.user.id, role);
                     if (!roleResult.success) {
                         console.warn('Usuario creado pero error asignando rol:', roleResult.error);
                     }
@@ -496,7 +554,7 @@
         // Actualizar rol de usuario
         async function updateUserRole(userId, newRole) {
             try {
-                const result = await window.rolesManager.assignRole(userId, newRole);
+                const result = await window.assignRoleToUser(userId, newRole);
                 if (result.success) {
                     // Mostrar mensaje de éxito temporal
                     const select = document.querySelector(`.role-select[data-user-id="${userId}"]`);

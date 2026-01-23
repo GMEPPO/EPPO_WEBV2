@@ -106,31 +106,13 @@ async function debugAuth() {
             console.error('  ❌ Error al obtener rol:', error.message);
         }
         
-        // 5. Verificar rol en rolesManager (si está disponible)
-        console.log('');
-        console.log('🔧 ESTADO DEL SISTEMA DE ROLES:');
-        console.log('───────────────────────────────────────────────────────────────');
-        
-        if (window.rolesManager) {
-            try {
-                const roleFromManager = await window.rolesManager.getCurrentUserRole();
-                console.log('  📦 Rol en rolesManager:', roleFromManager);
-                console.log('  🔄 rolesManager inicializado:', window.rolesManager.isInitialized);
-            } catch (error) {
-                console.warn('  ⚠️ Error al obtener rol de rolesManager:', error.message);
-            }
-        } else {
-            console.log('  ⚠️ rolesManager no está disponible');
-        }
-        
-        // 6. Resumen
+        // 5. Resumen
         console.log('');
         console.log('📊 RESUMEN:');
         console.log('───────────────────────────────────────────────────────────────');
         console.log('  Usuario:', user.email);
         console.log('  Nombre:', userName || '❌ NO ASIGNADO');
         console.log('  Rol en BD:', roleFromDB || '❌ NO ASIGNADO');
-        console.log('  Rol en Manager:', window.rolesManager?.currentUserRole || 'N/A');
         console.log('  Estado:', isAuth ? '✅ Autenticado' : '❌ No autenticado');
         
         // 7. Información adicional de la sesión
