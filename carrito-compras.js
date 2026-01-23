@@ -6019,8 +6019,12 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
                     referencia: articulo.referencia_articulo,
                     plazoEntrega: articulo.plazo_entrega || '',
                     image: product.foto || null,
-                    descripcionEs: product.descripcionEs || '',
-                    descripcionPt: product.descripcionPt || '',
+                    // Asegurar que se obtenga la descripción en ambos formatos (camelCase y snake_case)
+                    descripcionEs: product.descripcionEs || product.descripcion_es || '',
+                    descripcionPt: product.descripcionPt || product.descripcion_pt || '',
+                    descripcion_es: product.descripcion_es || product.descripcionEs || '',
+                    descripcion_pt: product.descripcion_pt || product.descripcionPt || '',
+                    description: product.descripcion_es || product.descripcionEs || product.descripcion_pt || product.descripcionPt || '',
                     price_tiers: product.price_tiers || [],
                     variants: product.variants || [],
                     selectedVariant: (() => {
@@ -6051,7 +6055,7 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
                 if (articulo.referencia_articulo && window.cartManager && window.cartManager.supabase) {
                     try {
                         const { data: productData, error: productError } = await window.cartManager.supabase
-                            .from('productos')
+                            .from('products')
                             .select('*')
                             .eq('id', articulo.referencia_articulo)
                             .single();
@@ -6075,8 +6079,11 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
                     observations: articulo.observaciones || '',
                     notes: articulo.observaciones || '',
                     // Incluir descripción y foto si el producto se encontró en la BD
+                    // Asegurar que se obtenga la descripción en ambos formatos (camelCase y snake_case)
                     descripcionEs: productFromDB ? (productFromDB.descripcion_es || productFromDB.descripcionEs || '') : '',
                     descripcionPt: productFromDB ? (productFromDB.descripcion_pt || productFromDB.descripcionPt || '') : '',
+                    descripcion_es: productFromDB ? (productFromDB.descripcion_es || productFromDB.descripcionEs || '') : '',
+                    descripcion_pt: productFromDB ? (productFromDB.descripcion_pt || productFromDB.descripcionPt || '') : '',
                     description: productFromDB ? (productFromDB.descripcion_es || productFromDB.descripcion_pt || productFromDB.descripcionEs || productFromDB.descripcionPt || '') : '',
                     image: productFromDB ? (productFromDB.foto || null) : null,
                     foto: productFromDB ? (productFromDB.foto || null) : null
@@ -7285,17 +7292,24 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         }
 
         // Preparar descripción (primero la descripción base)
+        // Buscar descripción en ambos formatos (camelCase y snake_case) para compatibilidad
         let description = '';
         if (item.type === 'product') {
-            description = lang === 'es' ? 
-                (item.descripcionEs || item.description || '') :
-                (item.descripcionPt || item.descripcionEs || item.description || '');
+            // Intentar obtener descripción según el idioma, probando ambos formatos
+            if (lang === 'es') {
+                description = item.descripcion_es || item.descripcionEs || item.description || '';
+            } else {
+                description = item.descripcion_pt || item.descripcionPt || item.descripcion_es || item.descripcionEs || item.description || '';
+            }
             console.log(`   📝 Item ${i + 1} (product): descripción obtenida`, {
+                descripcion_es: item.descripcion_es,
                 descripcionEs: item.descripcionEs,
+                descripcion_pt: item.descripcion_pt,
                 descripcionPt: item.descripcionPt,
                 description: item.description,
                 finalDescription: description,
-                hasDescription: !!description
+                descriptionLength: description ? description.length : 0,
+                hasDescription: !!description && description.trim() !== '' && description.trim() !== '.'
             });
         } else if (item.type === 'special') {
             // Para items especiales, intentar usar descripción primero, luego notes
