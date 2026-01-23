@@ -94,10 +94,10 @@ async function disableMenuForComercial() {
         }
         
         // Si el rol aún es null o undefined, esperar un poco más y reintentar
-        let retries = 0;
+        let roleRetries = 0;
         const maxRoleRetries = 15;
-        while ((!role || role === null || role === undefined) && retries < maxRoleRetries) {
-            console.log(`⏳ [disableMenuForComercial] Rol aún no disponible (intento ${retries + 1}/${maxRoleRetries}), esperando...`);
+        while ((!role || role === null || role === undefined) && roleRetries < maxRoleRetries) {
+            console.log(`⏳ [disableMenuForComercial] Rol aún no disponible (intento ${roleRetries + 1}/${maxRoleRetries}), esperando...`);
             console.log('🔍 [DEBUG] Estado actual:', {
                 currentUserRole: window.rolesManager.currentUserRole,
                 isLoadingRole: window.rolesManager.isLoadingRole,
@@ -105,12 +105,13 @@ async function disableMenuForComercial() {
             });
             await new Promise(resolve => setTimeout(resolve, 300));
             role = await window.rolesManager.getCurrentUserRole();
-            retries++;
+            roleRetries++;
         }
 
         if (!role || role === null || role === undefined) {
-            console.warn('⚠️ [disableMenuForComercial] No se pudo obtener el rol después de múltiples intentos, usando "comercial" por defecto');
-            role = 'comercial'; // Por defecto, ser restrictivo
+            console.warn('⚠️ [disableMenuForComercial] No se pudo obtener el rol después de múltiples intentos');
+            console.log('✅ [disableMenuForComercial] No se puede deshabilitar el menú sin conocer el rol, saliendo...');
+            return; // Salir sin deshabilitar si no podemos obtener el rol
         }
 
         console.log('✅ [disableMenuForComercial] Rol obtenido:', role);
@@ -123,9 +124,11 @@ async function disableMenuForComercial() {
 
         const isComercial = role === 'comercial';
         console.log('🔍 [DEBUG] isComercial:', isComercial);
+        console.log('🔍 [DEBUG] Rol completo:', role);
 
+        // IMPORTANTE: Solo deshabilitar si es comercial, NO si es admin u otro rol
         if (!isComercial) {
-            console.log('✅ [disableMenuForComercial] Usuario no es comercial, menú habilitado');
+            console.log('✅ [disableMenuForComercial] Usuario NO es comercial (rol:', role, '), menú HABILITADO');
             return;
         }
 
