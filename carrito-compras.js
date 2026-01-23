@@ -7030,6 +7030,16 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         let fullText = (baseDescription || '').trim();
         let parts = [];
         
+        console.log('🔍 [drawDescriptionWithBoldParts] Parámetros recibidos:', {
+            baseDescription: baseDescription,
+            baseDescriptionLength: baseDescription ? baseDescription.length : 0,
+            fullText: fullText,
+            fullTextLength: fullText.length,
+            variantText: variantText,
+            observations: observations,
+            selectedColorText: selectedColorText
+        });
+        
         // Verificar si variantText contiene solo color (empieza con "Color:" o "Cor:")
         const isOnlyColor = variantText && (variantText.trim().startsWith('Color:') || variantText.trim().startsWith('Cor:'));
         
@@ -7280,7 +7290,13 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             description = lang === 'es' ? 
                 (item.descripcionEs || item.description || '') :
                 (item.descripcionPt || item.descripcionEs || item.description || '');
-            console.log(`   📝 Item ${i + 1} (product): descripción obtenida`);
+            console.log(`   📝 Item ${i + 1} (product): descripción obtenida`, {
+                descripcionEs: item.descripcionEs,
+                descripcionPt: item.descripcionPt,
+                description: item.description,
+                finalDescription: description,
+                hasDescription: !!description
+            });
         } else if (item.type === 'special') {
             // Para items especiales, intentar usar descripción primero, luego notes
             description = lang === 'es' ? 
@@ -7637,11 +7653,16 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         console.log('📄 Dibujando descripción para PDF:', {
             itemId: item.id,
             itemName: item.name,
+            description: description,
+            descriptionLength: description ? description.length : 0,
+            hasDescription: !!description,
             selectedColorText: selectedColorText,
             selectedReferenceVariant: item.selectedReferenceVariant,
             variantText: variantTextForDescription,
             observations: observations,
-            hasVariantesReferencias: !!item.variantes_referencias
+            hasVariantesReferencias: !!item.variantes_referencias,
+            unitPrice: unitPrice,
+            priceIsZero: (unitPrice === 0 || unitPrice === null || unitPrice === undefined)
         });
         
         // Asegurar que selectedColorText se pase correctamente
