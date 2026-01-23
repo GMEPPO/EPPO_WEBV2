@@ -670,9 +670,30 @@
 
             async loadAllProducts() {
                 try {
-                    const { data, error } = await this.supabase
+                    // Obtener país del usuario para filtrar productos
+                    let userPais = null;
+                    try {
+                        userPais = await window.getUserPais?.();
+                    } catch (error) {
+                        console.warn('⚠️ No se pudo obtener el país del usuario:', error);
+                    }
+
+                    let query = this.supabase
                         .from('products')
-                        .select('*')
+                        .select('*');
+                    
+                    // Filtrar productos según el país del usuario
+                    // Si el usuario es de España, solo mostrar productos con mercado = 'AMBOS'
+                    // Si el usuario es de Portugal, mostrar todos los productos
+                    if (userPais && (userPais === 'Espanha' || userPais === 'España' || userPais === 'ES')) {
+                        query = query.eq('mercado', 'AMBOS');
+                        console.log('🇪🇸 [loadAllProducts] Usuario de España detectado, filtrando productos con mercado = AMBOS');
+                    } else {
+                        // Portugal o sin país: mostrar todos los productos
+                        console.log('🇵🇹 [loadAllProducts] Usuario de Portugal o sin país, mostrando todos los productos');
+                    }
+                    
+                    const { data, error } = await query
                         .order('created_at', { ascending: false });
                     if (error) throw error;
 

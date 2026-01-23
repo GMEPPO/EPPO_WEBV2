@@ -387,14 +387,35 @@ class DynamicProductsPage {
             let error = null;
             
             try {
+                // Obtener país del usuario para filtrar productos
+                let userPais = null;
+                try {
+                    userPais = await window.getUserPais?.();
+                } catch (error) {
+                    console.warn('⚠️ No se pudo obtener el país del usuario:', error);
+                }
+
                 // Filtrar SOLO productos con visible_en_catalogo = true o null
                 // Los productos con visible_en_catalogo = false NO deben aparecer
                 // Excluir productos asociados a clientes específicos (cliente_id IS NULL)
-                const result = await this.supabase
+                let query = this.supabase
                     .from('products')
                     .select('*')
                     .or('visible_en_catalogo.eq.true,visible_en_catalogo.is.null')
-                    .is('cliente_id', null) // Solo productos generales, no asociados a clientes
+                    .is('cliente_id', null); // Solo productos generales, no asociados a clientes
+                
+                // Filtrar productos según el país del usuario
+                // Si el usuario es de España, solo mostrar productos con mercado = 'AMBOS'
+                // Si el usuario es de Portugal, mostrar todos los productos
+                if (userPais && (userPais === 'Espanha' || userPais === 'España' || userPais === 'ES')) {
+                    query = query.eq('mercado', 'AMBOS');
+                    console.log('🇪🇸 [loadProductsFromSupabase] Usuario de España detectado, filtrando productos con mercado = AMBOS');
+                } else {
+                    // Portugal o sin país: mostrar todos los productos
+                    console.log('🇵🇹 [loadProductsFromSupabase] Usuario de Portugal o sin país, mostrando todos los productos');
+                }
+                
+                const result = await query
                     .order('created_at', { ascending: false });
                 
                 data = result.data;

@@ -8,6 +8,11 @@ let cachedRole = null;
 let roleCacheTimestamp = 0;
 const ROLE_CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
 
+// Caché simple del país para evitar consultas repetitivas
+let cachedPais = null;
+let paisCacheTimestamp = 0;
+const PAIS_CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+
 /**
  * Obtener rol del usuario directamente desde Supabase (sin roles.js)
  */
@@ -89,8 +94,81 @@ window.getUserRole = getUserRole;
 window.clearRoleCache = function() {
     cachedRole = null;
     roleCacheTimestamp = 0;
-    console.log('🗑️ [menu-hamburguesa] Caché de rol limpiado');
+    cachedPais = null;
+    paisCacheTimestamp = 0;
+    console.log('🗑️ [menu-hamburguesa] Caché de rol y país limpiado');
 };
+
+/**
+ * Obtener país del usuario desde user_roles
+ */
+async function getUserPais() {
+    // Verificar caché
+    const now = Date.now();
+    if (cachedPais && (now - paisCacheTimestamp) < PAIS_CACHE_DURATION) {
+        return cachedPais;
+    }
+
+    try {
+        // Verificar autenticación
+        if (!window.authManager) {
+            return null;
+        }
+
+        const isAuth = await window.authManager.isAuthenticated();
+        if (!isAuth) {
+            return null;
+        }
+
+        const user = await window.authManager.getCurrentUser();
+        if (!user) {
+            return null;
+        }
+
+        // Obtener cliente Supabase
+        const client = await window.universalSupabase?.getClient();
+        if (!client) {
+            return null;
+        }
+
+        // Consultar país directamente desde la BD
+        const { data, error } = await client
+            .from('user_roles')
+            .select('Pais')
+            .eq('user_id', user.id)
+            .single();
+
+        if (error) {
+            if (error.code === 'PGRST116') {
+                // Usuario sin país asignado, usar 'Portugal' por defecto (acceso completo)
+                cachedPais = 'Portugal';
+                paisCacheTimestamp = now;
+                return 'Portugal';
+            }
+            console.warn('⚠️ [getUserPais] Error al consultar país:', error.message);
+            return null;
+        }
+
+        if (data && data.Pais) {
+            // Guardar en caché
+            cachedPais = data.Pais;
+            paisCacheTimestamp = now;
+            return data.Pais;
+        }
+
+        // Si no hay país, usar 'Portugal' por defecto (acceso completo)
+        cachedPais = 'Portugal';
+        paisCacheTimestamp = now;
+        return 'Portugal';
+
+    } catch (error) {
+        console.warn('⚠️ [getUserPais] Error obteniendo país:', error);
+        return null;
+    }
+}
+
+// Hacer la función disponible globalmente
+window.getUserPais = getUserPais;
 
 // Función para abrir/cerrar el menú desplegable
 async function toggleMenu() {

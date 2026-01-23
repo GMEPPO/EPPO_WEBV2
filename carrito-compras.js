@@ -654,19 +654,7 @@ class CartManager {
             }
         }
 
-        // Mostrar botón de aplicar precio máximo solo cuando se edita una propuesta
-        const applyMaxPriceBtn = document.getElementById('applyMaxPriceBtn');
-        const applyMaxPriceText = document.getElementById('apply-max-price-text');
-        if (applyMaxPriceBtn && applyMaxPriceText) {
-            applyMaxPriceBtn.style.display = 'flex';
-            if (this.currentLanguage === 'es') {
-                applyMaxPriceText.textContent = 'Aplicar Precio 200+';
-            } else if (this.currentLanguage === 'pt') {
-                applyMaxPriceText.textContent = 'Aplicar Preço 200+';
-            } else {
-                applyMaxPriceText.textContent = 'Apply 200+ Price';
-            }
-        }
+        // Botón de aplicar precio máximo eliminado (no hace nada)
 
         // Ocultar botón de crear propuesta cuando se edita
         const generateProposalBtn = document.getElementById('generateProposalBtn');
@@ -770,6 +758,14 @@ class CartManager {
         }
 
         try {
+            // Obtener país del usuario para filtrar productos
+            let userPais = null;
+            try {
+                userPais = await window.getUserPais?.();
+            } catch (error) {
+                console.warn('⚠️ No se pudo obtener el país del usuario:', error);
+            }
+
             // Si NO se está editando una propuesta, excluir productos con cliente_id
             // Solo cargar productos generales (sin cliente asociado)
             let query = this.supabase
@@ -781,6 +777,18 @@ class CartManager {
             if (!this.editingProposalId && !this.editingProposalData) {
                 query = query.is('cliente_id', null);
             }
+            
+            // Filtrar productos según el país del usuario
+            // Si el usuario es de España, solo mostrar productos con mercado = 'AMBOS'
+            // Si el usuario es de Portugal, mostrar todos los productos
+            if (userPais && (userPais === 'Espanha' || userPais === 'España' || userPais === 'ES')) {
+                query = query.eq('mercado', 'AMBOS');
+                console.log('🇪🇸 [loadAllProducts] Usuario de España detectado, filtrando productos con mercado = AMBOS');
+            } else {
+                // Portugal o sin país: mostrar todos los productos
+                console.log('🇵🇹 [loadAllProducts] Usuario de Portugal o sin país, mostrando todos los productos');
+            }
+            
             // Si estamos editando una propuesta, loadAllProducts cargará todos los productos
             // y luego loadClientExclusiveProducts agregará los exclusivos del cliente
             
@@ -2843,18 +2851,7 @@ class CartManager {
         this.renderCart();
         this.updateSummary();
         
-        // Actualizar texto del botón de aplicar precio máximo si existe
-        const applyMaxPriceBtn = document.getElementById('applyMaxPriceBtn');
-        const applyMaxPriceText = document.getElementById('apply-max-price-text');
-        if (applyMaxPriceBtn && applyMaxPriceText && this.editingProposalData) {
-            if (lang === 'es') {
-                applyMaxPriceText.textContent = 'Aplicar Precio 200+';
-            } else if (lang === 'pt') {
-                applyMaxPriceText.textContent = 'Aplicar Preço 200+';
-            } else {
-                applyMaxPriceText.textContent = 'Apply 200+ Price';
-            }
-        }
+        // Botón de aplicar precio máximo eliminado (no hace nada)
 
         // Actualizar botón modo 200+
         this.updateMode200Button();
