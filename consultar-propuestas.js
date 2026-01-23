@@ -195,12 +195,12 @@ class ProposalsManager {
                                 
                                 if (!userRoleError && userRoleData && userRoleData.Name) {
                                     const userName = userRoleData.Name;
-                                    console.log('👤 [consultar-propuestas] Filtrando por responsable:', userName);
+                                    console.log('👤 [consultar-propuestas] Filtrando por comercial:', userName);
                                     
-                                    // Filtrar propuestas donde responsavel coincida con el nombre del usuario
+                                    // Filtrar propuestas donde nombre_comercial coincida con el nombre del usuario
                                     filteredPresupuestos = presupuestos.filter(p => {
-                                        const responsavel = p.responsavel || '';
-                                        return responsavel.trim() === userName.trim();
+                                        const nombreComercial = p.nombre_comercial || '';
+                                        return nombreComercial.trim() === userName.trim();
                                     });
                                     
                                     console.log(`📊 [consultar-propuestas] Propuestas filtradas: ${filteredPresupuestos.length} de ${presupuestos.length}`);
