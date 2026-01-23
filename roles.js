@@ -237,9 +237,18 @@ class RolesManager {
         // Si hay una consulta en curso, esperar a que termine
         if (this.roleLoadPromise) {
             console.log('⏳ [roles.js] Hay una consulta en curso, esperando...');
-            const role = await this.roleLoadPromise;
-            console.log('✅ [roles.js] Consulta completada, rol obtenido:', role);
-            return role;
+            try {
+                const role = await this.roleLoadPromise;
+                console.log('✅ [roles.js] Consulta completada, rol obtenido:', role);
+                // Asegurar que el rol se guardó en currentUserRole
+                if (role && !this.currentUserRole) {
+                    this.currentUserRole = role;
+                }
+                return role || this.currentUserRole || 'comercial';
+            } catch (error) {
+                console.error('❌ [roles.js] Error esperando roleLoadPromise:', error);
+                // Si hay error, intentar cargar de nuevo
+            }
         }
         
         // Si no hay rol y no hay consulta en curso, cargar
@@ -249,11 +258,18 @@ class RolesManager {
             console.log('✅ [roles.js] Rol cargado:', this.currentUserRole);
         } else {
             console.log('⏳ [roles.js] Ya se está cargando el rol, esperando...');
-            // Esperar a que termine
-            while (this.isLoadingRole) {
+            // Esperar a que termine (con timeout para evitar esperas infinitas)
+            let waitCount = 0;
+            const maxWait = 50; // 5 segundos máximo (100ms * 50)
+            while (this.isLoadingRole && waitCount < maxWait) {
                 await new Promise(resolve => setTimeout(resolve, 100));
+                waitCount++;
             }
-            console.log('✅ [roles.js] Carga completada, rol:', this.currentUserRole);
+            if (this.isLoadingRole) {
+                console.warn('⚠️ [roles.js] Timeout esperando carga de rol, usando valor por defecto');
+            } else {
+                console.log('✅ [roles.js] Carga completada, rol:', this.currentUserRole);
+            }
         }
         
         const finalRole = this.currentUserRole || 'comercial';

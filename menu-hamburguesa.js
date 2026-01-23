@@ -44,12 +44,64 @@ async function disableMenuForComercial() {
 
         // Asegurar que el rol esté cargado
         if (!window.rolesManager.isInitialized) {
+            console.log('🔄 [disableMenuForComercial] Inicializando rolesManager...');
             await window.rolesManager.initialize();
+            console.log('✅ [disableMenuForComercial] rolesManager inicializado');
         }
 
-        // Obtener rol del usuario
-        const role = await window.rolesManager.getCurrentUserRole();
+        // Esperar a que el rol se cargue completamente
+        // Primero verificar si hay una carga en curso
+        if (window.rolesManager.isLoadingRole && window.rolesManager.roleLoadPromise) {
+            console.log('⏳ [disableMenuForComercial] Rol se está cargando, esperando a que termine...');
+            try {
+                await window.rolesManager.roleLoadPromise;
+                console.log('✅ [disableMenuForComercial] Carga de rol completada');
+            } catch (error) {
+                console.warn('⚠️ [disableMenuForComercial] Error esperando carga de rol:', error);
+            }
+        }
+
+        // Obtener rol del usuario (ahora debería estar cargado)
+        console.log('🔍 [disableMenuForComercial] Obteniendo rol del usuario...');
+        console.log('🔍 [DEBUG] Estado antes de getCurrentUserRole:', {
+            isInitialized: window.rolesManager.isInitialized,
+            currentUserRole: window.rolesManager.currentUserRole,
+            isLoadingRole: window.rolesManager.isLoadingRole,
+            hasRoleLoadPromise: !!window.rolesManager.roleLoadPromise
+        });
+
+        let role = await window.rolesManager.getCurrentUserRole();
+        
+        // Si el rol aún es null o undefined, esperar un poco más y reintentar
+        let retries = 0;
+        const maxRoleRetries = 15;
+        while ((!role || role === null || role === undefined) && retries < maxRoleRetries) {
+            console.log(`⏳ [disableMenuForComercial] Rol aún no disponible (intento ${retries + 1}/${maxRoleRetries}), esperando...`);
+            console.log('🔍 [DEBUG] Estado actual:', {
+                currentUserRole: window.rolesManager.currentUserRole,
+                isLoadingRole: window.rolesManager.isLoadingRole,
+                hasRoleLoadPromise: !!window.rolesManager.roleLoadPromise
+            });
+            await new Promise(resolve => setTimeout(resolve, 300));
+            role = await window.rolesManager.getCurrentUserRole();
+            retries++;
+        }
+
+        if (!role || role === null || role === undefined) {
+            console.warn('⚠️ [disableMenuForComercial] No se pudo obtener el rol después de múltiples intentos, usando "comercial" por defecto');
+            role = 'comercial'; // Por defecto, ser restrictivo
+        }
+
+        console.log('✅ [disableMenuForComercial] Rol obtenido:', role);
+        console.log('🔍 [DEBUG] Estado después de getCurrentUserRole:', {
+            role: role,
+            currentUserRole: window.rolesManager.currentUserRole,
+            isLoadingRole: window.rolesManager.isLoadingRole,
+            tipo: typeof role
+        });
+
         const isComercial = role === 'comercial';
+        console.log('🔍 [DEBUG] isComercial:', isComercial);
 
         if (!isComercial) {
             console.log('✅ [disableMenuForComercial] Usuario no es comercial, menú habilitado');
