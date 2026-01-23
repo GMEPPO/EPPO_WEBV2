@@ -239,8 +239,8 @@ class DynamicProductsPage {
                 .from('categorias_geral')
                 .select('*')
                 .eq('tipo', 'home')
-                .eq('is_active', true)
-                .order('orden', { ascending: true });
+                .eq('is_active', true);
+                // No ordenar por 'orden', se ordenarán alfabéticamente según el idioma
 
             if (error) {
                 return;
@@ -269,13 +269,32 @@ class DynamicProductsPage {
 
         const currentLang = this.currentLanguage || localStorage.getItem('language') || 'pt';
         
+        // Ordenar categorías alfabéticamente según el idioma seleccionado
+        const sortedCategories = [...this.homeCategories].sort((a, b) => {
+            // Obtener nombre según idioma para comparación
+            const nombreA = currentLang === 'es' ? (a.nombre_es || '') : 
+                           currentLang === 'pt' ? (a.nombre_pt || '') : 
+                           currentLang === 'en' ? (a.nombre_en || a.nombre_es || '') :
+                           (a.nombre_es || '');
+            const nombreB = currentLang === 'es' ? (b.nombre_es || '') : 
+                           currentLang === 'pt' ? (b.nombre_pt || '') : 
+                           currentLang === 'en' ? (b.nombre_en || b.nombre_es || '') :
+                           (b.nombre_es || '');
+            
+            // Comparar alfabéticamente (case-insensitive)
+            return nombreA.localeCompare(nombreB, currentLang === 'pt' ? 'pt' : currentLang === 'es' ? 'es' : 'en', { 
+                sensitivity: 'base',
+                ignorePunctuation: true 
+            });
+        });
+        
         // IMPORTANTE: Usar las categorías que ya vienen configuradas desde el constructor
         // o desde selectedCategoryFromUrl
         let categoriesToUse = [...this.filters.categories];
         
         // Si hay categoría desde URL y no está en categoriesToUse, agregarla
         if (this.selectedCategoryFromUrl) {
-            const matchingCategory = this.homeCategories.find(cat => {
+            const matchingCategory = sortedCategories.find(cat => {
                 const normalizedName = this.normalizeCategoryName(cat.nombre_es);
                 return normalizedName === this.selectedCategoryFromUrl || 
                        normalizedName.includes(this.selectedCategoryFromUrl) ||
@@ -293,7 +312,7 @@ class DynamicProductsPage {
         const selectedCategories = new Set(categoriesToUse);
         
         let html = '';
-        this.homeCategories.forEach((category, index) => {
+        sortedCategories.forEach((category, index) => {
             const nombre = currentLang === 'es' ? category.nombre_es : 
                           currentLang === 'pt' ? category.nombre_pt : 
                           currentLang === 'en' ? (category.nombre_en || category.nombre_es) :
@@ -333,7 +352,7 @@ class DynamicProductsPage {
         // Cargar filtros dinámicos para las categorías seleccionadas
         // PERO solo si no estamos en la inicialización (los productos deben estar cargados primero)
         if (!this.skipDynamicFiltersOnInit) {
-        this.updateDynamicFilters();
+            // updateDynamicFilters se llama desde otro lugar, no desde aquí
         }
     }
 
@@ -1730,46 +1749,67 @@ class DynamicProductsPage {
             // Para campos select, mostrar solo las opciones que tienen valores en productos
             // Comparar como strings para evitar problemas de tipo
             const valuesSet = new Set(values.map(v => String(v)));
-            return field.options
+            const filteredOptions = field.options
                 .filter(opt => opt && opt.value && valuesSet.has(String(opt.value)))
                 .map(opt => {
-                    const isChecked = selectedValues.includes(String(opt.value)) ? 'checked' : '';
                     // Seleccionar el label según el idioma actual
                     const optLabel = currentLang === 'es' ? (opt.label_es || opt.label || opt.value) :
                                      currentLang === 'en' ? (opt.label_en || opt.label_es || opt.label || opt.value) :
                                      (opt.label_pt || opt.label || opt.value);
-                    return `
-                        <label class="filter-checkbox">
-                            <input type="checkbox" value="${opt.value}" ${isChecked}>
-                            <span class="checkmark"></span>
-                            <span>${optLabel}</span>
-                        </label>
-                    `;
-                }).join('');
+                    return { opt, optLabel };
+                });
+            
+            // Ordenar alfabéticamente según el idioma seleccionado
+            filteredOptions.sort((a, b) => {
+                return a.optLabel.localeCompare(b.optLabel, currentLang === 'pt' ? 'pt' : currentLang === 'es' ? 'es' : 'en', { 
+                    sensitivity: 'base',
+                    ignorePunctuation: true 
+                });
+            });
+            
+            return filteredOptions.map(({ opt, optLabel }) => {
+                const isChecked = selectedValues.includes(String(opt.value)) ? 'checked' : '';
+                return `
+                    <label class="filter-checkbox">
+                        <input type="checkbox" value="${opt.value}" ${isChecked}>
+                        <span class="checkmark"></span>
+                        <span>${optLabel}</span>
+                    </label>
+                `;
+            }).join('');
         } else {
             // Para campos de texto/número, mostrar los valores traducidos según el idioma
-            return values
-                .sort()
-                .map(value => {
-                    const isChecked = selectedValues.includes(String(value)) ? 'checked' : '';
-                    
-                    // Obtener la traducción si existe (de forma segura)
-                    let displayValue = value;
-                    if (field && field.translations && field.translations[value]) {
-                        const trans = field.translations[value];
-                        displayValue = currentLang === 'es' ? (trans.es || value) :
-                                       currentLang === 'en' ? (trans.en || trans.es || value) :
-                                       (trans.pt || value);
-                    }
-                    
-                    return `
-                        <label class="filter-checkbox">
-                            <input type="checkbox" value="${value}" ${isChecked}>
-                            <span class="checkmark"></span>
-                            <span>${displayValue}</span>
-                        </label>
-                    `;
-                }).join('');
+            // Primero obtener los valores con sus traducciones
+            const valuesWithLabels = values.map(value => {
+                // Obtener la traducción si existe (de forma segura)
+                let displayValue = value;
+                if (field && field.translations && field.translations[value]) {
+                    const trans = field.translations[value];
+                    displayValue = currentLang === 'es' ? (trans.es || value) :
+                                   currentLang === 'en' ? (trans.en || trans.es || value) :
+                                   (trans.pt || value);
+                }
+                return { value, displayValue };
+            });
+            
+            // Ordenar alfabéticamente según el idioma seleccionado
+            valuesWithLabels.sort((a, b) => {
+                return a.displayValue.localeCompare(b.displayValue, currentLang === 'pt' ? 'pt' : currentLang === 'es' ? 'es' : 'en', { 
+                    sensitivity: 'base',
+                    ignorePunctuation: true 
+                });
+            });
+            
+            return valuesWithLabels.map(({ value, displayValue }) => {
+                const isChecked = selectedValues.includes(String(value)) ? 'checked' : '';
+                return `
+                    <label class="filter-checkbox">
+                        <input type="checkbox" value="${value}" ${isChecked}>
+                        <span class="checkmark"></span>
+                        <span>${displayValue}</span>
+                    </label>
+                `;
+            }).join('');
         }
     }
 
