@@ -30,30 +30,24 @@ const HIDE_COOLDOWN = 2000; // 2 segundos entre ejecuciones
 // Bandera para evitar ejecuciones múltiples simultáneas
 let isHidingDropdown = false;
 let lastRoleChecked = null; // Cache del último rol verificado
+let hideMenuPromise = null; // Promise de la ejecución actual
 
 /**
  * Ocultar el menú desplegable completo si el usuario es "comercial"
  */
 async function hideMenuDropdownByRole() {
-    // Si ya hay una ejecución en curso, esperar a que termine en lugar de retornar
-    if (isHidingDropdown) {
-        console.log('⏳ [hideMenuDropdownByRole] Esperando a que termine la ejecución anterior...');
-        // Esperar hasta 3 segundos a que termine
-        let waitCount = 0;
-        while (isHidingDropdown && waitCount < 15) {
-            await new Promise(resolve => setTimeout(resolve, 200));
-            waitCount++;
-        }
-        if (isHidingDropdown) {
-            console.warn('⚠️ [hideMenuDropdownByRole] Timeout esperando ejecución anterior, continuando...');
-            isHidingDropdown = false; // Forzar reset si hay timeout
-        }
+    // Si ya hay una ejecución en curso, retornar la misma promise
+    if (isHidingDropdown && hideMenuPromise) {
+        console.log('⏳ [hideMenuDropdownByRole] Ejecución en curso, reutilizando promise...');
+        return hideMenuPromise;
     }
 
+    // Crear nueva promise para esta ejecución
     isHidingDropdown = true;
-    console.log('🔍 [hideMenuDropdownByRole] Iniciando ejecución...');
+    hideMenuPromise = (async () => {
+        console.log('🔍 [hideMenuDropdownByRole] Iniciando ejecución...');
 
-    try {
+        try {
         console.log('🔍 [hideMenuDropdownByRole] Verificando managers...');
         
         // Esperar a que authManager y rolesManager estén inicializados
@@ -67,7 +61,6 @@ async function hideMenuDropdownByRole() {
 
         if (!window.rolesManager) {
             console.warn('⚠️ [hideMenuDropdownByRole] rolesManager no disponible después de esperar');
-            isHidingDropdown = false;
             return;
         }
 
@@ -80,7 +73,6 @@ async function hideMenuDropdownByRole() {
                 await window.rolesManager.initialize();
             } catch (error) {
                 console.warn('⚠️ [hideMenuDropdownByRole] Error inicializando rolesManager:', error);
-                isHidingDropdown = false;
                 return;
             }
         }
@@ -100,7 +92,6 @@ async function hideMenuDropdownByRole() {
                 const isHidden = menuDropdown.style.display === 'none' || menuDropdown.hasAttribute('data-hidden-by-role');
                 if ((isComercial && isHidden) || (!isComercial && !isHidden)) {
                     console.log('⏭️ [hideMenuDropdownByRole] El menú ya está en el estado correcto, saltando...');
-                    isHidingDropdown = false;
                     return;
                 }
             }
@@ -212,24 +203,33 @@ async function hideMenuDropdownByRole() {
     } catch (error) {
         console.error('❌ [hideMenuDropdownByRole] Error al ocultar menú desplegable:', error);
     } finally {
-        // Asegurar que la bandera se resetee siempre
-        setTimeout(() => {
-            isHidingDropdown = false;
-            console.log('✅ [hideMenuDropdownByRole] Ejecución completada y bandera reseteada');
-        }, 100);
+        // Resetear banderas
+        isHidingDropdown = false;
+        hideMenuPromise = null;
+        console.log('✅ [hideMenuDropdownByRole] Ejecución completada');
     }
+    })(); // Cerrar la promise
+    
+    return hideMenuPromise;
 }
 
 // Ejecutar cuando el DOM esté listo y después de que los scripts se carguen
+// NOTA: Esta función es un fallback. La ejecución principal ocurre en auth.js y roleLoaded event
 function initMenuDropdownHiding() {
-    console.log('🚀 [initMenuDropdownHiding] Inicializando sistema de ocultación de menú...');
+    console.log('🚀 [initMenuDropdownHiding] Inicializando sistema de ocultación de menú (fallback)...');
     
     const executeHiding = async () => {
+        // Solo ejecutar si no hay una ejecución en curso y si el usuario está autenticado
+        if (isHidingDropdown) {
+            console.log('⏭️ [initMenuDropdownHiding] Ya hay una ejecución en curso, saltando...');
+            return;
+        }
+        
         console.log('🔄 [initMenuDropdownHiding] Ejecutando verificación de rol...');
         
         // Esperar a que rolesManager esté disponible y autenticado
         let attempts = 0;
-        const maxAttempts = 25; // 5 segundos máximo (200ms * 25)
+        const maxAttempts = 15; // 3 segundos máximo (200ms * 15)
         
         while (attempts < maxAttempts) {
             // Verificar que authManager y rolesManager estén disponibles
@@ -242,44 +242,29 @@ function initMenuDropdownHiding() {
                         // Usuario autenticado, ejecutar ocultación
                         await hideMenuDropdownByRole();
                         return;
-                    } else {
-                        console.log('⏳ [initMenuDropdownHiding] Usuario no autenticado aún, esperando...');
                     }
                 } catch (error) {
                     console.warn('⚠️ [initMenuDropdownHiding] Error verificando autenticación:', error);
                 }
-            } else {
-                console.log('⏳ [initMenuDropdownHiding] Managers no disponibles aún, esperando...', {
-                    authManager: !!window.authManager,
-                    rolesManager: !!window.rolesManager
-                });
             }
             
             await new Promise(resolve => setTimeout(resolve, 200));
             attempts++;
         }
         
-        console.log('⚠️ [initMenuDropdownHiding] Timeout alcanzado, intentando ejecutar de todas formas...');
-        
-        // Si después de todos los intentos no se pudo, intentar una vez más
-        if (window.rolesManager) {
-            setTimeout(async () => {
-                console.log('🔄 [initMenuDropdownHiding] Intento final de ocultación...');
-                await hideMenuDropdownByRole();
-            }, 1000);
-        }
+        console.log('⏭️ [initMenuDropdownHiding] No se pudo verificar autenticación, saltando (otro handler se encargará)');
     };
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
-            console.log('📄 [initMenuDropdownHiding] DOM cargado, esperando scripts...');
-            // Esperar un poco más para que todos los scripts se carguen
-            setTimeout(executeHiding, 1500);
+            console.log('📄 [initMenuDropdownHiding] DOM cargado');
+            // Esperar un poco para que los scripts se carguen
+            setTimeout(executeHiding, 2000);
         });
     } else {
-        console.log('📄 [initMenuDropdownHiding] DOM ya listo, esperando scripts...');
+        console.log('📄 [initMenuDropdownHiding] DOM ya listo');
         // DOM ya está listo, esperar a que los scripts se carguen
-        setTimeout(executeHiding, 1500);
+        setTimeout(executeHiding, 2000);
     }
 }
 
@@ -299,12 +284,10 @@ if (!window.menuDropdownAuthListenerAdded) {
             window.authManager.supabase.auth.onAuthStateChange(async (event, session) => {
                 console.log('🔄 [menu-hamburguesa] Cambio de estado de autenticación:', event);
                 if (event === 'SIGNED_IN' && session) {
-                    // El rol ya se carga en auth.js, solo esperar un momento para que el DOM esté listo
-                    // y ejecutar la ocultación
-                    setTimeout(async () => {
-                        console.log('🔄 [menu-hamburguesa] Ejecutando ocultación después de SIGNED_IN...');
-                        await hideMenuDropdownByRole();
-                    }, 300); // Delay mínimo solo para asegurar que el DOM esté listo
+                    // El rol ya se carga en auth.js y dispara roleLoaded
+                    // Este listener es solo un fallback, no necesita hacer nada
+                    // porque auth.js ya maneja la ocultación
+                    console.log('✅ [menu-hamburguesa] SIGNED_IN detectado, auth.js se encargará de ocultar el menú');
                 }
             });
             window.menuDropdownAuthListenerAdded = true;
