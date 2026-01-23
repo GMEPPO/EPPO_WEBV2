@@ -167,6 +167,7 @@ class AuthManager {
                     console.warn('⚠️ [auth.js] No se pudo configurar listener de autenticación:', error);
                 }
             }
+            } // Cerrar el if (window.location.protocol !== 'file:')
 
             this.isInitialized = true;
             return this.supabase;
