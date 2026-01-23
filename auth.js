@@ -8,6 +8,8 @@ class AuthManager {
         this.supabase = null;
         this.currentUser = null;
         this.isInitialized = false;
+        this.authStateChangeListenerAdded = false; // Evitar múltiples listeners
+        this.processingSignIn = false; // Evitar procesar SIGNED_IN múltiples veces
     }
 
     /**
@@ -73,57 +75,80 @@ class AuthManager {
                     }
                 }
 
-                // Escuchar cambios de autenticación
-                try {
-                    this.supabase.auth.onAuthStateChange(async (event, session) => {
-                        if (event === 'SIGNED_IN') {
-                            this.currentUser = session?.user || null;
-                            console.log('✅ [auth.js] Usuario autenticado:', this.currentUser?.email);
-                            
-                            // Cargar rol y ocultar menú INMEDIATAMENTE después de autenticación
-                            if (window.rolesManager && this.currentUser) {
-                                // Ejecutar inmediatamente sin delay
-                                (async () => {
+                // Escuchar cambios de autenticación (solo una vez)
+                if (!this.authStateChangeListenerAdded) {
+                    try {
+                        this.supabase.auth.onAuthStateChange(async (event, session) => {
+                            if (event === 'SIGNED_IN' && session) {
+                                // Evitar procesar múltiples veces el mismo SIGNED_IN
+                                if (this.processingSignIn) {
+                                    console.log('⏭️ [auth.js] SIGNED_IN ya se está procesando, saltando...');
+                                    return;
+                                }
+                                
+                                this.processingSignIn = true;
+                                this.currentUser = session?.user || null;
+                                console.log('✅ [auth.js] Usuario autenticado:', this.currentUser?.email);
+                                
+                                // Cargar rol INMEDIATAMENTE después de autenticación (solo una vez)
+                                if (window.rolesManager && this.currentUser) {
                                     try {
-                                        console.log('🔄 [auth.js] Cargando rol después de SIGNED_IN...');
-                                        console.log('🔍 [DEBUG auth.js] rolesManager disponible:', !!window.rolesManager);
-                                        console.log('🔍 [DEBUG auth.js] rolesManager.isInitialized:', window.rolesManager?.isInitialized);
-                                        
-                                        // Inicializar rolesManager si no está inicializado
-                                        if (!window.rolesManager.isInitialized) {
-                                            console.log('🔄 [DEBUG auth.js] Inicializando rolesManager...');
-                                            await window.rolesManager.initialize();
-                                            console.log('✅ [DEBUG auth.js] rolesManager inicializado');
+                                        // Verificar si ya hay una carga en curso
+                                        if (window.rolesManager.isLoadingRole && window.rolesManager.roleLoadPromise) {
+                                            console.log('⏳ [auth.js] Rol ya se está cargando, esperando...');
+                                            const role = await window.rolesManager.roleLoadPromise;
+                                            console.log('✅ [auth.js] Rol obtenido de carga en curso:', role);
+                                            
+                                            // Disparar evento
+                                            document.dispatchEvent(new CustomEvent('roleLoaded', { 
+                                                detail: { role: role } 
+                                            }));
+                                            this.processingSignIn = false;
+                                            return;
                                         }
                                         
-                                        // Obtener rol (usa caché)
-                                        console.log('🔍 [DEBUG auth.js] Llamando getCurrentUserRole()...');
+                                        // Si el rol ya está cargado, solo disparar evento
+                                        if (window.rolesManager.currentUserRole) {
+                                            const role = window.rolesManager.currentUserRole;
+                                            console.log('✅ [auth.js] Rol ya estaba cargado:', role);
+                                            document.dispatchEvent(new CustomEvent('roleLoaded', { 
+                                                detail: { role: role } 
+                                            }));
+                                            this.processingSignIn = false;
+                                            return;
+                                        }
+                                        
+                                        console.log('🔄 [auth.js] Cargando rol después de SIGNED_IN...');
+                                        
+                                        // Inicializar rolesManager si no está inicializado (solo una vez)
+                                        if (!window.rolesManager.isInitialized) {
+                                            console.log('🔄 [auth.js] Inicializando rolesManager...');
+                                            await window.rolesManager.initialize();
+                                            console.log('✅ [auth.js] rolesManager inicializado');
+                                        }
+                                        
+                                        // Obtener rol (usa caché, no hace consultas duplicadas)
                                         const role = await window.rolesManager.getCurrentUserRole();
                                         console.log('🔐 [auth.js] Rol cargado:', role);
-                                        console.log('🔍 [DEBUG auth.js] Rol es "comercial":', role === 'comercial');
                                         
                                         // Disparar evento para que otros listeners sepan que el rol está listo
                                         document.dispatchEvent(new CustomEvent('roleLoaded', { 
                                             detail: { role: role } 
                                         }));
-                                        console.log('✅ [DEBUG auth.js] Evento roleLoaded disparado');
-                                        
-                                        // NO ejecutar disableMenuForComercial aquí
-                                        // El evento roleLoaded ya lo disparará automáticamente
-                                        // Esto evita ejecuciones duplicadas
-                                        console.log('✅ [auth.js] Rol cargado y evento roleLoaded disparado, menu-hamburguesa.js se encargará de deshabilitar el menú');
+                                        console.log('✅ [auth.js] Evento roleLoaded disparado');
                                     } catch (error) {
-                                        console.error('❌ [auth.js] Error cargando rol o ocultando menú:', error);
-                                        console.error('🔍 [DEBUG auth.js] Stack trace:', error.stack);
+                                        console.error('❌ [auth.js] Error cargando rol:', error);
+                                    } finally {
+                                        this.processingSignIn = false;
                                     }
-                                })();
-                            } else {
-                                console.warn('⚠️ [DEBUG auth.js] No se puede cargar rol:', {
-                                    hasRolesManager: !!window.rolesManager,
-                                    hasCurrentUser: !!this.currentUser
-                                });
-                            }
-                        } else if (event === 'SIGNED_OUT') {
+                                } else {
+                                    console.warn('⚠️ [auth.js] No se puede cargar rol:', {
+                                        hasRolesManager: !!window.rolesManager,
+                                        hasCurrentUser: !!this.currentUser
+                                    });
+                                    this.processingSignIn = false;
+                                }
+                            } else if (event === 'SIGNED_OUT') {
                             this.currentUser = null;
                             // Limpiar rol al cerrar sesión
                             if (window.rolesManager) {
@@ -136,8 +161,10 @@ class AuthManager {
                             if (menuToggle) menuToggle.style.display = '';
                         }
                     });
+                    this.authStateChangeListenerAdded = true;
+                    console.log('✅ [auth.js] Listener de autenticación configurado (solo una vez)');
                 } catch (error) {
-                    console.warn('No se pudo configurar listener de autenticación:', error);
+                    console.warn('⚠️ [auth.js] No se pudo configurar listener de autenticación:', error);
                 }
             }
 

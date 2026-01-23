@@ -1923,7 +1923,7 @@
         window.addEventListener('languageChanged', function(event) {
             const lang = event.detail.language;
             if (typeof translateCartPage === 'function') {
-                translateCartPage(lang);
+            translateCartPage(lang);
             }
             updateNavigationButtons(lang);
             if (window.cartManager) {

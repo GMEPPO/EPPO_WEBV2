@@ -119,7 +119,7 @@ if (typeof window.SUPABASE_CONFIG === 'undefined') {
         if (!isLocalDevelopment()) {
             loadConfigFromAPI().then(data => {
                 if (data) {
-                    window.SUPABASE_CONFIG = {
+    window.SUPABASE_CONFIG = {
                         url: data.url,
                         anonKey: data.anonKey
                     };
@@ -239,7 +239,7 @@ if (typeof UniversalSupabaseClient === 'undefined') {
             // Test de conexión (solo si no estamos en file://)
             if (window.location.protocol !== 'file:') {
                 try {
-                    await this.testConnection();
+            await this.testConnection();
                 } catch (error) {
                     console.warn('⚠️ Error en test de conexión (continuando):', error);
                 }

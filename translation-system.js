@@ -258,7 +258,7 @@ window.changeLanguage = function(lang) {
     
     // Actualizar el sistema de traducción
     if (window.translationSystem) {
-        window.translationSystem.setLanguage(lang);
+    window.translationSystem.setLanguage(lang);
     }
     
     // Actualizar atributo lang del HTML

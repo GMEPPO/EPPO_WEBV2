@@ -8,8 +8,7 @@ class RolesManager {
         this.supabase = null;
         this.currentUserRole = null;
         this.isInitialized = false;
-        this.isLoadingRole = false; // Bandera para evitar consultas simultáneas
-        this.roleLoadPromise = null; // Promise para cachear la consulta en curso
+        this.isInitializing = false; // Bandera para evitar inicializaciones simultáneas
         this.isLoadingRole = false; // Bandera para evitar consultas simultáneas
         this.roleLoadPromise = null; // Promise para cachear la consulta en curso
         
@@ -50,9 +49,23 @@ class RolesManager {
      * Inicializar el sistema de roles
      */
     async initialize() {
+        // Si ya está inicializado, retornar inmediatamente
         if (this.isInitialized) {
+            console.log('✅ [roles.js] Ya está inicializado, retornando cliente existente');
             return this.supabase;
         }
+
+        // Si ya se está inicializando, esperar a que termine
+        if (this.isInitializing) {
+            console.log('⏳ [roles.js] Ya se está inicializando, esperando...');
+            while (this.isInitializing) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            return this.supabase;
+        }
+
+        // Marcar que estamos inicializando
+        this.isInitializing = true;
 
         try {
             // Si estamos usando file://, no podemos obtener roles
@@ -83,8 +96,13 @@ class RolesManager {
                 return null;
             }
 
-            // Cargar rol del usuario actual
-            await this.loadCurrentUserRole();
+            // Cargar rol del usuario actual (solo si no hay una carga en curso)
+            if (!this.isLoadingRole) {
+                await this.loadCurrentUserRole();
+            } else if (this.roleLoadPromise) {
+                // Si hay una carga en curso, esperar a que termine
+                await this.roleLoadPromise;
+            }
 
             this.isInitialized = true;
             return this.supabase;
@@ -101,6 +119,9 @@ class RolesManager {
             this.currentUserRole = 'comercial';
             this.isInitialized = true;
             return null;
+        } finally {
+            // Limpiar flag de inicialización
+            this.isInitializing = false;
         }
     }
 

@@ -338,7 +338,7 @@
                             sessionStorage.setItem('last_auth_redirect', now.toString());
                             // Agregar un pequeño delay para evitar bucles
                             setTimeout(() => {
-                                window.location.href = 'index.html';
+                    window.location.href = 'index.html';
                             }, 300);
                         } else {
                             console.warn('⚠️ Redirección reciente detectada, evitando bucle');
