@@ -769,6 +769,15 @@ class ProposalsManager {
             return;
         }
 
+        // Cargar rol del usuario para mostrar precios correctamente
+        if (!window.cachedRole) {
+            try {
+                window.cachedRole = await window.getUserRole?.();
+            } catch (error) {
+                console.warn('⚠️ No se pudo obtener el rol del usuario:', error);
+            }
+        }
+
         const modal = document.getElementById('proposalDetailsModal');
         const content = document.getElementById('proposalDetailsContent');
 
@@ -1426,8 +1435,36 @@ class ProposalsManager {
                                 </td>
                                 <td style="color: var(--text-primary, #f9fafb); font-weight: 500;">${articulo.nombre_articulo || '-'}</td>
                                 <td style="color: var(--text-primary, #f9fafb); text-align: center;">${articulo.cantidad || 0}</td>
-                                <td style="color: var(--text-primary, #f9fafb);">€${(parseFloat(articulo.precio) || 0).toFixed(2)}</td>
-                                <td style="color: var(--accent-500, #f59e0b); font-weight: 600;">€${((parseFloat(articulo.precio) || 0) * (parseInt(articulo.cantidad) || 0)).toFixed(2)}</td>
+                                <td style="color: var(--text-primary, #f9fafb);">${(() => {
+                                    const precio = parseFloat(articulo.precio) || 0;
+                                    // Si el precio es 0 y el usuario es comercial, mostrar "Sobre consulta"
+                                    if (precio === 0 && window.cachedRole === 'comercial') {
+                                        const translations = {
+                                            'pt': 'Sobre consulta',
+                                            'es': 'Sobre consulta',
+                                            'en': 'On request'
+                                        };
+                                        const currentLang = this.currentLanguage || localStorage.getItem('language') || 'pt';
+                                        return translations[currentLang] || translations['pt'];
+                                    }
+                                    return `€${precio.toFixed(2)}`;
+                                })()}</td>
+                                <td style="color: var(--accent-500, #f59e0b); font-weight: 600;">${(() => {
+                                    const precio = parseFloat(articulo.precio) || 0;
+                                    const cantidad = parseInt(articulo.cantidad) || 0;
+                                    const total = precio * cantidad;
+                                    // Si el precio es 0 y el usuario es comercial, mostrar "Sobre consulta"
+                                    if (precio === 0 && window.cachedRole === 'comercial') {
+                                        const translations = {
+                                            'pt': 'Sobre consulta',
+                                            'es': 'Sobre consulta',
+                                            'en': 'On request'
+                                        };
+                                        const currentLang = this.currentLanguage || localStorage.getItem('language') || 'pt';
+                                        return translations[currentLang] || translations['pt'];
+                                    }
+                                    return `€${total.toFixed(2)}`;
+                                })()}</td>
                                 <td style="color: var(--text-primary, #f9fafb);">${articulo.plazo_entrega || '-'}</td>
                                 <td>
                                     ${articulo.precio_personalizado ? 

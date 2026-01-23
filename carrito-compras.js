@@ -1596,12 +1596,21 @@ class CartManager {
     /**
      * Renderizar el carrito
      */
-    renderCart(skipStockUpdate = false) {
+    async renderCart(skipStockUpdate = false) {
         const cartItemsContainer = document.getElementById('cartItems');
         
         // Verificar que el contenedor existe antes de usarlo
         if (!cartItemsContainer) {
             return;
+        }
+        
+        // Cargar rol del usuario para usarlo en renderCartItem
+        if (!window.cachedRole) {
+            try {
+                window.cachedRole = await window.getUserRole?.();
+            } catch (error) {
+                console.warn('⚠️ No se pudo obtener el rol del usuario:', error);
+            }
         }
         
         if (this.cart.length === 0) {
@@ -2240,19 +2249,34 @@ class CartManager {
                             // Verificar si el precio del producto es 0 o "sobre consulta"
                             const basePrice = item.basePrice || 0;
                             const precioEsCero = basePrice === 0 || basePrice === null || basePrice === undefined;
+                            const precioActualEsCero = unitPrice === 0 || unitPrice === null || unitPrice === undefined;
                             
-                            // Verificar si el usuario es admin (de forma asíncrona, pero mostrar input si precio es 0)
-                            // El input se deshabilitará en updateManualPrice si no es admin
-                            if (precioEsCero) {
-                                // Precio editable solo si el precio base es 0 (sobre consulta)
-                                return `<input type="number" 
-                                        class="cart-item-price-input" 
-                                        value="${unitPrice.toFixed(4)}" 
-                                        step="0.0001" 
-                                        min="0"
-                                        style="width: 100px; padding: 4px 8px; border: 1px solid var(--bg-gray-300); border-radius: 6px; text-align: right; font-size: 0.9rem; font-weight: 600;"
-                                        onchange="updateManualPrice('${String(itemIdentifier).replace(/'/g, "\\'")}', this.value)"
-                                        onblur="updateManualPrice('${String(itemIdentifier).replace(/'/g, "\\'")}', this.value)">`;
+                            // Verificar rol del usuario (usar caché si está disponible)
+                            const userRole = window.cachedRole || null;
+                            
+                            // Si el precio es 0 y el usuario es comercial, mostrar "Sobre consulta" en lugar del precio
+                            if (precioEsCero || precioActualEsCero) {
+                                if (userRole === 'comercial') {
+                                    // Para comerciales, mostrar "Sobre consulta" en lugar del precio 0
+                                    const translations = {
+                                        'pt': 'Sobre consulta',
+                                        'es': 'Sobre consulta',
+                                        'en': 'On request'
+                                    };
+                                    const currentLang = this.currentLanguage || localStorage.getItem('language') || 'pt';
+                                    const textoConsulta = translations[currentLang] || translations['pt'];
+                                    return `<div class="cart-item-total" style="font-weight: 600; color: var(--text-secondary, #6b7280); font-style: italic;">${textoConsulta}</div>`;
+                                } else {
+                                    // Para admin, mostrar input editable
+                                    return `<input type="number" 
+                                            class="cart-item-price-input" 
+                                            value="${unitPrice.toFixed(4)}" 
+                                            step="0.0001" 
+                                            min="0"
+                                            style="width: 100px; padding: 4px 8px; border: 1px solid var(--bg-gray-300); border-radius: 6px; text-align: right; font-size: 0.9rem; font-weight: 600;"
+                                            onchange="updateManualPrice('${String(itemIdentifier).replace(/'/g, "\\'")}', this.value)"
+                                            onblur="updateManualPrice('${String(itemIdentifier).replace(/'/g, "\\'")}', this.value)">`;
+                                }
                             } else {
                                 // Precio normal (clickeable para ver escalones)
                                 return `<div class="cart-item-total" style="cursor: pointer; transition: opacity 0.2s;" onclick="showPriceTiersModal('${String(itemIdentifier).replace(/'/g, "\\'")}', '${productName.replace(/'/g, "\\'")}')" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">€${this.formatUnitPrice(unitPrice)}</div>`;
@@ -6323,6 +6347,15 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         } : null
     });
     
+    // Cargar rol del usuario para mostrar precios correctamente en el PDF
+    if (!window.cachedRole) {
+        try {
+            window.cachedRole = await window.getUserRole?.();
+        } catch (error) {
+            console.warn('⚠️ No se pudo obtener el rol del usuario para el PDF:', error);
+        }
+    }
+    
     // Si se proporciona proposalData, usar esos datos en lugar del carrito actual
     const useProposalData = proposalData !== null;
     console.log('🔍 useProposalData:', useProposalData);
@@ -7645,11 +7678,36 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             throw cellError;
         }
         // Formatear precio unitario: hasta 4 decimales si tiene 4 decimales significativos
-        const formattedUnitPrice = window.cartManager ? window.cartManager.formatUnitPrice(unitPrice) : unitPrice.toFixed(2);
-        drawCell(colPositions.unitPrice, currentY, colWidths.unitPrice, calculatedRowHeight, `€${formattedUnitPrice}`, { align: 'center', fontSize: 8, noWrap: true });
-        // Formatear total: siempre 2 decimales
-        const formattedTotal = window.cartManager ? window.cartManager.formatTotal(total) : total.toFixed(2);
-        drawCell(colPositions.total, currentY, colWidths.total, calculatedRowHeight, `€${formattedTotal}`, { align: 'center', bold: true, fontSize: 8, noWrap: true });
+        // Si el precio es 0, mostrar "Sobre consulta" en lugar del precio (para todos los usuarios en el PDF)
+        let precioParaMostrar = '';
+        if (unitPrice === 0 || unitPrice === null || unitPrice === undefined) {
+            const translations = {
+                'pt': 'Sobre consulta',
+                'es': 'Sobre consulta',
+                'en': 'On request'
+            };
+            const currentLang = selectedLanguage || window.cartManager?.currentLanguage || localStorage.getItem('language') || 'pt';
+            precioParaMostrar = translations[currentLang] || translations['pt'];
+        } else {
+            const formattedUnitPrice = window.cartManager ? window.cartManager.formatUnitPrice(unitPrice) : unitPrice.toFixed(2);
+            precioParaMostrar = `€${formattedUnitPrice}`;
+        }
+        drawCell(colPositions.unitPrice, currentY, colWidths.unitPrice, calculatedRowHeight, precioParaMostrar, { align: 'center', fontSize: 8, noWrap: true });
+        // Formatear total: si el precio unitario es 0, mostrar "Sobre consulta" en lugar del total
+        let totalParaMostrar = '';
+        if (unitPrice === 0 || unitPrice === null || unitPrice === undefined) {
+            const translations = {
+                'pt': 'Sobre consulta',
+                'es': 'Sobre consulta',
+                'en': 'On request'
+            };
+            const currentLang = selectedLanguage || window.cartManager?.currentLanguage || localStorage.getItem('language') || 'pt';
+            totalParaMostrar = translations[currentLang] || translations['pt'];
+        } else {
+            const formattedTotal = window.cartManager ? window.cartManager.formatTotal(total) : total.toFixed(2);
+            totalParaMostrar = `€${formattedTotal}`;
+        }
+        drawCell(colPositions.total, currentY, colWidths.total, calculatedRowHeight, totalParaMostrar, { align: 'center', bold: true, fontSize: 8, noWrap: true });
         drawCell(colPositions.deliveryTime, currentY, colWidths.deliveryTime, calculatedRowHeight, deliveryText, { align: 'center', fontSize: 7 });
         
         // Dibujar logo si existe
