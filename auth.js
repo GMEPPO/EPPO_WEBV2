@@ -86,30 +86,47 @@ class AuthManager {
                                 (async () => {
                                     try {
                                         console.log('🔄 [auth.js] Cargando rol después de SIGNED_IN...');
+                                        console.log('🔍 [DEBUG auth.js] rolesManager disponible:', !!window.rolesManager);
+                                        console.log('🔍 [DEBUG auth.js] rolesManager.isInitialized:', window.rolesManager?.isInitialized);
                                         
                                         // Inicializar rolesManager si no está inicializado
                                         if (!window.rolesManager.isInitialized) {
+                                            console.log('🔄 [DEBUG auth.js] Inicializando rolesManager...');
                                             await window.rolesManager.initialize();
+                                            console.log('✅ [DEBUG auth.js] rolesManager inicializado');
                                         }
                                         
                                         // Obtener rol (usa caché)
+                                        console.log('🔍 [DEBUG auth.js] Llamando getCurrentUserRole()...');
                                         const role = await window.rolesManager.getCurrentUserRole();
                                         console.log('🔐 [auth.js] Rol cargado:', role);
+                                        console.log('🔍 [DEBUG auth.js] Rol es "comercial":', role === 'comercial');
                                         
                                         // Disparar evento para que otros listeners sepan que el rol está listo
                                         document.dispatchEvent(new CustomEvent('roleLoaded', { 
                                             detail: { role: role } 
                                         }));
+                                        console.log('✅ [DEBUG auth.js] Evento roleLoaded disparado');
                                         
                                         // Ocultar/mostrar menú según el rol INMEDIATAMENTE
                                         if (typeof window.hideMenuDropdownByRole === 'function') {
                                             console.log('🔄 [auth.js] Ejecutando hideMenuDropdownByRole...');
+                                            console.log('🔍 [DEBUG auth.js] hideMenuDropdownByRole es función:', typeof window.hideMenuDropdownByRole);
                                             await window.hideMenuDropdownByRole();
+                                            console.log('✅ [DEBUG auth.js] hideMenuDropdownByRole completado');
+                                        } else {
+                                            console.error('❌ [DEBUG auth.js] hideMenuDropdownByRole NO es una función!', typeof window.hideMenuDropdownByRole);
                                         }
                                     } catch (error) {
                                         console.error('❌ [auth.js] Error cargando rol o ocultando menú:', error);
+                                        console.error('🔍 [DEBUG auth.js] Stack trace:', error.stack);
                                     }
                                 })();
+                            } else {
+                                console.warn('⚠️ [DEBUG auth.js] No se puede cargar rol:', {
+                                    hasRolesManager: !!window.rolesManager,
+                                    hasCurrentUser: !!this.currentUser
+                                });
                             }
                         } else if (event === 'SIGNED_OUT') {
                             this.currentUser = null;

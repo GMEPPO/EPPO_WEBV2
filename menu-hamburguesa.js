@@ -78,23 +78,51 @@ async function hideMenuDropdownByRole() {
         }
 
         console.log('✅ [hideMenuDropdownByRole] rolesManager disponible');
+        console.log('🔍 [DEBUG] rolesManager.isInitialized:', window.rolesManager.isInitialized);
 
         // Asegurar que el rol esté cargado (solo una vez)
         if (!window.rolesManager.isInitialized) {
             console.log('🔄 [hideMenuDropdownByRole] Inicializando rolesManager...');
             try {
                 await window.rolesManager.initialize();
+                console.log('✅ [DEBUG] rolesManager inicializado correctamente');
             } catch (error) {
-                console.warn('⚠️ [hideMenuDropdownByRole] Error inicializando rolesManager:', error);
+                console.error('❌ [hideMenuDropdownByRole] Error inicializando rolesManager:', error);
+                console.error('🔍 [DEBUG] Stack trace:', error.stack);
                 return;
             }
+        } else {
+            console.log('✅ [DEBUG] rolesManager ya estaba inicializado');
         }
         
         console.log('🔍 [hideMenuDropdownByRole] Obteniendo rol del usuario...');
+        console.log('🔍 [DEBUG] Llamando a getCurrentUserRole()...');
         
         // Obtener rol (usa caché, no hace consultas repetitivas)
-        const role = await window.rolesManager.getCurrentUserRole();
-        const isComercial = role === 'comercial';
+        let role;
+        let isComercial;
+        try {
+            console.log('🔍 [DEBUG] Estado antes de getCurrentUserRole:', {
+                isInitialized: window.rolesManager.isInitialized,
+                currentUserRole: window.rolesManager.currentUserRole,
+                hasAuthManager: !!window.authManager,
+                authManagerCurrentUser: window.authManager?.currentUser?.email
+            });
+            console.log('🔍 [DEBUG] Esperando respuesta de getCurrentUserRole()...');
+            role = await window.rolesManager.getCurrentUserRole();
+            console.log('✅ [DEBUG] getCurrentUserRole() retornó:', role);
+            console.log('🔍 [DEBUG] Tipo de role:', typeof role);
+            console.log('🔍 [DEBUG] Role es null/undefined:', role === null || role === undefined);
+            isComercial = role === 'comercial';
+            console.log('✅ [DEBUG] isComercial calculado:', isComercial);
+            console.log('🔍 [DEBUG] Comparación role === "comercial":', role === 'comercial');
+            console.log('🔍 [DEBUG] Comparación role === "admin":', role === 'admin');
+        } catch (error) {
+            console.error('❌ [DEBUG] Error obteniendo rol:', error);
+            console.error('🔍 [DEBUG] Stack trace:', error.stack);
+            console.error('🔍 [DEBUG] Error completo:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+            throw error; // Re-lanzar para que se capture en el catch externo
+        }
 
         console.log('🔐 [hideMenuDropdownByRole] Rol detectado:', role, '| Es comercial:', isComercial);
         console.log('🔍 [DEBUG] Información del rol:', {
