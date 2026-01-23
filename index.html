@@ -425,13 +425,12 @@
                 console.log('📋 Tabla: categorias_geral');
                 console.log('📋 Filtros: tipo=home, is_active=true');
                 
-                // Cargar solo categorías activas, ordenadas por orden
+                // Cargar solo categorías activas (sin ordenar por número, se ordenarán alfabéticamente)
                 const { data, error } = await client
                     .from('categorias_geral')
                     .select('*')
                     .eq('tipo', 'home')
-                    .eq('is_active', true)
-                    .order('orden', { ascending: true });
+                    .eq('is_active', true);
 
                 console.log('📊 Respuesta de Supabase recibida');
                 console.log('📊 Data:', data);
@@ -486,8 +485,25 @@
 
             const currentLang = localStorage.getItem('language') || 'pt';
 
+            // Ordenar categorías alfabéticamente según el idioma seleccionado
+            const sortedCategories = [...homeCategories].sort((a, b) => {
+                // Obtener nombre según idioma para comparación
+                const nombreA = currentLang === 'es' ? (a.nombre_es || '') : 
+                               currentLang === 'pt' ? (a.nombre_pt || '') : 
+                               (a.nombre_es || '');
+                const nombreB = currentLang === 'es' ? (b.nombre_es || '') : 
+                               currentLang === 'pt' ? (b.nombre_pt || '') : 
+                               (b.nombre_es || '');
+                
+                // Comparar alfabéticamente (case-insensitive)
+                return nombreA.localeCompare(nombreB, currentLang === 'pt' ? 'pt' : currentLang === 'es' ? 'es' : 'en', { 
+                    sensitivity: 'base',
+                    ignorePunctuation: true 
+                });
+            });
+
             let html = '';
-            homeCategories.forEach(category => {
+            sortedCategories.forEach(category => {
                 // Obtener nombre según idioma
                 const nombre = currentLang === 'es' ? category.nombre_es : 
                               currentLang === 'pt' ? category.nombre_pt : 

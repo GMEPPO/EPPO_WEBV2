@@ -423,15 +423,14 @@ class CartManager {
                 // Generar un ID único para este item del carrito
                 const cartItemId = `cart-item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
                 
-                // Verificar si el producto es de Laser Build para marcar precio como manual si corresponde
                 const nomeFornecedor = product.nombre_fornecedor || null;
-                const isLaserBuild = nomeFornecedor && nomeFornecedor.toUpperCase().trim() === 'LASER BUILD';
                 const precioGuardado = parseFloat(articulo.precio);
                 const precioProducto = product.precio || 0;
                 
-                // Si es Laser Build y el precio guardado es diferente del precio base del producto,
-                // marcar como precio manual
-                const esPrecioManual = isLaserBuild && precioGuardado && precioGuardado !== precioProducto;
+                // Si el precio del producto es 0 y el precio guardado es diferente de 0,
+                // marcar como precio manual (fue editado por un admin)
+                const esPrecioManual = (precioProducto === 0 || precioProducto === null || precioProducto === undefined) && 
+                                       precioGuardado && precioGuardado !== 0 && precioGuardado !== precioProducto;
                 
                 const cartItem = {
                     id: product.id,
@@ -956,8 +955,16 @@ class CartManager {
      * @returns {string} - Precio formateado con el número correcto de decimales
      */
     formatUnitPrice(price) {
-        if (!price || price === 0) {
-            return '0.00';
+        // Si el precio es 0, null o undefined, mostrar "sobre consulta"
+        if (!price || price === 0 || price === null || price === undefined) {
+            // Traducir "sobre consulta" según el idioma
+            const translations = {
+                'pt': 'Sobre consulta',
+                'es': 'Sobre consulta',
+                'en': 'On request'
+            };
+            const currentLang = this.currentLanguage || localStorage.getItem('language') || 'pt';
+            return translations[currentLang] || translations['pt'];
         }
         
         // Si es string, preservar los decimales originales
@@ -1682,7 +1689,7 @@ class CartManager {
                 }
             }
             
-            // Si el precio fue editado manualmente (para Laser Build), no recalcular
+            // Si el precio fue editado manualmente (por admin para productos sobre consulta), no recalcular
             if (item.manualPrice && item.price !== undefined && item.price !== null) {
                 // Mantener el precio manual, pero actualizar unitPrice para mostrar
                 unitPrice = item.price;
@@ -1791,7 +1798,7 @@ class CartManager {
                 }
             }
             
-            // Si el precio fue editado manualmente (para Laser Build), no recalcular
+            // Si el precio fue editado manualmente (por admin para productos sobre consulta), no recalcular
             if (item.manualPrice && item.price !== undefined && item.price !== null) {
                 // Mantener el precio manual
                 unitPrice = item.price;
@@ -2218,22 +2225,6 @@ class CartManager {
                 
                 <div class="cart-item-price">
                     ${(() => {
-                        // Verificar si el fornecedor es "Laser Build" para hacer el precio editable
-                        let nomeFornecedor = item.nombre_fornecedor || null;
-                        // Si no está en el item, buscar en la BD
-                        if (!nomeFornecedor && item.type === 'product') {
-                            const productFromDB = this.allProducts.find(p => {
-                                return String(p.id) === String(item.id) || p.id === item.id;
-                            });
-                            if (productFromDB && productFromDB.nombre_fornecedor) {
-                                nomeFornecedor = productFromDB.nombre_fornecedor;
-                                // Guardar en el item para futuras referencias
-                                item.nombre_fornecedor = nomeFornecedor;
-                            }
-                        }
-                        
-                        const isLaserBuild = nomeFornecedor && nomeFornecedor.toUpperCase().trim() === 'LASER BUILD';
-                        
                         if (item.type === 'category' || item.type === 'special') {
                             return `<div class="cart-item-total">${this.getCategoryPriceText()}</div>`;
                         } else if (!isValidQuantity && minQuantity !== null && minQuantity !== undefined) {
@@ -2245,16 +2236,27 @@ class CartManager {
                                     `Minimum quantity: ${minQuantity}`
                                 }
                             </div>`;
-                        } else if (isLaserBuild && item.type === 'product') {
-                            // Precio editable para Laser Build
-                            return `<input type="number" 
-                                    class="cart-item-price-input" 
-                                    value="${unitPrice.toFixed(4)}" 
-                                    step="0.0001" 
-                                    min="0"
-                                    style="width: 100px; padding: 4px 8px; border: 1px solid var(--bg-gray-300); border-radius: 6px; text-align: right; font-size: 0.9rem; font-weight: 600;"
-                                    onchange="updateManualPrice('${String(itemIdentifier).replace(/'/g, "\\'")}', this.value)"
-                                    onblur="updateManualPrice('${String(itemIdentifier).replace(/'/g, "\\'")}', this.value)">`;
+                        } else if (item.type === 'product') {
+                            // Verificar si el precio del producto es 0 o "sobre consulta"
+                            const basePrice = item.basePrice || 0;
+                            const precioEsCero = basePrice === 0 || basePrice === null || basePrice === undefined;
+                            
+                            // Verificar si el usuario es admin (de forma asíncrona, pero mostrar input si precio es 0)
+                            // El input se deshabilitará en updateManualPrice si no es admin
+                            if (precioEsCero) {
+                                // Precio editable solo si el precio base es 0 (sobre consulta)
+                                return `<input type="number" 
+                                        class="cart-item-price-input" 
+                                        value="${unitPrice.toFixed(4)}" 
+                                        step="0.0001" 
+                                        min="0"
+                                        style="width: 100px; padding: 4px 8px; border: 1px solid var(--bg-gray-300); border-radius: 6px; text-align: right; font-size: 0.9rem; font-weight: 600;"
+                                        onchange="updateManualPrice('${String(itemIdentifier).replace(/'/g, "\\'")}', this.value)"
+                                        onblur="updateManualPrice('${String(itemIdentifier).replace(/'/g, "\\'")}', this.value)">`;
+                            } else {
+                                // Precio normal (clickeable para ver escalones)
+                                return `<div class="cart-item-total" style="cursor: pointer; transition: opacity 0.2s;" onclick="showPriceTiersModal('${String(itemIdentifier).replace(/'/g, "\\'")}', '${productName.replace(/'/g, "\\'")}')" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">€${this.formatUnitPrice(unitPrice)}</div>`;
+                            }
                         } else {
                             // Precio normal (clickeable para ver escalones)
                             return `<div class="cart-item-total" style="cursor: pointer; transition: opacity 0.2s;" onclick="showPriceTiersModal('${String(itemIdentifier).replace(/'/g, "\\'")}', '${productName.replace(/'/g, "\\'")}')" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">€${this.formatUnitPrice(unitPrice)}</div>`;
@@ -3209,7 +3211,7 @@ function openAddProductModal() {
                             <div class="product-search-item-info">
                                 <h4 class="product-search-item-name">${product.nombre}</h4>
                                 <p class="product-search-item-ref">Ref: ${product.id || product.referencia} | ${product.marca || 'Sin marca'}</p>
-                                <span style="font-weight: 700; color: var(--brand-gold, #C6A15B); font-size: 0.95rem;">${precioFormateado} €</span>
+                                <span style="font-weight: 700; color: var(--brand-gold, #C6A15B); font-size: 0.95rem;">${precioFormateado.includes('Sobre consulta') || precioFormateado.includes('On request') ? precioFormateado : precioFormateado + ' €'}</span>
                             </div>
                         </div>
                     `;
@@ -5106,7 +5108,7 @@ function simpleSetQuantity(itemId, quantity) {
         
         // Si es un producto, actualizar el precio según escalones
         if (item.type === 'product') {
-            // Si el precio fue editado manualmente (para Laser Build), no recalcular
+            // Si el precio fue editado manualmente (por admin para productos sobre consulta), no recalcular
             if (item.manualPrice && item.price !== undefined && item.price !== null) {
                 console.log(`🔧 Precio manual mantenido para ${item.name}: €${item.price.toFixed(4)}`);
                 // Mantener el precio manual, solo actualizar cantidad
@@ -10237,15 +10239,45 @@ async function renameTemporaryLogos(clientName, articulosData) {
 }
 
 /**
- * Actualizar precio manualmente para productos de Laser Build
+ * Actualizar precio manualmente (solo para productos con precio 0 y solo para administradores)
  */
-function updateManualPrice(itemId, newPrice) {
+async function updateManualPrice(itemId, newPrice) {
     if (!window.cartManager) {
         console.error('cartManager no disponible');
         return;
     }
     
     try {
+        // Verificar que el usuario es administrador
+        const userRole = await window.getUserRole?.();
+        if (userRole !== 'admin') {
+            console.warn('⚠️ Solo los administradores pueden editar precios manualmente');
+            const currentLang = window.cartManager?.currentLanguage || localStorage.getItem('language') || 'pt';
+            alert(currentLang === 'pt' ? 'Apenas administradores podem editar preços manualmente.' : 
+                  currentLang === 'es' ? 'Solo los administradores pueden editar precios manualmente.' :
+                  'Only administrators can manually edit prices.');
+            
+            // Restaurar precio anterior
+            const item = window.cartManager.cart.find(item => {
+                if (itemId && itemId.toString().startsWith('cart-item-')) {
+                    return item.cartItemId === itemId || String(item.cartItemId) === String(itemId);
+                }
+                return (item.cartItemId && (
+                    String(item.cartItemId) === String(itemId) || item.cartItemId === itemId
+                )) || (String(item.id) === String(itemId) || item.id === itemId);
+            });
+            
+            if (item) {
+                const priceInput = document.querySelector(`input.cart-item-price-input[onchange*="${itemId}"]`);
+                if (priceInput && item.price !== undefined && item.price !== null) {
+                    priceInput.value = item.price.toFixed(4);
+                } else if (priceInput && item.basePrice !== undefined && item.basePrice !== null) {
+                    priceInput.value = item.basePrice.toFixed(4);
+                }
+            }
+            return;
+        }
+        
         // Buscar el item por cartItemId primero (para items duplicados), luego por id como fallback
         const item = window.cartManager.cart.find(item => {
             // Si itemId empieza con "cart-item-", es un cartItemId
@@ -10260,6 +10292,26 @@ function updateManualPrice(itemId, newPrice) {
         
         if (!item) {
             console.error('Item no encontrado:', itemId);
+            return;
+        }
+        
+        // Verificar que el precio base del producto es 0 (sobre consulta)
+        const basePrice = item.basePrice || 0;
+        if (basePrice !== 0 && basePrice !== null && basePrice !== undefined) {
+            console.warn('⚠️ Solo se pueden editar precios de productos con precio 0 (sobre consulta)');
+            alert(window.cartManager.currentLanguage === 'pt' ? 
+                  'Apenas produtos com preço 0 (sobre consulta) podem ter preço editado manualmente.' :
+                  window.cartManager.currentLanguage === 'es' ?
+                  'Solo se pueden editar precios de productos con precio 0 (sobre consulta).' :
+                  'Only products with price 0 (on request) can have manually edited prices.');
+            
+            // Restaurar precio anterior
+            const priceInput = document.querySelector(`input.cart-item-price-input[onchange*="${itemId}"]`);
+            if (priceInput && item.price !== undefined && item.price !== null) {
+                priceInput.value = item.price.toFixed(4);
+            } else if (priceInput) {
+                priceInput.value = basePrice.toFixed(4);
+            }
             return;
         }
         

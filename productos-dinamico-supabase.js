@@ -2500,6 +2500,19 @@ class DynamicProductsPage {
     }
 
     formatCurrency(amount, currencyCode = 'EUR') {
+        // Si el precio es 0, mostrar "sobre consulta"
+        const safeAmount = Number.isFinite(amount) ? amount : 0;
+        if (safeAmount === 0 || safeAmount === null || safeAmount === undefined) {
+            // Traducir "sobre consulta" según el idioma
+            const translations = {
+                'pt': 'Sobre consulta',
+                'es': 'Sobre consulta',
+                'en': 'On request'
+            };
+            const currentLang = this.currentLanguage || 'pt';
+            return translations[currentLang] || translations['pt'];
+        }
+        
         try {
             return new Intl.NumberFormat(undefined, {
                 style: 'currency',
@@ -2509,7 +2522,6 @@ class DynamicProductsPage {
             }).format(amount);
         } catch (error) {
             const symbol = this.getCurrencySymbol(currencyCode);
-            const safeAmount = Number.isFinite(amount) ? amount : 0;
             return `${symbol}${safeAmount.toFixed(2)}`;
         }
     }

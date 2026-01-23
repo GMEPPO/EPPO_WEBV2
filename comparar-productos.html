@@ -794,7 +794,7 @@
                                     }
                                     <div class="option-info">
                                         <h4 class="option-name">${product.nombre}</h4>
-                                        <p class="option-price">€${product.precio.toFixed(2)}</p>
+                                        <p class="option-price">${(product.precio === 0 || product.precio === null || product.precio === undefined) ? 'Sobre consulta' : '€' + product.precio.toFixed(2)}</p>
                                     </div>
                                 </div>
                             </div>
@@ -826,7 +826,7 @@
                     }
                     <div class="product-info-small">
                         <h4 class="product-name-small">${product.nombre}</h4>
-                        <p class="product-price-small">€${product.precio.toFixed(2)}</p>
+                        <p class="product-price-small">${(product.precio === 0 || product.precio === null || product.precio === undefined) ? 'Sobre consulta' : '€' + product.precio.toFixed(2)}</p>
                     </div>
                 `;
             }
@@ -894,7 +894,7 @@
                             <div class="product-card-display">
                                 ${imageHtml}
                                 <h3 class="product-name-display">${product.nombre}</h3>
-                                <p class="product-price-display">€${product.precio.toFixed(2)}</p>
+                                <p class="product-price-display">${(product.precio === 0 || product.precio === null || product.precio === undefined) ? 'Sobre consulta' : '€' + product.precio.toFixed(2)}</p>
                             </div>
                         `;
                     })
@@ -930,7 +930,7 @@
                                                 </div>`
                                             }
                                             <h4 style="margin:0;font-size:1rem;">${product.nombre}</h4>
-                                            <div style="color:#007AFF;font-weight:600;margin-top:5px;">€${product.precio.toFixed(2)}</div>
+                                            <div style="color:#007AFF;font-weight:600;margin-top:5px;">${(product.precio === 0 || product.precio === null || product.precio === undefined) ? 'Sobre consulta' : '€' + product.precio.toFixed(2)}</div>
                                         ` : `<div style="color:#94a3b8;font-style:italic;">${this.translate('notSelected')}</div>`}
                                     </th>
                                 `)
@@ -962,7 +962,7 @@
 
                 rows.push({
                     label: this.translate('price'),
-                    render: (product) => `€${product.precio.toFixed(2)}`
+                    render: (product) => (product.precio === 0 || product.precio === null || product.precio === undefined) ? 'Sobre consulta' : `€${product.precio.toFixed(2)}`
                 });
 
                 rows.push({
