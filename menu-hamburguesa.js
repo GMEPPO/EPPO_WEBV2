@@ -214,63 +214,16 @@ async function disableMenuForComercial() {
 // Hacer la función disponible globalmente
 window.disableMenuForComercial = disableMenuForComercial;
 
-// Ejecutar cuando el DOM esté listo
-function initMenuDisabling() {
-    const executeDisabling = async () => {
-        if (window.authManager && window.rolesManager) {
-            try {
-                const isAuth = await window.authManager.isAuthenticated();
-                if (isAuth) {
-                    await disableMenuForComercial();
-                }
-            } catch (error) {
-                console.warn('⚠️ [initMenuDisabling] Error verificando autenticación:', error);
-            }
-        }
-    };
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-            setTimeout(executeDisabling, 1000);
-        });
-    } else {
-        setTimeout(executeDisabling, 1000);
-    }
+// SOLO ejecutar cuando el rol se carga (evento disparado por auth.js)
+// Esto evita múltiples consultas duplicadas
+if (!window.roleLoadedListenerAdded) {
+    document.addEventListener('roleLoaded', async (event) => {
+        console.log('🔄 [menu-hamburguesa] Evento roleLoaded recibido, ejecutando disableMenuForComercial...');
+        // Esperar un momento para asegurar que el DOM esté listo
+        setTimeout(async () => {
+            await disableMenuForComercial();
+        }, 300);
+    });
+    window.roleLoadedListenerAdded = true;
+    console.log('✅ [menu-hamburguesa] Listener de roleLoaded configurado');
 }
-
-// Inicializar solo una vez
-if (!window.menuDisablingInitialized) {
-    initMenuDisabling();
-    window.menuDisablingInitialized = true;
-}
-
-// Ejecutar cuando cambie el estado de autenticación
-if (!window.menuDisablingAuthListenerAdded) {
-    const setupAuthListener = () => {
-        if (window.authManager && window.authManager.supabase) {
-            window.authManager.supabase.auth.onAuthStateChange(async (event, session) => {
-                if (event === 'SIGNED_IN' && session) {
-                    setTimeout(async () => {
-                        await disableMenuForComercial();
-                    }, 500);
-                }
-            });
-            window.menuDisablingAuthListenerAdded = true;
-        } else {
-            setTimeout(setupAuthListener, 500);
-        }
-    };
-    
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', setupAuthListener);
-    } else {
-        setupAuthListener();
-    }
-}
-
-// Ejecutar cuando el rol se carga
-document.addEventListener('roleLoaded', async (event) => {
-    setTimeout(async () => {
-        await disableMenuForComercial();
-    }, 200);
-});

@@ -705,12 +705,10 @@
                         
                         if (role) {
                             console.log('🔐 [index.html] Rol obtenido:', role);
-                            
-                            // Deshabilitar menú para usuarios comerciales
-                            if (typeof window.disableMenuForComercial === 'function') {
-                                console.log('🔄 [index.html] Ejecutando disableMenuForComercial...');
-                                await window.disableMenuForComercial();
-                            }
+                            // NO ejecutar disableMenuForComercial aquí
+                            // El evento roleLoaded (disparado por auth.js) ya lo manejará
+                            // Esto evita ejecuciones duplicadas
+                            console.log('✅ [index.html] Rol obtenido, el evento roleLoaded se encargará de deshabilitar el menú');
                         } else {
                             console.warn('⚠️ [index.html] No se pudo obtener el rol, se intentará cuando se dispare roleLoaded');
                         }

@@ -108,14 +108,10 @@ class AuthManager {
                                         }));
                                         console.log('✅ [DEBUG auth.js] Evento roleLoaded disparado');
                                         
-                                        // Deshabilitar menú para usuarios comerciales
-                                        if (typeof window.disableMenuForComercial === 'function') {
-                                            console.log('🔄 [auth.js] Ejecutando disableMenuForComercial...');
-                                            await window.disableMenuForComercial();
-                                            console.log('✅ [auth.js] disableMenuForComercial completado');
-                                        } else {
-                                            console.warn('⚠️ [auth.js] disableMenuForComercial no está disponible');
-                                        }
+                                        // NO ejecutar disableMenuForComercial aquí
+                                        // El evento roleLoaded ya lo disparará automáticamente
+                                        // Esto evita ejecuciones duplicadas
+                                        console.log('✅ [auth.js] Rol cargado y evento roleLoaded disparado, menu-hamburguesa.js se encargará de deshabilitar el menú');
                                     } catch (error) {
                                         console.error('❌ [auth.js] Error cargando rol o ocultando menú:', error);
                                         console.error('🔍 [DEBUG auth.js] Stack trace:', error.stack);
