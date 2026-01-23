@@ -172,9 +172,55 @@ class ProposalsManager {
 
             console.log('📊 Presupuestos recibidos:', presupuestos ? presupuestos.length : 0);
 
-            // Cargar artículos para cada presupuesto
+            // Filtrar propuestas por rol si el usuario es comercial
+            let filteredPresupuestos = presupuestos;
             if (presupuestos && presupuestos.length > 0) {
-                const presupuestoIds = presupuestos.map(p => p.id);
+                try {
+                    // Obtener rol del usuario
+                    const role = await window.getUserRole?.();
+                    
+                    if (role === 'comercial') {
+                        console.log('🔒 [consultar-propuestas] Usuario comercial detectado, filtrando propuestas...');
+                        
+                        // Obtener nombre del usuario desde user_roles
+                        const user = await window.authManager?.getCurrentUser();
+                        if (user) {
+                            const client = await window.universalSupabase?.getClient();
+                            if (client) {
+                                const { data: userRoleData, error: userRoleError } = await client
+                                    .from('user_roles')
+                                    .select('Name')
+                                    .eq('user_id', user.id)
+                                    .single();
+                                
+                                if (!userRoleError && userRoleData && userRoleData.Name) {
+                                    const userName = userRoleData.Name;
+                                    console.log('👤 [consultar-propuestas] Filtrando por responsable:', userName);
+                                    
+                                    // Filtrar propuestas donde responsavel coincida con el nombre del usuario
+                                    filteredPresupuestos = presupuestos.filter(p => {
+                                        const responsavel = p.responsavel || '';
+                                        return responsavel.trim() === userName.trim();
+                                    });
+                                    
+                                    console.log(`📊 [consultar-propuestas] Propuestas filtradas: ${filteredPresupuestos.length} de ${presupuestos.length}`);
+                                } else {
+                                    console.warn('⚠️ [consultar-propuestas] No se pudo obtener el nombre del usuario, mostrando todas las propuestas');
+                                }
+                            }
+                        }
+                    } else {
+                        console.log('✅ [consultar-propuestas] Usuario admin, mostrando todas las propuestas');
+                    }
+                } catch (error) {
+                    console.error('❌ [consultar-propuestas] Error filtrando por rol:', error);
+                    // En caso de error, mostrar todas las propuestas
+                }
+            }
+
+            // Cargar artículos para cada presupuesto
+            if (filteredPresupuestos && filteredPresupuestos.length > 0) {
+                const presupuestoIds = filteredPresupuestos.map(p => p.id);
                 console.log('🔄 Cargando artículos para', presupuestoIds.length, 'presupuestos...');
                 
                 const { data: articulos, error: articulosError } = await this.supabase
@@ -221,8 +267,9 @@ class ProposalsManager {
                     });
                 }
 
-                // Combinar datos
-                this.allProposals = presupuestos.map(presupuesto => ({
+                // Combinar datos (usar filteredPresupuestos si existe, sino presupuestos)
+                const presupuestosToUse = filteredPresupuestos || presupuestos;
+                this.allProposals = presupuestosToUse.map(presupuesto => ({
                     ...presupuesto,
                     articulos: articulosPorPresupuesto[presupuesto.id] || [],
                     total: (articulosPorPresupuesto[presupuesto.id] || []).reduce((sum, art) => {

@@ -82,6 +82,9 @@ async function getUserRole() {
     }
 }
 
+// Hacer la función disponible globalmente
+window.getUserRole = getUserRole;
+
 // Función para limpiar el caché (útil al cerrar sesión)
 window.clearRoleCache = function() {
     cachedRole = null;
