@@ -220,22 +220,45 @@ class RolesManager {
      * Obtener rol del usuario actual (usa caché, no hace consultas repetitivas)
      */
     async getCurrentUserRole() {
+        console.log('🔍 [roles.js] getCurrentUserRole() llamado');
+        console.log('🔍 [roles.js] Estado actual:', {
+            currentUserRole: this.currentUserRole,
+            isLoadingRole: this.isLoadingRole,
+            hasRoleLoadPromise: !!this.roleLoadPromise,
+            isInitialized: this.isInitialized
+        });
+        
         // Si ya tenemos el rol, retornarlo inmediatamente
         if (this.currentUserRole) {
+            console.log('✅ [roles.js] Rol ya en caché, retornando:', this.currentUserRole);
             return this.currentUserRole;
         }
         
         // Si hay una consulta en curso, esperar a que termine
         if (this.roleLoadPromise) {
-            return await this.roleLoadPromise;
+            console.log('⏳ [roles.js] Hay una consulta en curso, esperando...');
+            const role = await this.roleLoadPromise;
+            console.log('✅ [roles.js] Consulta completada, rol obtenido:', role);
+            return role;
         }
         
         // Si no hay rol y no hay consulta en curso, cargar
         if (!this.isLoadingRole) {
+            console.log('🔄 [roles.js] No hay rol ni consulta en curso, cargando...');
             await this.loadCurrentUserRole();
+            console.log('✅ [roles.js] Rol cargado:', this.currentUserRole);
+        } else {
+            console.log('⏳ [roles.js] Ya se está cargando el rol, esperando...');
+            // Esperar a que termine
+            while (this.isLoadingRole) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            console.log('✅ [roles.js] Carga completada, rol:', this.currentUserRole);
         }
         
-        return this.currentUserRole || 'comercial';
+        const finalRole = this.currentUserRole || 'comercial';
+        console.log('✅ [roles.js] Retornando rol final:', finalRole);
+        return finalRole;
     }
 
     /**

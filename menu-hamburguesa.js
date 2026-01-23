@@ -84,16 +84,33 @@ async function hideMenuDropdownByRole() {
         if (!window.rolesManager.isInitialized) {
             console.log('🔄 [hideMenuDropdownByRole] Inicializando rolesManager...');
             try {
+                console.log('🔍 [DEBUG] Llamando rolesManager.initialize()...');
                 await window.rolesManager.initialize();
                 console.log('✅ [DEBUG] rolesManager inicializado correctamente');
+                console.log('🔍 [DEBUG] Estado después de initialize:', {
+                    isInitialized: window.rolesManager.isInitialized,
+                    currentUserRole: window.rolesManager.currentUserRole,
+                    isLoadingRole: window.rolesManager.isLoadingRole
+                });
             } catch (error) {
                 console.error('❌ [hideMenuDropdownByRole] Error inicializando rolesManager:', error);
                 console.error('🔍 [DEBUG] Stack trace:', error.stack);
+                console.error('🔍 [DEBUG] Error completo:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
                 return;
             }
         } else {
             console.log('✅ [DEBUG] rolesManager ya estaba inicializado');
+            console.log('🔍 [DEBUG] Estado actual:', {
+                isInitialized: window.rolesManager.isInitialized,
+                currentUserRole: window.rolesManager.currentUserRole,
+                isLoadingRole: window.rolesManager.isLoadingRole
+            });
         }
+        
+        // Esperar un momento para asegurar que el rol se haya cargado completamente
+        console.log('🔍 [DEBUG] Esperando 200ms para asegurar que el rol esté cargado...');
+        await new Promise(resolve => setTimeout(resolve, 200));
+        console.log('✅ [DEBUG] Espera completada');
         
         console.log('🔍 [hideMenuDropdownByRole] Obteniendo rol del usuario...');
         console.log('🔍 [DEBUG] Llamando a getCurrentUserRole()...');
