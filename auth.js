@@ -108,14 +108,13 @@ class AuthManager {
                                         }));
                                         console.log('✅ [DEBUG auth.js] Evento roleLoaded disparado');
                                         
-                                        // Ocultar/mostrar menú según el rol INMEDIATAMENTE
-                                        if (typeof window.hideMenuDropdownByRole === 'function') {
-                                            console.log('🔄 [auth.js] Ejecutando hideMenuDropdownByRole...');
-                                            console.log('🔍 [DEBUG auth.js] hideMenuDropdownByRole es función:', typeof window.hideMenuDropdownByRole);
-                                            await window.hideMenuDropdownByRole();
-                                            console.log('✅ [DEBUG auth.js] hideMenuDropdownByRole completado');
+                                        // Deshabilitar menú para usuarios comerciales
+                                        if (typeof window.disableMenuForComercial === 'function') {
+                                            console.log('🔄 [auth.js] Ejecutando disableMenuForComercial...');
+                                            await window.disableMenuForComercial();
+                                            console.log('✅ [auth.js] disableMenuForComercial completado');
                                         } else {
-                                            console.error('❌ [DEBUG auth.js] hideMenuDropdownByRole NO es una función!', typeof window.hideMenuDropdownByRole);
+                                            console.warn('⚠️ [auth.js] disableMenuForComercial no está disponible');
                                         }
                                     } catch (error) {
                                         console.error('❌ [auth.js] Error cargando rol o ocultando menú:', error);

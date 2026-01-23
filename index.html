@@ -691,12 +691,12 @@
                             detail: { role: role } 
                         }));
                         
-                        // Ejecutar ocultación del menú INMEDIATAMENTE después de cargar el rol
-                        if (typeof window.hideMenuDropdownByRole === 'function') {
-                            console.log('🔄 [index.html] Ejecutando hideMenuDropdownByRole...');
-                            await window.hideMenuDropdownByRole();
+                        // Deshabilitar menú para usuarios comerciales
+                        if (typeof window.disableMenuForComercial === 'function') {
+                            console.log('🔄 [index.html] Ejecutando disableMenuForComercial...');
+                            await window.disableMenuForComercial();
                         } else {
-                            console.warn('⚠️ [index.html] hideMenuDropdownByRole no está disponible');
+                            console.warn('⚠️ [index.html] disableMenuForComercial no está disponible');
                         }
                     } catch (error) {
                         console.error('⚠️ [index.html] Error inicializando rolesManager (continuando):', error);
