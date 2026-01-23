@@ -78,23 +78,38 @@ class AuthManager {
                     this.supabase.auth.onAuthStateChange(async (event, session) => {
                         if (event === 'SIGNED_IN') {
                             this.currentUser = session?.user || null;
-                            // Cargar rol después de autenticación (de forma asíncrona, sin bloquear)
+                            console.log('✅ [auth.js] Usuario autenticado:', this.currentUser?.email);
+                            
+                            // Cargar rol y ocultar menú INMEDIATAMENTE después de autenticación
                             if (window.rolesManager && this.currentUser) {
-                                setTimeout(async () => {
+                                // Ejecutar inmediatamente sin delay
+                                (async () => {
                                     try {
+                                        console.log('🔄 [auth.js] Cargando rol después de SIGNED_IN...');
+                                        
+                                        // Inicializar rolesManager si no está inicializado
                                         if (!window.rolesManager.isInitialized) {
                                             await window.rolesManager.initialize();
                                         }
-                                        await window.rolesManager.getCurrentUserRole();
                                         
-                                        // Ocultar/mostrar menú según el rol
+                                        // Obtener rol (usa caché)
+                                        const role = await window.rolesManager.getCurrentUserRole();
+                                        console.log('🔐 [auth.js] Rol cargado:', role);
+                                        
+                                        // Disparar evento para que otros listeners sepan que el rol está listo
+                                        document.dispatchEvent(new CustomEvent('roleLoaded', { 
+                                            detail: { role: role } 
+                                        }));
+                                        
+                                        // Ocultar/mostrar menú según el rol INMEDIATAMENTE
                                         if (typeof window.hideMenuDropdownByRole === 'function') {
+                                            console.log('🔄 [auth.js] Ejecutando hideMenuDropdownByRole...');
                                             await window.hideMenuDropdownByRole();
                                         }
                                     } catch (error) {
-                                        // Silenciar errores de carga de rol
+                                        console.error('❌ [auth.js] Error cargando rol o ocultando menú:', error);
                                     }
-                                }, 500);
+                                })();
                             }
                         } else if (event === 'SIGNED_OUT') {
                             this.currentUser = null;

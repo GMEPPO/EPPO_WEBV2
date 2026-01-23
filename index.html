@@ -668,16 +668,15 @@
 
             // Inicializar rolesManager para ocultar menú desplegable si es comercial
             // Solo si el usuario está autenticado
+            // NOTA: El rol se carga automáticamente en auth.js cuando hay SIGNED_IN
+            // Aquí solo verificamos si ya está autenticado al cargar la página
             if (isAuth && window.rolesManager) {
                 // Ejecutar de forma asíncrona sin bloquear la carga de la página
                 (async () => {
                     try {
-                        console.log('🔄 [index.html] Inicializando rolesManager para ocultar menú...');
+                        console.log('🔄 [index.html] Usuario ya autenticado, cargando rol...');
                         
-                        // Esperar un momento para que la autenticación se estabilice
-                        await new Promise(resolve => setTimeout(resolve, 500));
-                        
-                        // Inicializar rolesManager (ya optimizado para evitar consultas repetitivas)
+                        // Inicializar rolesManager si no está inicializado
                         if (!window.rolesManager.isInitialized) {
                             console.log('🔄 [index.html] Inicializando rolesManager...');
                             await window.rolesManager.initialize();
@@ -688,17 +687,13 @@
                         console.log('🔐 [index.html] Rol del usuario cargado:', role);
                         
                         // Disparar evento personalizado para que menu-hamburguesa.js lo capture
-                        const roleLoadedEvent = new CustomEvent('roleLoaded', { 
+                        document.dispatchEvent(new CustomEvent('roleLoaded', { 
                             detail: { role: role } 
-                        });
-                        document.dispatchEvent(roleLoadedEvent);
+                        }));
                         
-                        // Esperar un momento para asegurar que el DOM esté listo
-                        await new Promise(resolve => setTimeout(resolve, 500));
-                        
-                        // Ejecutar ocultación del menú después de cargar el rol
+                        // Ejecutar ocultación del menú INMEDIATAMENTE después de cargar el rol
                         if (typeof window.hideMenuDropdownByRole === 'function') {
-                            console.log('🔄 [index.html] Ejecutando hideMenuDropdownByRole directamente...');
+                            console.log('🔄 [index.html] Ejecutando hideMenuDropdownByRole...');
                             await window.hideMenuDropdownByRole();
                         } else {
                             console.warn('⚠️ [index.html] hideMenuDropdownByRole no está disponible');
