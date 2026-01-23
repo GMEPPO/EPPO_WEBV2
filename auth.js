@@ -99,21 +99,15 @@ class AuthManager {
                                             const role = await window.rolesManager.roleLoadPromise;
                                             console.log('✅ [auth.js] Rol obtenido de carga en curso:', role);
                                             
-                                            // Disparar evento
-                                            document.dispatchEvent(new CustomEvent('roleLoaded', { 
-                                                detail: { role: role } 
-                                            }));
+                                            // El rol ya está cargado
                                             this.processingSignIn = false;
                                             return;
                                         }
                                         
-                                        // Si el rol ya está cargado, solo disparar evento
+                                        // Si el rol ya está cargado, no hacer nada más
                                         if (window.rolesManager.currentUserRole) {
                                             const role = window.rolesManager.currentUserRole;
                                             console.log('✅ [auth.js] Rol ya estaba cargado:', role);
-                                            document.dispatchEvent(new CustomEvent('roleLoaded', { 
-                                                detail: { role: role } 
-                                            }));
                                             this.processingSignIn = false;
                                             return;
                                         }
@@ -131,11 +125,9 @@ class AuthManager {
                                         const role = await window.rolesManager.getCurrentUserRole();
                                         console.log('🔐 [auth.js] Rol cargado:', role);
                                         
-                                        // Disparar evento para que otros listeners sepan que el rol está listo
-                                        document.dispatchEvent(new CustomEvent('roleLoaded', { 
-                                            detail: { role: role } 
-                                        }));
-                                        console.log('✅ [auth.js] Evento roleLoaded disparado');
+                                        // El rol ya está cargado y en caché
+                                        // toggleMenu() verificará el rol cuando el usuario intente abrir el menú
+                                        console.log('✅ [auth.js] Rol cargado y disponible en caché');
                                     } catch (error) {
                                         console.error('❌ [auth.js] Error cargando rol:', error);
                                     } finally {

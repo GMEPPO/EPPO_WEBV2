@@ -705,12 +705,11 @@
                         
                         if (role) {
                             console.log('🔐 [index.html] Rol obtenido:', role);
-                            // NO ejecutar disableMenuForComercial aquí
-                            // El evento roleLoaded (disparado por auth.js) ya lo manejará
-                            // Esto evita ejecuciones duplicadas
-                            console.log('✅ [index.html] Rol obtenido, el evento roleLoaded se encargará de deshabilitar el menú');
+                            // El rol está cargado y disponible en caché
+                            // toggleMenu() verificará el rol cuando el usuario intente abrir el menú
+                            console.log('✅ [index.html] Rol disponible en caché, toggleMenu() lo verificará al hacer clic');
                         } else {
-                            console.warn('⚠️ [index.html] No se pudo obtener el rol, se intentará cuando se dispare roleLoaded');
+                            console.warn('⚠️ [index.html] No se pudo obtener el rol, toggleMenu() lo cargará cuando sea necesario');
                         }
                     } catch (error) {
                         console.error('⚠️ [index.html] Error esperando rol (continuando):', error);
