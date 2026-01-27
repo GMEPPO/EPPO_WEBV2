@@ -6787,11 +6787,11 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     
     // Crear cuadro con información de la propuesta en dos columnas (izquierda y derecha)
     const titleY = 5 + logoHeight + 8; // Espacio después de los logotipos
-    const boxPadding = 6; // Reducido para hacer el cuadro más pequeño
+    const boxPadding = 5; // Reducido aún más para hacer el cuadro más pequeño
     const boxWidth = pageWidth - (margin * 2); // Ancho completo de la página
     const boxX = margin; // Posición X (izquierda)
     const boxY = titleY; // Posición Y
-    const lineSpacing = 4; // Espacio entre líneas (reducido)
+    const lineSpacing = 3.5; // Espacio entre líneas (reducido aún más)
     
     // Texto dentro del cuadro
     doc.setFontSize(8);
@@ -6809,24 +6809,24 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     const labels = {
         pt: {
             clientNumber: 'Num de cliente:',
-            clientName: 'Nome do cliente:',
+            clientName: 'Cliente:',
             proposalNumber: 'Nr proposta:',
             proposalDate: 'Data da proposta:',
-            commercial: 'Nome do comercial:'
+            commercial: 'Comercial:'
         },
         es: {
             clientNumber: 'Nº de cliente:',
-            clientName: 'Nombre del cliente:',
+            clientName: 'Cliente:',
             proposalNumber: 'Nº propuesta:',
             proposalDate: 'Fecha de la propuesta:',
-            commercial: 'Nombre del comercial:'
+            commercial: 'Comercial:'
         },
         en: {
             clientNumber: 'Client Number:',
-            clientName: 'Client Name:',
+            clientName: 'Client:',
             proposalNumber: 'Proposal Nº:',
             proposalDate: 'Proposal Date:',
-            commercial: 'Commercial Name:'
+            commercial: 'Commercial:'
         }
     };
     
@@ -6878,44 +6878,51 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     function calculateFieldHeight(value, columnWidth) {
         const valueText = value || '-';
         const valueLines = splitTextIntoLines(valueText, columnWidth - 2);
-        return 4 + (valueLines.length * lineSpacing) + 2; // Label + valores + espacio (reducido)
+        return 3.5 + (valueLines.length * lineSpacing) + 1.5; // Label + valores + espacio (más reducido)
     }
     
     // Función para dibujar un campo con label y valor (formato vertical)
     function drawField(label, value, columnX, startY, columnWidth) {
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(7); // Tamaño de fuente reducido
+        doc.setFontSize(6.5); // Tamaño de fuente más reducido
         const labelY = startY;
         doc.text(label, columnX, labelY);
         
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(8); // Tamaño de fuente reducido
+        doc.setFontSize(7.5); // Tamaño de fuente más reducido
         const valueText = value || '-';
         const valueLines = splitTextIntoLines(valueText, columnWidth - 2);
-        const valueY = labelY + 4; // Reducido de 5 a 4
+        const valueY = labelY + 3.5; // Reducido aún más
         
         valueLines.forEach((line, index) => {
             doc.text(line, columnX, valueY + (index * lineSpacing));
         });
         
-        // Retornar la altura total usada (reducida)
-        return 4 + (valueLines.length * lineSpacing) + 2; // Label + valores + espacio (reducido)
+        // Retornar la altura total usada (más reducida)
+        return 3.5 + (valueLines.length * lineSpacing) + 1.5; // Label + valores + espacio (más reducido)
     }
     
     // Preparar textos
-    // Si el número de cliente es "0", mostrar "---"
-    const clientNumberDisplay = (clientNumber === '0' || !clientNumber) ? '---' : clientNumber;
+    // Formato del cliente: "325 - hotel savoy" (número - nombre) o solo nombre si no hay número
+    let clientDisplayText = '';
+    if (clientNumber && clientNumber !== '0' && clientNumber !== '') {
+        clientDisplayText = `${clientNumber} - ${clientName || '-'}`;
+    } else {
+        clientDisplayText = clientName || '---';
+    }
+    
     // Mostrar versión junto al número de propuesta: "2701SS0126 - V1"
     const proposalCodeText = proposalCode ? `${proposalCode}${versionText ? ' - ' + versionText : ''}` : '-';
     
     // Preparar texto del comercial con email y teléfono debajo (sin títulos)
+    // Separar con " / " para evitar sobreposición
     let commercialText = commercialName || '-';
     if (commercialEmail || commercialPhone) {
         const contactInfo = [];
         if (commercialEmail) contactInfo.push(commercialEmail);
         if (commercialPhone) contactInfo.push(commercialPhone);
         if (contactInfo.length > 0) {
-            commercialText += '\n' + contactInfo.join('\n');
+            commercialText += '\n' + contactInfo.join(' / '); // Separar con " / " para que no se sobrepongan
         }
     }
     
@@ -6923,9 +6930,8 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     let leftColumnHeight = 0;
     let rightColumnHeight = 0;
     
-    // Columna izquierda - calcular alturas
-    leftColumnHeight += calculateFieldHeight(clientNumberDisplay, leftColumnWidth);
-    leftColumnHeight += calculateFieldHeight(clientName, leftColumnWidth);
+    // Columna izquierda - calcular alturas (ahora solo 3 campos en lugar de 4)
+    leftColumnHeight += calculateFieldHeight(clientDisplayText, leftColumnWidth);
     leftColumnHeight += calculateFieldHeight(proposalCodeText, leftColumnWidth);
     leftColumnHeight += calculateFieldHeight(formattedDate, leftColumnWidth);
     
@@ -6943,14 +6949,11 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     
     // Dibujar campos - Columna izquierda
     let currentYLeft = boxY + boxPadding;
-    const height1 = drawField(l.clientNumber, clientNumberDisplay, leftColumnX, currentYLeft, leftColumnWidth);
+    const height1 = drawField(l.clientName, clientDisplayText, leftColumnX, currentYLeft, leftColumnWidth);
     currentYLeft += height1;
     
-    const height2 = drawField(l.clientName, clientName, leftColumnX, currentYLeft, leftColumnWidth);
+    const height2 = drawField(l.proposalNumber, proposalCodeText, leftColumnX, currentYLeft, leftColumnWidth);
     currentYLeft += height2;
-    
-    const height3 = drawField(l.proposalNumber, proposalCodeText, leftColumnX, currentYLeft, leftColumnWidth);
-    currentYLeft += height3;
     
     drawField(l.proposalDate, formattedDate, leftColumnX, currentYLeft, leftColumnWidth);
     
@@ -9055,10 +9058,13 @@ async function sendProposalToSupabase() {
                 const newVersion = currentVersion + 1;
 
                 // Mostrar modal de confirmación de versión
+                console.log('📋 Mostrando modal de versión...');
                 const createNewVersion = await showVersionModal(currentVersion, newVersion, cambios.length);
+                console.log('📋 Respuesta del modal de versión:', createNewVersion);
                 
                 // Si el usuario canceló el modal, no guardar
                 if (createNewVersion === null) {
+                    console.log('❌ Usuario canceló el modal, no se guardará');
                     return; // Usuario cerró el modal sin decidir
                 }
 
@@ -9077,14 +9083,18 @@ async function sendProposalToSupabase() {
                 }
 
                 // Actualizar el presupuesto
+                console.log('💾 Actualizando propuesta en base de datos...');
                 const { error: updateError } = await window.cartManager.supabase
                     .from('presupuestos')
                     .update(updateData)
-                .eq('id', window.cartManager.editingProposalId);
+                    .eq('id', window.cartManager.editingProposalId);
 
-            if (updateError) {
+                if (updateError) {
                     console.warn('⚠️ Error al actualizar propuesta:', updateError);
-            }
+                    throw updateError; // Lanzar error para que se maneje en el catch
+                } else {
+                    console.log('✅ Propuesta actualizada correctamente');
+                }
 
             // Registrar las ediciones en historial_modificaciones
                 // Obtener el nombre del usuario actual (el que está haciendo la modificación)
@@ -9106,15 +9116,22 @@ async function sendProposalToSupabase() {
                     console.warn('⚠️ Error al obtener nombre del usuario:', error);
                 }
 
-                await window.cartManager.registrarEdicionesPropuesta(
-                    window.cartManager.editingProposalId,
-                    cambios,
-                    currentUserName // Pasar el nombre del usuario actual, no el comercial de la propuesta
-                );
+                console.log('📝 Registrando ediciones en historial...');
+                try {
+                    await window.cartManager.registrarEdicionesPropuesta(
+                        window.cartManager.editingProposalId,
+                        cambios,
+                        currentUserName // Pasar el nombre del usuario actual, no el comercial de la propuesta
+                    );
+                    console.log('✅ Ediciones registradas correctamente');
+                } catch (error) {
+                    console.error('❌ Error al registrar ediciones:', error);
+                    // Continuar de todas formas para insertar los artículos
+                }
                 
-                // Insertar los nuevos artículos después de eliminar los antiguos
-                // Los artículos ya fueron eliminados arriba, ahora insertar los nuevos
+                // Los artículos ya fueron eliminados arriba (línea 8995)
                 // Continuar con la inserción de artículos más abajo en el código
+                console.log('➡️ Continuando con la inserción de artículos...');
             } else {
                 // Si no hay cambios, solo actualizar número de cliente y modo 200+ si cambió
                 const { error: updateError } = await window.cartManager.supabase
@@ -9211,6 +9228,8 @@ async function sendProposalToSupabase() {
         }
 
         // Preparar artículos del presupuesto
+        console.log('📦 Preparando artículos del carrito para guardar...');
+        console.log('📦 Carrito actual:', window.cartManager.cart.length, 'items');
         const articulos = [];
         const cart = window.cartManager.cart;
 
@@ -9361,22 +9380,26 @@ async function sendProposalToSupabase() {
             }
         }
 
-        console.log('📦 Artículos a guardar:', articulos);
+        console.log('📦 Artículos a guardar:', articulos.length, articulos);
 
         // Insertar artículos
         let articulosData = null;
         if (articulos.length > 0) {
+            console.log('💾 Insertando artículos en base de datos...');
             const { data: insertedArticulos, error: articulosError } = await window.cartManager.supabase
                 .from('presupuestos_articulos')
                 .insert(articulos)
                 .select();
 
             if (articulosError) {
+                console.error('❌ Error al insertar artículos:', articulosError);
                 throw articulosError;
             }
 
             articulosData = insertedArticulos;
-            console.log('✅ Artículos guardados:', articulosData);
+            console.log('✅ Artículos guardados correctamente:', articulosData?.length || 0, 'artículos');
+        } else {
+            console.warn('⚠️ No hay artículos para guardar');
         }
         
         // Renombrar logotipos temporales con el nombre del cliente después de guardar
@@ -10913,7 +10936,10 @@ async function showVersionModal(currentVersion, newVersion, changesCount) {
         document.getElementById('versionModalConfirm').textContent = t.confirm;
 
         // Mostrar modal
+        console.log('📋 Mostrando modal de versión en pantalla...');
         modal.style.display = 'flex';
+        modal.classList.add('active');
+        console.log('✅ Modal de versión mostrado, esperando respuesta del usuario...');
     });
 }
 
