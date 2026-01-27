@@ -58,10 +58,10 @@ class AuthManager {
             // Verificar sesión actual (solo si no estamos en file://)
             if (window.location.protocol !== 'file:') {
                 try {
-                    const { data: { session } } = await this.supabase.auth.getSession();
-                    if (session) {
-                        this.currentUser = session.user;
-                    }
+            const { data: { session } } = await this.supabase.auth.getSession();
+            if (session) {
+                this.currentUser = session.user;
+            }
                 } catch (error) {
                     // Si falla por CORS, es porque estamos en file://
                     if (error.message && (error.message.includes('CORS') || error.message.includes('Failed to fetch'))) {
@@ -83,7 +83,7 @@ class AuthManager {
                                 }
                                 
                                 this.processingSignIn = true;
-                                this.currentUser = session?.user || null;
+                    this.currentUser = session?.user || null;
                                 console.log('✅ [auth.js] Usuario autenticado:', this.currentUser?.email);
                                 
                                 // El rol se consultará directamente desde Supabase cuando sea necesario
@@ -91,14 +91,14 @@ class AuthManager {
                                 // No necesitamos cargar el rol aquí
                                 console.log('✅ [auth.js] Usuario autenticado, el rol se consultará cuando sea necesario');
                                 this.processingSignIn = false;
-                            } else if (event === 'SIGNED_OUT') {
-                            this.currentUser = null;
+                } else if (event === 'SIGNED_OUT') {
+                    this.currentUser = null;
                             // Limpiar caché de rol al cerrar sesión
                             if (typeof window.clearRoleCache === 'function') {
                                 window.clearRoleCache();
                             }
-                        }
-                    });
+                }
+            });
                     this.authStateChangeListenerAdded = true;
                     console.log('✅ [auth.js] Listener de autenticación configurado (solo una vez)');
                 } catch (error) {
@@ -323,18 +323,18 @@ class AuthManager {
      */
     async requireAuth(redirectTo = 'login.html') {
         try {
-            // Esperar un momento para que la sesión se cargue desde localStorage
-            await new Promise(resolve => setTimeout(resolve, 100));
-            
-            const isAuth = await this.isAuthenticated();
-            if (!isAuth) {
+        // Esperar un momento para que la sesión se cargue desde localStorage
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        const isAuth = await this.isAuthenticated();
+        if (!isAuth) {
                 // Solo redirigir si no estamos ya en la página de login Y no estamos usando file://
                 if (!window.location.pathname.includes('login.html') && window.location.protocol !== 'file:') {
-                    window.location.href = redirectTo;
-                }
-                return false;
+                window.location.href = redirectTo;
             }
-            return true;
+            return false;
+        }
+        return true;
         } catch (error) {
             console.error('Error en requireAuth:', error);
             // Si hay error, retornar false pero no bloquear

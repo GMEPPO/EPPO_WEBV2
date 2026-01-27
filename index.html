@@ -389,7 +389,7 @@
                     supabaseClient = await window.universalSupabase.getClient();
                     if (supabaseClient) {
                         console.log('✅ Supabase inicializado correctamente');
-                        return supabaseClient;
+                return supabaseClient;
                     }
                 }
                 
@@ -457,9 +457,9 @@
 
                 // Categorías cargadas
                 if (homeCategories.length > 0) {
-                    homeCategories.forEach(cat => {
-                        console.log(`  - ${cat.nombre_es}: foto = "${cat.foto}"`);
-                    });
+                homeCategories.forEach(cat => {
+                    console.log(`  - ${cat.nombre_es}: foto = "${cat.foto}"`);
+                });
                 }
 
                 if (homeCategories.length === 0) {
@@ -697,8 +697,8 @@
             // IMPORTANTE: Esto se ejecuta INMEDIATAMENTE, sin esperar a rolesManager
             console.log('🔄 Iniciando carga de categorías (sin bloqueo por roles)...');
             try {
-                await initSupabase();
-                await loadHomeCategories();
+            await initSupabase();
+            await loadHomeCategories();
             } catch (error) {
                 console.error('❌ Error inicializando Supabase o cargando categorías:', error);
                 console.error('❌ Stack trace:', error.stack);

@@ -1769,26 +1769,26 @@ class DynamicProductsPage {
             
             return filteredOptions.map(({ opt, optLabel }) => {
                 const isChecked = selectedValues.includes(String(opt.value)) ? 'checked' : '';
-                return `
-                    <label class="filter-checkbox">
-                        <input type="checkbox" value="${opt.value}" ${isChecked}>
-                        <span class="checkmark"></span>
-                        <span>${optLabel}</span>
-                    </label>
-                `;
-            }).join('');
+                    return `
+                        <label class="filter-checkbox">
+                            <input type="checkbox" value="${opt.value}" ${isChecked}>
+                            <span class="checkmark"></span>
+                            <span>${optLabel}</span>
+                        </label>
+                    `;
+                }).join('');
         } else {
             // Para campos de texto/número, mostrar los valores traducidos según el idioma
             // Primero obtener los valores con sus traducciones
             const valuesWithLabels = values.map(value => {
-                // Obtener la traducción si existe (de forma segura)
-                let displayValue = value;
-                if (field && field.translations && field.translations[value]) {
-                    const trans = field.translations[value];
-                    displayValue = currentLang === 'es' ? (trans.es || value) :
-                                   currentLang === 'en' ? (trans.en || trans.es || value) :
-                                   (trans.pt || value);
-                }
+                    // Obtener la traducción si existe (de forma segura)
+                    let displayValue = value;
+                    if (field && field.translations && field.translations[value]) {
+                        const trans = field.translations[value];
+                        displayValue = currentLang === 'es' ? (trans.es || value) :
+                                       currentLang === 'en' ? (trans.en || trans.es || value) :
+                                       (trans.pt || value);
+                    }
                 return { value, displayValue };
             });
             
@@ -1802,14 +1802,14 @@ class DynamicProductsPage {
             
             return valuesWithLabels.map(({ value, displayValue }) => {
                 const isChecked = selectedValues.includes(String(value)) ? 'checked' : '';
-                return `
-                    <label class="filter-checkbox">
-                        <input type="checkbox" value="${value}" ${isChecked}>
-                        <span class="checkmark"></span>
-                        <span>${displayValue}</span>
-                    </label>
-                `;
-            }).join('');
+                    return `
+                        <label class="filter-checkbox">
+                            <input type="checkbox" value="${value}" ${isChecked}>
+                            <span class="checkmark"></span>
+                            <span>${displayValue}</span>
+                        </label>
+                    `;
+                }).join('');
         }
     }
 

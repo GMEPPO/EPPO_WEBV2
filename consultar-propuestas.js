@@ -290,13 +290,31 @@ class ProposalsManager {
 
                 // Combinar datos (usar filteredPresupuestos si existe, sino presupuestos)
                 const presupuestosToUse = filteredPresupuestos || presupuestos;
-                this.allProposals = presupuestosToUse.map(presupuesto => ({
+                this.allProposals = presupuestosToUse.map(presupuesto => {
+                    // Parsear historial_modificaciones si viene como string JSON
+                    let historialModificaciones = presupuesto.historial_modificaciones || [];
+                    if (typeof historialModificaciones === 'string') {
+                        try {
+                            historialModificaciones = JSON.parse(historialModificaciones);
+                        } catch (e) {
+                            console.warn('⚠️ Error parseando historial_modificaciones para propuesta', presupuesto.id, e);
+                            historialModificaciones = [];
+                        }
+                    }
+                    // Asegurar que sea un array
+                    if (!Array.isArray(historialModificaciones)) {
+                        historialModificaciones = [];
+                    }
+
+                    return {
                     ...presupuesto,
+                        historial_modificaciones: historialModificaciones,
                     articulos: articulosPorPresupuesto[presupuesto.id] || [],
                     total: (articulosPorPresupuesto[presupuesto.id] || []).reduce((sum, art) => {
                         return sum + (parseFloat(art.precio) || 0) * (parseInt(art.cantidad) || 0);
                     }, 0)
-                }));
+                    };
+                });
 
                 console.log('✅ Propuestas cargadas:', this.allProposals.length);
             } else {
@@ -379,8 +397,12 @@ class ProposalsManager {
                                                            this.currentLanguage === 'pt' ? 'pt-PT' : 'en-US') : '-';
 
             // Número de propuesta (usar código generado si existe, sino primeros 8 caracteres del UUID)
-            const proposalNumber = proposal.codigo_propuesta || 
-                                  (proposal.id ? proposal.id.substring(0, 8).toUpperCase() : '-');
+            // Obtener versión de la propuesta (por defecto 1 si no existe)
+            const version = proposal.version || 1;
+            const versionSuffix = version > 1 ? ` V${version}` : '';
+            
+            const proposalNumber = (proposal.codigo_propuesta || 
+                                  (proposal.id ? proposal.id.substring(0, 8).toUpperCase() : '-')) + versionSuffix;
 
             // Estado
             const statusClass = this.getStatusClass(proposal.estado_propuesta);
@@ -412,7 +434,7 @@ class ProposalsManager {
 
             // Hacer el número de propuesta clickeable si tiene código
             const proposalNumberCell = proposal.codigo_propuesta ? 
-                `<td style="cursor: pointer; color: var(--brand-blue, #2563eb); text-decoration: underline;" onclick="window.proposalsManager.showProposalCodeBreakdown('${proposal.id}', '${proposal.codigo_propuesta}', '${(proposal.nombre_comercial || '').replace(/'/g, "\\'")}', '${(proposal.nombre_cliente || '').replace(/'/g, "\\'")}', '${proposal.fecha_inicial}')" title="Click para ver la fórmula">${proposalNumber}</td>` :
+                `<td style="cursor: pointer; color: var(--brand-blue, #2563eb); text-decoration: underline;" onclick="window.proposalsManager.showProposalCodeBreakdown('${proposal.id}', '${proposal.codigo_propuesta}', '${(proposal.nombre_comercial || '').replace(/'/g, "\\'")}', '${(proposal.nombre_cliente || '').replace(/'/g, "\\'")}', '${proposal.fecha_inicial}', ${version})" title="Click para ver la fórmula">${proposalNumber}</td>` :
                 `<td>${proposalNumber}</td>`;
 
             row.innerHTML = `
@@ -3929,9 +3951,12 @@ class ProposalsManager {
             return;
         }
 
-        // Solo mostrar cambios de estado
+        // Mostrar TODOS los tipos de modificaciones (cambios de estado Y modificaciones de artículos)
         const historial = proposal.historial_modificaciones || [];
-        const cambiosEstado = historial.filter(r => r.tipo === 'cambio_estado');
+        // Incluir todos los tipos: cambio_estado y modificacion_articulos
+        const todasLasModificaciones = historial.filter(r => 
+            r.tipo === 'cambio_estado' || r.tipo === 'modificacion_articulos'
+        );
         
         // Crear el modal si no existe
         let modal = document.getElementById('statusChangesHistoryModal');
@@ -4009,28 +4034,34 @@ class ProposalsManager {
         // Traducciones
         const translations = {
             es: {
-                title: 'Cambios de Estado',
-                noHistory: 'No hay cambios de estado registrados para este presupuesto.',
+                title: 'Alteraciones',
+                noHistory: 'No hay alteraciones registradas para este presupuesto.',
                 date: 'Fecha',
                 type: 'Tipo',
                 description: 'Descripción',
-                user: 'Usuario'
+                user: 'Usuario',
+                cambioEstado: 'Cambio de Estado',
+                modificacionArticulos: 'Modificación de Artículos'
             },
             pt: {
-                title: 'Alterações de Estado',
-                noHistory: 'Não há alterações de estado registradas para este orçamento.',
+                title: 'Alterações',
+                noHistory: 'Não há alterações registradas para este orçamento.',
                 date: 'Data',
                 type: 'Tipo',
                 description: 'Descrição',
-                user: 'Usuário'
+                user: 'Usuário',
+                cambioEstado: 'Alteração de Estado',
+                modificacionArticulos: 'Modificação de Artigos'
             },
             en: {
-                title: 'Status Changes',
-                noHistory: 'No status changes recorded for this proposal.',
+                title: 'Changes',
+                noHistory: 'No changes recorded for this proposal.',
                 date: 'Date',
                 type: 'Type',
                 description: 'Description',
-                user: 'User'
+                user: 'User',
+                cambioEstado: 'Status Change',
+                modificacionArticulos: 'Article Modification'
             }
         };
 
@@ -4042,7 +4073,7 @@ class ProposalsManager {
         // Generar contenido
         const contentDiv = document.getElementById('status-changes-history-content');
         
-        if (cambiosEstado.length === 0) {
+        if (todasLasModificaciones.length === 0) {
             contentDiv.innerHTML = `
                 <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
                     <i class="fas fa-exchange-alt" style="font-size: 3rem; margin-bottom: 16px; opacity: 0.5;"></i>
@@ -4051,7 +4082,7 @@ class ProposalsManager {
             `;
         } else {
             // Ordenar por fecha descendente (más reciente primero)
-            const historialOrdenado = [...cambiosEstado].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+            const historialOrdenado = [...todasLasModificaciones].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
             
             contentDiv.innerHTML = `
                 <div class="status-changes-timeline">
@@ -4067,9 +4098,21 @@ class ProposalsManager {
                             minute: '2-digit'
                         });
                         
-                        const tipoTexto = t.type + ': Cambio de Estado';
-                        const iconoTipo = 'fas fa-exchange-alt';
-                        const colorTipo = '#3b82f6';
+                        // Determinar tipo, icono y color según el tipo de modificación
+                        let tipoTexto, iconoTipo, colorTipo;
+                        if (registro.tipo === 'cambio_estado') {
+                            tipoTexto = t.type + ': ' + t.cambioEstado;
+                            iconoTipo = 'fas fa-exchange-alt';
+                            colorTipo = '#3b82f6'; // Azul para cambios de estado
+                        } else if (registro.tipo === 'modificacion_articulos') {
+                            tipoTexto = t.type + ': ' + t.modificacionArticulos;
+                            iconoTipo = 'fas fa-edit';
+                            colorTipo = '#10b981'; // Verde para modificaciones de artículos
+                        } else {
+                            tipoTexto = t.type + ': ' + (registro.tipo || 'Modificación');
+                            iconoTipo = 'fas fa-info-circle';
+                            colorTipo = '#6b7280'; // Gris para otros tipos
+                        }
                         
                         return `
                             <div class="status-change-item" style="
@@ -4526,7 +4569,7 @@ class ProposalsManager {
     /**
      * Mostrar descomposición del código de propuesta
      */
-    showProposalCodeBreakdown(proposalId, codigoPropuesta, nombreComercial, nombreCliente, fechaPropuesta) {
+    showProposalCodeBreakdown(proposalId, codigoPropuesta, nombreComercial, nombreCliente, fechaPropuesta, version = 1) {
         const modal = document.getElementById('proposalCodeModal');
         const content = document.getElementById('codeBreakdownContent');
         
@@ -4550,13 +4593,14 @@ class ProposalsManager {
         let html = '';
         
         if (codigoPropuesta && codigoPropuesta.length >= 10) {
+            const versionText = version > 1 ? ` V${version}` : '';
             html = `
                 <div style="margin-bottom: var(--space-6);">
                     <div style="text-align: center; margin-bottom: var(--space-4);">
                         <div style="font-size: 2rem; font-weight: 700; color: var(--brand-blue, #2563eb); letter-spacing: 4px; font-family: monospace; margin-bottom: var(--space-2);">
-                            ${codigoPropuesta}
+                            ${codigoPropuesta}${versionText}
                         </div>
-                        <p style="color: var(--text-secondary); font-size: 0.875rem;">Código completo</p>
+                        <p style="color: var(--text-secondary); font-size: 0.875rem;">Código completo${versionText ? ` - Versão ${version}` : ''}</p>
                     </div>
                     
                     <div style="background: var(--bg-gray-50); border-radius: var(--radius-md); padding: var(--space-4); margin-bottom: var(--space-4);">

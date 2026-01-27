@@ -6869,8 +6869,17 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         return valueLines.length;
     }
     
+    // Obtener versión de la propuesta si está disponible
+    let version = 1;
+    if (proposalData && proposalData.version) {
+        version = proposalData.version;
+    } else if (window.cartManager?.editingProposalData?.version) {
+        version = window.cartManager.editingProposalData.version;
+    }
+    const versionSuffix = version > 1 ? ` V${version}` : '';
+    
     // Calcular cuántas líneas necesita cada item ANTES de dibujar
-    const proposalCodeText = proposalCode || '-';
+    const proposalCodeText = (proposalCode || '-') + versionSuffix;
     const commercialText = commercialName || '-';
     const clientText = clientName || '-';
     
@@ -8199,7 +8208,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
 /**
  * Abrir modal para enviar propuesta
  */
-function openSendProposalModal() {
+async function openSendProposalModal() {
     if (!window.cartManager || window.cartManager.cart.length === 0) {
         const message = window.cartManager?.currentLanguage === 'es' ? 
             'El presupuesto está vacío' : 
@@ -8245,7 +8254,24 @@ function openSendProposalModal() {
 
     // Cargar clientes y comerciales existentes para autocompletado
     loadExistingClients();
-    loadExistingCommercials();
+    // Asegurar que cartManager esté inicializado antes de cargar comerciales
+    if (window.cartManager && window.cartManager.supabase) {
+        await loadExistingCommercials();
+    } else {
+        // Si no está disponible, intentar inicializar
+        if (window.cartManager) {
+            await window.cartManager.initializeSupabase();
+            await loadExistingCommercials();
+        } else {
+            // Fallback: cargar después de un breve delay
+            setTimeout(async () => {
+                if (window.cartManager) {
+                    await window.cartManager.initializeSupabase();
+                    await loadExistingCommercials();
+                }
+            }, 500);
+        }
+    }
 
     // Configurar autocompletado del nombre del cliente y comercial
     setupClientAutocomplete();
@@ -8327,7 +8353,7 @@ const PREDEFINED_COMMERCIALS = [
 ];
 
 /**
- * Cargar comerciales existentes y poblar el select
+ * Cargar comerciales existentes y poblar el select desde user_roles
  */
 async function loadExistingCommercials() {
     const commercialSelect = document.getElementById('commercialNameInput');
@@ -8343,18 +8369,128 @@ async function loadExistingCommercials() {
             commercialSelect.remove(1);
         }
         
-        // Agregar comerciales predefinidos al select
-        PREDEFINED_COMMERCIALS.forEach(commercial => {
+        // Verificar que Supabase esté disponible
+        if (!window.cartManager || !window.cartManager.supabase) {
+            console.warn('⚠️ Supabase no disponible, usando lista predefinida');
+            // Fallback a lista predefinida si no hay Supabase
+            PREDEFINED_COMMERCIALS.forEach(commercial => {
+                const option = document.createElement('option');
+                option.value = commercial;
+                option.textContent = commercial;
+                commercialSelect.appendChild(option);
+            });
+            existingCommercials = PREDEFINED_COMMERCIALS;
+            return;
+        }
+
+        // Obtener comerciales desde user_roles
+        // Nota: El campo "Name" está entre comillas en el esquema, así que es case-sensitive
+        // Primero probar una consulta simple para verificar acceso
+        console.log('🔍 Probando acceso a user_roles...');
+        const { data: testData, error: testError } = await window.cartManager.supabase
+            .from('user_roles')
+            .select('role')
+            .limit(1);
+        
+        console.log('📊 Test de acceso:', { data: testData, error: testError });
+
+        // 1. Obtener todos los usuarios con rol "comercial"
+        const { data: comercialesData, error: comercialesError } = await window.cartManager.supabase
+            .from('user_roles')
+            .select('Name, role')
+            .eq('role', 'comercial');
+
+        if (comercialesError) {
+            console.error('❌ Error al cargar comerciales:', comercialesError);
+        } else {
+            console.log('✅ Comerciales encontrados:', comercialesData?.length || 0, comercialesData);
+        }
+
+        // 2. Obtener solo a Claudia Cruz si es admin
+        const { data: claudiaData, error: claudiaError } = await window.cartManager.supabase
+            .from('user_roles')
+            .select('Name, role')
+            .eq('role', 'admin')
+            .ilike('Name', 'Claudia Cruz'); // Usar ilike para case-insensitive matching
+
+        if (claudiaError) {
+            console.error('❌ Error al cargar Claudia Cruz:', claudiaError);
+        } else {
+            console.log('✅ Claudia Cruz encontrada:', claudiaData?.length || 0, claudiaData);
+        }
+
+        // Combinar los resultados
+        let allUsers = [];
+        if (comercialesData && comercialesData.length > 0) {
+            allUsers = [...comercialesData];
+        }
+        if (claudiaData && claudiaData.length > 0) {
+            // Verificar que Claudia Cruz no esté ya en la lista
+            const claudiaExists = allUsers.some(u => u.Name === 'Claudia Cruz');
+            if (!claudiaExists) {
+                allUsers = [...allUsers, ...claudiaData];
+            }
+        }
+
+        console.log('🔍 Datos obtenidos de user_roles:', {
+            comerciales: comercialesData?.length || 0,
+            claudia: claudiaData?.length || 0,
+            total: allUsers.length,
+            datos: allUsers
+        });
+
+        // Filtrar y procesar los comerciales
+        const comercialesList = [];
+        
+        if (allUsers && allUsers.length > 0) {
+            allUsers.forEach(user => {
+                // El campo Name está entre comillas en el esquema, acceder correctamente
+                const userName = user.Name || user['Name'];
+                
+                // Verificar que tenga nombre
+                if (!userName || userName.trim() === '') {
+                    return; // Saltar si no tiene nombre
+                }
+                
+                // Incluir todos los comerciales
+                if (user.role === 'comercial') {
+                    comercialesList.push(userName);
+                }
+                // Incluir solo a Claudia Cruz si es admin
+                else if (user.role === 'admin' && userName === 'Claudia Cruz') {
+                    comercialesList.push(userName);
+                }
+            });
+        }
+
+        // Ordenar alfabéticamente
+        comercialesList.sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+
+        // Agregar comerciales al select
+        comercialesList.forEach(commercial => {
             const option = document.createElement('option');
             option.value = commercial;
             option.textContent = commercial;
             commercialSelect.appendChild(option);
         });
         
-        existingCommercials = PREDEFINED_COMMERCIALS;
-        console.log('✅ Lista predefinida de comerciales cargada en select:', existingCommercials.length);
+        existingCommercials = comercialesList;
+        console.log('✅ Comerciales cargados desde user_roles:', comercialesList.length);
+        console.log('📋 Lista de comerciales:', comercialesList);
+        
+        if (comercialesList.length === 0) {
+            console.warn('⚠️ No se encontraron comerciales. Verifica que haya usuarios con rol "comercial" o "admin" (solo Claudia Cruz) en user_roles.');
+        }
     } catch (error) {
         console.error('Error en loadExistingCommercials:', error);
+        // Fallback a lista predefinida en caso de error
+        PREDEFINED_COMMERCIALS.forEach(commercial => {
+            const option = document.createElement('option');
+            option.value = commercial;
+            option.textContent = commercial;
+            commercialSelect.appendChild(option);
+        });
+        existingCommercials = PREDEFINED_COMMERCIALS;
     }
 }
 
@@ -8801,45 +8937,88 @@ async function sendProposalToSupabase() {
                 articulosNuevos
             );
 
-            // Actualizar el presupuesto con el número de cliente y modo 200+ si cambió
-            const { error: updateError } = await window.cartManager.supabase
-                .from('presupuestos')
-                .update({ 
+            // Si hay cambios, preguntar si quiere crear una nueva versión
+            if (cambios.length > 0) {
+                // Obtener la versión actual de la propuesta
+                const { data: proposalData, error: proposalFetchError } = await window.cartManager.supabase
+                    .from('presupuestos')
+                    .select('version')
+                    .eq('id', window.cartManager.editingProposalId)
+                    .single();
+
+                const currentVersion = proposalData?.version || 1;
+                const newVersion = currentVersion + 1;
+
+                // Mostrar modal de confirmación de versión
+                const createNewVersion = await showVersionModal(currentVersion, newVersion, cambios.length);
+                
+                // Si el usuario canceló el modal, no guardar
+                if (createNewVersion === null) {
+                    return; // Usuario cerró el modal sin decidir
+                }
+
+                // Preparar datos de actualización
+                const updateData = {
                     numero_cliente: clientNumber || '0',
                     modo_200_plus: window.cartManager?.modo200 || false
-                })
-                .eq('id', window.cartManager.editingProposalId);
+                };
 
-            if (updateError) {
-                console.warn('⚠️ Error al actualizar número de cliente:', updateError);
-            }
-
-            // Registrar las ediciones en historial_modificaciones
-            // Obtener el nombre del usuario actual (el que está haciendo la modificación)
-            let currentUserName = null;
-            try {
-                const user = await window.authManager?.getCurrentUser();
-                if (user && window.cartManager.supabase) {
-                    const { data: userRoleData, error: roleError } = await window.cartManager.supabase
-                        .from('user_roles')
-                        .select('Name')
-                        .eq('user_id', user.id)
-                        .single();
-                    
-                    if (!roleError && userRoleData && userRoleData.Name) {
-                        currentUserName = userRoleData.Name;
-                    }
+                // Si el usuario confirmó, incrementar la versión
+                if (createNewVersion) {
+                    updateData.version = newVersion;
+                    console.log(`✅ Creando nueva versión: V${newVersion}`);
+                } else {
+                    console.log(`ℹ️ Manteniendo versión actual: V${currentVersion}`);
                 }
-            } catch (error) {
-                console.warn('⚠️ Error al obtener nombre del usuario:', error);
-            }
 
-            if (cambios.length > 0) {
+                // Actualizar el presupuesto
+                const { error: updateError } = await window.cartManager.supabase
+                    .from('presupuestos')
+                    .update(updateData)
+                    .eq('id', window.cartManager.editingProposalId);
+
+                if (updateError) {
+                    console.warn('⚠️ Error al actualizar propuesta:', updateError);
+                }
+
+                // Registrar las ediciones en historial_modificaciones
+                // Obtener el nombre del usuario actual (el que está haciendo la modificación)
+                let currentUserName = null;
+                try {
+                    const user = await window.authManager?.getCurrentUser();
+                    if (user && window.cartManager.supabase) {
+                        const { data: userRoleData, error: roleError } = await window.cartManager.supabase
+                            .from('user_roles')
+                            .select('Name')
+                            .eq('user_id', user.id)
+                            .single();
+                        
+                        if (!roleError && userRoleData && userRoleData.Name) {
+                            currentUserName = userRoleData.Name;
+                        }
+                    }
+                } catch (error) {
+                    console.warn('⚠️ Error al obtener nombre del usuario:', error);
+                }
+
                 await window.cartManager.registrarEdicionesPropuesta(
                     window.cartManager.editingProposalId,
                     cambios,
                     currentUserName // Pasar el nombre del usuario actual, no el comercial de la propuesta
                 );
+            } else {
+                // Si no hay cambios, solo actualizar número de cliente y modo 200+ si cambió
+                const { error: updateError } = await window.cartManager.supabase
+                    .from('presupuestos')
+                    .update({ 
+                        numero_cliente: clientNumber || '0',
+                        modo_200_plus: window.cartManager?.modo200 || false
+                    })
+                    .eq('id', window.cartManager.editingProposalId);
+
+                if (updateError) {
+                    console.warn('⚠️ Error al actualizar número de cliente:', updateError);
+                }
             }
         } else {
             // Crear nueva propuesta
@@ -8885,7 +9064,8 @@ async function sendProposalToSupabase() {
                 pais: paisCompleto,
                 numero_cliente: clientNumber || '0',
                 modo_200_plus: window.cartManager?.modo200 || false,
-                responsavel: responsableName // Guardar el nombre del usuario autenticado en responsavel
+                responsavel: responsableName, // Guardar el nombre del usuario autenticado en responsavel
+                version: 1 // Inicializar con versión 1
             };
 
 
@@ -10534,6 +10714,101 @@ async function updateManualPrice(itemId, newPrice) {
 }
 
 window.handleLogoUpload = handleLogoUpload;
+
+/**
+ * Variable global para almacenar la resolución de la promesa del modal de versión
+ */
+let versionModalResolve = null;
+
+/**
+ * Mostrar modal de confirmación de nueva versión
+ * @param {number} currentVersion - Versión actual de la propuesta
+ * @param {number} newVersion - Nueva versión que se crearía
+ * @param {number} changesCount - Número de cambios detectados
+ * @returns {Promise<boolean|null>} - true si confirma, false si cancela, null si cierra sin decidir
+ */
+async function showVersionModal(currentVersion, newVersion, changesCount) {
+    return new Promise((resolve) => {
+        versionModalResolve = resolve;
+        
+        const modal = document.getElementById('versionModal');
+        if (!modal) {
+            console.error('Modal de versión no encontrado');
+            resolve(false); // Por defecto, no crear nueva versión
+            return;
+        }
+
+        const lang = window.cartManager?.currentLanguage || localStorage.getItem('language') || 'pt';
+        
+        // Traducciones
+        const translations = {
+            pt: {
+                title: 'Nova Versão',
+                message: `Foram detectadas ${changesCount} alteração(ões) nesta proposta. Deseja criar uma nova versão do documento?`,
+                currentVersion: 'Versão atual:',
+                newVersion: 'Nova versão:',
+                cancel: 'Manter Versão Atual',
+                confirm: 'Criar Nova Versão',
+                explanation: 'Se esta alteração foi solicitada pelo cliente, crie uma nova versão. Se foi apenas uma correção (ex: produto esquecido), mantenha a versão atual.'
+            },
+            es: {
+                title: 'Nueva Versión',
+                message: `Se han detectado ${changesCount} modificación(es) en esta propuesta. ¿Desea crear una nueva versión del documento?`,
+                currentVersion: 'Versión actual:',
+                newVersion: 'Nueva versión:',
+                cancel: 'Mantener Versión Actual',
+                confirm: 'Crear Nueva Versión',
+                explanation: 'Si esta modificación fue solicitada por el cliente, cree una nueva versión. Si fue solo una corrección (ej: producto olvidado), mantenga la versión actual.'
+            },
+            en: {
+                title: 'New Version',
+                message: `${changesCount} change(s) detected in this proposal. Do you want to create a new version of the document?`,
+                currentVersion: 'Current version:',
+                newVersion: 'New version:',
+                cancel: 'Keep Current Version',
+                confirm: 'Create New Version',
+                explanation: 'If this change was requested by the client, create a new version. If it was just a correction (e.g.: forgotten product), keep the current version.'
+            }
+        };
+
+        const t = translations[lang] || translations.pt;
+
+        // Actualizar textos del modal
+        document.getElementById('versionModalTitle').textContent = t.title;
+        document.getElementById('versionModalMessage').textContent = t.message;
+        const explanationEl = document.getElementById('versionModalExplanation');
+        if (explanationEl) {
+            explanationEl.textContent = t.explanation;
+        }
+        document.getElementById('versionModalCurrentVersion').textContent = `${t.currentVersion} V${currentVersion}`;
+        document.getElementById('versionModalNewVersion').textContent = `${t.newVersion} V${newVersion}`;
+        document.getElementById('versionModalCancel').textContent = t.cancel;
+        document.getElementById('versionModalConfirm').textContent = t.confirm;
+
+        // Mostrar modal
+        modal.style.display = 'flex';
+    });
+}
+
+/**
+ * Cerrar modal de versión
+ * @param {boolean|null} createNewVersion - true para crear nueva versión, false para mantener actual, null para cancelar
+ */
+function closeVersionModal(createNewVersion) {
+    const modal = document.getElementById('versionModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+    
+    if (versionModalResolve) {
+        versionModalResolve(createNewVersion);
+        versionModalResolve = null;
+    }
+}
+
+// Hacer funciones globales
+window.showVersionModal = showVersionModal;
+window.closeVersionModal = closeVersionModal;
 window.removeLogo = removeLogo;
 window.checkAndSuggestClientLogo = checkAndSuggestClientLogo;
 window.selectClientLogo = selectClientLogo;
