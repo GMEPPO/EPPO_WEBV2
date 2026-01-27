@@ -6834,42 +6834,52 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     
     // Función para dividir texto en palabras y ajustar a múltiples líneas si es necesario
     function splitTextIntoLines(text, maxWidth) {
-        const words = text.split(' ');
+        // Primero dividir por saltos de línea existentes
+        const paragraphs = text.split('\n');
         const lines = [];
-        let currentLine = '';
         
-        words.forEach(word => {
-            const testLine = currentLine ? currentLine + ' ' + word : word;
-            const testWidth = doc.getTextWidth(testLine);
+        paragraphs.forEach((paragraph, paraIndex) => {
+            if (paraIndex > 0) {
+                // Agregar línea vacía para mantener el salto de línea
+                lines.push('');
+            }
             
-            if (testWidth <= maxWidth && currentLine) {
-                currentLine = testLine;
-            } else {
-                if (currentLine) {
-                    lines.push(currentLine);
-                }
-                // Si una palabra sola es más ancha que maxWidth, dividirla por caracteres
-                if (doc.getTextWidth(word) > maxWidth) {
-                    let charLine = '';
-                    for (let i = 0; i < word.length; i++) {
-                        const testCharLine = charLine + word[i];
-                        if (doc.getTextWidth(testCharLine) > maxWidth && charLine) {
-                            lines.push(charLine);
-                            charLine = word[i];
-                        } else {
-                            charLine = testCharLine;
-                        }
-                    }
-                    currentLine = charLine;
+            const words = paragraph.split(' ');
+            let currentLine = '';
+            
+            words.forEach(word => {
+                const testLine = currentLine ? currentLine + ' ' + word : word;
+                const testWidth = doc.getTextWidth(testLine);
+                
+                if (testWidth <= maxWidth && currentLine) {
+                    currentLine = testLine;
                 } else {
-                    currentLine = word;
+                    if (currentLine) {
+                        lines.push(currentLine);
+                    }
+                    // Si una palabra sola es más ancha que maxWidth, dividirla por caracteres
+                    if (doc.getTextWidth(word) > maxWidth) {
+                        let charLine = '';
+                        for (let i = 0; i < word.length; i++) {
+                            const testCharLine = charLine + word[i];
+                            if (doc.getTextWidth(testCharLine) > maxWidth && charLine) {
+                                lines.push(charLine);
+                                charLine = word[i];
+                            } else {
+                                charLine = testCharLine;
+                            }
+                        }
+                        currentLine = charLine;
+                    } else {
+                        currentLine = word;
+                    }
                 }
+            });
+            
+            if (currentLine) {
+                lines.push(currentLine);
             }
         });
-        
-        if (currentLine) {
-            lines.push(currentLine);
-        }
         
         return lines.length > 0 ? lines : [text];
     }
@@ -6883,12 +6893,12 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     
     // Función para dibujar un campo con label y valor (formato vertical)
     function drawField(label, value, columnX, startY, columnWidth) {
-        doc.setFont('helvetica', 'bold');
+    doc.setFont('helvetica', 'bold');
         doc.setFontSize(6.5); // Tamaño de fuente más reducido
         const labelY = startY;
         doc.text(label, columnX, labelY);
-        
-        doc.setFont('helvetica', 'normal');
+    
+    doc.setFont('helvetica', 'normal');
         doc.setFontSize(7.5); // Tamaño de fuente más reducido
         const valueText = value || '-';
         const valueLines = splitTextIntoLines(valueText, columnWidth - 2);
@@ -6915,14 +6925,14 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     const proposalCodeText = proposalCode ? `${proposalCode}${versionText ? ' - ' + versionText : ''}` : '-';
     
     // Preparar texto del comercial con email y teléfono debajo (sin títulos)
-    // Separar con " / " para evitar sobreposición
+    // Separar en líneas distintas para evitar sobreposición
     let commercialText = commercialName || '-';
     if (commercialEmail || commercialPhone) {
         const contactInfo = [];
         if (commercialEmail) contactInfo.push(commercialEmail);
         if (commercialPhone) contactInfo.push(commercialPhone);
         if (contactInfo.length > 0) {
-            commercialText += '\n' + contactInfo.join(' / '); // Separar con " / " para que no se sobrepongan
+            commercialText += '\n' + contactInfo.join('\n'); // Separar en líneas distintas
         }
     }
     
@@ -9087,14 +9097,14 @@ async function sendProposalToSupabase() {
                 const { error: updateError } = await window.cartManager.supabase
                     .from('presupuestos')
                     .update(updateData)
-                    .eq('id', window.cartManager.editingProposalId);
+                .eq('id', window.cartManager.editingProposalId);
 
-                if (updateError) {
+            if (updateError) {
                     console.warn('⚠️ Error al actualizar propuesta:', updateError);
                     throw updateError; // Lanzar error para que se maneje en el catch
                 } else {
                     console.log('✅ Propuesta actualizada correctamente');
-                }
+            }
 
             // Registrar las ediciones en historial_modificaciones
                 // Obtener el nombre del usuario actual (el que está haciendo la modificación)
@@ -9118,9 +9128,9 @@ async function sendProposalToSupabase() {
 
                 console.log('📝 Registrando ediciones en historial...');
                 try {
-                    await window.cartManager.registrarEdicionesPropuesta(
-                        window.cartManager.editingProposalId,
-                        cambios,
+                await window.cartManager.registrarEdicionesPropuesta(
+                    window.cartManager.editingProposalId,
+                    cambios,
                         currentUserName // Pasar el nombre del usuario actual, no el comercial de la propuesta
                     );
                     console.log('✅ Ediciones registradas correctamente');
