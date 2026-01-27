@@ -2332,14 +2332,14 @@ class CartManager {
                                     return `<div class="cart-item-total" style="font-weight: 600; color: var(--text-secondary, #6b7280); font-style: italic;">${textoConsulta}</div>`;
                                 } else {
                                     // Para admin, mostrar input editable
-                                    return `<input type="number" 
-                                            class="cart-item-price-input" 
-                                            value="${unitPrice.toFixed(4)}" 
-                                            step="0.0001" 
-                                            min="0"
-                                            style="width: 100px; padding: 4px 8px; border: 1px solid var(--bg-gray-300); border-radius: 6px; text-align: right; font-size: 0.9rem; font-weight: 600;"
-                                            onchange="updateManualPrice('${String(itemIdentifier).replace(/'/g, "\\'")}', this.value)"
-                                            onblur="updateManualPrice('${String(itemIdentifier).replace(/'/g, "\\'")}', this.value)">`;
+                            return `<input type="number" 
+                                    class="cart-item-price-input" 
+                                    value="${unitPrice.toFixed(4)}" 
+                                    step="0.0001" 
+                                    min="0"
+                                    style="width: 100px; padding: 4px 8px; border: 1px solid var(--bg-gray-300); border-radius: 6px; text-align: right; font-size: 0.9rem; font-weight: 600;"
+                                    onchange="updateManualPrice('${String(itemIdentifier).replace(/'/g, "\\'")}', this.value)"
+                                    onblur="updateManualPrice('${String(itemIdentifier).replace(/'/g, "\\'")}', this.value)">`;
                                 }
                             } else {
                                 // Precio normal (clickeable para ver escalones)
@@ -6787,11 +6787,11 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     
     // Crear cuadro con información de la propuesta en dos columnas (izquierda y derecha)
     const titleY = 5 + logoHeight + 8; // Espacio después de los logotipos
-    const boxPadding = 8;
+    const boxPadding = 6; // Reducido para hacer el cuadro más pequeño
     const boxWidth = pageWidth - (margin * 2); // Ancho completo de la página
     const boxX = margin; // Posición X (izquierda)
     const boxY = titleY; // Posición Y
-    const lineSpacing = 5; // Espacio entre líneas
+    const lineSpacing = 4; // Espacio entre líneas (reducido)
     
     // Texto dentro del cuadro
     doc.setFontSize(8);
@@ -6810,29 +6810,23 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         pt: {
             clientNumber: 'Num de cliente:',
             clientName: 'Nome do cliente:',
-            proposalNumber: 'Nr proposta / Versão de proposta:',
+            proposalNumber: 'Nr proposta:',
             proposalDate: 'Data da proposta:',
-            commercial: 'Nome do comercial:',
-            email: 'Email:',
-            phone: 'Telefone:'
+            commercial: 'Nome do comercial:'
         },
         es: {
             clientNumber: 'Nº de cliente:',
             clientName: 'Nombre del cliente:',
-            proposalNumber: 'Nº propuesta / Versión de propuesta:',
+            proposalNumber: 'Nº propuesta:',
             proposalDate: 'Fecha de la propuesta:',
-            commercial: 'Nombre del comercial:',
-            email: 'Email:',
-            phone: 'Teléfono:'
+            commercial: 'Nombre del comercial:'
         },
         en: {
             clientNumber: 'Client Number:',
             clientName: 'Client Name:',
-            proposalNumber: 'Proposal Nº / Proposal Version:',
+            proposalNumber: 'Proposal Nº:',
             proposalDate: 'Proposal Date:',
-            commercial: 'Commercial Name:',
-            email: 'Email:',
-            phone: 'Phone:'
+            commercial: 'Commercial Name:'
         }
     };
     
@@ -6884,47 +6878,59 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     function calculateFieldHeight(value, columnWidth) {
         const valueText = value || '-';
         const valueLines = splitTextIntoLines(valueText, columnWidth - 2);
-        return 5 + (valueLines.length * lineSpacing) + 3; // Label + valores + espacio
+        return 4 + (valueLines.length * lineSpacing) + 2; // Label + valores + espacio (reducido)
     }
     
     // Función para dibujar un campo con label y valor (formato vertical)
     function drawField(label, value, columnX, startY, columnWidth) {
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(7);
+        doc.setFontSize(7); // Tamaño de fuente reducido
         const labelY = startY;
         doc.text(label, columnX, labelY);
         
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(8);
+        doc.setFontSize(8); // Tamaño de fuente reducido
         const valueText = value || '-';
         const valueLines = splitTextIntoLines(valueText, columnWidth - 2);
-        const valueY = labelY + 5;
+        const valueY = labelY + 4; // Reducido de 5 a 4
         
         valueLines.forEach((line, index) => {
             doc.text(line, columnX, valueY + (index * lineSpacing));
         });
         
-        // Retornar la altura total usada
-        return 5 + (valueLines.length * lineSpacing) + 3; // Label + valores + espacio
+        // Retornar la altura total usada (reducida)
+        return 4 + (valueLines.length * lineSpacing) + 2; // Label + valores + espacio (reducido)
     }
     
     // Preparar textos
-    const proposalCodeText = (proposalCode || '-') + versionText;
+    // Si el número de cliente es "0", mostrar "---"
+    const clientNumberDisplay = (clientNumber === '0' || !clientNumber) ? '---' : clientNumber;
+    // Mostrar versión junto al número de propuesta: "2701SS0126 - V1"
+    const proposalCodeText = proposalCode ? `${proposalCode}${versionText ? ' - ' + versionText : ''}` : '-';
+    
+    // Preparar texto del comercial con email y teléfono debajo (sin títulos)
+    let commercialText = commercialName || '-';
+    if (commercialEmail || commercialPhone) {
+        const contactInfo = [];
+        if (commercialEmail) contactInfo.push(commercialEmail);
+        if (commercialPhone) contactInfo.push(commercialPhone);
+        if (contactInfo.length > 0) {
+            commercialText += '\n' + contactInfo.join('\n');
+        }
+    }
     
     // Calcular altura necesaria para cada columna
     let leftColumnHeight = 0;
     let rightColumnHeight = 0;
     
     // Columna izquierda - calcular alturas
-    leftColumnHeight += calculateFieldHeight(clientNumber, leftColumnWidth);
+    leftColumnHeight += calculateFieldHeight(clientNumberDisplay, leftColumnWidth);
     leftColumnHeight += calculateFieldHeight(clientName, leftColumnWidth);
     leftColumnHeight += calculateFieldHeight(proposalCodeText, leftColumnWidth);
     leftColumnHeight += calculateFieldHeight(formattedDate, leftColumnWidth);
     
-    // Columna derecha - calcular alturas
-    rightColumnHeight += calculateFieldHeight(commercialName, rightColumnWidth);
-    rightColumnHeight += calculateFieldHeight(commercialEmail, rightColumnWidth);
-    rightColumnHeight += calculateFieldHeight(commercialPhone, rightColumnWidth);
+    // Columna derecha - calcular alturas (solo el comercial con email y teléfono)
+    rightColumnHeight += calculateFieldHeight(commercialText, rightColumnWidth);
     
     // Calcular altura total del cuadro
     const totalBoxHeight = Math.max(leftColumnHeight, rightColumnHeight) + (boxPadding * 2);
@@ -6937,7 +6943,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     
     // Dibujar campos - Columna izquierda
     let currentYLeft = boxY + boxPadding;
-    const height1 = drawField(l.clientNumber, clientNumber, leftColumnX, currentYLeft, leftColumnWidth);
+    const height1 = drawField(l.clientNumber, clientNumberDisplay, leftColumnX, currentYLeft, leftColumnWidth);
     currentYLeft += height1;
     
     const height2 = drawField(l.clientName, clientName, leftColumnX, currentYLeft, leftColumnWidth);
@@ -6948,15 +6954,9 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     
     drawField(l.proposalDate, formattedDate, leftColumnX, currentYLeft, leftColumnWidth);
     
-    // Dibujar campos - Columna derecha
+    // Dibujar campos - Columna derecha (solo comercial con email y teléfono debajo)
     let currentYRight = boxY + boxPadding;
-    const height4 = drawField(l.commercial, commercialName, rightColumnX, currentYRight, rightColumnWidth);
-    currentYRight += height4;
-    
-    const height5 = drawField(l.email, commercialEmail, rightColumnX, currentYRight, rightColumnWidth);
-    currentYRight += height5;
-    
-    drawField(l.phone, commercialPhone, rightColumnX, currentYRight, rightColumnWidth);
+    drawField(l.commercial, commercialText, rightColumnX, currentYRight, rightColumnWidth);
     
     // Línea decorativa debajo del cuadro
     const headerBottomY = boxY + totalBoxHeight + 5;
@@ -7847,7 +7847,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             const currentLang = selectedLanguage || window.cartManager?.currentLanguage || localStorage.getItem('language') || 'pt';
             precioParaMostrar = translations[currentLang] || translations['pt'];
         } else {
-            const formattedUnitPrice = window.cartManager ? window.cartManager.formatUnitPrice(unitPrice) : unitPrice.toFixed(2);
+        const formattedUnitPrice = window.cartManager ? window.cartManager.formatUnitPrice(unitPrice) : unitPrice.toFixed(2);
             precioParaMostrar = `€${formattedUnitPrice}`;
         }
         drawCell(colPositions.unitPrice, currentY, colWidths.unitPrice, calculatedRowHeight, precioParaMostrar, { align: 'center', fontSize: 8, noWrap: true });
@@ -7862,7 +7862,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             const currentLang = selectedLanguage || window.cartManager?.currentLanguage || localStorage.getItem('language') || 'pt';
             totalParaMostrar = translations[currentLang] || translations['pt'];
         } else {
-            const formattedTotal = window.cartManager ? window.cartManager.formatTotal(total) : total.toFixed(2);
+        const formattedTotal = window.cartManager ? window.cartManager.formatTotal(total) : total.toFixed(2);
             totalParaMostrar = `€${formattedTotal}`;
         }
         drawCell(colPositions.total, currentY, colWidths.total, calculatedRowHeight, totalParaMostrar, { align: 'center', bold: true, fontSize: 8, noWrap: true });
@@ -8410,13 +8410,13 @@ async function loadExistingCommercials() {
         if (!window.cartManager || !window.cartManager.supabase) {
             console.warn('⚠️ Supabase no disponible, usando lista predefinida');
             // Fallback a lista predefinida si no hay Supabase
-            PREDEFINED_COMMERCIALS.forEach(commercial => {
-                const option = document.createElement('option');
-                option.value = commercial;
-                option.textContent = commercial;
-                commercialSelect.appendChild(option);
-            });
-            existingCommercials = PREDEFINED_COMMERCIALS;
+        PREDEFINED_COMMERCIALS.forEach(commercial => {
+            const option = document.createElement('option');
+            option.value = commercial;
+            option.textContent = commercial;
+            commercialSelect.appendChild(option);
+        });
+        existingCommercials = PREDEFINED_COMMERCIALS;
             return;
         }
 
@@ -9040,11 +9040,13 @@ async function sendProposalToSupabase() {
                 articulosNuevos
             );
 
+            console.log('🔍 Cambios detectados:', cambios.length, cambios);
+
             // Si hay cambios, preguntar si quiere crear una nueva versión
             if (cambios.length > 0) {
                 // Obtener la versión actual de la propuesta
                 const { data: proposalData, error: proposalFetchError } = await window.cartManager.supabase
-                    .from('presupuestos')
+                .from('presupuestos')
                     .select('version')
                     .eq('id', window.cartManager.editingProposalId)
                     .single();
@@ -9078,13 +9080,13 @@ async function sendProposalToSupabase() {
                 const { error: updateError } = await window.cartManager.supabase
                     .from('presupuestos')
                     .update(updateData)
-                    .eq('id', window.cartManager.editingProposalId);
+                .eq('id', window.cartManager.editingProposalId);
 
-                if (updateError) {
+            if (updateError) {
                     console.warn('⚠️ Error al actualizar propuesta:', updateError);
-                }
+            }
 
-                // Registrar las ediciones en historial_modificaciones
+            // Registrar las ediciones en historial_modificaciones
                 // Obtener el nombre del usuario actual (el que está haciendo la modificación)
                 let currentUserName = null;
                 try {
@@ -9109,6 +9111,10 @@ async function sendProposalToSupabase() {
                     cambios,
                     currentUserName // Pasar el nombre del usuario actual, no el comercial de la propuesta
                 );
+                
+                // Insertar los nuevos artículos después de eliminar los antiguos
+                // Los artículos ya fueron eliminados arriba, ahora insertar los nuevos
+                // Continuar con la inserción de artículos más abajo en el código
             } else {
                 // Si no hay cambios, solo actualizar número de cliente y modo 200+ si cambió
                 const { error: updateError } = await window.cartManager.supabase
@@ -9122,7 +9128,25 @@ async function sendProposalToSupabase() {
                 if (updateError) {
                     console.warn('⚠️ Error al actualizar número de cliente:', updateError);
                 }
+                
+                // Aunque no haya cambios detectados, los artículos pueden haber cambiado
+                // Eliminar artículos antiguos e insertar los nuevos del carrito
+                console.log('🔄 No hay cambios detectados, pero actualizando artículos del carrito...');
+                const { error: deleteError } = await window.cartManager.supabase
+                    .from('presupuestos_articulos')
+                    .delete()
+                    .eq('presupuesto_id', window.cartManager.editingProposalId);
+
+                if (deleteError) {
+                    console.warn('⚠️ Error al eliminar artículos antiguos:', deleteError);
+                } else {
+                    console.log('✅ Artículos antiguos eliminados');
+                }
             }
+            
+            // Establecer presupuesto para que el código de inserción de artículos funcione
+            presupuesto = { id: window.cartManager.editingProposalId };
+            console.log('📋 Presupuesto establecido para inserción de artículos:', presupuesto.id);
         } else {
             // Crear nueva propuesta
             // Todas las propuestas se registran como "propuesta en curso"
