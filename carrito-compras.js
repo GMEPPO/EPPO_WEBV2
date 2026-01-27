@@ -332,7 +332,31 @@ class CartManager {
     }
 
     /**
-     * Registrar ediciones de la propuesta en ediciones_propuesta
+     * Obtener el nombre del usuario actual desde user_roles
+     */
+    async getCurrentUserName() {
+        try {
+            const user = await window.authManager?.getCurrentUser();
+            if (user && this.supabase) {
+                const { data: userRoleData, error: roleError } = await this.supabase
+                    .from('user_roles')
+                    .select('Name')
+                    .eq('user_id', user.id)
+                    .single();
+                
+                if (!roleError && userRoleData && userRoleData.Name) {
+                    return userRoleData.Name;
+                }
+            }
+        } catch (error) {
+            console.warn('⚠️ Error al obtener nombre del usuario:', error);
+        }
+        // Fallback a localStorage o sistema
+        return localStorage.getItem('commercial_name') || 'Sistema';
+    }
+
+    /**
+     * Registrar ediciones de la propuesta en ediciones_propuesta y historial_modificaciones
      */
     async registrarEdicionesPropuesta(proposalId, cambios, usuario) {
         if (!this.supabase) {
@@ -344,22 +368,27 @@ class CartManager {
         }
 
         try {
-            // Obtener las ediciones actuales
+            // Obtener el nombre del usuario actual (el que está haciendo la modificación)
+            const currentUserName = usuario || await this.getCurrentUserName();
+
+            // Obtener los datos actuales de la propuesta
             const { data: proposalData, error: fetchError } = await this.supabase
                 .from('presupuestos')
-                .select('ediciones_propuesta')
+                .select('ediciones_propuesta, historial_modificaciones')
                 .eq('id', proposalId)
                 .single();
 
             if (fetchError) {
+                console.warn('⚠️ Error al obtener datos de la propuesta:', fetchError);
                 return;
             }
 
             const edicionesActuales = proposalData?.ediciones_propuesta || [];
+            const historialActual = proposalData?.historial_modificaciones || [];
             const fecha = new Date().toISOString();
             const lang = this.currentLanguage || 'pt';
 
-            // Crear un registro consolidado de todas las ediciones
+            // Crear un registro consolidado de todas las ediciones para ediciones_propuesta
             const descripcionCompleta = cambios.map(c => c.descripcion).join('; ');
             const titulo = lang === 'es' ?
                 `Edición de propuesta - ${cambios.length} cambio(s)` :
@@ -367,27 +396,54 @@ class CartManager {
                 `Edição de proposta - ${cambios.length} alteração(ões)` :
                 `Proposal edit - ${cambios.length} change(s)`;
 
-            const nuevoRegistro = {
+            const nuevoRegistroEdiciones = {
                 fecha: fecha,
                 titulo: titulo,
                 descripcion: descripcionCompleta,
                 cambios: cambios, // Guardar detalles de cada cambio
-                usuario: usuario || localStorage.getItem('commercial_name') || 'Sistema'
+                usuario: currentUserName
             };
 
-            const nuevasEdiciones = [...edicionesActuales, nuevoRegistro];
+            const nuevasEdiciones = [...edicionesActuales, nuevoRegistroEdiciones];
 
-            // Actualizar las ediciones
+            // Crear registro para historial_modificaciones
+            const descripcionHistorial = cambios.map(c => {
+                const tipoCambio = c.tipo === 'agregado' ? 
+                    (lang === 'es' ? 'Agregado' : lang === 'pt' ? 'Adicionado' : 'Added') :
+                    c.tipo === 'eliminado' ?
+                    (lang === 'es' ? 'Eliminado' : lang === 'pt' ? 'Eliminado' : 'Removed') :
+                    c.tipo === 'modificado' ?
+                    (lang === 'es' ? 'Modificado' : lang === 'pt' ? 'Modificado' : 'Modified') :
+                    c.tipo;
+                
+                return `${tipoCambio}: ${c.descripcion}`;
+            }).join('; ');
+
+            const nuevoRegistroHistorial = {
+                fecha: fecha,
+                tipo: 'modificacion_articulos',
+                descripcion: descripcionHistorial,
+                usuario: currentUserName
+            };
+
+            const nuevoHistorial = [...historialActual, nuevoRegistroHistorial];
+
+            // Actualizar tanto ediciones_propuesta como historial_modificaciones
             const { error: updateError } = await this.supabase
                 .from('presupuestos')
-                .update({ ediciones_propuesta: nuevasEdiciones })
+                .update({ 
+                    ediciones_propuesta: nuevasEdiciones,
+                    historial_modificaciones: nuevoHistorial
+                })
                 .eq('id', proposalId);
 
             if (updateError) {
-                // Error al registrar ediciones, continuar sin interrumpir
+                console.warn('⚠️ Error al registrar ediciones:', updateError);
+            } else {
+                console.log('✅ Ediciones registradas correctamente por:', currentUserName);
             }
         } catch (error) {
-            // Error al registrar ediciones, continuar sin interrumpir
+            console.error('❌ Error al registrar ediciones:', error);
         }
     }
 
@@ -7600,7 +7656,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         // Foto
         drawCell(colPositions.photo, currentY, colWidths.photo, calculatedRowHeight, '', { border: true });
         
-        // Agregar imagen (centrada verticalmente) con compresión
+        // Agregar imagen (centrada verticalmente) con compresión, manteniendo relación de aspecto
         try {
             if (item.image) {
                 const img = new Image();
@@ -7608,16 +7664,40 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                 await new Promise((resolve) => {
                     img.onload = () => {
                         try {
-                            const smallerImageSize = Math.min(imageSize, colWidths.photo - 4);
-                            const imgX = colPositions.photo + (colWidths.photo - smallerImageSize) / 2;
-                            const imgY = currentY + (calculatedRowHeight - smallerImageSize) / 2;
+                            // Calcular el espacio disponible en la celda (con padding)
+                            const availableWidth = colWidths.photo - 4; // Padding de 2px a cada lado
+                            const availableHeight = calculatedRowHeight - 4; // Padding de 2px arriba y abajo
+                            
+                            // Obtener dimensiones originales de la imagen
+                            const originalWidth = img.width;
+                            const originalHeight = img.height;
+                            const aspectRatio = originalWidth / originalHeight;
+                            
+                            // Calcular dimensiones manteniendo la relación de aspecto
+                            // Ajustar para que quepa dentro del espacio disponible
+                            let finalWidth = availableWidth;
+                            let finalHeight = availableWidth / aspectRatio;
+                            
+                            // Si la altura calculada excede el espacio disponible, ajustar por altura
+                            if (finalHeight > availableHeight) {
+                                finalHeight = availableHeight;
+                                finalWidth = availableHeight * aspectRatio;
+                            }
+                            
+                            // Asegurar que no exceda los límites
+                            finalWidth = Math.min(finalWidth, availableWidth);
+                            finalHeight = Math.min(finalHeight, availableHeight);
+                            
+                            // Centrar la imagen en la celda
+                            const imgX = colPositions.photo + (colWidths.photo - finalWidth) / 2;
+                            const imgY = currentY + (calculatedRowHeight - finalHeight) / 2;
                             
                             // Redimensionar y comprimir imagen antes de agregar al PDF
-                            const maxDimension = 200; // Máximo 200px para reducir tamaño
-                            let canvasWidth = img.width;
-                            let canvasHeight = img.height;
+                            const maxDimension = 200; // Máximo 200px para reducir tamaño del archivo
+                            let canvasWidth = originalWidth;
+                            let canvasHeight = originalHeight;
                             
-                            // Redimensionar si es muy grande
+                            // Redimensionar si es muy grande (manteniendo relación de aspecto)
                             if (canvasWidth > maxDimension || canvasHeight > maxDimension) {
                                 const ratio = Math.min(maxDimension / canvasWidth, maxDimension / canvasHeight);
                                 canvasWidth = Math.floor(canvasWidth * ratio);
@@ -7634,8 +7714,8 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                             // Convertir a JPEG con compresión (calidad 75% para balance entre tamaño y calidad)
                             const imgData = canvas.toDataURL('image/jpeg', 0.75);
                             
-                            // Agregar imagen comprimida al PDF
-                            doc.addImage(imgData, 'JPEG', imgX, imgY, smallerImageSize, smallerImageSize);
+                            // Agregar imagen comprimida al PDF manteniendo la relación de aspecto
+                            doc.addImage(imgData, 'JPEG', imgX, imgY, finalWidth, finalHeight);
                         } catch (error) {
                             console.error('Error adding image:', error);
                         }
@@ -8735,11 +8815,30 @@ async function sendProposalToSupabase() {
             }
 
             // Registrar las ediciones en historial_modificaciones
+            // Obtener el nombre del usuario actual (el que está haciendo la modificación)
+            let currentUserName = null;
+            try {
+                const user = await window.authManager?.getCurrentUser();
+                if (user && window.cartManager.supabase) {
+                    const { data: userRoleData, error: roleError } = await window.cartManager.supabase
+                        .from('user_roles')
+                        .select('Name')
+                        .eq('user_id', user.id)
+                        .single();
+                    
+                    if (!roleError && userRoleData && userRoleData.Name) {
+                        currentUserName = userRoleData.Name;
+                    }
+                }
+            } catch (error) {
+                console.warn('⚠️ Error al obtener nombre del usuario:', error);
+            }
+
             if (cambios.length > 0) {
                 await window.cartManager.registrarEdicionesPropuesta(
                     window.cartManager.editingProposalId,
                     cambios,
-                    commercialName
+                    currentUserName // Pasar el nombre del usuario actual, no el comercial de la propuesta
                 );
             }
         } else {

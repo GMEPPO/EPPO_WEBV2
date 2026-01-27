@@ -463,7 +463,7 @@ class ProposalsManager {
                                     return options;
                                 })()}
                                 ${estadoNormalizado === 'propuesta_en_edicion' ? `<option value="propuesta_en_edicion" selected>${this.getStatusText('propuesta_en_edicion')}</option>` : `<option value="propuesta_en_edicion">${this.getStatusText('propuesta_en_edicion')}</option>`}
-                                ${estadoNormalizado === 'muestra_pedida' ? `<option value="muestra_pedida" selected>${this.getStatusText('muestra_pedida')}</option>` : `<option value="muestra_pedida">${this.getStatusText('muestra_pedida')}</option>`}
+                                ${estadoNormalizado === 'amostra_pedida' ? `<option value="amostra_pedida" selected>${this.getStatusText('amostra_pedida')}</option>` : `<option value="amostra_pedida">${this.getStatusText('amostra_pedida')}</option>`}
                                 ${estadoNormalizado === 'amostra_enviada' ? `<option value="amostra_enviada" selected>${this.getStatusText('amostra_enviada')}</option>` : `<option value="amostra_enviada">${this.getStatusText('amostra_enviada')}</option>`}
                                 ${estadoNormalizado === 'aguarda_dossier' ? `<option value="aguarda_dossier" selected>${this.getStatusText('aguarda_dossier')}</option>` : `<option value="aguarda_dossier">${this.getStatusText('aguarda_dossier')}</option>`}
                                 ${estadoNormalizado === 'aguarda_aprovacao_dossier' ? `<option value="aguarda_aprovacao_dossier" selected>${this.getStatusText('aguarda_aprovacao_dossier')}</option>` : `<option value="aguarda_aprovacao_dossier">${this.getStatusText('aguarda_aprovacao_dossier')}</option>`}
@@ -2402,34 +2402,63 @@ class ProposalsManager {
             return;
         }
 
-        // Resetear el select (puede estar en el modal o en la tabla)
+        // Normalizar el estado para manejar variaciones (muestra_pedida -> amostra_pedida)
+        const normalizedStatus = this.normalizeStatusValue(newStatus);
+
+        // Manejar diferentes estados con sus modales/formularios específicos
+        // NO resetear el select aquí porque el modal puede cancelarse
+        if (normalizedStatus === 'amostra_pedida' || newStatus === 'muestra_pedida') {
+            this.openAmostraPedidaModal(proposal);
+        } else if (normalizedStatus === 'amostra_enviada' || newStatus === 'amostra_enviada') {
+            this.openAmostraEnviadaModal(proposal);
+        } else if (normalizedStatus === 'aguarda_aprovacao_dossier') {
+            this.openAguardaAprovacaoDossierModal(proposal);
+        } else if (normalizedStatus === 'aguarda_pagamento') {
+            this.openAguardaPagamentoModal(proposal);
+        } else if (normalizedStatus === 'encomenda_en_curso') {
+            this.openEncomendaEnCursoModal(proposal);
+        } else if (normalizedStatus === 'encomenda_concluida') {
+            this.openEncomendaConcluidaModal(proposal);
+        } else if (normalizedStatus === 'rejeitada') {
+            this.openRejeitadaModal(proposal);
+        } else {
+            // Para otros estados, cambiar directamente
+            await this.updateProposalStatus(proposalId, normalizedStatus);
+            // Solo resetear el select después de actualizar el estado exitosamente
+            this.resetStatusSelects(proposalId);
+        }
+    }
+
+    /**
+     * Normalizar valor de estado para manejar variaciones
+     */
+    normalizeStatusValue(status) {
+        if (!status) return status;
+        const statusLower = status.toLowerCase();
+        // Mapear variaciones a valores consistentes
+        if (statusLower === 'muestra_pedida' || statusLower === 'amostra_pedida') return 'amostra_pedida';
+        if (statusLower === 'muestra_entregada' || statusLower === 'amostra_enviada') return 'amostra_enviada';
+        return status;
+    }
+
+    /**
+     * Resetear los selects de estado (usar después de confirmar o cancelar)
+     */
+    resetStatusSelects(proposalId) {
         const select = document.getElementById(`status-select-${proposalId}`);
         if (select) {
             select.value = '';
         }
         const selectInline = document.getElementById(`status-select-inline-${proposalId}`);
         if (selectInline) {
-            selectInline.value = '';
-        }
-
-        // Manejar diferentes estados con sus modales/formularios específicos
-        if (newStatus === 'muestra_pedida') {
-            this.openAmostraPedidaModal(proposal);
-        } else if (newStatus === 'amostra_enviada') {
-            this.openAmostraEnviadaModal(proposal);
-        } else if (newStatus === 'aguarda_aprovacao_dossier') {
-            this.openAguardaAprovacaoDossierModal(proposal);
-        } else if (newStatus === 'aguarda_pagamento') {
-            this.openAguardaPagamentoModal(proposal);
-        } else if (newStatus === 'encomenda_en_curso') {
-            this.openEncomendaEnCursoModal(proposal);
-        } else if (newStatus === 'encomenda_concluida') {
-            this.openEncomendaConcluidaModal(proposal);
-        } else if (newStatus === 'rejeitada') {
-            this.openRejeitadaModal(proposal);
-        } else {
-            // Para otros estados, cambiar directamente
-            await this.updateProposalStatus(proposalId, newStatus);
+            // Restaurar el valor actual del estado de la propuesta
+            const proposal = this.allProposals.find(p => p.id === proposalId);
+            if (proposal) {
+                const currentStatus = this.normalizeStatusValue(proposal.estado_propuesta);
+                selectInline.value = currentStatus || '';
+            } else {
+                selectInline.value = '';
+            }
         }
     }
 
@@ -2762,13 +2791,34 @@ class ProposalsManager {
                 return;
             }
 
+            // Obtener el nombre del usuario actual desde user_roles
+            let currentUserName = 'Sistema';
+            try {
+                const user = await window.authManager?.getCurrentUser();
+                if (user && this.supabase) {
+                    const { data: userRoleData, error: roleError } = await this.supabase
+                        .from('user_roles')
+                        .select('Name')
+                        .eq('user_id', user.id)
+                        .single();
+                    
+                    if (!roleError && userRoleData && userRoleData.Name) {
+                        currentUserName = userRoleData.Name;
+                    }
+                }
+            } catch (error) {
+                console.warn('⚠️ Error al obtener nombre del usuario:', error);
+                // Fallback a localStorage
+                currentUserName = localStorage.getItem('commercial_name') || 'Sistema';
+            }
+
             // Crear el nuevo registro de modificación para historial_modificaciones
             const descripcion = this.getStatusChangeDescription(estadoAnterior, newStatus, additionalData);
             const nuevoRegistro = {
                 fecha: new Date().toISOString(),
                 tipo: 'cambio_estado',
                 descripcion: descripcion,
-                usuario: localStorage.getItem('commercial_name') || 'Sistema'
+                usuario: currentUserName
             };
             const nuevoHistorial = [...historialActual, nuevoRegistro];
 
@@ -4717,6 +4767,12 @@ class ProposalsManager {
             // Actualizar estado de la propuesta
             await this.updateProposalStatus(proposalId, 'amostra_pedida');
 
+            // Recargar propuestas para actualizar la vista
+            await this.loadProposals();
+
+            // Resetear el select después de actualizar
+            this.resetStatusSelects(proposalId);
+
             // Cerrar modal
             this.closeAmostraPedidaModal();
 
@@ -4734,8 +4790,14 @@ class ProposalsManager {
     closeAmostraPedidaModal() {
         const modal = document.getElementById('amostraPedidaModal');
         if (modal) {
+            const proposalId = modal.getAttribute('data-proposal-id');
             modal.classList.remove('active');
             document.body.style.overflow = 'auto';
+            
+            // Resetear el select cuando se cierra el modal (por si se canceló)
+            if (proposalId) {
+                this.resetStatusSelects(proposalId);
+            }
         }
     }
 
