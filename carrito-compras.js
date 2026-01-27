@@ -8385,16 +8385,82 @@ async function loadExistingCommercials() {
 
         // Obtener comerciales desde user_roles
         // Nota: El campo "Name" está entre comillas en el esquema, así que es case-sensitive
-        // Primero probar una consulta simple para verificar acceso
-        console.log('🔍 Probando acceso a user_roles...');
-        const { data: testData, error: testError } = await window.cartManager.supabase
-            .from('user_roles')
-            .select('role')
-            .limit(1);
         
-        console.log('📊 Test de acceso:', { data: testData, error: testError });
+        // 1. Obtener información del usuario actual
+        let currentUser = null;
+        let currentUserRole = null;
+        let currentUserName = null;
+        let currentUserEspejo = null;
+        
+        try {
+            currentUser = await window.authManager?.getCurrentUser();
+            if (currentUser && window.cartManager.supabase) {
+                const { data: currentUserData, error: currentUserError } = await window.cartManager.supabase
+                    .from('user_roles')
+                    .select('Name, role, comercial_espejo')
+                    .eq('user_id', currentUser.id)
+                    .single();
+                
+                if (!currentUserError && currentUserData) {
+                    currentUserRole = currentUserData.role;
+                    currentUserName = currentUserData.Name;
+                    currentUserEspejo = currentUserData.comercial_espejo;
+                    console.log('👤 Usuario actual:', {
+                        nombre: currentUserName,
+                        rol: currentUserRole,
+                        espejo: currentUserEspejo
+                    });
+                }
+            }
+        } catch (error) {
+            console.warn('⚠️ Error al obtener usuario actual:', error);
+        }
 
-        // 1. Obtener todos los usuarios con rol "comercial"
+        // 2. Si el usuario es comercial, solo mostrar su nombre y el de su espejo
+        if (currentUserRole === 'comercial') {
+            const comercialesList = [];
+            
+            // Agregar el nombre del comercial actual
+            if (currentUserName && currentUserName.trim() !== '') {
+                comercialesList.push(currentUserName);
+            }
+            
+            // Agregar el nombre del comercial espejo si existe
+            if (currentUserEspejo && currentUserEspejo.trim() !== '') {
+                // Verificar que el espejo existe en la base de datos
+                const { data: espejoData, error: espejoError } = await window.cartManager.supabase
+                    .from('user_roles')
+                    .select('Name, role')
+                    .eq('Name', currentUserEspejo)
+                    .eq('role', 'comercial')
+                    .single();
+                
+                if (!espejoError && espejoData && espejoData.Name) {
+                    comercialesList.push(espejoData.Name);
+                } else {
+                    console.warn('⚠️ El comercial espejo no se encontró en la base de datos:', currentUserEspejo);
+                }
+            }
+            
+            // Ordenar alfabéticamente
+            comercialesList.sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+            
+            // Agregar comerciales al select
+            comercialesList.forEach(commercial => {
+                const option = document.createElement('option');
+                option.value = commercial;
+                option.textContent = commercial;
+                commercialSelect.appendChild(option);
+            });
+            
+            existingCommercials = comercialesList;
+            console.log('✅ Comerciales cargados (solo usuario y espejo):', comercialesList.length);
+            console.log('📋 Lista de comerciales:', comercialesList);
+            return; // Salir de la función, ya tenemos la lista
+        }
+
+        // 3. Si el usuario es admin o no tiene rol, mostrar todos los comerciales
+        // Obtener todos los usuarios con rol "comercial"
         const { data: comercialesData, error: comercialesError } = await window.cartManager.supabase
             .from('user_roles')
             .select('Name, role')
@@ -8406,12 +8472,12 @@ async function loadExistingCommercials() {
             console.log('✅ Comerciales encontrados:', comercialesData?.length || 0, comercialesData);
         }
 
-        // 2. Obtener solo a Claudia Cruz si es admin
+        // 4. Obtener solo a Claudia Cruz si es admin
         const { data: claudiaData, error: claudiaError } = await window.cartManager.supabase
             .from('user_roles')
             .select('Name, role')
             .eq('role', 'admin')
-            .ilike('Name', 'Claudia Cruz'); // Usar ilike para case-insensitive matching
+            .ilike('Name', 'Claudia Cruz');
 
         if (claudiaError) {
             console.error('❌ Error al cargar Claudia Cruz:', claudiaError);
