@@ -6747,6 +6747,36 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     const proposalDate = proposalData?.fecha_inicial || proposalData?.fecha_creacion || window.cartManager?.editingProposalData?.fecha_creacion || new Date().toISOString();
     const commercialName = proposalData?.nombre_comercial || window.cartManager?.editingProposalData?.nombre_comercial || '';
     const clientName = proposalData?.nombre_cliente || window.cartManager?.editingProposalData?.nombre_cliente || '';
+    const clientNumber = proposalData?.numero_cliente || window.cartManager?.editingProposalData?.numero_cliente || '0';
+    
+    // Obtener versión de la propuesta
+    let version = 1;
+    if (proposalData && proposalData.version) {
+        version = proposalData.version;
+    } else if (window.cartManager?.editingProposalData?.version) {
+        version = window.cartManager.editingProposalData.version;
+    }
+    const versionText = version > 1 ? ` V${version}` : '';
+    
+    // Obtener email y teléfono del comercial desde user_roles
+    let commercialEmail = '';
+    let commercialPhone = '';
+    if (commercialName && window.cartManager && window.cartManager.supabase) {
+        try {
+            const { data: commercialData, error: commercialError } = await window.cartManager.supabase
+                .from('user_roles')
+                .select('Email, Contacto')
+                .eq('Name', commercialName)
+                .single();
+            
+            if (!commercialError && commercialData) {
+                commercialEmail = commercialData.Email || '';
+                commercialPhone = commercialData.Contacto || '';
+            }
+        } catch (error) {
+            console.warn('⚠️ Error al obtener datos del comercial:', error);
+        }
+    }
     
     // Formatear fecha según idioma
     const dateObj = new Date(proposalDate);
@@ -6755,53 +6785,58 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         { day: '2-digit', month: '2-digit', year: 'numeric' }
     );
     
-    // Crear cuadro con información de la propuesta (todos los datos en una sola fila, con posibilidad de múltiples líneas)
+    // Crear cuadro con información de la propuesta en dos columnas (izquierda y derecha)
     const titleY = 5 + logoHeight + 8; // Espacio después de los logotipos
-    const boxPadding = 6;
+    const boxPadding = 8;
     const boxWidth = pageWidth - (margin * 2); // Ancho completo de la página
-    const baseBoxHeight = 12; // Altura base (una sola fila)
     const boxX = margin; // Posición X (izquierda)
     const boxY = titleY; // Posición Y
-    const lineSpacing = 4; // Espacio entre líneas cuando hay texto dividido
+    const lineSpacing = 5; // Espacio entre líneas
     
     // Texto dentro del cuadro
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(0, 0, 0);
     
-    const itemSpacing = 25; // Espacio entre cada item (aumentado para mejor legibilidad)
+    // Dividir en dos columnas
+    const columnSpacing = 20; // Espacio entre columnas izquierda y derecha
+    const leftColumnWidth = (boxWidth - (boxPadding * 2) - columnSpacing) / 2;
+    const rightColumnWidth = leftColumnWidth;
+    const leftColumnX = boxX + boxPadding;
+    const rightColumnX = leftColumnX + leftColumnWidth + columnSpacing;
     
     // Etiquetas según idioma
     const labels = {
         pt: {
-            proposalNumber: 'Nº Proposta:',
-            proposalDate: 'Data Proposta:',
-            commercial: 'Comercial:',
-            client: 'Cliente:'
+            clientNumber: 'Num de cliente:',
+            clientName: 'Nome do cliente:',
+            proposalNumber: 'Nr proposta / Versão de proposta:',
+            proposalDate: 'Data da proposta:',
+            commercial: 'Nome do comercial:',
+            email: 'Email:',
+            phone: 'Telefone:'
         },
         es: {
-            proposalNumber: 'Nº Propuesta:',
-            proposalDate: 'Fecha Propuesta:',
-            commercial: 'Comercial:',
-            client: 'Cliente:'
+            clientNumber: 'Nº de cliente:',
+            clientName: 'Nombre del cliente:',
+            proposalNumber: 'Nº propuesta / Versión de propuesta:',
+            proposalDate: 'Fecha de la propuesta:',
+            commercial: 'Nombre del comercial:',
+            email: 'Email:',
+            phone: 'Teléfono:'
         },
         en: {
-            proposalNumber: 'Proposal Nº:',
+            clientNumber: 'Client Number:',
+            clientName: 'Client Name:',
+            proposalNumber: 'Proposal Nº / Proposal Version:',
             proposalDate: 'Proposal Date:',
-            commercial: 'Commercial:',
-            client: 'Client:'
+            commercial: 'Commercial Name:',
+            email: 'Email:',
+            phone: 'Phone:'
         }
     };
     
     const l = labels[lang] || labels.pt;
-    
-    // Calcular el espacio disponible para cada item
-    const totalItems = 4;
-    const totalSpacing = itemSpacing * (totalItems - 1);
-    // Calcular el ancho disponible para los items (todo el ancho menos padding y espaciado)
-    const availableWidthForItems = boxWidth - (boxPadding * 2) - totalSpacing;
-    const itemWidth = availableWidthForItems / totalItems; // Ancho de cada item distribuido equitativamente
-    const maxValueWidth = itemWidth; // Usar el mismo ancho para los valores
     
     // Función para dividir texto en palabras y ajustar a múltiples líneas si es necesario
     function splitTextIntoLines(text, maxWidth) {
@@ -6845,84 +6880,86 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         return lines.length > 0 ? lines : [text];
     }
     
-    // Función para dibujar un item con label arriba y valor abajo (puede tener múltiples líneas)
-    function drawItemWithMultiline(label, value, maxValueWidth, startX, labelY, valueY) {
-        // Dibujar label arriba (centrado)
-    doc.setFont('helvetica', 'bold');
-        const labelWidth = doc.getTextWidth(label);
-        doc.text(label, startX + (maxValueWidth / 2) - (labelWidth / 2), labelY);
-    
-        // Dibujar valor abajo
-    doc.setFont('helvetica', 'normal');
+    // Función para calcular altura de un campo sin dibujarlo
+    function calculateFieldHeight(value, columnWidth) {
         const valueText = value || '-';
+        const valueLines = splitTextIntoLines(valueText, columnWidth - 2);
+        return 5 + (valueLines.length * lineSpacing) + 3; // Label + valores + espacio
+    }
+    
+    // Función para dibujar un campo con label y valor (formato vertical)
+    function drawField(label, value, columnX, startY, columnWidth) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7);
+        const labelY = startY;
+        doc.text(label, columnX, labelY);
         
-        // Dividir el valor en líneas si es necesario
-        const valueLines = splitTextIntoLines(valueText, maxValueWidth);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        const valueText = value || '-';
+        const valueLines = splitTextIntoLines(valueText, columnWidth - 2);
+        const valueY = labelY + 5;
         
-        // Dibujar cada línea del valor (centrado)
         valueLines.forEach((line, index) => {
-            const lineWidth = doc.getTextWidth(line);
-            doc.text(line, startX + (maxValueWidth / 2) - (lineWidth / 2), valueY + (index * lineSpacing));
+            doc.text(line, columnX, valueY + (index * lineSpacing));
         });
         
-        // Retornar la altura total usada (número de líneas del valor)
-        return valueLines.length;
+        // Retornar la altura total usada
+        return 5 + (valueLines.length * lineSpacing) + 3; // Label + valores + espacio
     }
     
-    // Obtener versión de la propuesta si está disponible
-    let version = 1;
-    if (proposalData && proposalData.version) {
-        version = proposalData.version;
-    } else if (window.cartManager?.editingProposalData?.version) {
-        version = window.cartManager.editingProposalData.version;
-    }
-    const versionSuffix = version > 1 ? ` V${version}` : '';
+    // Preparar textos
+    const proposalCodeText = (proposalCode || '-') + versionText;
     
-    // Calcular cuántas líneas necesita cada item ANTES de dibujar
-    const proposalCodeText = (proposalCode || '-') + versionSuffix;
-    const commercialText = commercialName || '-';
-    const clientText = clientName || '-';
+    // Calcular altura necesaria para cada columna
+    let leftColumnHeight = 0;
+    let rightColumnHeight = 0;
     
-    const proposalLines = splitTextIntoLines(proposalCodeText, maxValueWidth).length;
-    const dateLines = splitTextIntoLines(formattedDate, maxValueWidth).length;
-    const commercialLines = splitTextIntoLines(commercialText, maxValueWidth).length;
-    const clientLines = splitTextIntoLines(clientText, maxValueWidth).length;
+    // Columna izquierda - calcular alturas
+    leftColumnHeight += calculateFieldHeight(clientNumber, leftColumnWidth);
+    leftColumnHeight += calculateFieldHeight(clientName, leftColumnWidth);
+    leftColumnHeight += calculateFieldHeight(proposalCodeText, leftColumnWidth);
+    leftColumnHeight += calculateFieldHeight(formattedDate, leftColumnWidth);
     
-    // Calcular la altura máxima necesaria (1 línea para labels + líneas de valores)
-    const maxLines = Math.max(proposalLines, dateLines, commercialLines, clientLines);
-    const labelRowHeight = 5; // Altura para la fila de labels
-    const boxHeight = labelRowHeight + baseBoxHeight + ((maxLines - 1) * lineSpacing);
+    // Columna derecha - calcular alturas
+    rightColumnHeight += calculateFieldHeight(commercialName, rightColumnWidth);
+    rightColumnHeight += calculateFieldHeight(commercialEmail, rightColumnWidth);
+    rightColumnHeight += calculateFieldHeight(commercialPhone, rightColumnWidth);
     
-    // Dibujar fondo del cuadro (blanco con borde negro) con altura ajustada
+    // Calcular altura total del cuadro
+    const totalBoxHeight = Math.max(leftColumnHeight, rightColumnHeight) + (boxPadding * 2);
+    
+    // Dibujar fondo del cuadro (blanco con borde negro)
     doc.setFillColor(255, 255, 255);
     doc.setDrawColor(0, 0, 0);
     doc.setLineWidth(0.5);
-    doc.rect(boxX, boxY, boxWidth, boxHeight, 'FD'); // FD = Fill and Draw
+    doc.rect(boxX, boxY, boxWidth, totalBoxHeight, 'FD'); // FD = Fill and Draw
     
-    // Calcular posiciones Y: labels arriba, valores abajo
-    const labelY = boxY + boxPadding + 4; // Posición Y para los labels
-    const valueY = labelY + labelRowHeight; // Posición Y para los valores (debajo de los labels)
+    // Dibujar campos - Columna izquierda
+    let currentYLeft = boxY + boxPadding;
+    const height1 = drawField(l.clientNumber, clientNumber, leftColumnX, currentYLeft, leftColumnWidth);
+    currentYLeft += height1;
     
-    // Dibujar cada item
-    let currentX = boxX + boxPadding;
+    const height2 = drawField(l.clientName, clientName, leftColumnX, currentYLeft, leftColumnWidth);
+    currentYLeft += height2;
     
-    // Número de propuesta
-    drawItemWithMultiline(l.proposalNumber, proposalCodeText, itemWidth, currentX, labelY, valueY);
-    currentX += itemWidth + itemSpacing;
+    const height3 = drawField(l.proposalNumber, proposalCodeText, leftColumnX, currentYLeft, leftColumnWidth);
+    currentYLeft += height3;
     
-    // Fecha de propuesta
-    drawItemWithMultiline(l.proposalDate, formattedDate, itemWidth, currentX, labelY, valueY);
-    currentX += itemWidth + itemSpacing;
+    drawField(l.proposalDate, formattedDate, leftColumnX, currentYLeft, leftColumnWidth);
     
-    // Comercial
-    drawItemWithMultiline(l.commercial, commercialText, itemWidth, currentX, labelY, valueY);
-    currentX += itemWidth + itemSpacing;
+    // Dibujar campos - Columna derecha
+    let currentYRight = boxY + boxPadding;
+    const height4 = drawField(l.commercial, commercialName, rightColumnX, currentYRight, rightColumnWidth);
+    currentYRight += height4;
     
-    // Cliente
-    drawItemWithMultiline(l.client, clientText, itemWidth, currentX, labelY, valueY);
+    const height5 = drawField(l.email, commercialEmail, rightColumnX, currentYRight, rightColumnWidth);
+    currentYRight += height5;
     
-    // Línea decorativa debajo del cuadro (usar boxHeight calculado dinámicamente)
-    const headerBottomY = boxY + boxHeight + 5;
+    drawField(l.phone, commercialPhone, rightColumnX, currentYRight, rightColumnWidth);
+    
+    // Línea decorativa debajo del cuadro
+    const headerBottomY = boxY + totalBoxHeight + 5;
     doc.setDrawColor(0, 0, 0);
     doc.setLineWidth(0.5);
     doc.line(margin, headerBottomY, pageWidth - margin, headerBottomY);
