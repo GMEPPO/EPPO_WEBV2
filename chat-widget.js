@@ -11,7 +11,14 @@ class ChatWidget {
         this.userName = null;
         this.userRole = null;
         this.supabase = null;
+        this.sessionId = this.generateSessionId();
         this.init();
+    }
+
+    generateSessionId() {
+        // Generar un ID único para la sesión de chat
+        // Usar timestamp + random para garantizar unicidad
+        return `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     }
 
     async init() {
@@ -169,6 +176,9 @@ class ChatWidget {
         this.showTypingIndicator();
 
         try {
+            // Construir mensaje completo con información del usuario
+            const fullMessage = `[Usuario: ${this.userName || 'Usuario'}, Rol: ${this.userRole || 'comercial'}] ${message}`;
+
             // Enviar mensaje al webhook de N8N
             const response = await fetch(this.webhookUrl, {
                 method: 'POST',
@@ -176,9 +186,8 @@ class ChatWidget {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    message: message,
-                    userName: this.userName,
-                    userRole: this.userRole,
+                    message: fullMessage,
+                    sessionId: this.sessionId,
                     timestamp: new Date().toISOString()
                 })
             });
@@ -187,13 +196,24 @@ class ChatWidget {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
-            const data = await response.json();
+            // Intentar obtener la respuesta como texto primero
+            const responseText = await response.text();
+            let assistantMessage = 'Lo siento, no pude procesar tu mensaje.';
+            
+            // Intentar parsear como JSON
+            try {
+                const data = JSON.parse(responseText);
+                assistantMessage = data.response || data.message || data.text || data.answer || data.content || responseText;
+            } catch (jsonError) {
+                // Si no es JSON válido, usar el texto directamente
+                console.log('⚠️ Respuesta no es JSON, usando texto directo:', responseText);
+                assistantMessage = responseText || 'Lo siento, no pude procesar tu mensaje.';
+            }
             
             // Ocultar indicador de escritura
             this.hideTypingIndicator();
 
             // Agregar respuesta del asistente
-            const assistantMessage = data.response || data.message || data.text || 'Lo siento, no pude procesar tu mensaje.';
             this.addMessage('assistant', assistantMessage);
 
         } catch (error) {
@@ -220,7 +240,13 @@ class ChatWidget {
         
         const messageContent = document.createElement('div');
         messageContent.className = 'chat-message-content';
-        messageContent.textContent = content;
+        
+        // Formatear el contenido para mejor visualización
+        if (type === 'assistant') {
+            messageContent.innerHTML = this.formatMessage(content);
+        } else {
+            messageContent.textContent = content;
+        }
         
         messageDiv.appendChild(messageContent);
         messagesContainer.appendChild(messageDiv);
@@ -230,6 +256,46 @@ class ChatWidget {
 
         // Guardar mensaje en el historial
         this.messages.push({ type, content, timestamp: new Date() });
+    }
+
+    formatMessage(text) {
+        if (!text) return '';
+        
+        // Escapar HTML para seguridad
+        let formatted = text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+        
+        // Detectar y formatear títulos (líneas que terminan con ":")
+        formatted = formatted.replace(/^(.+):$/gm, '<strong class="chat-title">$1:</strong>');
+        
+        // Detectar listas numeradas (1., 2., etc.)
+        formatted = formatted.replace(/^(\d+)\.\s+(.+)$/gm, '<div class="chat-list-item"><span class="chat-list-number">$1.</span><span class="chat-list-text">$2</span></div>');
+        
+        // Detectar listas con viñetas (-, •, *)
+        formatted = formatted.replace(/^[-•*]\s+(.+)$/gm, '<div class="chat-list-item"><span class="chat-bullet">•</span><span class="chat-list-text">$1</span></div>');
+        
+        // Detectar secciones con "**" (títulos en negrita)
+        formatted = formatted.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        
+        // Detectar texto en cursiva con "*"
+        formatted = formatted.replace(/\*(.+?)\*/g, '<em>$1</em>');
+        
+        // Convertir saltos de línea en <br>
+        formatted = formatted.replace(/\n/g, '<br>');
+        
+        // Detectar bloques de notas/atención
+        formatted = formatted.replace(/Notas?\s*\/\s*Atenção?:/gi, '<div class="chat-note-header">Notas / Atenção:</div>');
+        formatted = formatted.replace(/Notas?\s*\/\s*Atención?:/gi, '<div class="chat-note-header">Notas / Atención:</div>');
+        formatted = formatted.replace(/Notes?\s*\/\s*Attention?:/gi, '<div class="chat-note-header">Notes / Attention:</div>');
+        
+        // Detectar secciones "Passos:" o "Steps:"
+        formatted = formatted.replace(/Passos?:/gi, '<div class="chat-section-header">Passos:</div>');
+        formatted = formatted.replace(/Pasos?:/gi, '<div class="chat-section-header">Pasos:</div>');
+        formatted = formatted.replace(/Steps?:/gi, '<div class="chat-section-header">Steps:</div>');
+        
+        return formatted;
     }
 
     showTypingIndicator() {
