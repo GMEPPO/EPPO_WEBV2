@@ -246,7 +246,7 @@ class ProposalsManager {
                 
                 const { data: articulos, error: articulosError } = await this.supabase
                     .from('presupuestos_articulos')
-                    .select('*')
+                    .select('*, encomendado, fecha_encomenda, numero_encomenda')
                     .in('presupuesto_id', presupuestoIds);
 
                 if (articulosError) {
@@ -256,20 +256,17 @@ class ProposalsManager {
                     console.log('📦 Artículos cargados:', articulos ? articulos.length : 0);
                 }
 
-                // Cargar artículos encomendados
-                const { data: articulosEncomendados } = await this.supabase
-                    .from('presupuestos_articulos_encomendados')
-                    .select('articulo_id')
-                    .in('presupuesto_id', presupuestoIds);
+                // Los artículos encomendados ahora se obtienen directamente de la columna 'encomendado' en presupuestos_articulos
+                // No necesitamos cargar desde una tabla separada
 
-                // Cargar artículos concluidos
+                // Cargar artículos concluidos (si existe esta tabla)
                 const { data: articulosConcluidos } = await this.supabase
                     .from('presupuestos_articulos_concluidos')
                     .select('articulo_id')
-                    .in('presupuesto_id', presupuestoIds);
+                    .in('presupuesto_id', presupuestoIds)
+                    .catch(() => ({ data: null })); // Si la tabla no existe, continuar sin error
 
-                // Crear sets para búsqueda rápida
-                const encomendadosSet = new Set((articulosEncomendados || []).map(a => a.articulo_id));
+                // Crear sets para búsqueda rápida (solo para concluidos, encomendados ahora viene de la columna)
                 const concluidosSet = new Set((articulosConcluidos || []).map(a => a.articulo_id));
 
                 // Agrupar artículos por presupuesto y marcar estados
@@ -279,10 +276,10 @@ class ProposalsManager {
                         if (!articulosPorPresupuesto[articulo.presupuesto_id]) {
                             articulosPorPresupuesto[articulo.presupuesto_id] = [];
                         }
-                        // Agregar información de estado
+                        // Agregar información de estado (encomendado ahora viene directamente de la columna)
                         articulosPorPresupuesto[articulo.presupuesto_id].push({
                             ...articulo,
-                            encomendado: encomendadosSet.has(articulo.id),
+                            encomendado: articulo.encomendado === true || articulo.encomendado === 'true',
                             concluido: concluidosSet.has(articulo.id)
                         });
                     });
@@ -2503,20 +2500,43 @@ class ProposalsManager {
             productsList.appendChild(item);
         });
 
-        // Limpiar inputs de números de encomenda
+        // Obtener datos de encomenda de los artículos ya encomendados
+        const encomendadosArticulos = proposal.articulos.filter(a => a.encomendado === true || a.encomendado === 'true');
+        let fechaEncomenda = '';
+        let numeroEncomenda = '';
+
+        if (encomendadosArticulos.length > 0) {
+            // Usar la fecha y número del primer artículo encomendado (deberían ser iguales para todos)
+            const primerEncomendado = encomendadosArticulos[0];
+            fechaEncomenda = primerEncomendado.fecha_encomenda || '';
+            numeroEncomenda = primerEncomendado.numero_encomenda || '';
+        }
+
+        // Limpiar o establecer inputs de números de encomenda
         const number1Input = document.getElementById('encomendado-number1-input');
         const number2Input = document.getElementById('encomendado-number2-input');
         const dateInput = document.getElementById('encomendado-date-input');
+        
         if (number1Input) {
-            number1Input.value = '';
+            // Si hay número de encomenda, separar por coma si tiene dos números
+            if (numeroEncomenda) {
+                const numeros = numeroEncomenda.split(',').map(n => n.trim());
+                number1Input.value = numeros[0] || '';
+                if (numeros.length > 1) {
+                    number2Input.value = numeros[1] || '';
+                } else {
+                    number2Input.value = '';
+                }
+            } else {
+                number1Input.value = '';
+            }
         }
-        if (number2Input) {
+        if (number2Input && !numeroEncomenda) {
             number2Input.value = '';
         }
         if (dateInput) {
-            // Establecer fecha por defecto como hoy
-            const today = new Date().toISOString().split('T')[0];
-            dateInput.value = today;
+            // Usar fecha existente o establecer fecha por defecto como hoy
+            dateInput.value = fechaEncomenda || new Date().toISOString().split('T')[0];
         }
 
         // Guardar el ID de la propuesta en el modal para usarlo al guardar
@@ -4245,43 +4265,65 @@ class ProposalsManager {
             const isConcluida = modal?.getAttribute('data-is-concluida') === 'true';
             const finalStatus = isConcluida ? 'encomenda_concluida' : 'encomendado';
 
-            // Actualizar estado, números de encomenda y fecha
+            // Actualizar estado de la propuesta, números de encomenda y fecha
             await this.updateProposalStatus(proposalId, finalStatus, {
                 numeros_encomenda: numbers,
                 data_encomenda: encomendaDate
             });
 
-            // Actualizar estado, números de encomenda y fecha
-            await this.updateProposalStatus(proposalId, finalStatus, {
-                numeros_encomenda: numbers,
-                data_encomenda: encomendaDate
-            });
-
-            // Eliminar artículos encomendados anteriores para este presupuesto
-            const { error: deleteError } = await this.supabase
-                .from('presupuestos_articulos_encomendados')
-                .delete()
-                .eq('presupuesto_id', proposalId);
-
-            if (deleteError) {
-                console.warn('Error al eliminar artículos encomendados anteriores:', deleteError);
-            }
-
-            // Guardar artículos encomendados
+            // Actualizar artículos seleccionados en la tabla presupuestos_articulos
             if (selectedArticleIds.length > 0) {
-                const encomendadosData = selectedArticleIds.map(articleId => ({
-                    presupuesto_id: proposalId,
-                    articulo_id: articleId
-                }));
+                // Primero, desmarcar todos los artículos de esta propuesta como encomendados
+                const { error: unmarkError } = await this.supabase
+                    .from('presupuestos_articulos')
+                    .update({
+                        encomendado: false,
+                        fecha_encomenda: null,
+                        numero_encomenda: null
+                    })
+                    .eq('presupuesto_id', proposalId);
 
-                const { error: insertError } = await this.supabase
-                    .from('presupuestos_articulos_encomendados')
-                    .insert(encomendadosData);
+                if (unmarkError) {
+                    console.warn('⚠️ Error al desmarcar artículos anteriores:', unmarkError);
+                }
 
-                if (insertError) {
-                    console.warn('Error al guardar artículos encomendados:', insertError);
+                // Luego, marcar los artículos seleccionados como encomendados
+                const updatePromises = selectedArticleIds.map(articleId => {
+                    return this.supabase
+                        .from('presupuestos_articulos')
+                        .update({
+                            encomendado: true,
+                            fecha_encomenda: encomendaDate,
+                            numero_encomenda: numbers
+                        })
+                        .eq('id', articleId)
+                        .eq('presupuesto_id', proposalId);
+                });
+
+                const updateResults = await Promise.all(updatePromises);
+                
+                // Verificar si hubo errores
+                const errors = updateResults.filter(result => result.error);
+                if (errors.length > 0) {
+                    console.warn('⚠️ Algunos artículos no se pudieron actualizar:', errors);
+                    const message = this.currentLanguage === 'es' ? 
+                        'Algunos artículos no se pudieron actualizar correctamente' : 
+                        this.currentLanguage === 'pt' ?
+                        'Alguns artigos não puderam ser atualizados corretamente' :
+                        'Some articles could not be updated correctly';
+                    this.showNotification(message, 'warning');
+                } else {
+                    const message = this.currentLanguage === 'es' ? 
+                        'Estado actualizado correctamente' : 
+                        this.currentLanguage === 'pt' ?
+                        'Estado atualizado com sucesso' :
+                        'Status updated successfully';
+                    this.showNotification(message, 'success');
                 }
             }
+
+            // Recargar propuestas para reflejar los cambios
+            await this.loadProposals();
 
             // Cerrar modal
             this.closeEncomendadoModal();
