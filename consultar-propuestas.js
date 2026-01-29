@@ -246,7 +246,7 @@ class ProposalsManager {
                 
                 const { data: articulos, error: articulosError } = await this.supabase
                     .from('presupuestos_articulos')
-                    .select('*, encomendado, fecha_encomenda, numero_encomenda')
+                    .select('*, encomendado, fecha_encomenda, numero_encomenda, cantidad_encomendada')
                     .in('presupuesto_id', presupuestoIds);
 
                 if (articulosError) {
@@ -1251,6 +1251,47 @@ class ProposalsManager {
                     </div>
                 </div>
             </div>
+
+            <!-- Sección de Información de Encomenda -->
+            ${proposal.articulos && proposal.articulos.some(a => a.encomendado === true || a.encomendado === 'true') ? `
+            <div class="encomenda-section" style="margin: var(--space-6) 0; padding: var(--space-4); background: var(--bg-gray-50, #f9fafb); border-radius: var(--radius-lg, 12px); border: 1px solid var(--bg-gray-200, #e5e7eb);">
+                <h4 style="font-size: 1.125rem; font-weight: 600; color: var(--text-primary, #111827); display: flex; align-items: center; gap: 8px; margin-bottom: var(--space-4);">
+                    <i class="fas fa-shipping-fast"></i>
+                    <span>${this.currentLanguage === 'es' ? 'Información de Encomenda' : this.currentLanguage === 'pt' ? 'Informação de Encomenda' : 'Order Information'}</span>
+                </h4>
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.875rem;">
+                        <thead>
+                            <tr style="background: var(--bg-gray-100, #f3f4f6); border-bottom: 2px solid var(--bg-gray-300, #d1d5db);">
+                                <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--text-primary, #111827);">${this.currentLanguage === 'es' ? 'Artículo' : this.currentLanguage === 'pt' ? 'Artigo' : 'Article'}</th>
+                                <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--text-primary, #111827);">${this.currentLanguage === 'es' ? 'Cantidad Encomendada' : this.currentLanguage === 'pt' ? 'Quantidade Encomendada' : 'Ordered Quantity'}</th>
+                                <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--text-primary, #111827);">${this.currentLanguage === 'es' ? 'Número de Encomenda' : this.currentLanguage === 'pt' ? 'Número de Encomenda' : 'Order Number'}</th>
+                                <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--text-primary, #111827);">${this.currentLanguage === 'es' ? 'Fecha de Encomenda' : this.currentLanguage === 'pt' ? 'Data de Encomenda' : 'Order Date'}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${proposal.articulos
+                                .filter(a => a.encomendado === true || a.encomendado === 'true')
+                                .map(articulo => {
+                                    const fechaEncomenda = articulo.fecha_encomenda ? new Date(articulo.fecha_encomenda).toLocaleDateString('pt-PT') : '-';
+                                    return `
+                                <tr style="border-bottom: 1px solid var(--bg-gray-200, #e5e7eb);">
+                                    <td style="padding: 12px; color: var(--text-primary, #111827);">
+                                        <strong>${articulo.nombre_articulo || '-'}</strong>
+                                        ${articulo.referencia_articulo ? `<br><span style="font-size: 0.75rem; color: var(--text-secondary, #6b7280);">Ref: ${articulo.referencia_articulo}</span>` : ''}
+                                    </td>
+                                    <td style="padding: 12px; color: var(--text-primary, #111827); font-weight: 500;">${articulo.cantidad_encomendada || articulo.cantidad || 0}</td>
+                                    <td style="padding: 12px; color: var(--text-primary, #111827);">${articulo.numero_encomenda || '-'}</td>
+                                    <td style="padding: 12px; color: var(--text-primary, #111827);">${fechaEncomenda}</td>
+                                </tr>
+                            `;
+                                }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            ` : ''}
+
                     <div style="display: flex; gap: 8px; margin-top: var(--space-4); justify-content: flex-end;">
                         <button onclick="window.proposalsManager.cancelAdditionalDetailsEdit('${proposal.id}')" style="
                             background: var(--bg-gray-200, #e5e7eb);
@@ -4295,7 +4336,8 @@ class ProposalsManager {
                     .update({
                         encomendado: false,
                         fecha_encomenda: null,
-                        numero_encomenda: null
+                        numero_encomenda: null,
+                        cantidad_encomendada: null
                     })
                     .eq('presupuesto_id', proposalId);
 
@@ -4338,17 +4380,32 @@ class ProposalsManager {
                     });
                 }
                 
-                // Actualizar todos los artículos seleccionados en una sola operación
-                const { data: updateData, error: updateError } = await this.supabase
-                    .from('presupuestos_articulos')
-                    .update({
-                        encomendado: true,
-                        fecha_encomenda: encomendaDate || null,
-                        numero_encomenda: numbers || null
-                    })
-                    .in('id', validIds)
-                    .eq('presupuesto_id', proposalId)
-                    .select();
+                // Obtener las cantidades de cada artículo desde la propuesta
+                const articulosConCantidad = validIds.map(id => {
+                    const articulo = proposal.articulos.find(a => a.id === id);
+                    return {
+                        id: id,
+                        cantidad: articulo ? (parseInt(articulo.cantidad) || 0) : 0
+                    };
+                });
+
+                // Actualizar cada artículo individualmente con su cantidad encomendada
+                const updatePromises = articulosConCantidad.map(art => {
+                    return this.supabase
+                        .from('presupuestos_articulos')
+                        .update({
+                            encomendado: true,
+                            fecha_encomenda: encomendaDate || null,
+                            numero_encomenda: numbers || null,
+                            cantidad_encomendada: art.cantidad
+                        })
+                        .eq('id', art.id)
+                        .eq('presupuesto_id', proposalId);
+                });
+
+                const updateResults = await Promise.all(updatePromises);
+                const updateError = updateResults.find(r => r.error)?.error;
+                const updateData = updateResults.filter(r => r.data && r.data.length > 0).flatMap(r => r.data);
 
                 if (updateError) {
                     console.error('❌ Error al actualizar artículos encomendados:', updateError);
@@ -5767,17 +5824,35 @@ class ProposalsManager {
             // Obtener fecha actual para la encomenda
             const encomendaDate = new Date().toISOString().split('T')[0];
 
-            // Actualizar artículos seleccionados en la tabla presupuestos_articulos
-            const { data: updateData, error: updateError } = await this.supabase
-                .from('presupuestos_articulos')
-                .update({
-                    encomendado: true,
-                    fecha_encomenda: encomendaDate,
-                    numero_encomenda: combinedNumbers
-                })
-                .in('id', validIds)
-                .eq('presupuesto_id', proposalId)
-                .select();
+            // Obtener las cantidades de cada artículo seleccionado
+            const articulosConCantidad = validIds.map(id => {
+                const selectedProduct = selectedProducts.find(p => p.articulo_id === id);
+                const articulo = proposal.articulos.find(a => a.id === id);
+                // Usar la cantidad del producto seleccionado si está disponible, sino la cantidad del artículo
+                const cantidad = selectedProduct?.quantidade || (articulo ? (parseInt(articulo.cantidad) || 0) : 0);
+                return {
+                    id: id,
+                    cantidad: cantidad
+                };
+            });
+
+            // Actualizar cada artículo individualmente con su cantidad encomendada
+            const updatePromises = articulosConCantidad.map(art => {
+                return this.supabase
+                    .from('presupuestos_articulos')
+                    .update({
+                        encomendado: true,
+                        fecha_encomenda: encomendaDate,
+                        numero_encomenda: combinedNumbers,
+                        cantidad_encomendada: art.cantidad
+                    })
+                    .eq('id', art.id)
+                    .eq('presupuesto_id', proposalId);
+            });
+
+            const updateResults = await Promise.all(updatePromises);
+            const updateError = updateResults.find(r => r.error)?.error;
+            const updateData = updateResults.filter(r => r.data && r.data.length > 0).flatMap(r => r.data);
 
             if (updateError) {
                 console.error('❌ Error al actualizar artículos encomendados:', updateError);
