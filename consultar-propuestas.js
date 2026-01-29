@@ -329,8 +329,8 @@ class ProposalsManager {
                 this.allProposals = [];
             }
 
-            this.filteredProposals = [...this.allProposals];
-            this.renderProposals();
+            // Reaplicar filtros actuales si existen, sino mostrar todas las propuestas
+            this.applyFilters();
 
         } catch (error) {
             console.error('❌ Error al cargar propuestas:', error);
