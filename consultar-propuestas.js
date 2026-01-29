@@ -5737,7 +5737,11 @@ class ProposalsManager {
                     <label style="display: block; margin-bottom: 5px; font-weight: 600;">
                         ${this.currentLanguage === 'es' ? 'Número de Encomienda' : this.currentLanguage === 'pt' ? 'Número de Encomenda' : 'Order Number'} - ${fornecedor}:
                     </label>
-                    <input type="text" class="fornecedor-encomenda-number" data-fornecedor="${fornecedor}" placeholder="${this.currentLanguage === 'es' ? 'Número de encomienda...' : this.currentLanguage === 'pt' ? 'Número de encomenda...' : 'Order number...'}" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px;">
+                    <input type="text" class="fornecedor-encomenda-number" data-fornecedor="${fornecedor}" placeholder="${this.currentLanguage === 'es' ? 'Número de encomienda...' : this.currentLanguage === 'pt' ? 'Número de encomenda...' : 'Order number...'}" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 10px;">
+                    <label style="display: block; margin-bottom: 5px; margin-top: 10px; font-weight: 600;">
+                        ${this.currentLanguage === 'es' ? 'Fecha de Encomenda' : this.currentLanguage === 'pt' ? 'Data de Encomenda' : 'Order Date'} - ${fornecedor}:
+                    </label>
+                    <input type="date" class="fornecedor-encomenda-date" data-fornecedor="${fornecedor}" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px;">
                 `;
                 fornecedoresContainer.appendChild(fornecedorDiv);
             }
@@ -5761,6 +5765,19 @@ class ProposalsManager {
         
         if (!proposalId) {
             console.error('Proposal ID not found');
+            return;
+        }
+
+        // Obtener la propuesta desde allProposals
+        const proposal = this.allProposals.find(p => p.id === proposalId);
+        if (!proposal) {
+            console.error('Proposal not found');
+            const message = this.currentLanguage === 'es' ? 
+                'Error: No se encontró la propuesta' : 
+                this.currentLanguage === 'pt' ?
+                'Erro: Proposta não encontrada' :
+                'Error: Proposal not found';
+            this.showNotification(message, 'error');
             return;
         }
 
