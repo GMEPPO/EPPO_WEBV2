@@ -284,6 +284,10 @@ class ProposalsManager {
                             articulosPorPresupuesto[articulo.presupuesto_id] = [];
                         }
                         // Agregar información de estado (encomendado ahora viene directamente de la columna)
+                        // Asegurar que el ID esté presente
+                        if (!articulo.id) {
+                            console.warn('⚠️ Artículo sin ID:', articulo);
+                        }
                         articulosPorPresupuesto[articulo.presupuesto_id].push({
                             ...articulo,
                             encomendado: articulo.encomendado === true || articulo.encomendado === 'true',
@@ -4219,14 +4223,19 @@ class ProposalsManager {
 
         // Obtener productos seleccionados
         const checkboxes = modal.querySelectorAll('input[type="checkbox"]:checked');
-        const selectedArticleIds = Array.from(checkboxes).map(cb => cb.getAttribute('data-articulo-id'));
+        const selectedArticleIds = Array.from(checkboxes)
+            .map(cb => cb.getAttribute('data-articulo-id'))
+            .filter(id => id && id !== 'null' && id !== 'undefined' && !id.toString().startsWith('temp-')); // Filtrar IDs inválidos
+
+        console.log('📋 IDs de artículos seleccionados (filtrados):', selectedArticleIds);
+        console.log('📋 Artículos de la propuesta:', proposal.articulos.map(a => ({ id: a.id, nombre: a.nombre_articulo })));
 
         if (selectedArticleIds.length === 0) {
             const message = this.currentLanguage === 'es' ? 
-                'Debe seleccionar al menos un producto' : 
+                'Debe seleccionar al menos un producto válido' : 
                 this.currentLanguage === 'pt' ?
-                'Deve selecionar pelo menos um produto' :
-                'You must select at least one product';
+                'Deve selecionar pelo menos um produto válido' :
+                'You must select at least one valid product';
             this.showNotification(message, 'error');
             return;
         }
@@ -4295,31 +4304,73 @@ class ProposalsManager {
                 }
 
                 // Luego, marcar los artículos seleccionados como encomendados
-                const updatePromises = selectedArticleIds.map(articleId => {
-                    return this.supabase
-                        .from('presupuestos_articulos')
-                        .update({
-                            encomendado: true,
-                            fecha_encomenda: encomendaDate,
-                            numero_encomenda: numbers
-                        })
-                        .eq('id', articleId)
-                        .eq('presupuesto_id', proposalId);
+                console.log('📦 Actualizando artículos encomendados:', {
+                    proposalId,
+                    selectedArticleIds,
+                    encomendaDate,
+                    numbers,
+                    cantidadArticulos: selectedArticleIds.length
                 });
-
-                const updateResults = await Promise.all(updatePromises);
                 
-                // Verificar si hubo errores
-                const errors = updateResults.filter(result => result.error);
-                if (errors.length > 0) {
-                    console.warn('⚠️ Algunos artículos no se pudieron actualizar:', errors);
+                // Verificar que todos los IDs sean válidos (UUIDs)
+                const validIds = selectedArticleIds.filter(id => {
+                    // Verificar formato UUID básico
+                    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+                    return id && uuidRegex.test(id);
+                });
+                
+                if (validIds.length === 0) {
+                    console.error('❌ No hay IDs válidos para actualizar. IDs recibidos:', selectedArticleIds);
                     const message = this.currentLanguage === 'es' ? 
-                        'Algunos artículos no se pudieron actualizar correctamente' : 
+                        'Error: No se encontraron IDs válidos de artículos' : 
                         this.currentLanguage === 'pt' ?
-                        'Alguns artigos não puderam ser atualizados corretamente' :
-                        'Some articles could not be updated correctly';
-                    this.showNotification(message, 'warning');
+                        'Erro: Não foram encontrados IDs válidos de artigos' :
+                        'Error: No valid article IDs found';
+                    this.showNotification(message, 'error');
+                    return;
+                }
+                
+                if (validIds.length !== selectedArticleIds.length) {
+                    console.warn('⚠️ Algunos IDs no son válidos:', {
+                        total: selectedArticleIds.length,
+                        validos: validIds.length,
+                        invalidos: selectedArticleIds.filter(id => !validIds.includes(id))
+                    });
+                }
+                
+                // Actualizar todos los artículos seleccionados en una sola operación
+                const { data: updateData, error: updateError } = await this.supabase
+                    .from('presupuestos_articulos')
+                    .update({
+                        encomendado: true,
+                        fecha_encomenda: encomendaDate || null,
+                        numero_encomenda: numbers || null
+                    })
+                    .in('id', validIds)
+                    .eq('presupuesto_id', proposalId)
+                    .select();
+
+                if (updateError) {
+                    console.error('❌ Error al actualizar artículos encomendados:', updateError);
+                    console.error('❌ Detalles del error:', {
+                        code: updateError.code,
+                        message: updateError.message,
+                        details: updateError.details,
+                        hint: updateError.hint
+                    });
+                    const message = this.currentLanguage === 'es' ? 
+                        `Error al actualizar artículos: ${updateError.message}` : 
+                        this.currentLanguage === 'pt' ?
+                        `Erro ao atualizar artigos: ${updateError.message}` :
+                        `Error updating articles: ${updateError.message}`;
+                    this.showNotification(message, 'error');
                 } else {
+                    console.log('✅ Artículos actualizados correctamente:', updateData?.length || 0, 'artículos');
+                    if (updateData && updateData.length > 0) {
+                        console.log('✅ Datos actualizados:', updateData);
+                    } else {
+                        console.warn('⚠️ No se actualizaron artículos. Verificar IDs:', validIds);
+                    }
                     const message = this.currentLanguage === 'es' ? 
                         'Estado actualizado correctamente' : 
                         this.currentLanguage === 'pt' ?
