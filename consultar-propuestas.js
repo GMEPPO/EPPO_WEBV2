@@ -246,7 +246,7 @@ class ProposalsManager {
                 
                 const { data: articulos, error: articulosError } = await this.supabase
                     .from('presupuestos_articulos')
-                    .select('*, encomendado, fecha_encomenda, numero_encomenda, cantidad_encomendada')
+                    .select('*, encomendado, fecha_encomenda, numero_encomenda, cantidad_encomendada, fecha_prevista_entrega')
                     .in('presupuesto_id', presupuestoIds);
 
                 if (articulosError) {
@@ -1252,37 +1252,66 @@ class ProposalsManager {
                 </div>
             </div>
 
-            <!-- Sección de Información de Encomenda -->
+            <!-- Sección ENCOMENDA -->
             ${proposal.articulos && proposal.articulos.some(a => a.encomendado === true || a.encomendado === 'true') ? `
             <div class="encomenda-section" style="margin: var(--space-6) 0; padding: var(--space-4); background: var(--bg-gray-50, #f9fafb); border-radius: var(--radius-lg, 12px); border: 1px solid var(--bg-gray-200, #e5e7eb);">
-                <h4 style="font-size: 1.125rem; font-weight: 600; color: var(--text-primary, #111827); display: flex; align-items: center; gap: 8px; margin-bottom: var(--space-4);">
-                    <i class="fas fa-shipping-fast"></i>
-                    <span>${this.currentLanguage === 'es' ? 'Información de Encomenda' : this.currentLanguage === 'pt' ? 'Informação de Encomenda' : 'Order Information'}</span>
-                </h4>
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-4);">
+                    <h4 style="font-size: 1.125rem; font-weight: 600; color: var(--text-primary, #111827); display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-shipping-fast"></i>
+                        <span>ENCOMENDA</span>
+                    </h4>
+                    <button id="save-encomenda-dates-btn" onclick="window.proposalsManager.saveEncomendaDates('${proposal.id}')" style="
+                        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                        color: white;
+                        border: none;
+                        padding: 6px 12px;
+                        border-radius: 6px;
+                        font-size: 0.875rem;
+                        font-weight: 500;
+                        cursor: pointer;
+                        display: flex;
+                        align-items: center;
+                        gap: 6px;
+                        transition: all 0.2s;
+                    " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(16,185,129,0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
+                        <i class="fas fa-save"></i>
+                        <span>${this.currentLanguage === 'es' ? 'Guardar Fechas' : this.currentLanguage === 'pt' ? 'Guardar Datas' : 'Save Dates'}</span>
+                    </button>
+                </div>
                 <div style="overflow-x: auto;">
                     <table style="width: 100%; border-collapse: collapse; font-size: 0.875rem;">
                         <thead>
                             <tr style="background: var(--bg-gray-100, #f3f4f6); border-bottom: 2px solid var(--bg-gray-300, #d1d5db);">
-                                <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--text-primary, #111827);">${this.currentLanguage === 'es' ? 'Artículo' : this.currentLanguage === 'pt' ? 'Artigo' : 'Article'}</th>
-                                <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--text-primary, #111827);">${this.currentLanguage === 'es' ? 'Cantidad Encomendada' : this.currentLanguage === 'pt' ? 'Quantidade Encomendada' : 'Ordered Quantity'}</th>
+                                <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--text-primary, #111827);">${this.currentLanguage === 'es' ? 'Producto' : this.currentLanguage === 'pt' ? 'Produto' : 'Product'}</th>
+                                <th style="padding: 12px; text-align: center; font-weight: 600; color: var(--text-primary, #111827);">${this.currentLanguage === 'es' ? 'Cantidad' : this.currentLanguage === 'pt' ? 'Quantidade' : 'Quantity'}</th>
                                 <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--text-primary, #111827);">${this.currentLanguage === 'es' ? 'Número de Encomenda' : this.currentLanguage === 'pt' ? 'Número de Encomenda' : 'Order Number'}</th>
                                 <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--text-primary, #111827);">${this.currentLanguage === 'es' ? 'Fecha de Encomenda' : this.currentLanguage === 'pt' ? 'Data de Encomenda' : 'Order Date'}</th>
+                                <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--text-primary, #111827);">${this.currentLanguage === 'es' ? 'Fecha Prevista de Entrega' : this.currentLanguage === 'pt' ? 'Data Prevista de Entrega' : 'Expected Delivery Date'}</th>
                             </tr>
                         </thead>
                         <tbody>
                             ${proposal.articulos
                                 .filter(a => a.encomendado === true || a.encomendado === 'true')
-                                .map(articulo => {
+                                .map((articulo, index) => {
                                     const fechaEncomenda = articulo.fecha_encomenda ? new Date(articulo.fecha_encomenda).toLocaleDateString('pt-PT') : '-';
+                                    const fechaPrevista = articulo.fecha_prevista_entrega ? articulo.fecha_prevista_entrega.split('T')[0] : '';
                                     return `
                                 <tr style="border-bottom: 1px solid var(--bg-gray-200, #e5e7eb);">
                                     <td style="padding: 12px; color: var(--text-primary, #111827);">
                                         <strong>${articulo.nombre_articulo || '-'}</strong>
                                         ${articulo.referencia_articulo ? `<br><span style="font-size: 0.75rem; color: var(--text-secondary, #6b7280);">Ref: ${articulo.referencia_articulo}</span>` : ''}
                                     </td>
-                                    <td style="padding: 12px; color: var(--text-primary, #111827); font-weight: 500;">${articulo.cantidad_encomendada || articulo.cantidad || 0}</td>
+                                    <td style="padding: 12px; color: var(--text-primary, #111827); font-weight: 500; text-align: center;">${articulo.cantidad_encomendada || articulo.cantidad || 0}</td>
                                     <td style="padding: 12px; color: var(--text-primary, #111827);">${articulo.numero_encomenda || '-'}</td>
                                     <td style="padding: 12px; color: var(--text-primary, #111827);">${fechaEncomenda}</td>
+                                    <td style="padding: 12px;">
+                                        <input type="date" 
+                                               id="fecha-prevista-entrega-${articulo.id}" 
+                                               value="${fechaPrevista}" 
+                                               data-articulo-id="${articulo.id}"
+                                               style="width: 100%; padding: 6px; border: 1px solid var(--bg-gray-300, #d1d5db); border-radius: 6px; font-size: 0.875rem; background: white;"
+                                               placeholder="${this.currentLanguage === 'es' ? 'Seleccionar fecha' : this.currentLanguage === 'pt' ? 'Selecionar data' : 'Select date'}">
+                                    </td>
                                 </tr>
                             `;
                                 }).join('')}
@@ -4337,7 +4366,8 @@ class ProposalsManager {
                         encomendado: false,
                         fecha_encomenda: null,
                         numero_encomenda: null,
-                        cantidad_encomendada: null
+                        cantidad_encomendada: null,
+                        fecha_prevista_entrega: null
                     })
                     .eq('presupuesto_id', proposalId);
 
@@ -5807,6 +5837,27 @@ class ProposalsManager {
             const allNumbers = Object.values(fornecedorNumbers).filter(n => n && n.trim() !== '');
             const combinedNumbers = allNumbers.length > 0 ? allNumbers.join(', ') : null;
 
+            // Obtener fechas de encomenda por fornecedor
+            const fornecedorDates = {};
+            const dateInputs = modal.querySelectorAll('.fornecedor-encomenda-date');
+            dateInputs.forEach(input => {
+                const fornecedor = input.getAttribute('data-fornecedor');
+                const date = input.value.trim();
+                if (fornecedor && date) {
+                    fornecedorDates[fornecedor] = date;
+                }
+            });
+
+            // Obtener la fecha de encomenda (usar la primera fecha encontrada o fecha actual)
+            let encomendaDate = null;
+            const dates = Object.values(fornecedorDates).filter(d => d && d.trim() !== '');
+            if (dates.length > 0) {
+                encomendaDate = dates[0]; // Usar la primera fecha encontrada
+            } else {
+                // Si no hay fecha ingresada, usar la fecha actual
+                encomendaDate = new Date().toISOString().split('T')[0];
+            }
+
             // Primero, desmarcar todos los artículos de esta propuesta como encomendados
             const { error: unmarkError } = await this.supabase
                 .from('presupuestos_articulos')
@@ -5820,9 +5871,6 @@ class ProposalsManager {
             if (unmarkError) {
                 console.warn('⚠️ Error al desmarcar artículos anteriores:', unmarkError);
             }
-
-            // Obtener fecha actual para la encomenda
-            const encomendaDate = new Date().toISOString().split('T')[0];
 
             // Obtener las cantidades de cada artículo seleccionado
             const articulosConCantidad = validIds.map(id => {
@@ -5888,6 +5936,92 @@ class ProposalsManager {
 
             // Cerrar modal
             this.closeEncomendaEnCursoModal();
+        } catch (error) {
+            console.error('Error al guardar encomenda en curso:', error);
+            const message = this.currentLanguage === 'es' ? 
+                `Error al guardar: ${error.message}` : 
+                this.currentLanguage === 'pt' ?
+                `Erro ao guardar: ${error.message}` :
+                `Error saving: ${error.message}`;
+            this.showNotification(message, 'error');
+        }
+    }
+
+    /**
+     * Guardar fechas previstas de entrega de artículos encomendados
+     */
+    async saveEncomendaDates(proposalId) {
+        if (!this.supabase) {
+            await this.initializeSupabase();
+        }
+
+        const translations = {
+            es: {
+                success: 'Fechas previstas de entrega guardadas correctamente',
+                error: 'Error al guardar las fechas previstas de entrega',
+                noArticles: 'No hay artículos encomendados para actualizar'
+            },
+            pt: {
+                success: 'Datas previstas de entrega guardadas com sucesso',
+                error: 'Erro ao guardar as datas previstas de entrega',
+                noArticles: 'Não há artigos encomendados para atualizar'
+            },
+            en: {
+                success: 'Expected delivery dates saved successfully',
+                error: 'Error saving expected delivery dates',
+                noArticles: 'No ordered articles to update'
+            }
+        };
+
+        const t = translations[this.currentLanguage] || translations.es;
+
+        try {
+            // Obtener todos los inputs de fecha prevista de entrega
+            const fechaInputs = document.querySelectorAll(`input[id^="fecha-prevista-entrega-"]`);
+            
+            if (fechaInputs.length === 0) {
+                this.showNotification(t.noArticles, 'warning');
+                return;
+            }
+
+            // Actualizar cada artículo con su fecha prevista de entrega
+            const updatePromises = Array.from(fechaInputs).map(input => {
+                const articuloId = input.getAttribute('data-articulo-id');
+                const fechaPrevista = input.value || null;
+
+                if (!articuloId) {
+                    return Promise.resolve({ error: null });
+                }
+
+                return this.supabase
+                    .from('presupuestos_articulos')
+                    .update({
+                        fecha_prevista_entrega: fechaPrevista
+                    })
+                    .eq('id', articuloId)
+                    .eq('presupuesto_id', proposalId);
+            });
+
+            const updateResults = await Promise.all(updatePromises);
+            const errors = updateResults.filter(r => r.error);
+
+            if (errors.length > 0) {
+                console.error('❌ Errores al actualizar fechas:', errors);
+                throw new Error(errors[0].error?.message || 'Error al actualizar fechas');
+            }
+
+            // Recargar propuestas para reflejar los cambios
+            await this.loadProposals();
+
+            // Recargar los detalles para mostrar los cambios
+            this.viewProposalDetails(proposalId);
+
+            // Mostrar notificación de éxito
+            this.showNotification(t.success, 'success');
+        } catch (error) {
+            console.error('Error al guardar fechas previstas de entrega:', error);
+            this.showNotification(t.error, 'error');
+        }
 
         } catch (error) {
             console.error('Error al guardar encomenda en curso:', error);
