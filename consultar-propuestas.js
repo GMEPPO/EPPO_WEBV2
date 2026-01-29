@@ -6022,16 +6022,6 @@ class ProposalsManager {
             console.error('Error al guardar fechas previstas de entrega:', error);
             this.showNotification(t.error, 'error');
         }
-
-        } catch (error) {
-            console.error('Error al guardar encomenda en curso:', error);
-            const message = this.currentLanguage === 'es' ? 
-                `Error al guardar: ${error.message}` : 
-                this.currentLanguage === 'pt' ?
-                `Erro ao guardar: ${error.message}` :
-                `Error saving: ${error.message}`;
-            this.showNotification(message, 'error');
-        }
     }
 
     closeEncomendaEnCursoModal() {
