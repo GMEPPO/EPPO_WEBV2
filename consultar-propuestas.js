@@ -260,11 +260,18 @@ class ProposalsManager {
                 // No necesitamos cargar desde una tabla separada
 
                 // Cargar artículos concluidos (si existe esta tabla)
-                const { data: articulosConcluidos } = await this.supabase
-                    .from('presupuestos_articulos_concluidos')
-                    .select('articulo_id')
-                    .in('presupuesto_id', presupuestoIds)
-                    .catch(() => ({ data: null })); // Si la tabla no existe, continuar sin error
+                let articulosConcluidos = null;
+                try {
+                    const { data } = await this.supabase
+                        .from('presupuestos_articulos_concluidos')
+                        .select('articulo_id')
+                        .in('presupuesto_id', presupuestoIds);
+                    articulosConcluidos = data;
+                } catch (error) {
+                    // Si la tabla no existe o hay error, continuar sin error
+                    console.warn('⚠️ No se pudo cargar artículos concluidos (tabla puede no existir):', error);
+                    articulosConcluidos = null;
+                }
 
                 // Crear sets para búsqueda rápida (solo para concluidos, encomendados ahora viene de la columna)
                 const concluidosSet = new Set((articulosConcluidos || []).map(a => a.articulo_id));
