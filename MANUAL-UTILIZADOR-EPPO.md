@@ -4,8 +4,8 @@
 
 ---
 
-**Versão:** 1.0  
-**Data:** 2024  
+**Versão:** 2.0  
+**Data:** 2025  
 **Idioma:** Português de Portugal  
 **Norma de Referência:** ISO 9001:2015
 
@@ -32,7 +32,7 @@ O sistema EPPO (Electronic Proposal and Product Organization) by Groupe GM é um
 
 ### 1.2. Estrutura do Manual
 
-Este manual está organizado de acordo com as normas ISO 9001:2015, garantindo uma documentação clara e estruturada dos processos e funcionalidades do sistema.
+Este manual está organizado de acordo com as normas ISO 9001:2015, garantindo uma documentação clara e estruturada dos processos e funcionalidades do sistema. Todas as referências a páginas e funcionalidades utilizam os nomes dos botões e menus visíveis na interface, tanto em português como em espanhol.
 
 ---
 
@@ -70,6 +70,7 @@ Este manual destina-se a:
 - **Stock**: Quantidade disponível de um produto em armazém.
 - **Categoria**: Agrupamento de produtos por tipo ou família.
 - **Rol**: Nível de acesso e permissões de um utilizador no sistema.
+- **Versão de Proposta**: Número que identifica diferentes versões da mesma proposta (V1, V2, etc.)
 
 ### 3.2. Abreviações
 
@@ -98,11 +99,13 @@ O sistema possui uma barra de navegação superior com os seguintes elementos:
 
 1. **Logo EPPO by Groupe GM** (canto superior esquerdo)
 2. **Links de navegação**:
-   - Home
-   - Products (Produtos)
-   - Presupuesto (Orçamento)
-   - Histórico
-3. **Menu hambúrguer** (ícone de três linhas horizontais) - Acesso a funcionalidades adicionais
+   - **Home** (PT/ES): Página inicial com categorias
+   - **Products** (PT/ES): Catálogo de produtos
+   - **Orçamento** (PT) / **Presupuesto** (ES): Criação e edição de propostas
+   - **Histórico** (PT/ES): Consulta de propostas criadas
+3. **Menu hambúrguer** (ícone de três linhas horizontais) - Acesso a funcionalidades adicionais (apenas administradores):
+   - **Comparar** (PT/ES): Comparação de produtos
+   - **Criador/Editor** (PT) / **Creador/Editor** (ES): Criação e edição de produtos
 4. **Seletor de idioma** (bandeiras: Portugal, Espanha, Reino Unido)
 5. **Modo escuro/claro** (ícone de lua/sol)
 
@@ -110,21 +113,21 @@ O sistema possui uma barra de navegação superior com os seguintes elementos:
 
 ## 5. PÁGINAS DO SISTEMA
 
-### 5.1. Página de Início (index.html)
+### 5.1. Página Home
 
 #### 5.1.1. Descrição
 
-A página de início apresenta uma grelha de categorias de produtos organizadas alfabeticamente segundo o idioma selecionado. Esta página serve como ponto de entrada principal do sistema.
+A página **Home** apresenta uma grelha de categorias de produtos organizadas alfabeticamente segundo o idioma selecionado. Esta página serve como ponto de entrada principal do sistema.
 
 #### 5.1.2. Funcionalidades
 
 - Visualização de todas as categorias disponíveis
-- Navegação para a página de produtos de uma categoria específica
+- Navegação para a página **Products** de uma categoria específica
 - Filtragem automática de produtos segundo o país do utilizador:
   - Utilizadores de **Portugal**: Veem todos os produtos
-  - Utilizadores de **Espanha**: Veem apenas produtos com `mercado = 'AMBOS'`
+  - Utilizadores de **Espanha**: Veem apenas produtos com mercado = 'AMBOS'
 
-**[IMAGEM 2: Página de início com categorias]**
+**[IMAGEM 2: Página Home com categorias]**
 
 #### 5.1.3. Elementos Visuais
 
@@ -133,11 +136,11 @@ A página de início apresenta uma grelha de categorias de produtos organizadas 
 
 ---
 
-### 5.2. Página de Produtos (productos-dinamico.html)
+### 5.2. Página Products
 
 #### 5.2.1. Descrição
 
-A página de produtos permite visualizar, filtrar e pesquisar produtos do catálogo. Inclui um painel lateral com filtros dinâmicos e uma área principal com os produtos filtrados.
+A página **Products** permite visualizar, filtrar e pesquisar produtos do catálogo. Inclui um painel lateral com filtros dinâmicos e uma área principal com os produtos filtrados.
 
 #### 5.2.2. Funcionalidades
 
@@ -153,7 +156,7 @@ A página de produtos permite visualizar, filtrar e pesquisar produtos do catál
   - Nome
   - Categoria
 
-**[IMAGEM 3: Página de produtos com filtros]**
+**[IMAGEM 3: Página Products com filtros]**
 
 #### 5.2.3. Elementos Visuais
 
@@ -163,7 +166,7 @@ A página de produtos permite visualizar, filtrar e pesquisar produtos do catál
 
 ---
 
-### 5.3. Página de Detalhe de Produto (producto-detalle.html)
+### 5.3. Página de Detalhe de Produto
 
 #### 5.3.1. Descrição
 
@@ -181,7 +184,7 @@ Página que exibe informações detalhadas de um produto específico, incluindo 
 
 ---
 
-### 5.4. Página de Orçamento/Presupuesto (carrito-compras.html)
+### 5.4. Página Orçamento (PT) / Presupuesto (ES)
 
 #### 5.4.1. Descrição
 
@@ -189,12 +192,17 @@ Esta é a página principal para criação e edição de propostas. Permite adic
 
 #### 5.4.2. Funcionalidades Principais
 
-- **Adicionar produtos**: Botão "Adicionar Produto" que abre a página de seleção
-- **Limpar carrinho**: Botão "Limpar Carrinho" para remover todos os itens
-- **Pedido especial**: Botão "Pedido Especial" para adicionar itens personalizados
-- **Modo 200+**: Botão "Modo 200+" para aplicar preços do escalão máximo automaticamente
-- **Atualizar proposta**: Botão "Atualizar Proposta" para guardar alterações (quando em modo de edição)
-- **Enviar proposta**: Botão "Enviar Propuesta" para gerar e enviar o PDF
+A página **Orçamento** / **Presupuesto** contém os seguintes botões na barra superior:
+
+- **Limpar Carrinho** (PT) / **Limpiar Presupuesto** (ES): Botão vermelho com ícone de lixeira que remove todos os itens do carrinho
+- **Adicionar Produto** (PT) / **Agregar Producto** (ES): Botão verde com ícone de lupa que abre a página de seleção de produtos
+- **Agregar Producto Exclusivo** (PT/ES): Botão dourado com ícone de estrela para adicionar produtos exclusivos de um cliente específico
+- **Pedido Especial** (PT/ES): Botão roxo com ícone de lápis para adicionar itens personalizados que não estão no catálogo
+- **Modo 200+** (PT/ES): Botão cinza com ícone de olho para ativar/desativar a aplicação automática de preços do escalão máximo (200+ unidades)
+- **Atualizar Proposta** (PT) / **Actualizar Propuesta** (ES): Botão azul com ícone de lápis que aparece quando se está editando uma proposta existente
+- **Enviar Proposta** (PT/ES): Botão verde com ícone de avião de papel para gerar e enviar o PDF da proposta
+
+**[IMAGEM 5: Barra de botões da página Orçamento/Presupuesto]**
 
 #### 5.4.3. Tabela de Itens
 
@@ -210,26 +218,39 @@ A tabela principal mostra:
   - Ícone de lixeira (eliminar item)
   - Ícone de comentário (adicionar observações)
 
-**[IMAGEM 5: Página de orçamento com tabela de itens]**
+**[IMAGEM 6: Tabela de itens do orçamento]**
 
 #### 5.4.4. Formulário de Proposta
 
-Quando se cria ou edita uma proposta, aparece um formulário com:
-- **Código da proposta**: Gerado automaticamente ou editável
-- **Nome do cliente**: Campo obrigatório
-- **Nome comercial**: Campo para identificar o comercial responsável
-- **País**: Seleção entre Portugal e Espanha
-- **Data**: Data de criação (automática)
+Quando se clica em **Enviar Proposta** ou **Atualizar Proposta**, aparece um formulário modal com:
 
-**[IMAGEM 6: Formulário de proposta]**
+- **Nome do Cliente** *: Campo obrigatório com autocompletado
+- **Nome do Comercial** *: Lista desplegável com os comerciais disponíveis (obtidos da base de dados)
+  - **Nota importante**: Os comerciais mostrados dependem do rol do utilizador:
+    - **Comerciais**: Veem apenas o seu nome e o nome do seu comercial espejo (se tiver um atribuído)
+    - **Administradores**: Veem todos os comerciais, incluindo "Claudia Cruz" se for administradora
+- **Data do Pedido** *: Seletor de data (obrigatório)
+- **País** *: Seleção entre Portugal e Espanha (obrigatório)
+- **Número de Cliente** *: Campo numérico (0 se o cliente não está criado no sistema)
+
+**[IMAGEM 7: Formulário de proposta]**
+
+#### 5.4.5. Sistema de Versões
+
+Quando se edita uma proposta existente e se fazem alterações nos produtos (adicionar, editar ou eliminar), o sistema pergunta se se deseja criar uma nova versão do documento:
+
+- **Opção 1**: "Criar Nova Versão" (PT) / "Crear Nueva Versión" (ES): Incrementa o número de versão (ex: V1 → V2)
+- **Opção 2**: "Manter Versão Atual" (PT) / "Mantener Versión Actual" (ES): Mantém a versão atual (útil para correções)
+
+A versão aparece no número da proposta no formato: "2701SS0126 - V2"
 
 ---
 
-### 5.5. Página de Histórico (consultar-propuestas.html)
+### 5.5. Página Histórico
 
 #### 5.5.1. Descrição
 
-A página de histórico permite consultar todas as propostas criadas, filtrar por diferentes critérios, visualizar detalhes e gerar PDFs.
+A página **Histórico** permite consultar todas as propostas criadas, filtrar por diferentes critérios, visualizar detalhes e gerar PDFs.
 
 #### 5.5.2. Funcionalidades
 
@@ -238,18 +259,23 @@ A página de histórico permite consultar todas as propostas criadas, filtrar po
   - Por código da proposta
   - Por data
   - Por estado da proposta
-- **Tabela de propostas**: Lista todas as propostas com informações resumidas
+- **Tabela de propostas**: Lista todas as propostas com informações resumidas, incluindo:
+  - Código da proposta com versão (ex: "2701SS0126 - V2")
+  - Nome do cliente
+  - Nome do comercial
+  - Data de criação
+  - Estado da proposta
 - **Filtragem por rol**:
   - **Administradores**: Veem todas as propostas
-  - **Comerciais**: Veem apenas propostas onde o campo `nombre_comercial` corresponde ao seu nome
+  - **Comerciais**: Veem apenas propostas onde o campo `nombre_comercial` corresponde ao seu nome ou ao do seu comercial espejo
 - **Ações disponíveis**:
   - **Ver detalhes**: Abre modal com informações completas
-  - **Editar**: Abre a proposta no modo de edição
+  - **Editar**: Abre a proposta na página **Orçamento** / **Presupuesto** no modo de edição
   - **Gerar PDF**: Gera e descarrega o PDF da proposta
-  - **Ver histórico de modificações**: Mostra todas as alterações realizadas
+  - **Ver histórico de modificações**: Mostra todas as alterações realizadas (mudanças de estado e modificações de artículos)
   - **Eliminar**: Remove a proposta (com confirmação)
 
-**[IMAGEM 7: Página de histórico de propostas]**
+**[IMAGEM 8: Página Histórico de propostas]**
 
 #### 5.5.3. Modal de Detalhes
 
@@ -263,18 +289,33 @@ Ao clicar em "Ver detalhes", abre-se um modal que mostra:
   - Preço total (mostra "Sobre consulta" se o preço unitário for 0 para comerciais)
   - Prazo de entrega
 - Total da proposta
-- Histórico de modificações
+- Histórico de modificações (inclui mudanças de estado e modificações de artículos)
 - Amostras enviadas (se aplicável)
 
-**[IMAGEM 8: Modal de detalhes da proposta]**
+**[IMAGEM 9: Modal de detalhes da proposta]**
+
+#### 5.5.4. Histórico de Modificações
+
+O histórico de modificações mostra:
+- **Mudanças de Estado**: Quando o estado da proposta muda (ex: "proposta em edição" → "amostra pedida")
+- **Modificações de Artigos**: Quando se adicionam, editam ou eliminam produtos
+- **Mudanças de Versão**: Quando se cria uma nova versão do documento
+
+Cada entrada mostra:
+- Data e hora da modificação
+- Tipo de modificação (com ícone e cor diferenciados)
+- Descrição da alteração
+- Nome do utilizador que fez a alteração
+
+**[IMAGEM 10: Histórico de modificações]**
 
 ---
 
-### 5.6. Página de Comparação (comparar-productos.html)
+### 5.6. Página Comparar
 
 #### 5.6.1. Descrição
 
-Permite comparar lado a lado até 4 produtos diferentes, facilitando a análise de características, preços e especificações.
+A página **Comparar** permite comparar lado a lado até 4 produtos diferentes, facilitando a análise de características, preços e especificações.
 
 #### 5.6.2. Funcionalidades
 
@@ -286,80 +327,51 @@ Permite comparar lado a lado até 4 produtos diferentes, facilitando a análise 
   - Especificações técnicas
   - Características principais
 - Filtragem por categoria
-- Acesso restrito: Apenas administradores podem aceder a esta página
+- **Acesso restrito**: Apenas administradores podem aceder a esta página através do menu hambúrguer
 
-**[IMAGEM 9: Página de comparação de produtos]**
+**[IMAGEM 11: Página Comparar produtos]**
 
 ---
 
-### 5.7. Página de Criação/Edição de Produtos (selector-productos.html)
+### 5.7. Página Criador/Editor (PT) / Creador/Editor (ES)
 
 #### 5.7.1. Descrição
 
-Página para criar novos produtos ou editar produtos existentes. Inclui funcionalidades avançadas de gestão de produtos e stock.
+A página **Criador/Editor** / **Creador/Editor** permite criar novos produtos ou editar produtos existentes. Inclui funcionalidades avançadas de gestão de produtos e stock.
 
 #### 5.7.2. Funcionalidades
 
-- **Formulário de produto**:
+- **Menu de opções**:
+  - **Crear/Editar Producto** (PT/ES): Criar ou editar produtos do catálogo
+  - **Crear Nueva Categoría** (PT/ES): Criar ou editar categorias que aparecem na página **Home**
+  - **Cargar Stock** (PT/ES): Atualizar stock desde ficheiro Excel PHC
+
+- **Formulário de produto** (ao selecionar "Crear/Editar Producto"):
   - Informações básicas (nome, categoria, preço)
   - Descrições em português e espanhol
   - Upload de imagens
   - Especificações técnicas
   - Variantes e personalizações
   - Escalões de preço (price_tiers)
-- **Gestão de stock**:
+
+- **Gestão de stock** (ao selecionar "Cargar Stock"):
   - Upload de ficheiro Excel com referências PHC e stock
   - Visualização de estatísticas de stock
   - Atualização em lote
-- **Acesso restrito**: Apenas administradores podem aceder
 
-**[IMAGEM 10: Página de criação de produtos]**
+- **Acesso restrito**: Apenas administradores podem aceder através do menu hambúrguer
+
+**[IMAGEM 12: Página Criador/Editor]**
 
 ---
 
-### 5.8. Página de Administração de Produtos (admin-productos.html)
+### 5.8. Página de Login
 
 #### 5.8.1. Descrição
 
-Interface administrativa para gestão completa do catálogo de produtos, incluindo edição em massa e configurações avançadas.
-
-#### 5.8.2. Funcionalidades
-
-- Lista de todos os produtos
-- Filtros e pesquisa
-- Edição rápida de campos
-- Gestão de categorias
-- Configuração de campos dinâmicos por categoria
-- Acesso restrito: Apenas administradores
-
-**[IMAGEM 11: Página de administração de produtos]**
-
----
-
-### 5.9. Página de Gestão de Utilizadores (gestion-usuarios.html)
-
-#### 5.9.1. Descrição
-
-Permite aos administradores gerir utilizadores do sistema, atribuir roles e permissões.
-
-#### 5.9.2. Funcionalidades
-
-- Lista de todos os utilizadores
-- Atribuição de roles (admin, comercial)
-- Gestão de permissões
-- Acesso restrito: Apenas administradores
-
-**[IMAGEM 12: Página de gestão de utilizadores]**
-
----
-
-### 5.10. Página de Login (login.html)
-
-#### 5.10.1. Descrição
-
 Página de autenticação do sistema. Todos os utilizadores devem iniciar sessão para aceder às funcionalidades.
 
-#### 5.10.2. Funcionalidades
+#### 5.8.2. Funcionalidades
 
 - Login com email e palavra-passe
 - Recuperação de palavra-passe
@@ -375,51 +387,60 @@ Página de autenticação do sistema. Todos os utilizadores devem iniciar sessã
 
 #### 6.1.1. Processo Passo a Passo
 
-1. **Aceder à página de Orçamento**
-   - Clicar em "Presupuesto" na barra de navegação
-   - Ou aceder diretamente a `carrito-compras.html`
+1. **Aceder à página Orçamento / Presupuesto**
+   - Clicar em **Orçamento** (PT) ou **Presupuesto** (ES) na barra de navegação
 
 2. **Adicionar produtos ao carrinho**
-   - Clicar no botão "Adicionar Produto" (verde, com ícone de lupa)
-   - Na página de seleção, escolher produtos e clicar em "Adicionar ao Orçamento"
+   - Clicar no botão **Adicionar Produto** (PT) / **Agregar Producto** (ES) (verde, com ícone de lupa)
+   - Na página de seleção, escolher produtos e clicar em "Adicionar ao Orçamento" / "Agregar al Presupuesto"
    - Os produtos aparecem na tabela do carrinho
 
 3. **Configurar quantidades e preços**
-   - Editar a quantidade diretamente na coluna "QUANTIDADE"
+   - Editar a quantidade diretamente na coluna **QUANTIDADE**
    - Para produtos com preço 0.00:
      - **Comerciais**: Verão "Sobre consulta" (não podem editar)
      - **Administradores**: Podem inserir um preço manualmente
    - Para produtos com preço: Clicar no preço para ver escalões disponíveis
 
 4. **Adicionar observações** (opcional)
-   - Clicar no ícone de comentário na coluna "AÇÕES"
+   - Clicar no ícone de comentário na coluna **AÇÕES**
    - Inserir observações específicas para o item
 
 5. **Preencher informações da proposta**
-   - Clicar em "Enviar Propuesta" ou "Atualizar Proposta"
+   - Clicar em **Enviar Proposta** (PT/ES) ou **Atualizar Proposta** (PT) / **Actualizar Propuesta** (ES)
    - Preencher o formulário:
-     - **Nome do cliente**: Obrigatório
-     - **Nome comercial**: Identifica o comercial responsável
-     - **País**: Portugal ou Espanha
+     - **Nome do Cliente** *: Obrigatório (com autocompletado)
+     - **Nome do Comercial** *: Selecionar da lista (obrigatório)
+     - **País** *: Portugal ou Espanha (obrigatório)
+     - **Data do Pedido** *: Selecionar data (obrigatório)
+     - **Número de Cliente** *: 0 se o cliente não está criado
    - O campo "Responsável" é preenchido automaticamente com o nome do utilizador autenticado
 
 6. **Guardar a proposta**
-   - Clicar em "Guardar Proposta"
+   - Clicar em **Enviar Proposta** no formulário
    - A proposta é guardada na base de dados
-   - É gerado um código único de proposta
+   - É gerado um código único de proposta no formato: DDMMIIPPYY (Dia, Mês, Iniciais Comercial, Número Propuesta, Año)
 
 **[IMAGEM 14: Fluxo de criação de proposta - diagrama]**
 
 #### 6.1.2. Funcionalidades Especiais
 
 **Modo 200+**
-- Ativa/desativa a aplicação automática de preços do escalão máximo (200+ unidades)
+- Ativa/desativa através do botão **Modo 200+** (PT/ES)
+- Aplica automaticamente os preços do escalão máximo (200+ unidades)
 - Aplica-se apenas a produtos de equipamento (excluindo VACAVALIENTE e LASER BUILD)
-- Disponível através do botão "Modo 200+" (modo escuro/claro)
+- Disponível para todos os utilizadores
 
 **Pedido Especial**
+- Acesso através do botão **Pedido Especial** (PT/ES)
 - Permite adicionar itens personalizados que não estão no catálogo
 - Útil para produtos sob medida ou especificações especiais
+- Requer preenchimento de: nome, descrição, quantidade, preço, prazo de entrega
+
+**Agregar Producto Exclusivo**
+- Acesso através do botão **Agregar Producto Exclusivo** (PT/ES)
+- Permite adicionar produtos exclusivos de um cliente específico
+- Estes produtos só aparecem quando se está criando uma proposta para esse cliente
 
 **Edição de Descrições**
 - As descrições dos produtos podem ser editadas diretamente na tabela
@@ -432,8 +453,7 @@ Página de autenticação do sistema. Todos os utilizadores devem iniciar sessã
 #### 6.2.1. Consulta de Propostas
 
 1. **Aceder ao Histórico**
-   - Clicar em "Histórico" na barra de navegação
-   - Ou aceder diretamente a `consultar-propuestas.html`
+   - Clicar em **Histórico** (PT/ES) na barra de navegação
 
 2. **Filtrar propostas**
    - Utilizar a barra de pesquisa para filtrar por:
@@ -450,13 +470,14 @@ Página de autenticação do sistema. Todos os utilizadores devem iniciar sessã
 #### 6.2.2. Edição de Propostas Existentes
 
 1. **Abrir proposta para edição**
-   - Na página de histórico, clicar em "Editar" na proposta desejada
-   - A proposta abre na página de orçamento em modo de edição
+   - Na página **Histórico**, clicar em "Editar" na proposta desejada
+   - A proposta abre na página **Orçamento** / **Presupuesto** em modo de edição
 
 2. **Identificação visual**
    - Aparece um badge azul no topo indicando:
-     - "Proposta #[código]"
+     - "Editando Proposta #[código]" (PT) / "Editando Propuesta #[código]" (ES)
      - "Cliente: [nome]"
+   - O botão **Enviar Proposta** muda para **Atualizar Proposta** (PT) / **Actualizar Propuesta** (ES)
 
 3. **Fazer alterações**
    - Adicionar ou remover produtos
@@ -465,25 +486,34 @@ Página de autenticação do sistema. Todos os utilizadores devem iniciar sessã
    - Modificar informações do cliente
 
 4. **Guardar alterações**
-   - Clicar em "Atualizar Proposta"
+   - Clicar em **Atualizar Proposta** (PT) / **Actualizar Propuesta** (ES)
+   - Se houver alterações nos produtos, o sistema pergunta se se deseja criar uma nova versão
    - As alterações são guardadas e registadas no histórico de modificações
 
 #### 6.2.3. Geração de PDF
 
-1. **A partir do histórico**
+1. **A partir do Histórico**
    - Clicar em "Gerar PDF" na proposta desejada
    - O PDF é gerado e descarregado automaticamente
 
-2. **A partir da página de orçamento**
-   - Clicar em "Enviar Propuesta"
+2. **A partir da página Orçamento / Presupuesto**
+   - Clicar em **Enviar Proposta**
    - Selecionar o idioma do PDF (português ou espanhol)
    - O PDF é gerado com todos os itens do carrinho
 
 3. **Conteúdo do PDF**
-   - Cabeçalho com informações da empresa
-   - Informações do cliente e proposta
+   - Cabeçalho com logos da empresa
+   - Informações da proposta em duas colunas:
+     - **Coluna esquerda**:
+       - Cliente: [número - nome] (ex: "325 - hotel savoy")
+       - Nr proposta: [código - versão] (ex: "2701SS0126 - V1")
+       - Data da proposta: [data]
+     - **Coluna direita**:
+       - Comercial: [nome]
+       - [email]
+       - [telefone]
    - Tabela de produtos com:
-     - Foto
+     - Foto (adaptada ao tamanho da célula mantendo proporção)
      - Descrição completa
      - Quantidade
      - Preço unitário (mostra "Sobre consulta" se for 0)
@@ -498,10 +528,14 @@ Página de autenticação do sistema. Todos os utilizadores devem iniciar sessã
 
 - Cada proposta mantém um registo de todas as alterações
 - Inclui:
+  - **Mudanças de Estado**: Quando o estado da proposta muda
+  - **Modificações de Artigos**: Quando se adicionam, editam ou eliminam produtos
+  - **Mudanças de Versão**: Quando se cria uma nova versão do documento
+- Cada entrada mostra:
   - Data e hora da modificação
-  - Utilizador que fez a alteração
-  - Tipo de alteração (criação, edição, eliminação de item, etc.)
-  - Detalhes das alterações
+  - Tipo de modificação (com ícone e cor diferenciados)
+  - Descrição da alteração
+  - Nome do utilizador que fez a alteração (obtido da base de dados)
 
 **[IMAGEM 16: Histórico de modificações]**
 
@@ -511,41 +545,43 @@ Página de autenticação do sistema. Todos os utilizadores devem iniciar sessã
 
 #### 6.3.1. Criar Novo Produto
 
-1. **Aceder à página de criação**
-   - Clicar no menu hambúrguer
-   - Selecionar "Creador/Editor"
-   - Ou aceder diretamente a `selector-productos.html`
+1. **Aceder à página Criador/Editor / Creador/Editor**
+   - Clicar no menu hambúrguer (apenas administradores)
+   - Selecionar **Criador/Editor** (PT) ou **Creador/Editor** (ES)
 
-2. **Preencher informações básicas**
+2. **Selecionar opção**
+   - Clicar em **Crear/Editar Producto** (PT/ES)
+
+3. **Preencher informações básicas**
    - **Nome**: Nome do produto
    - **Categoria**: Selecionar da lista (ordenada alfabeticamente)
    - **Preço base**: Preço unitário do produto
    - **Marca**: Marca do produto
    - **Referência PHC**: Referência para consulta de stock
 
-3. **Adicionar descrições**
+4. **Adicionar descrições**
    - **Descrição em Português**: Campo de texto rico
    - **Descrição em Espanhol**: Campo de texto rico
    - Suporta formatação (negrito, itálico, listas)
 
-4. **Upload de imagens**
+5. **Upload de imagens**
    - Clicar em "Selecionar Imagem" ou arrastar e soltar
    - Formatos suportados: JPG, PNG
    - Pode adicionar múltiplas imagens
 
-5. **Configurar escalões de preço**
+6. **Configurar escalões de preço**
    - Adicionar escalões (ex: 1-10 unidades: €X, 11-50: €Y, 51-200: €Z, 200+: €W)
    - O sistema calcula automaticamente o preço segundo a quantidade
 
-6. **Configurar variantes** (se aplicável)
+7. **Configurar variantes** (se aplicável)
    - Adicionar variantes personalizadas (ex: cores, tamanhos)
    - Cada variante pode ter preço e prazo de entrega próprios
 
-7. **Especificações técnicas**
+8. **Especificações técnicas**
    - Preencher campos específicos da categoria (ex: potência para secadores)
    - Campos dinâmicos aparecem segundo a categoria selecionada
 
-8. **Guardar produto**
+9. **Guardar produto**
    - Clicar em "Guardar Produto"
    - O produto é adicionado ao catálogo
 
@@ -554,8 +590,8 @@ Página de autenticação do sistema. Todos os utilizadores devem iniciar sessã
 #### 6.3.2. Editar Produto Existente
 
 1. **Localizar o produto**
-   - Na página de administração de produtos
-   - Ou através da pesquisa na página de produtos
+   - Na página **Criador/Editor** / **Creador/Editor**, selecionar "Editar Producto"
+   - Ou através da pesquisa na página **Products**
 
 2. **Abrir para edição**
    - Clicar em "Editar" no produto
@@ -567,11 +603,13 @@ Página de autenticação do sistema. Todos os utilizadores devem iniciar sessã
 
 #### 6.3.3. Gestão de Categorias
 
-- As categorias são geridas na base de dados
-- Cada categoria pode ter:
-  - Nome em português e espanhol
-  - Ícone representativo
-  - Campos dinâmicos específicos (configuráveis em admin-productos.html)
+1. **Aceder à criação de categorias**
+   - Na página **Criador/Editor** / **Creador/Editor**, selecionar **Crear Nueva Categoría** (PT/ES)
+
+2. **Criar ou editar categoria**
+   - Nome em português e espanhol
+   - Ícone representativo
+   - Campos dinâmicos específicos (configuráveis)
 
 ---
 
@@ -580,8 +618,7 @@ Página de autenticação do sistema. Todos os utilizadores devem iniciar sessã
 #### 6.4.1. Carregamento de Stock via Excel
 
 1. **Aceder à funcionalidade**
-   - Na página de criação/edição de produtos (selector-productos.html)
-   - Localizar a secção "Gestão de Stock"
+   - Na página **Criador/Editor** / **Creador/Editor**, selecionar **Cargar Stock** (PT/ES)
 
 2. **Preparar o ficheiro Excel**
    - O ficheiro deve ter duas colunas:
@@ -619,11 +656,11 @@ Página de autenticação do sistema. Todos os utilizadores devem iniciar sessã
 
 O stock é consultado automaticamente em várias situações:
 
-1. **Na página de produtos**
+1. **Na página Products**
    - Produtos com stock disponível mostram "Em stock" em verde
    - Produtos sem stock mostram o prazo de entrega normal
 
-2. **No carrinho de compras**
+2. **No carrinho de compras (Orçamento / Presupuesto)**
    - O prazo de entrega é calculado automaticamente segundo o stock:
      - **Stock suficiente**: "Em stock (sujeito a confirmação no momento da adjudicação)"
      - **Stock parcial**: Mostra quantidade disponível e prazo para o restante
@@ -633,13 +670,6 @@ O stock é consultado automaticamente em várias situações:
    - O sistema verifica diariamente se o stock foi atualizado
    - Se não houver atualizações no dia atual, aparece um aviso no topo da página
    - Apenas administradores veem este aviso
-
-#### 6.4.3. Estrutura da Tabela de Stock
-
-A tabela `stock_productos` contém:
-- **referencia_phc**: Referência do produto no sistema PHC (chave primária)
-- **stock_disponible**: Quantidade disponível em armazém
-- **fecha_actualizacion**: Data e hora da última atualização (automática)
 
 ---
 
@@ -653,34 +683,44 @@ O sistema possui dois níveis de acesso:
 
 **Permissões completas:**
 - Acesso a todas as páginas
+- Acesso ao menu hambúrguer com opções **Comparar** e **Criador/Editor** / **Creador/Editor**
 - Criação e edição de produtos
 - Gestão de utilizadores
 - Edição de preços em propostas (mesmo quando o preço é 0)
-- Acesso à página de comparação
-- Acesso à página de criação/edição de produtos
 - Visualização de todas as propostas (sem filtro)
+- Visualização de todos os comerciais na lista ao criar propostas
 
 #### 7.1.2. Comercial (comercial)
 
 **Permissões limitadas:**
 - Visualização de produtos
 - Criação e edição de propostas
-- Consulta de propostas (apenas as suas)
+- Consulta de propostas (apenas as suas e as do seu comercial espejo, se tiver um atribuído)
 - **Não pode**:
   - Aceder ao menu hambúrguer (bloqueado)
   - Editar produtos
   - Gerir utilizadores
   - Editar preços de produtos com preço 0 (vê "Sobre consulta")
-  - Aceder à página de comparação
-  - Ver propostas de outros comerciais
+  - Aceder à página **Comparar**
+  - Ver propostas de outros comerciais (exceto do seu espejo)
+  - Ver todos os comerciais na lista (vê apenas o seu nome e o do seu espejo)
 
-### 7.2. Atribuição de Roles
+### 7.2. Comercial Espejo
+
+Cada comercial pode ter um "comercial espejo" atribuído na base de dados. O comercial espejo:
+- Pode ver as propostas do comercial principal
+- Aparece na lista de comerciais quando o comercial principal cria uma proposta
+- É útil para casos onde dois comerciais trabalham em conjunto
+
+**Nota**: Apenas "Claudia Cruz" (se for administradora) aparece na lista de comerciais para todos os utilizadores, independentemente do rol.
+
+### 7.3. Atribuição de Roles
 
 Apenas administradores podem atribuir roles:
 
 1. **Aceder à gestão de utilizadores**
    - Menu hambúrguer → (apenas para admin)
-   - Ou aceder diretamente a `gestion-usuarios.html`
+   - Ou aceder diretamente à página de gestão de utilizadores
 
 2. **Localizar o utilizador**
    - A lista mostra todos os utilizadores autenticados
@@ -693,7 +733,7 @@ Apenas administradores podem atribuir roles:
 
 **[IMAGEM 20: Página de gestão de utilizadores]**
 
-### 7.3. Filtragem por País
+### 7.4. Filtragem por País
 
 O sistema filtra produtos automaticamente segundo o país do utilizador:
 
@@ -703,9 +743,9 @@ O sistema filtra produtos automaticamente segundo o país do utilizador:
   - **Espanha**: Ve apenas produtos com `mercado = 'AMBOS'`
 
 Esta filtragem aplica-se em:
-- Página de início (categorias)
-- Página de produtos
-- Página de comparação
+- Página **Home** (categorias)
+- Página **Products**
+- Página **Comparar**
 - Consulta de propostas
 
 ---
@@ -716,23 +756,25 @@ Esta filtragem aplica-se em:
 
 ```
 EPPO Sistema
-├── Home (index.html)
-├── Products (productos-dinamico.html)
-├── Presupuesto (carrito-compras.html)
-├── Histórico (consultar-propuestas.html)
+├── Home
+├── Products
+├── Orçamento (PT) / Presupuesto (ES)
+├── Histórico
 └── Menu Hambúrguer (apenas admin)
-    ├── Comparar (comparar-productos.html)
-    └── Creador/Editor (selector-productos.html)
+    ├── Comparar
+    └── Criador/Editor (PT) / Creador/Editor (ES)
 ```
 
-### 8.2. Anexo B: Tabelas da Base de Dados Principais
+### 8.2. Anexo B: Botões Principais por Página
 
-- **products**: Catálogo de produtos
-- **presupuestos**: Propostas criadas
-- **presupuestos_articulos**: Itens de cada proposta
-- **user_roles**: Roles e permissões dos utilizadores
-- **stock_productos**: Stock disponível por referência PHC
-- **categorias_geral**: Categorias de produtos
+#### Página Orçamento / Presupuesto:
+- **Limpar Carrinho** (PT) / **Limpiar Presupuesto** (ES)
+- **Adicionar Produto** (PT) / **Agregar Producto** (ES)
+- **Agregar Producto Exclusivo** (PT/ES)
+- **Pedido Especial** (PT/ES)
+- **Modo 200+** (PT/ES)
+- **Atualizar Proposta** (PT) / **Actualizar Propuesta** (ES)
+- **Enviar Proposta** (PT/ES)
 
 ### 8.3. Anexo C: Formatos de Ficheiro Suportados
 
@@ -751,7 +793,7 @@ EPPO Sistema
 
 Para questões técnicas ou problemas:
 - Contactar o administrador do sistema
-- Verificar a documentação técnica em: [repositório do projeto]
+- Verificar a documentação técnica
 
 ---
 
@@ -762,6 +804,7 @@ Para questões técnicas ou problemas:
 - Todas as propostas têm um código único
 - Todas as modificações são registadas com data, hora e utilizador
 - O histórico de modificações permite rastrear todas as alterações
+- Sistema de versões permite identificar diferentes versões do mesmo documento
 
 ### 9.2. Validação de Dados
 
@@ -774,6 +817,7 @@ Para questões técnicas ou problemas:
 - Autenticação obrigatória para todas as funcionalidades
 - Permissões baseadas em roles (RLS)
 - Dados sensíveis protegidos por políticas de segurança
+- Filtragem automática de dados segundo o rol do utilizador
 
 ### 9.4. Documentação
 
@@ -788,6 +832,5 @@ Para questões técnicas ou problemas:
 ---
 
 *Documento gerado automaticamente*  
-*Última atualização: 2024*  
-*Versão do sistema: 1.0*
-
+*Última atualização: 2025*  
+*Versão do sistema: 2.0*

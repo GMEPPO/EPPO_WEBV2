@@ -26,7 +26,7 @@ class CartManager {
         await this.checkIfEditingProposal();
 
         // Actualizar botón modo 200+ al cargar
-        this.updateMode200Button();
+        await this.updateMode200Button();
         
         // Enriquecer items del carrito con datos de la BD si faltan
         this.enrichCartItemsFromDB();
@@ -113,7 +113,7 @@ class CartManager {
             // Si el modo 200+ está activo, aplicar los precios automáticamente
             if (this.modo200) {
                 this.applyMode200Prices();
-                this.updateMode200Button();
+                await this.updateMode200Button();
             }
 
             // Cargar productos exclusivos del cliente si existe
@@ -353,6 +353,52 @@ class CartManager {
         }
         // Fallback a localStorage o sistema
         return localStorage.getItem('commercial_name') || 'Sistema';
+    }
+
+    /**
+     * Verificar si el usuario actual puede usar el Modo 200+
+     * Solo administradores y Claudia Cruz pueden usar esta función
+     */
+    async canUseMode200() {
+        try {
+            const user = await window.authManager?.getCurrentUser();
+            if (!user || !this.supabase) {
+                return false;
+            }
+
+            const { data: userRoleData, error: roleError } = await this.supabase
+                .from('user_roles')
+                .select('"Name", role')
+                .eq('user_id', user.id)
+                .single();
+
+            if (roleError || !userRoleData) {
+                console.warn('⚠️ Error al obtener rol del usuario:', roleError);
+                return false;
+            }
+
+            const userRole = userRoleData.role;
+            const userName = userRoleData.Name || '';
+
+            // Permitir si es administrador
+            if (userRole === 'admin') {
+                console.log('✅ Usuario es administrador, puede usar Modo 200+');
+                return true;
+            }
+
+            // Permitir si es Claudia Cruz (aunque sea comercial)
+            if (userName.toLowerCase().trim() === 'claudia cruz') {
+                console.log('✅ Usuario es Claudia Cruz, puede usar Modo 200+');
+                return true;
+            }
+
+            // El resto de comerciales no pueden usar Modo 200+
+            console.log('❌ Usuario no tiene permisos para usar Modo 200+');
+            return false;
+        } catch (error) {
+            console.warn('⚠️ Error al verificar permisos de Modo 200+:', error);
+            return false;
+        }
     }
 
     /**
@@ -2871,7 +2917,7 @@ class CartManager {
     /**
      * Actualizar idioma
      */
-    updateLanguage(lang) {
+    async updateLanguage(lang) {
         this.currentLanguage = lang;
         
         // Actualizar descripciones en los items del carrito según el nuevo idioma
@@ -2910,7 +2956,7 @@ class CartManager {
         // Botón de aplicar precio máximo eliminado (no hace nada)
 
         // Actualizar botón modo 200+
-        this.updateMode200Button();
+        await this.updateMode200Button();
     }
 
     /**
@@ -3132,7 +3178,7 @@ class CartManager {
     /**
      * Actualizar apariencia del botón modo 200+
      */
-    updateMode200Button() {
+    async updateMode200Button() {
         const mode200Btn = document.getElementById('mode200Btn');
         const mode200Text = document.getElementById('mode-200-text');
         const mode200Icon = mode200Btn?.querySelector('i');
@@ -3140,6 +3186,18 @@ class CartManager {
         if (!mode200Btn || !mode200Text) {
             return;
         }
+
+        // Verificar si el usuario puede usar Modo 200+
+        const canUse = await this.canUseMode200();
+        
+        if (!canUse) {
+            // Ocultar el botón si no tiene permisos
+            mode200Btn.style.display = 'none';
+            return;
+        }
+
+        // Mostrar el botón si tiene permisos
+        mode200Btn.style.display = 'flex';
 
         const lang = this.currentLanguage || 'es';
 
@@ -9925,11 +9983,26 @@ window.applyMaxPriceToAllItems = applyMaxPriceToAllItems;
  * Toggle del modo 200+ - Aplica precio del escalón máximo solo a productos de equipamiento
  * (excluyendo vacavaliente y Laser Build)
  */
-function toggleMode200() {
+async function toggleMode200() {
     console.log('🔄 ========== INICIO toggleMode200 ==========');
     
     if (!window.cartManager) {
         console.error('❌ window.cartManager no está disponible');
+        return;
+    }
+
+    // Verificar permisos antes de activar
+    const canUse = await window.cartManager.canUseMode200();
+    if (!canUse) {
+        const lang = window.cartManager?.currentLanguage || 'es';
+        const message = lang === 'pt' 
+            ? 'Não tem permissão para usar o Modo 200+. Apenas administradores e Claudia Cruz podem usar esta funcionalidade.'
+            : lang === 'es'
+            ? 'No tiene permiso para usar el Modo 200+. Solo administradores y Claudia Cruz pueden usar esta funcionalidad.'
+            : 'You do not have permission to use Mode 200+. Only administrators and Claudia Cruz can use this feature.';
+        
+        window.cartManager.showNotification(message, 'error');
+        console.warn('❌ Usuario no tiene permisos para usar Modo 200+');
         return;
     }
 
@@ -9952,7 +10025,7 @@ function toggleMode200() {
     }
 
     // Actualizar botón visualmente
-    window.cartManager.updateMode200Button();
+    await window.cartManager.updateMode200Button();
 
     // Guardar carrito
     window.cartManager.saveCart();
