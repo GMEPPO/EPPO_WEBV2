@@ -4694,7 +4694,7 @@ function closeAddCategoryModal() {
 }
 
 // Funciones para pedidos especiales
-function openAddSpecialOrderModal() {
+async function openAddSpecialOrderModal() {
     const modal = document.getElementById('addSpecialOrderModal');
     if (!modal) return;
     
@@ -4710,6 +4710,53 @@ function openAddSpecialOrderModal() {
             quantityInput.value = 1;
         }
     }
+
+    // Verificar si el usuario es comercial (no admin y no Claudia Cruz)
+    const priceInput = document.getElementById('specialOrderPriceInput');
+    if (priceInput && window.cartManager) {
+        try {
+            const user = await window.authManager?.getCurrentUser();
+            if (user && window.cartManager.supabase) {
+                const { data: userRoleData, error: roleError } = await window.cartManager.supabase
+                    .from('user_roles')
+                    .select('"Name", role')
+                    .eq('user_id', user.id)
+                    .single();
+
+                if (!roleError && userRoleData) {
+                    const userRole = userRoleData.role;
+                    const userName = (userRoleData.Name || '').toLowerCase().trim();
+                    
+                    // Si es comercial (no admin) y no es Claudia Cruz, deshabilitar precio
+                    if (userRole === 'comercial' && userName !== 'claudia cruz') {
+                        priceInput.value = 0;
+                        priceInput.disabled = true;
+                        priceInput.style.opacity = '0.6';
+                        priceInput.style.cursor = 'not-allowed';
+                        priceInput.title = window.cartManager.currentLanguage === 'pt' 
+                            ? 'Comerciais não podem definir preço em pedidos especiais' 
+                            : window.cartManager.currentLanguage === 'es'
+                            ? 'Los comerciales no pueden definir precio en pedidos especiales'
+                            : 'Comercials cannot set price in special orders';
+                    } else {
+                        // Admin o Claudia Cruz pueden editar precio
+                        priceInput.disabled = false;
+                        priceInput.style.opacity = '1';
+                        priceInput.style.cursor = 'text';
+                        priceInput.title = '';
+                    }
+                }
+            }
+        } catch (error) {
+            console.warn('⚠️ Error al verificar rol para pedido especial:', error);
+            // En caso de error, permitir editar (por seguridad, mejor permitir que bloquear)
+            if (priceInput) {
+                priceInput.disabled = false;
+                priceInput.style.opacity = '1';
+                priceInput.style.cursor = 'text';
+            }
+        }
+    }
 }
 
 function closeAddSpecialOrderModal() {
@@ -4718,6 +4765,15 @@ function closeAddSpecialOrderModal() {
     
     modal.classList.remove('active');
     document.body.style.overflow = 'auto';
+    
+    // Restaurar el campo de precio al cerrar (por si un admin lo abre después)
+    const priceInput = document.getElementById('specialOrderPriceInput');
+    if (priceInput) {
+        priceInput.disabled = false;
+        priceInput.style.opacity = '1';
+        priceInput.style.cursor = 'text';
+        priceInput.title = '';
+    }
 }
 
 async function addSpecialOrderToCart() {
@@ -4735,7 +4791,7 @@ async function addSpecialOrderToCart() {
     const name = nameInput.value.trim();
     const description = descInput ? descInput.value.trim() : '';
     const quantity = parseInt(quantityInput.value || 1);
-    const price = parseFloat(priceInput.value || 0);
+    let price = parseFloat(priceInput.value || 0);
     const leadTime = leadTimeInput ? leadTimeInput.value.trim() : '';
     const boxSizeRaw = boxSizeInput ? parseInt(boxSizeInput.value || 0) : 0;
     const boxSize = Number.isFinite(boxSizeRaw) && boxSizeRaw > 0 ? boxSizeRaw : null;
@@ -4743,6 +4799,33 @@ async function addSpecialOrderToCart() {
     const imageFile = imageInput && imageInput.files && imageInput.files[0] ? imageInput.files[0] : null;
     
     const lang = window.cartManager?.currentLanguage || 'es';
+    
+    // Verificar si el usuario es comercial (no admin y no Claudia Cruz) y forzar precio a 0
+    if (window.cartManager && window.cartManager.supabase) {
+        try {
+            const user = await window.authManager?.getCurrentUser();
+            if (user) {
+                const { data: userRoleData, error: roleError } = await window.cartManager.supabase
+                    .from('user_roles')
+                    .select('"Name", role')
+                    .eq('user_id', user.id)
+                    .single();
+
+                if (!roleError && userRoleData) {
+                    const userRole = userRoleData.role;
+                    const userName = (userRoleData.Name || '').toLowerCase().trim();
+                    
+                    // Si es comercial (no admin) y no es Claudia Cruz, forzar precio a 0
+                    if (userRole === 'comercial' && userName !== 'claudia cruz') {
+                        price = 0;
+                        console.log('🔒 Usuario comercial detectado: precio forzado a 0 en pedido especial');
+                    }
+                }
+            }
+        } catch (error) {
+            console.warn('⚠️ Error al verificar rol para pedido especial:', error);
+        }
+    }
     
     if (!name) {
         const message = lang === 'es' ? 
