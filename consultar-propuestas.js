@@ -5718,29 +5718,98 @@ class ProposalsManager {
         }
 
         try {
-            // Eliminar encomendas anteriores para esta propuesta
-            await this.supabase
-                .from('presupuestos_articulos_encomendados')
-                .delete()
+            // Obtener IDs de artículos seleccionados (filtrar IDs inválidos)
+            const selectedArticleIds = selectedProducts
+                .map(p => p.articulo_id)
+                .filter(id => id && id !== 'null' && id !== 'undefined' && !id.toString().startsWith('temp-'));
+
+            console.log('📦 Actualizando artículos para encomenda en curso:', {
+                proposalId,
+                selectedArticleIds,
+                fornecedorNumbers
+            });
+
+            // Validar IDs (UUIDs)
+            const validIds = selectedArticleIds.filter(id => {
+                const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+                return id && uuidRegex.test(id);
+            });
+
+            if (validIds.length === 0) {
+                console.error('❌ No hay IDs válidos para actualizar');
+                const message = this.currentLanguage === 'es' ? 
+                    'Error: No se encontraron IDs válidos de artículos' : 
+                    this.currentLanguage === 'pt' ?
+                    'Erro: Não foram encontrados IDs válidos de artigos' :
+                    'Error: No valid article IDs found';
+                this.showNotification(message, 'error');
+                return;
+            }
+
+            // Combinar números de encomenda por fornecedor (si hay múltiples, separados por coma)
+            const allNumbers = Object.values(fornecedorNumbers).filter(n => n && n.trim() !== '');
+            const combinedNumbers = allNumbers.length > 0 ? allNumbers.join(', ') : null;
+
+            // Primero, desmarcar todos los artículos de esta propuesta como encomendados
+            const { error: unmarkError } = await this.supabase
+                .from('presupuestos_articulos')
+                .update({
+                    encomendado: false,
+                    fecha_encomenda: null,
+                    numero_encomenda: null
+                })
                 .eq('presupuesto_id', proposalId);
 
-            // Guardar productos encomendados
-            const encomendadosData = selectedProducts.map(product => ({
-                presupuesto_id: proposalId,
-                articulo_id: product.articulo_id,
-                fornecedor: product.fornecedor,
-                quantidade: product.quantidade,
-                numero_encomenda: fornecedorNumbers[product.fornecedor] || null
-            }));
-
-            if (encomendadosData.length > 0) {
-                await this.supabase
-                    .from('presupuestos_articulos_encomendados')
-                    .insert(encomendadosData);
+            if (unmarkError) {
+                console.warn('⚠️ Error al desmarcar artículos anteriores:', unmarkError);
             }
+
+            // Obtener fecha actual para la encomenda
+            const encomendaDate = new Date().toISOString().split('T')[0];
+
+            // Actualizar artículos seleccionados en la tabla presupuestos_articulos
+            const { data: updateData, error: updateError } = await this.supabase
+                .from('presupuestos_articulos')
+                .update({
+                    encomendado: true,
+                    fecha_encomenda: encomendaDate,
+                    numero_encomenda: combinedNumbers
+                })
+                .in('id', validIds)
+                .eq('presupuesto_id', proposalId)
+                .select();
+
+            if (updateError) {
+                console.error('❌ Error al actualizar artículos encomendados:', updateError);
+                console.error('❌ Detalles del error:', {
+                    code: updateError.code,
+                    message: updateError.message,
+                    details: updateError.details,
+                    hint: updateError.hint
+                });
+                const message = this.currentLanguage === 'es' ? 
+                    `Error al actualizar artículos: ${updateError.message}` : 
+                    this.currentLanguage === 'pt' ?
+                    `Erro ao atualizar artigos: ${updateError.message}` :
+                    `Error updating articles: ${updateError.message}`;
+                this.showNotification(message, 'error');
+                return;
+            }
+
+            console.log('✅ Artículos actualizados correctamente:', updateData?.length || 0, 'artículos');
 
             // Actualizar estado de la propuesta
             await this.updateProposalStatus(proposalId, 'encomenda_en_curso');
+
+            // Recargar propuestas para reflejar los cambios
+            await this.loadProposals();
+
+            const message = this.currentLanguage === 'es' ? 
+                'Estado actualizado correctamente' : 
+                this.currentLanguage === 'pt' ?
+                'Estado atualizado com sucesso' :
+                'Status updated successfully';
+            this.showNotification(message, 'success');
 
             // Cerrar modal
             this.closeEncomendaEnCursoModal();
