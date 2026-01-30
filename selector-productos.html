@@ -13,8 +13,8 @@
     <link rel="stylesheet" href="menu-hamburguesa.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <script src="load-config.js"></script>
     <script src="supabase-config-universal.js"></script>
+    <script src="load-config.js"></script>
     <script src="translation-system.js"></script>
     <script src="auth.js"></script>
     <script src="stock-warning.js"></script>
@@ -208,6 +208,15 @@
                     </div>
                     <h3 class="option-title" id="option-stock-title">Cargar Stock</h3>
                     <p class="option-description" id="option-stock-desc">Actualizar stock desde archivo Excel PHC</p>
+                </div>
+
+                <!-- Botón para Gestionar Colores VACAVALIENTE -->
+                <div class="option-card" onclick="openVacavalienteColorsManagerFromSelector()" style="border-color: #8b5cf6;">
+                    <div class="option-icon" style="font-size: 3rem; color: #8b5cf6;">
+                        <i class="fas fa-palette"></i>
+                    </div>
+                    <h3 class="option-title" id="option-vacavaliente-colors-title">Gestionar Colores VACAVALIENTE</h3>
+                    <p class="option-description" id="option-vacavaliente-colors-desc">Gestionar colores y códigos para productos VACAVALIENTE</p>
                 </div>
             </div>
         </div>
@@ -550,9 +559,92 @@
         </div>
     </div>
 
+    <!-- Modal para Gestionar Colores VACAVALIENTE -->
+    <div id="vacavalienteColorsModal" class="modal" style="display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5);" onclick="handleVacavalienteModalOverlayClick(event)">
+        <div class="modal-content" style="background: white; margin: 5% auto; padding: 20px; border-radius: 12px; max-width: 800px; max-height: 90vh; overflow-y: auto;" onclick="event.stopPropagation();">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="color: #1d3557; margin: 0;" id="vacavaliente-colors-modal-title">Gestionar Colores VACAVALIENTE</h2>
+                <button onclick="closeVacavalienteColorsManagerFromSelector()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #1d3557;">&times;</button>
+            </div>
+            
+            <div style="margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
+                <button onclick="showCreateVacavalienteColorFormFromSelector()" style="background: #1d3557; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">
+                    <i class="fas fa-plus"></i> <span id="add-color-btn-text">Agregar Nuevo Color</span>
+                </button>
+                <button onclick="showPantoneImageManager()" style="background: #8b5cf6; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">
+                    <i class="fas fa-image"></i> Gestionar Imagen Pantone
+                </button>
+            </div>
+            
+            <!-- Sección para gestionar imagen genérica del Pantone -->
+            <div id="pantoneImageManagerSection" style="display: none; margin-bottom: 20px; padding: 20px; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb;">
+                <h3 style="margin-top: 0; color: #1d3557; margin-bottom: 15px;">Imagen Genérica del Pantone</h3>
+                <p style="margin: 0 0 15px 0; color: #6b7280; font-size: 0.875rem;">
+                    Esta imagen se mostrará para todos los colores VACAVALIENTE. Solo necesitas subirla una vez.
+                </p>
+                <div style="display: flex; gap: 15px; align-items: flex-start; margin-bottom: 15px;">
+                    <div style="flex: 1;">
+                        <input type="file" id="vacavalientePantoneGenericImage" accept="image/*" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; cursor: pointer;" onchange="handleVacavalienteGenericPantoneImageChange(event)">
+                        <small style="color: #6b7280; margin-top: 5px; display: block;">
+                            Sube la imagen genérica del Pantone (JPG, PNG, máximo 5MB)
+                        </small>
+                    </div>
+                    <div id="vacavalientePantoneGenericImagePreview" style="width: 150px; height: 150px; border: 2px solid #d1d5db; border-radius: 6px; display: flex; align-items: center; justify-content: center; overflow: hidden; background: white;">
+                        <img id="vacavalientePantoneGenericImagePreviewImg" src="" alt="Preview" style="max-width: 100%; max-height: 100%; object-fit: contain; display: none;">
+                        <span id="vacavalientePantoneGenericImagePreviewText" style="color: #6b7280; font-size: 0.875rem; text-align: center; padding: 10px;">Sin imagen</span>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="savePantoneGenericImage()" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">
+                        <i class="fas fa-save"></i> Guardar Imagen
+                    </button>
+                    <button onclick="removePantoneGenericImageFromDB()" id="removePantoneGenericImageBtn" style="display: none; background: #ef4444; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">
+                        <i class="fas fa-trash"></i> Eliminar Imagen
+                    </button>
+                    <button onclick="hidePantoneImageManager()" style="background: #6b7280; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Lista de colores -->
+            <div id="vacavalienteColorsList">
+                <p>Cargando colores...</p>
+            </div>
+
+            <!-- Formulario para crear/editar color -->
+            <div id="vacavalienteColorFormSection" style="display: none;">
+                <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin-top: 20px;">
+                    <h3 id="vacavalienteColorFormTitle" style="margin-top: 0; color: #1d3557;">Nuevo Color</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                        <div>
+                            <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #1d3557;">Nombre del Color</label>
+                            <input type="text" id="vacavalienteColorName" placeholder="Ej. Merlot" maxlength="50" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px;">
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #1d3557;">Código (2 caracteres)</label>
+                            <input type="text" id="vacavalienteColorCode" placeholder="Ej. B7" maxlength="2" pattern="[A-Z0-9]{2}" style="text-transform: uppercase; width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px;">
+                            <small style="color: #6b7280; margin-top: 5px; display: block;">
+                                Código de 2 caracteres que reemplazará los dígitos 5 y 6 de la referencia base
+                            </small>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 10px;">
+                        <button onclick="saveVacavalienteColorFromSelector()" style="background: #1d3557; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">
+                            <i class="fas fa-save"></i> <span id="save-color-btn-text">Guardar Color</span>
+                        </button>
+                        <button onclick="cancelVacavalienteColorEditFromSelector()" style="background: #6b7280; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">
+                            <span id="cancel-color-btn-text">Cancelar</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="load-config.js"></script>
-    <script src="supabase-config-universal.js"></script>
     <script>
         // ============================================
         // DEFINIR FUNCIONES GLOBALES PRIMERO (antes de cualquier otra cosa)
@@ -1770,7 +1862,9 @@
                 categoryDesc: 'Crear o editar categorías que aparecen en la página principal',
                 createProduct: 'Creador/Editor',
                 stockTitle: 'Cargar Stock',
-                stockDesc: 'Actualizar stock desde archivo Excel PHC'
+                stockDesc: 'Actualizar stock desde archivo Excel PHC',
+                vacavalienteColorsTitle: 'Gestionar Colores VACAVALIENTE',
+                vacavalienteColorsDesc: 'Gestionar colores y códigos para productos VACAVALIENTE'
             },
             en: {
                 title: 'Product Creator/Editor',
@@ -1835,6 +1929,12 @@
             const stockDesc = document.getElementById('option-stock-desc');
             if (stockTitle) stockTitle.textContent = t.stockTitle;
             if (stockDesc) stockDesc.textContent = t.stockDesc;
+            
+            // Traducciones del botón de Colores VACAVALIENTE
+            const vacavalienteColorsTitle = document.getElementById('option-vacavaliente-colors-title');
+            const vacavalienteColorsDesc = document.getElementById('option-vacavaliente-colors-desc');
+            if (vacavalienteColorsTitle) vacavalienteColorsTitle.textContent = t.vacavalienteColorsTitle;
+            if (vacavalienteColorsDesc) vacavalienteColorsDesc.textContent = t.vacavalienteColorsDesc;
             
             const createProductText = document.getElementById('create-product-text');
             if (createProductText) {
@@ -2349,10 +2449,1021 @@
         }
     }
 
-    // Cerrar modal al hacer clic fuera
+        // Cerrar modal al hacer clic fuera
     document.getElementById('stockUploadModal')?.addEventListener('click', (e) => {
         if (e.target.id === 'stockUploadModal') closeStockUploadModal();
     });
+
+        // ============================================
+        // GESTIÓN DE COLORES VACAVALIENTE
+        // ============================================
+        
+        let editingVacavalienteColorId = null;
+        let VACAVALIENTE_COLORS = [];
+
+        async function initSupabase() {
+            if (supabaseClient) return supabaseClient;
+            
+            try {
+                if (window.universalSupabase) {
+                    supabaseClient = await window.universalSupabase.getClient();
+                    return supabaseClient;
+                } else {
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                    if (window.universalSupabase) {
+                        supabaseClient = await window.universalSupabase.getClient();
+                        return supabaseClient;
+                    } else {
+                        throw new Error('Supabase no está disponible');
+                    }
+                }
+            } catch (error) {
+                console.error('Error inicializando Supabase:', error);
+                return null;
+            }
+        }
+
+        async function loadVacavalienteColors() {
+            const client = await initSupabase();
+            if (!client) {
+                console.warn('⚠️ Supabase no está inicializado, usando colores por defecto');
+                return;
+            }
+            
+            try {
+                const { data, error } = await client
+                    .from('vacavaliente_colors')
+                    .select('*')
+                    .order('name', { ascending: true });
+                
+                if (error) {
+                    console.error('❌ Error cargando colores VACAVALIENTE:', error);
+                    return;
+                }
+                
+                if (data && data.length > 0) {
+                    VACAVALIENTE_COLORS = data.map(color => ({
+                        id: color.id,
+                        name: color.name,
+                        code: color.code
+                    }));
+                    console.log('✅ Colores VACAVALIENTE cargados desde Supabase:', VACAVALIENTE_COLORS.length);
+                }
+            } catch (error) {
+                console.error('❌ Excepción cargando colores VACAVALIENTE:', error);
+            }
+        }
+
+        window.openVacavalienteColorsManagerFromSelector = async function() {
+            const modal = document.getElementById('vacavalienteColorsModal');
+            if (!modal) {
+                alert('Error: No se encontró el modal');
+                return;
+            }
+            
+            modal.style.display = 'block';
+            modal.style.visibility = 'visible';
+            modal.style.opacity = '1';
+            modal.style.zIndex = '10000';
+            document.body.style.overflow = 'hidden';
+            
+            await loadVacavalienteColorsListFromSelector();
+        };
+
+        window.closeVacavalienteColorsManagerFromSelector = function() {
+            const modal = document.getElementById('vacavalienteColorsModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+            document.body.style.overflow = '';
+            cancelVacavalienteColorEditFromSelector();
+        };
+
+        function handleVacavalienteModalOverlayClick(event) {
+            const modal = document.getElementById('vacavalienteColorsModal');
+            const modalContent = modal?.querySelector('.modal-content');
+            
+            if (modal && modalContent && event.target === modal) {
+                closeVacavalienteColorsManagerFromSelector();
+            }
+        }
+
+        async function loadVacavalienteColorsListFromSelector() {
+            const listContainer = document.getElementById('vacavalienteColorsList');
+            if (!listContainer) return;
+            
+            listContainer.innerHTML = '<p>Cargando colores...</p>';
+            
+            const client = await initSupabase();
+            if (!client) {
+                listContainer.innerHTML = '<p style="color: #ef4444;">Error: Supabase no está inicializado</p>';
+                return;
+            }
+            
+            try {
+                const { data, error } = await client
+                    .from('vacavaliente_colors')
+                    .select('*')
+                    .order('name', { ascending: true });
+                
+                if (error) throw error;
+                
+                if (!data || data.length === 0) {
+                    listContainer.innerHTML = '<p>No hay colores configurados. Agrega el primero usando el botón de arriba.</p>';
+                    return;
+                }
+                
+                // Cargar imagen genérica del Pantone desde Storage (nombre fijo)
+                let pantoneGenericImageUrl = null;
+                try {
+                    const filePath = 'vacavaliente-colors/pantone-generic.png';
+                    const { data: urlData } = client.storage
+                        .from('product-images')
+                        .getPublicUrl(filePath);
+                    
+                    // Verificar si existe intentando cargar la imagen
+                    pantoneGenericImageUrl = urlData.publicUrl;
+                } catch (configError) {
+                    // Si hay error, simplemente no mostrar imagen
+                    console.warn('⚠️ No se pudo obtener URL de imagen Pantone:', configError);
+                }
+                
+                listContainer.innerHTML = data.map(color => `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; background: white; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 10px;">
+                        <div style="flex: 1;">
+                            <div style="display: flex; align-items: center; gap: 15px;">
+                                ${pantoneGenericImageUrl ? 
+                                    `<img src="${pantoneGenericImageUrl}" alt="Pantone" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px; border: 1px solid #e5e7eb;">` :
+                                    `<div style="width: 50px; height: 50px; background: #f3f4f6; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 600; color: #1d3557;">
+                                        ${color.code}
+                                    </div>`
+                                }
+                                <div>
+                                    <h4 style="margin: 0; color: #1d3557; font-weight: 600;">${color.name}</h4>
+                                    <p style="margin: 5px 0 0 0; color: #6b7280; font-size: 0.9rem;">Código: ${color.code}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <button onclick="editVacavalienteColorFromSelector('${color.id}')" style="background: #6b7280; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">
+                                <i class="fas fa-edit"></i> Editar
+                            </button>
+                            <button onclick="deleteVacavalienteColorFromSelector('${color.id}', '${color.name.replace(/'/g, "\\'")}')" style="background: #ef4444; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">
+                                <i class="fas fa-trash"></i> Eliminar
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('❌ Error cargando lista de colores:', error);
+                listContainer.innerHTML = `<p style="color: #ef4444;">Error al cargar colores: ${error.message}</p>`;
+            }
+        }
+
+        // Variable para almacenar la imagen genérica del Pantone
+        let vacavalientePantoneGenericImageFile = null;
+        let vacavalientePantoneGenericImageUrl = null;
+
+        window.showPantoneImageManager = async function() {
+            const section = document.getElementById('pantoneImageManagerSection');
+            if (section) {
+                section.style.display = 'block';
+                section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                
+                // Cargar imagen existente
+                await loadPantoneGenericImage();
+            }
+        };
+
+        window.hidePantoneImageManager = function() {
+            const section = document.getElementById('pantoneImageManagerSection');
+            if (section) {
+                section.style.display = 'none';
+            }
+            vacavalientePantoneGenericImageFile = null;
+        };
+
+        async function loadPantoneGenericImage() {
+            const client = await initSupabase();
+            if (!client) return;
+            
+            try {
+                // Usar nombre de archivo fijo
+                const filePath = 'vacavaliente-colors/pantone-generic.png';
+                
+                // Crear cliente específico para Storage
+                let storageClient;
+                try {
+                    if (typeof supabase !== 'undefined' && window.SUPABASE_CONFIG) {
+                        storageClient = supabase.createClient(window.SUPABASE_CONFIG.url, window.SUPABASE_CONFIG.anonKey, {
+                            auth: {
+                                persistSession: true,
+                                autoRefreshToken: true,
+                                detectSessionInUrl: true
+                            }
+                        });
+                        if (client && client.auth) {
+                            const { data: { session } } = await client.auth.getSession();
+                            if (session) {
+                                await storageClient.auth.setSession(session);
+                            }
+                        }
+                    } else {
+                        storageClient = client;
+                    }
+                } catch (error) {
+                    storageClient = client;
+                }
+                
+                // Obtener URL pública del archivo fijo
+                const { data: urlData } = storageClient.storage
+                    .from('product-images')
+                    .getPublicUrl(filePath);
+                
+                // Verificar si el archivo existe intentando cargarlo
+                const img = new Image();
+                img.onload = function() {
+                    vacavalientePantoneGenericImageUrl = urlData.publicUrl;
+                    
+                    const preview = document.getElementById('vacavalientePantoneGenericImagePreview');
+                    const previewImg = document.getElementById('vacavalientePantoneGenericImagePreviewImg');
+                    const previewText = document.getElementById('vacavalientePantoneGenericImagePreviewText');
+                    const removeBtn = document.getElementById('removePantoneGenericImageBtn');
+                    
+                    if (preview) preview.style.display = 'flex';
+                    if (previewImg) {
+                        previewImg.src = urlData.publicUrl;
+                        previewImg.style.display = 'block';
+                    }
+                    if (previewText) previewText.style.display = 'none';
+                    if (removeBtn) removeBtn.style.display = 'block';
+                };
+                img.onerror = function() {
+                    // El archivo no existe, no mostrar imagen
+                    const preview = document.getElementById('vacavalientePantoneGenericImagePreview');
+                    const previewImg = document.getElementById('vacavalientePantoneGenericImagePreviewImg');
+                    const previewText = document.getElementById('vacavalientePantoneGenericImagePreviewText');
+                    const removeBtn = document.getElementById('removePantoneGenericImageBtn');
+                    
+                    if (preview) preview.style.display = 'flex';
+                    if (previewImg) {
+                        previewImg.src = '';
+                        previewImg.style.display = 'none';
+                    }
+                    if (previewText) previewText.style.display = 'block';
+                    if (removeBtn) removeBtn.style.display = 'none';
+                };
+                img.src = urlData.publicUrl;
+            } catch (error) {
+                console.error('❌ Error cargando imagen Pantone:', error);
+            }
+        }
+
+        window.handleVacavalienteGenericPantoneImageChange = function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            // Validar tipo de archivo
+            if (!file.type.startsWith('image/')) {
+                alert('El archivo debe ser una imagen');
+                event.target.value = '';
+                return;
+            }
+            
+            // Validar tamaño (máximo 5MB)
+            const maxSize = 5 * 1024 * 1024; // 5MB
+            if (file.size > maxSize) {
+                alert('La imagen es demasiado grande. Máximo 5MB');
+                event.target.value = '';
+                return;
+            }
+            
+            vacavalientePantoneGenericImageFile = file;
+            
+            // Mostrar preview
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const preview = document.getElementById('vacavalientePantoneGenericImagePreview');
+                const previewImg = document.getElementById('vacavalientePantoneGenericImagePreviewImg');
+                const previewText = document.getElementById('vacavalientePantoneGenericImagePreviewText');
+                const removeBtn = document.getElementById('removePantoneGenericImageBtn');
+                
+                if (preview) preview.style.display = 'flex';
+                if (previewImg) {
+                    previewImg.src = e.target.result;
+                    previewImg.style.display = 'block';
+                }
+                if (previewText) previewText.style.display = 'none';
+                if (removeBtn) removeBtn.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        };
+
+        window.removePantoneGenericImage = function() {
+            vacavalientePantoneGenericImageFile = null;
+            vacavalientePantoneGenericImageUrl = null;
+            
+            const fileInput = document.getElementById('vacavalientePantoneGenericImage');
+            const preview = document.getElementById('vacavalientePantoneGenericImagePreview');
+            const previewImg = document.getElementById('vacavalientePantoneGenericImagePreviewImg');
+            const previewText = document.getElementById('vacavalientePantoneGenericImagePreviewText');
+            const removeBtn = document.getElementById('removePantoneGenericImageBtn');
+            
+            if (fileInput) fileInput.value = '';
+            if (preview) preview.style.display = 'flex';
+            if (previewImg) {
+                previewImg.src = '';
+                previewImg.style.display = 'none';
+            }
+            if (previewText) previewText.style.display = 'block';
+            if (removeBtn) removeBtn.style.display = 'none';
+        };
+
+        async function uploadPantoneGenericImageToSupabase(file) {
+            const client = await initSupabase();
+            if (!client) {
+                throw new Error('Supabase no está inicializado');
+            }
+            
+            // Validar tipo de archivo
+            if (!file.type.startsWith('image/')) {
+                throw new Error('El archivo debe ser una imagen');
+            }
+            
+            // Validar tamaño (máximo 5MB)
+            const maxSize = 5 * 1024 * 1024; // 5MB
+            if (file.size > maxSize) {
+                throw new Error('La imagen es demasiado grande. Máximo 5MB');
+            }
+            
+            // Crear un cliente específico para Storage sin headers globales
+            let storageClient;
+            try {
+                if (typeof supabase !== 'undefined' && window.SUPABASE_CONFIG) {
+                    // Crear un cliente nuevo sin headers globales para Storage
+                    storageClient = supabase.createClient(window.SUPABASE_CONFIG.url, window.SUPABASE_CONFIG.anonKey, {
+                        auth: {
+                            persistSession: true,
+                            autoRefreshToken: true,
+                            detectSessionInUrl: true
+                        }
+                        // NO incluir 'global.headers' para que Supabase maneje automáticamente el Content-Type
+                    });
+                    // Copiar la sesión del cliente principal si existe
+                    if (client && client.auth) {
+                        const { data: { session } } = await client.auth.getSession();
+                        if (session) {
+                            await storageClient.auth.setSession(session);
+                        }
+                    }
+                } else {
+                    storageClient = client;
+                }
+            } catch (error) {
+                console.warn('⚠️ No se pudo crear cliente específico para Storage, usando cliente compartido:', error);
+                storageClient = client;
+            }
+            
+            // Usar nombre de archivo fijo (siempre el mismo, se sobrescribe)
+            const fileExt = file.name.split('.').pop().toLowerCase();
+            // Convertir a PNG para mantener consistencia, o mantener la extensión original
+            const fileName = `pantone-generic.${fileExt}`;
+            const filePath = `vacavaliente-colors/${fileName}`;
+            
+            try {
+                // No necesitamos eliminar la imagen anterior porque usamos upsert: true
+                
+                console.log('📤 Subiendo imagen Pantone:', {
+                    name: file.name,
+                    type: file.type,
+                    size: file.size,
+                    path: filePath
+                });
+                
+                // Subir nueva imagen a Supabase Storage
+                const { data: uploadData, error: uploadError } = await storageClient.storage
+                    .from('product-images')
+                    .upload(filePath, file, {
+                        cacheControl: '3600',
+                        upsert: true
+                    });
+                
+                if (uploadError) {
+                    console.error('❌ Error de upload:', uploadError);
+                    throw uploadError;
+                }
+                
+                // Obtener URL pública de la imagen
+                const { data: urlData } = storageClient.storage
+                    .from('product-images')
+                    .getPublicUrl(filePath);
+                
+                console.log('✅ Imagen subida exitosamente:', urlData.publicUrl);
+                return urlData.publicUrl;
+            } catch (error) {
+                console.error('❌ Error subiendo imagen:', error);
+                throw new Error('Error al subir la imagen: ' + error.message);
+            }
+        }
+
+        window.savePantoneGenericImage = async function() {
+            const client = await initSupabase();
+            if (!client) {
+                alert('Error: Supabase no está inicializado');
+                return;
+            }
+            
+            let imageUrl = vacavalientePantoneGenericImageUrl;
+            
+            // Si hay una nueva imagen, subirla
+            if (vacavalientePantoneGenericImageFile) {
+                try {
+                    imageUrl = await uploadPantoneGenericImageToSupabase(vacavalientePantoneGenericImageFile);
+                    console.log('✅ Imagen genérica del Pantone subida exitosamente:', imageUrl);
+                } catch (uploadError) {
+                    alert('Error al subir la imagen: ' + uploadError.message);
+                    return;
+                }
+            }
+            
+            try {
+                // No necesitamos guardar en base de datos, la imagen ya está en Storage
+                vacavalientePantoneGenericImageUrl = imageUrl;
+                vacavalientePantoneGenericImageFile = null;
+                
+                alert('Imagen del Pantone guardada exitosamente');
+                
+                // Recargar la lista de colores para mostrar la nueva imagen
+                await loadVacavalienteColorsListFromSelector();
+                
+                // Recargar la imagen en el preview
+                await loadPantoneGenericImage();
+                
+                // Limpiar el input
+                const fileInput = document.getElementById('vacavalientePantoneGenericImage');
+                if (fileInput) fileInput.value = '';
+                
+            } catch (error) {
+                console.error('❌ Error guardando imagen Pantone:', error);
+                alert('Error al guardar la imagen: ' + error.message);
+            }
+        };
+
+        window.removePantoneGenericImageFromDB = async function() {
+            if (!confirm('¿Estás seguro de que deseas eliminar la imagen genérica del Pantone?')) {
+                return;
+            }
+            
+            const client = await initSupabase();
+            if (!client) {
+                alert('Error: Supabase no está inicializado');
+                return;
+            }
+            
+            try {
+                // Crear cliente específico para Storage
+                let storageClient;
+                try {
+                    if (typeof supabase !== 'undefined' && window.SUPABASE_CONFIG) {
+                        storageClient = supabase.createClient(window.SUPABASE_CONFIG.url, window.SUPABASE_CONFIG.anonKey, {
+                            auth: {
+                                persistSession: true,
+                                autoRefreshToken: true,
+                                detectSessionInUrl: true
+                            }
+                        });
+                        if (client && client.auth) {
+                            const { data: { session } } = await client.auth.getSession();
+                            if (session) {
+                                await storageClient.auth.setSession(session);
+                            }
+                        }
+                    } else {
+                        storageClient = client;
+                    }
+                } catch (error) {
+                    storageClient = client;
+                }
+                
+                // Eliminar imagen del storage (usando el nombre fijo)
+                const filePath = 'vacavaliente-colors/pantone-generic.png';
+                
+                try {
+                    await storageClient.storage
+                        .from('product-images')
+                        .remove([filePath]);
+                } catch (deleteError) {
+                    console.warn('⚠️ No se pudo eliminar la imagen del storage:', deleteError);
+                    // Continuar aunque falle la eliminación
+                }
+                
+                vacavalientePantoneGenericImageUrl = null;
+                vacavalientePantoneGenericImageFile = null;
+                
+                alert('Imagen del Pantone eliminada exitosamente');
+                
+                // Recargar
+                await loadPantoneGenericImage();
+                await loadVacavalienteColorsListFromSelector();
+                
+            } catch (error) {
+                console.error('❌ Error eliminando imagen Pantone:', error);
+                alert('Error al eliminar la imagen: ' + error.message);
+            }
+        };
+
+        window.showCreateVacavalienteColorFormFromSelector = function() {
+            editingVacavalienteColorId = null;
+            
+            const formSection = document.getElementById('vacavalienteColorFormSection');
+            const formTitle = document.getElementById('vacavalienteColorFormTitle');
+            const nameInput = document.getElementById('vacavalienteColorName');
+            const codeInput = document.getElementById('vacavalienteColorCode');
+            
+            if (formSection) formSection.style.display = 'block';
+            if (formTitle) formTitle.textContent = 'Nuevo Color';
+            if (nameInput) nameInput.value = '';
+            if (codeInput) codeInput.value = '';
+            
+            formSection?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        };
+
+        window.editVacavalienteColorFromSelector = async function(colorId) {
+            const client = await initSupabase();
+            if (!client) {
+                alert('Error: Supabase no está inicializado');
+                return;
+            }
+            
+            try {
+                const { data, error } = await client
+                    .from('vacavaliente_colors')
+                    .select('*')
+                    .eq('id', colorId)
+                    .single();
+                
+                if (error) throw error;
+                
+                editingVacavalienteColorId = colorId;
+                
+                const formSection = document.getElementById('vacavalienteColorFormSection');
+                const formTitle = document.getElementById('vacavalienteColorFormTitle');
+                const nameInput = document.getElementById('vacavalienteColorName');
+                const codeInput = document.getElementById('vacavalienteColorCode');
+                
+                if (formSection) formSection.style.display = 'block';
+                if (formTitle) formTitle.textContent = `Editar Color: ${data.name}`;
+                if (nameInput) nameInput.value = data.name;
+                if (codeInput) codeInput.value = data.code;
+                
+                formSection?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } catch (error) {
+                console.error('❌ Error cargando color para editar:', error);
+                alert('Error al cargar el color: ' + error.message);
+            }
+        };
+
+        /**
+         * Obtener referencia base de un producto VACAVALIENTE desde sus variantes
+         * Busca el código de color en VACAVALIENTE_COLORS y lo reemplaza por "00"
+         */
+        function getBaseReferenceFromVariantes(variantes) {
+            if (!variantes || !Array.isArray(variantes) || variantes.length === 0) {
+                console.log('   ⚠️ No hay variantes o el array está vacío');
+                return null;
+            }
+            
+            console.log(`   🔍 Analizando ${variantes.length} variante(s) para obtener referencia base`);
+            
+            // Tomar la primera variante con referencia válida
+            const firstVariant = variantes.find(v => v && v.referencia && v.referencia.length >= 6);
+            if (!firstVariant) {
+                console.log('   ⚠️ No se encontró ninguna variante con referencia válida (mínimo 6 caracteres)');
+                return null;
+            }
+            
+            const ref = firstVariant.referencia;
+            console.log(`   📋 Referencia encontrada: ${ref}, color: ${firstVariant.color || 'sin color'}`);
+            
+            // Si tiene color, buscar el código del color y reemplazarlo
+            if (firstVariant.color && VACAVALIENTE_COLORS && VACAVALIENTE_COLORS.length > 0) {
+                const colorObj = VACAVALIENTE_COLORS.find(c => c.name === firstVariant.color);
+                if (colorObj && colorObj.code && colorObj.code.length === 2) {
+                    console.log(`   🎨 Color encontrado en VACAVALIENTE_COLORS: ${colorObj.name} (código: ${colorObj.code})`);
+                    // Reemplazar el código del color por "00" para obtener la referencia base
+                    const refArray = ref.split('');
+                    // Verificar que los dígitos 5 y 6 coincidan con el código del color
+                    if (refArray.length >= 6 && refArray[4] === colorObj.code[0] && refArray[5] === colorObj.code[1]) {
+                        refArray[4] = '0';
+                        refArray[5] = '0';
+                        const baseRef = refArray.join('');
+                        console.log(`   ✅ Referencia base obtenida (reemplazando ${colorObj.code} por 00): ${baseRef}`);
+                        return baseRef;
+                    } else {
+                        console.log(`   ⚠️ Los dígitos 5 y 6 (${refArray[4]}${refArray[5]}) no coinciden con el código del color (${colorObj.code})`);
+                    }
+                } else {
+                    console.log(`   ⚠️ Color "${firstVariant.color}" no encontrado en VACAVALIENTE_COLORS`);
+                }
+            }
+            
+            // Si no se puede determinar por color, intentar con "00" por defecto
+            const refArray = ref.split('');
+            if (refArray.length >= 6) {
+                refArray[4] = '0';
+                refArray[5] = '0';
+                const baseRef = refArray.join('');
+                console.log(`   ✅ Referencia base obtenida (reemplazando dígitos 5 y 6 por 00): ${baseRef}`);
+                return baseRef;
+            }
+            
+            console.log('   ❌ No se pudo obtener referencia base: la referencia es muy corta');
+            return null;
+        }
+
+        /**
+         * Generar referencia VACAVALIENTE basada en referencia base y código de color
+         */
+        function generateVacavalienteReference(baseRef, colorCode) {
+            if (!baseRef || !colorCode || baseRef.length < 6) {
+                return baseRef;
+            }
+            // Reemplazar los dígitos 5 y 6 (índices 4 y 5) con el código del color
+            const refArray = baseRef.split('');
+            refArray[4] = colorCode[0] || refArray[4];
+            refArray[5] = colorCode[1] || refArray[5];
+            return refArray.join('');
+        }
+
+        /**
+         * Sincronizar productos VACAVALIENTE cuando se agrega un color nuevo
+         */
+        async function syncVacavalienteProductsOnColorAdd(newColor) {
+            const client = await initSupabase();
+            if (!client) {
+                console.warn('⚠️ No se puede sincronizar productos: Supabase no inicializado');
+                return;
+            }
+            
+            // Asegurar que VACAVALIENTE_COLORS esté cargado
+            await loadVacavalienteColors();
+            
+            try {
+                console.log('🔄 Sincronizando productos VACAVALIENTE con nuevo color:', newColor);
+                
+                // Obtener todos los productos VACAVALIENTE
+                // La columna en la base de datos es 'brand', no 'marca'
+                let products = null;
+                let productsError = null;
+                
+                // Primera intento: buscar por brand exacto (mayúsculas)
+                const { data: data1, error: error1 } = await client
+                    .from('products')
+                    .select('id, variantes_referencias, brand, nombre, phc_ref')
+                    .eq('brand', 'VACAVALIENTE');
+                
+                if (error1 || !data1 || data1.length === 0) {
+                    console.warn('⚠️ No se encontraron productos con brand=VACAVALIENTE, intentando con ilike:', error1);
+                    // Segunda intento: buscar con ilike (case insensitive)
+                    const { data: data2, error: error2 } = await client
+                        .from('products')
+                        .select('id, variantes_referencias, brand, nombre, phc_ref')
+                        .ilike('brand', '%VACAVALIENTE%');
+                    
+                    if (error2) {
+                        console.error('❌ Error obteniendo productos VACAVALIENTE:', error2);
+                        productsError = error2;
+                    } else {
+                        products = data2;
+                    }
+                } else {
+                    products = data1;
+                }
+                
+                if (productsError) {
+                    console.error('❌ Error obteniendo productos VACAVALIENTE:', productsError);
+                    return;
+                }
+                
+                console.log(`📦 Productos VACAVALIENTE encontrados: ${products ? products.length : 0}`);
+                
+                if (!products || products.length === 0) {
+                    console.log('ℹ️ No hay productos VACAVALIENTE para sincronizar');
+                    return;
+                }
+                
+                let updatedCount = 0;
+                let skippedCount = 0;
+                let errorCount = 0;
+                
+                for (const product of products) {
+                    try {
+                        console.log(`🔍 Procesando producto ${product.id} (${product.nombre || 'sin nombre'})`);
+                        const variantes = product.variantes_referencias || [];
+                        console.log(`   - Variantes existentes: ${variantes.length}`);
+                        console.log(`   - phc_ref: ${product.phc_ref || 'no disponible'}`);
+                        
+                        // Verificar si ya existe una variante con este color
+                        const colorExists = variantes.some(v => v && v.color === newColor.name);
+                        if (colorExists) {
+                            console.log(`   ⏭️ Ya tiene variante para color ${newColor.name}`);
+                            skippedCount++;
+                            continue;
+                        }
+                        
+                        let baseRef = getBaseReferenceFromVariantes(variantes);
+                        
+                        // Si no se pudo obtener de las variantes, intentar usar phc_ref si tiene formato VACAVALIENTE
+                        if (!baseRef && product.phc_ref && product.phc_ref.length >= 6) {
+                            console.log(`   🔄 Intentando usar phc_ref como referencia base: ${product.phc_ref}`);
+                            const refArray = product.phc_ref.split('');
+                            refArray[4] = '0';
+                            refArray[5] = '0';
+                            baseRef = refArray.join('');
+                            console.log(`   ✅ Referencia base obtenida de phc_ref: ${baseRef}`);
+                        }
+                        
+                        console.log(`   - Referencia base final: ${baseRef || 'no disponible'}`);
+                        
+                        if (!baseRef) {
+                            console.log(`   ⏭️ No tiene referencia base válida, saltando`);
+                            skippedCount++;
+                            continue;
+                        }
+                        
+                        // Generar nueva referencia para este color
+                        const newReference = generateVacavalienteReference(baseRef, newColor.code);
+                        console.log(`   - Nueva referencia generada: ${newReference}`);
+                        
+                        // Agregar nueva variante
+                        const newVariante = {
+                            referencia: newReference,
+                            color: newColor.name,
+                            descripcion: null
+                        };
+                        
+                        const updatedVariantes = [...variantes, newVariante];
+                        console.log(`   - Total de variantes después de agregar: ${updatedVariantes.length}`);
+                        
+                        // Actualizar producto
+                        const { error: updateError } = await client
+                            .from('products')
+                            .update({ variantes_referencias: updatedVariantes })
+                            .eq('id', product.id);
+                        
+                        if (updateError) {
+                            console.error(`   ❌ Error actualizando producto ${product.id}:`, updateError);
+                            errorCount++;
+                        } else {
+                            updatedCount++;
+                            console.log(`   ✅ Producto actualizado con nueva variante para ${newColor.name}`);
+                        }
+                    } catch (productError) {
+                        console.error(`   ❌ Error procesando producto ${product.id}:`, productError);
+                        errorCount++;
+                    }
+                }
+                
+                console.log(`✅ Sincronización completada: ${updatedCount} productos actualizados, ${skippedCount} omitidos, ${errorCount} errores`);
+                
+                if (updatedCount > 0) {
+                    alert(`Sincronización completada: ${updatedCount} producto(s) VACAVALIENTE actualizado(s) con el nuevo color "${newColor.name}".`);
+                } else if (skippedCount > 0) {
+                    alert(`No se encontraron productos VACAVALIENTE que necesiten actualización. ${skippedCount} producto(s) ya tienen este color o no tienen referencia base válida.`);
+                }
+            } catch (error) {
+                console.error('❌ Error en sincronización de productos:', error);
+                alert('Error al sincronizar productos: ' + error.message);
+            }
+        }
+
+        /**
+         * Sincronizar productos VACAVALIENTE cuando se elimina un color
+         */
+        async function syncVacavalienteProductsOnColorDelete(deletedColor) {
+            const client = await initSupabase();
+            if (!client) {
+                console.warn('⚠️ No se puede sincronizar productos: Supabase no inicializado');
+                return;
+            }
+            
+            // Asegurar que VACAVALIENTE_COLORS esté cargado
+            await loadVacavalienteColors();
+            
+            try {
+                console.log('🔄 Sincronizando productos VACAVALIENTE eliminando color:', deletedColor);
+                
+                // Obtener todos los productos VACAVALIENTE
+                // La columna en la base de datos es 'brand', no 'marca'
+                let products = null;
+                let productsError = null;
+                
+                // Buscar por brand exacto primero
+                const { data: data1, error: error1 } = await client
+                    .from('products')
+                    .select('id, variantes_referencias, brand, nombre')
+                    .eq('brand', 'VACAVALIENTE');
+                
+                if (error1 || !data1 || data1.length === 0) {
+                    // Si no encuentra, intentar con ilike (case insensitive)
+                    const { data: data2, error: error2 } = await client
+                        .from('products')
+                        .select('id, variantes_referencias, brand, nombre')
+                        .ilike('brand', '%VACAVALIENTE%');
+                    
+                    if (error2) {
+                        console.error('❌ Error obteniendo productos VACAVALIENTE:', error2);
+                        productsError = error2;
+                    } else {
+                        products = data2;
+                    }
+                } else {
+                    products = data1;
+                }
+                
+                if (productsError) {
+                    console.error('❌ Error obteniendo productos VACAVALIENTE:', productsError);
+                    return;
+                }
+                
+                if (!products || products.length === 0) {
+                    console.log('ℹ️ No hay productos VACAVALIENTE para sincronizar');
+                    return;
+                }
+                
+                let updatedCount = 0;
+                
+                for (const product of products) {
+                    try {
+                        const variantes = product.variantes_referencias || [];
+                        
+                        // Filtrar variantes que coincidan con el color eliminado
+                        const updatedVariantes = variantes.filter(v => v.color !== deletedColor.name);
+                        
+                        // Solo actualizar si se eliminó alguna variante
+                        if (updatedVariantes.length < variantes.length) {
+                            const { error: updateError } = await client
+                                .from('products')
+                                .update({ variantes_referencias: updatedVariantes })
+                                .eq('id', product.id);
+                            
+                            if (updateError) {
+                                console.error(`❌ Error actualizando producto ${product.id}:`, updateError);
+                            } else {
+                                updatedCount++;
+                                console.log(`✅ Producto ${product.id} actualizado: variante de ${deletedColor.name} eliminada`);
+                            }
+                        }
+                    } catch (productError) {
+                        console.error(`❌ Error procesando producto ${product.id}:`, productError);
+                    }
+                }
+                
+                console.log(`✅ Sincronización completada: ${updatedCount} productos actualizados`);
+            } catch (error) {
+                console.error('❌ Error en sincronización de productos:', error);
+            }
+        }
+
+        window.saveVacavalienteColorFromSelector = async function() {
+            const client = await initSupabase();
+            if (!client) {
+                alert('Error: Supabase no está inicializado');
+                return;
+            }
+            
+            const nameInput = document.getElementById('vacavalienteColorName');
+            const codeInput = document.getElementById('vacavalienteColorCode');
+            
+            if (!nameInput || !codeInput) {
+                alert('Error: Campos no encontrados');
+                return;
+            }
+            
+            const name = nameInput.value.trim();
+            const code = codeInput.value.trim().toUpperCase();
+            
+            if (!name) {
+                alert('Por favor, ingresa un nombre para el color');
+                return;
+            }
+            
+            if (!code || code.length !== 2) {
+                alert('El código debe tener exactamente 2 caracteres');
+                return;
+            }
+            
+            if (!/^[A-Z0-9]{2}$/.test(code)) {
+                alert('El código solo puede contener letras mayúsculas y números');
+                return;
+            }
+            
+            try {
+                const colorData = { 
+                    name, 
+                    code
+                };
+                
+                let isNewColor = false;
+                
+                if (editingVacavalienteColorId) {
+                    const { error } = await client
+                        .from('vacavaliente_colors')
+                        .update(colorData)
+                        .eq('id', editingVacavalienteColorId);
+                    
+                    if (error) throw error;
+                    alert('Color actualizado exitosamente');
+                } else {
+                    const { error } = await client
+                        .from('vacavaliente_colors')
+                        .insert(colorData);
+                    
+                    if (error) throw error;
+                    isNewColor = true;
+                    alert('Color creado exitosamente');
+                }
+                
+                await loadVacavalienteColors();
+                await loadVacavalienteColorsListFromSelector();
+                
+                // Si es un color nuevo, sincronizar con productos existentes
+                if (isNewColor) {
+                    // Asegurar que VACAVALIENTE_COLORS esté actualizado
+                    await loadVacavalienteColors();
+                    console.log('🔄 Sincronizando productos VACAVALIENTE con nuevo color...');
+                    await syncVacavalienteProductsOnColorAdd({ name, code });
+                }
+                
+                cancelVacavalienteColorEditFromSelector();
+                
+            } catch (error) {
+                console.error('❌ Error guardando color:', error);
+                if (error.code === '23505') {
+                    alert('Ya existe un color con ese código o nombre');
+                } else {
+                    alert('Error al guardar el color: ' + error.message);
+                }
+            }
+        };
+
+        window.deleteVacavalienteColorFromSelector = async function(colorId, colorName) {
+            if (!confirm(`¿Estás seguro de que deseas eliminar el color "${colorName}"?\n\nEsto eliminará automáticamente las variantes de este color en todos los productos VACAVALIENTE existentes.`)) {
+                return;
+            }
+            
+            const client = await initSupabase();
+            if (!client) {
+                alert('Error: Supabase no está inicializado');
+                return;
+            }
+            
+            try {
+                // Obtener información del color antes de eliminarlo para la sincronización
+                const { data: colorData, error: fetchError } = await client
+                    .from('vacavaliente_colors')
+                    .select('name, code')
+                    .eq('id', colorId)
+                    .single();
+                
+                if (fetchError) {
+                    throw new Error('No se pudo obtener información del color: ' + fetchError.message);
+                }
+                
+                // Eliminar el color de la base de datos
+                const { error } = await client
+                    .from('vacavaliente_colors')
+                    .delete()
+                    .eq('id', colorId);
+                
+                if (error) throw error;
+                
+                // Sincronizar productos VACAVALIENTE eliminando variantes de este color
+                if (colorData) {
+                    console.log('🔄 Sincronizando productos VACAVALIENTE eliminando color...');
+                    await syncVacavalienteProductsOnColorDelete(colorData);
+                }
+                
+                alert('Color eliminado exitosamente. Las variantes de este color han sido eliminadas de todos los productos VACAVALIENTE.');
+                await loadVacavalienteColors();
+                await loadVacavalienteColorsListFromSelector();
+                
+            } catch (error) {
+                console.error('❌ Error eliminando color:', error);
+                alert('Error al eliminar el color: ' + error.message);
+            }
+        };
+
+        window.cancelVacavalienteColorEditFromSelector = function() {
+            editingVacavalienteColorId = null;
+            const formSection = document.getElementById('vacavalienteColorFormSection');
+            if (formSection) {
+                formSection.style.display = 'none';
+            }
+        };
+
+        // Cargar colores al iniciar
+        loadVacavalienteColors();
     </script>
 </body>
 </html>

@@ -656,6 +656,7 @@ class CartManager {
                     selectedReferenceVariant: (articulo.variante_referencia !== null && articulo.variante_referencia !== undefined) 
                         ? parseInt(articulo.variante_referencia) 
                         : null, // Cargar color seleccionado desde la propuesta
+                    colorSeleccionadoGuardado: articulo.color_seleccionado || null, // Color guardado en la BD (puede no existir en variantes)
                     observations: articulo.observaciones || '',
                     box_size: product.box_size || null,
                     phc_ref: product.phc_ref || null,
@@ -6391,6 +6392,10 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
                     }
                 }
 
+                // Si hay color_seleccionado guardado, usarlo directamente (incluso si ya no existe en las variantes)
+                // Esto permite mantener el color aunque se haya eliminado de las variantes del producto
+                let colorSeleccionadoGuardado = articulo.color_seleccionado || null;
+
                 cartItems.push({
                     id: product.id,
                     type: 'product',
@@ -6431,7 +6436,10 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
                     })(),
                     selectedReferenceVariant: selectedReferenceVariant, // Color seleccionado
                     variantes_referencias: variantesReferencias, // Variantes de referencia del producto
-                    logoUrl: articulo.logo_url || null
+                    colorSeleccionadoGuardado: colorSeleccionadoGuardado, // Color guardado en la BD (puede no existir en variantes)
+                    logoUrl: articulo.logo_url || null,
+                    marca: product.marca || product.brand || product.marcaEs || '',
+                    brand: product.brand || product.marca || product.marcaEs || ''
                 });
             } else {
                 // Si no se encuentra el producto en allProducts, intentar buscarlo en la base de datos
@@ -7094,19 +7102,48 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     let commercialPhone = '';
     if (commercialName && window.cartManager && window.cartManager.supabase) {
         try {
+            console.log('🔍 Buscando datos del comercial:', commercialName);
+            // Usar maybeSingle() en lugar de single() para evitar errores si no se encuentra
             const { data: commercialData, error: commercialError } = await window.cartManager.supabase
                 .from('user_roles')
                 .select('Email, Contacto')
                 .eq('Name', commercialName)
-                .single();
+                .maybeSingle();
+            
+            console.log('📧 Datos del comercial obtenidos:', {
+                commercialName: commercialName,
+                commercialData: commercialData,
+                commercialError: commercialError,
+                hasEmail: !!commercialData?.Email,
+                hasPhone: !!commercialData?.Contacto,
+                emailValue: commercialData?.Email,
+                phoneValue: commercialData?.Contacto
+            });
             
             if (!commercialError && commercialData) {
                 commercialEmail = commercialData.Email || '';
                 commercialPhone = commercialData.Contacto || '';
+                console.log('✅ Email y teléfono del comercial asignados:', {
+                    email: commercialEmail,
+                    phone: commercialPhone,
+                    emailLength: commercialEmail.length,
+                    phoneLength: commercialPhone.length
+                });
+            } else {
+                console.warn('⚠️ No se encontraron datos del comercial o hubo un error:', {
+                    error: commercialError,
+                    data: commercialData
+                });
             }
         } catch (error) {
-            console.warn('⚠️ Error al obtener datos del comercial:', error);
+            console.error('❌ Error al obtener datos del comercial:', error);
         }
+    } else {
+        console.warn('⚠️ No se puede obtener datos del comercial:', {
+            hasCommercialName: !!commercialName,
+            hasCartManager: !!window.cartManager,
+            hasSupabase: !!(window.cartManager && window.cartManager.supabase)
+        });
     }
     
     // Formatear fecha según idioma
@@ -7266,6 +7303,14 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             commercialText += '\n' + contactInfo.join('\n'); // Separar en líneas distintas
         }
     }
+    
+    console.log('📝 Texto del comercial preparado para PDF:', {
+        commercialName: commercialName,
+        commercialEmail: commercialEmail,
+        commercialPhone: commercialPhone,
+        commercialText: commercialText,
+        textLength: commercialText.length
+    });
     
     // Calcular altura necesaria para cada columna
     let leftColumnHeight = 0;
@@ -7474,7 +7519,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         const padding = 2;
         const availableWidth = width - (padding * 2);
         const fontSize = 7;
-        const lineHeight = fontSize * 0.5; // Espaciado razonable entre líneas
+        const lineHeight = fontSize * 0.6; // Espaciado aumentado para evitar que se corte el texto
         
         // Construir el texto completo con marcadores para las partes en negrita
         let fullText = (baseDescription || '').trim();
@@ -7604,27 +7649,31 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         });
         
         // Calcular altura total y posición inicial
-        const totalTextHeight = allLines.length * lineHeight;
+        // Usar un lineHeight más generoso para evitar que se corte el texto
+        const actualLineHeight = fontSize * 0.6; // Aumentar ligeramente el lineHeight
+        const totalTextHeight = allLines.length * actualLineHeight;
         // Asegurar que el texto no se salga del cuadro
         const maxY = y + height - padding;
         const minY = y + padding;
-        let startY = y + (height - totalTextHeight) / 2 + lineHeight;
+        let startY = y + (height - totalTextHeight) / 2 + actualLineHeight;
         
         // Ajustar si el texto se sale por arriba o por abajo
         if (startY < minY) {
-            startY = minY + lineHeight;
+            startY = minY + actualLineHeight;
         }
-        const endY = startY + (allLines.length - 1) * lineHeight;
+        const endY = startY + (allLines.length - 1) * actualLineHeight;
         if (endY > maxY) {
-            startY = maxY - (allLines.length - 1) * lineHeight;
+            // Si no cabe, empezar desde arriba y permitir que se extienda
+            startY = minY + actualLineHeight;
         }
         
         // Dibujar cada línea
         doc.setFontSize(fontSize);
         allLines.forEach((line, index) => {
-            // Verificar que la línea esté dentro del cuadro
-            const lineY = startY + (index * lineHeight);
-            if (lineY >= minY && lineY <= maxY) {
+            // Usar el mismo actualLineHeight para el espaciado
+            const lineY = startY + (index * actualLineHeight);
+            // Verificar que la línea esté dentro del cuadro (con un margen más generoso)
+            if (lineY >= minY - 1 && lineY <= maxY + 1) {
                 doc.setFont('helvetica', line.bold ? 'bold' : 'normal');
                 const textX = x + (width / 2);
                 // Limpiar el texto de la línea antes de dibujarlo para evitar espacios múltiples
@@ -7827,7 +7876,17 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             
             console.log('🔍 Variantes de referencia encontradas:', referenceVariants);
             
-            if (referenceVariants && Array.isArray(referenceVariants) && referenceVariants.length > 0) {
+            // Priorizar el color guardado en la BD (puede no existir en las variantes actuales)
+            if (itemToUse.colorSeleccionadoGuardado) {
+                if (lang === 'pt') {
+                    selectedColorText = `Cor seleccionada ${itemToUse.colorSeleccionadoGuardado}`;
+                } else if (lang === 'es') {
+                    selectedColorText = `Color seleccionado ${itemToUse.colorSeleccionadoGuardado}`;
+                } else {
+                    selectedColorText = `Color selected ${itemToUse.colorSeleccionadoGuardado}`;
+                }
+                console.log('✅ Color seleccionado generado desde color guardado:', selectedColorText);
+            } else if (referenceVariants && Array.isArray(referenceVariants) && referenceVariants.length > 0) {
                 const selectedIndex = parseInt(itemToUse.selectedReferenceVariant);
                 console.log('🔍 Índice seleccionado:', selectedIndex, 'de', referenceVariants.length);
                 
@@ -7844,7 +7903,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             } else {
                             selectedColorText = `Color selected ${selectedVariant.color}`;
                         }
-                        console.log('✅ Color seleccionado generado:', selectedColorText);
+                        console.log('✅ Color seleccionado generado desde variantes:', selectedColorText);
                     } else {
                         console.warn('⚠️ La variante seleccionada no tiene color:', selectedVariant);
                     }
@@ -7942,9 +8001,10 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         const descriptionLines = doc.splitTextToSize(cleanDescriptionText, availableWidth);
         
         // Calcular altura considerando el espaciado entre líneas
-        // Reducir padding para que las celdas se ajusten mejor al contenido
+        // Usar un lineHeight más generoso para evitar que se corte el texto
+        const actualLineHeight = fontSize * 0.6; // Aumentar ligeramente el lineHeight
         const descriptionHeight = Math.max(
-            (descriptionLines.length * lineHeight) + (padding * 2), 
+            (descriptionLines.length * actualLineHeight) + (padding * 2), 
             minRowHeight
         );
         
@@ -7952,7 +8012,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             itemName: item.name,
             fullDescriptionTextLength: fullDescriptionText.length,
             numLines: descriptionLines.length,
-            lineHeight: lineHeight,
+            lineHeight: actualLineHeight,
             calculatedHeight: descriptionHeight,
             minRowHeight: minRowHeight,
             hasVariant: !!variantText,
@@ -8009,7 +8069,9 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         // La altura de la fila es la máxima entre todas las celdas
         // IMPORTANTE: Asegurar que la descripción tenga suficiente espacio
         // Agregar padding adicional para evitar que el texto se corte
-        const minDescriptionHeight = descriptionHeight + (padding * 4); // Más padding para descripción
+        // Usar un factor de seguridad mayor para descripciones largas
+        const safetyFactor = descriptionLines.length > 5 ? 1.2 : 1.1; // Factor de seguridad para descripciones largas
+        const minDescriptionHeight = (descriptionHeight * safetyFactor) + (padding * 4); // Más padding para descripción
         
         const calculatedRowHeight = Math.max(
             baseRowHeight,
@@ -8510,6 +8572,120 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     
     // Las condiciones quedan pegadas al final del cuadro (sin padding inferior)
     console.log('✅ Pie de página dibujado. currentY final:', currentY);
+
+    // Verificar si hay artículos VACAVALIENTE y agregar página con imagen del Pantone
+    const hasVacavalienteItems = savedCart.some(item => {
+        const marca = item.marca || item.brand || '';
+        return marca.toUpperCase().trim() === 'VACAVALIENTE';
+    });
+
+    if (hasVacavalienteItems) {
+        console.log('🎨 Detectados artículos VACAVALIENTE, agregando página con imagen del Pantone...');
+        
+        try {
+            // Obtener cliente de Supabase
+            let client;
+            if (typeof window.initSupabase === 'function') {
+                client = await window.initSupabase();
+            } else if (typeof window.universalSupabase !== 'undefined' && window.universalSupabase) {
+                client = await window.universalSupabase.getClient();
+            }
+            
+            if (client) {
+                // Obtener URL de la imagen del Pantone desde Storage
+                const filePath = 'vacavaliente-colors/pantone-generic.png';
+                const { data: urlData } = client.storage
+                    .from('product-images')
+                    .getPublicUrl(filePath);
+                
+                const pantoneImageUrl = urlData.publicUrl;
+                
+                // Cargar imagen y convertir a base64
+                const imageBase64 = await new Promise((resolve, reject) => {
+                    const img = new Image();
+                    img.crossOrigin = 'anonymous';
+                    
+                    img.onload = function() {
+                        try {
+                            // Crear canvas para convertir imagen a base64
+                            const canvas = document.createElement('canvas');
+                            canvas.width = img.width;
+                            canvas.height = img.height;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0);
+                            
+                            // Convertir a base64
+                            const base64 = canvas.toDataURL('image/png');
+                            resolve(base64);
+                        } catch (error) {
+                            reject(error);
+                        }
+                    };
+                    
+                    img.onerror = function() {
+                        reject(new Error('No se pudo cargar la imagen'));
+                    };
+                    
+                    // Timeout de 5 segundos
+                    setTimeout(() => {
+                        reject(new Error('Timeout al cargar imagen'));
+                    }, 5000);
+                    
+                    img.src = pantoneImageUrl;
+                });
+                
+                if (imageBase64) {
+                    // Agregar nueva página
+                    doc.addPage();
+                    
+                    // Configurar página para la imagen del Pantone
+                    const pantoneMargin = 20;
+                    const pantonePageWidth = pageWidth - (pantoneMargin * 2);
+                    const pantonePageHeight = pageHeight - (pantoneMargin * 2);
+                    
+                    // Título
+                    doc.setFontSize(18);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor(29, 53, 87); // Color #1d3557
+                    const titleText = lang === 'es' ? 'Colores Vacavaliente' : 
+                                     lang === 'pt' ? 'Cores Vacavaliente' : 
+                                     'Vacavaliente Colors';
+                    doc.text(titleText, pageWidth / 2, pantoneMargin + 10, { align: 'center' });
+                    
+                    // Calcular dimensiones de la imagen manteniendo proporción
+                    // Obtener dimensiones de la imagen desde el base64
+                    const img = new Image();
+                    await new Promise((resolve) => {
+                        img.onload = resolve;
+                        img.src = imageBase64;
+                    });
+                    
+                    const maxWidth = pantonePageWidth;
+                    const maxHeight = pantonePageHeight - 30; // Dejar espacio para título
+                    
+                    let imgWidth = img.width;
+                    let imgHeight = img.height;
+                    const ratio = Math.min(maxWidth / imgWidth, maxHeight / imgHeight);
+                    
+                    imgWidth = imgWidth * ratio;
+                    imgHeight = imgHeight * ratio;
+                    
+                    // Centrar imagen
+                    const x = (pageWidth - imgWidth) / 2;
+                    const y = pantoneMargin + 25;
+                    
+                    // Agregar imagen al PDF
+                    doc.addImage(imageBase64, 'PNG', x, y, imgWidth, imgHeight);
+                    console.log('✅ Imagen del Pantone agregada al PDF');
+                }
+            } else {
+                console.warn('⚠️ No se pudo obtener cliente de Supabase para cargar imagen del Pantone');
+            }
+        } catch (error) {
+            console.warn('⚠️ Error al agregar página del Pantone:', error);
+            // Continuar con el PDF aunque falle la imagen del Pantone
+        }
+    }
 
     // Guardar PDF con nombre formateado
     // Obtener datos para el nombre del archivo
@@ -9446,7 +9622,16 @@ async function sendProposalToSupabase() {
                         ? parseInt(item.selectedReferenceVariant) 
                         : null;
 
-                    console.log(`💾 Preparando artículo para edición: ${nombreArticulo}, Cantidad: ${cantidad}, Precio: ${precio} (modo 200+: ${window.cartManager?.modo200 || false})`);
+                    // Obtener el nombre del color seleccionado
+                    let colorSeleccionado = null;
+                    if (varianteReferencia !== null && item.variantes_referencias && Array.isArray(item.variantes_referencias)) {
+                        const variante = item.variantes_referencias[varianteReferencia];
+                        if (variante && variante.color) {
+                            colorSeleccionado = variante.color;
+                        }
+                    }
+
+                    console.log(`💾 Preparando artículo para edición: ${nombreArticulo}, Cantidad: ${cantidad}, Precio: ${precio}, Color: ${colorSeleccionado || 'N/A'} (modo 200+: ${window.cartManager?.modo200 || false})`);
 
                     articulosNuevos.push({
                         nombre_articulo: nombreArticulo,
@@ -9455,7 +9640,8 @@ async function sendProposalToSupabase() {
                         precio: precio,
                         observaciones: observaciones,
                         tipo_personalizacion: tipoPersonalizacion,
-                        variante_referencia: varianteReferencia
+                        variante_referencia: varianteReferencia,
+                        color_seleccionado: colorSeleccionado
                     });
                 }
             }
@@ -9787,6 +9973,17 @@ async function sendProposalToSupabase() {
                     ? parseInt(item.selectedReferenceVariant) 
                     : null;
 
+                // Obtener el nombre del color seleccionado
+                let colorSeleccionado = null;
+                if (varianteReferencia !== null && item.variantes_referencias && Array.isArray(item.variantes_referencias)) {
+                    const variante = item.variantes_referencias[varianteReferencia];
+                    if (variante && variante.color) {
+                        colorSeleccionado = variante.color;
+                    }
+                }
+
+                console.log(`📦 Guardando artículo: ${nombreArticulo}, Cantidad: ${cantidad}, Precio: ${precio}, Color: ${colorSeleccionado || 'N/A'}`);
+
                 articulos.push({
                     presupuesto_id: presupuesto.id,
                     nombre_articulo: nombreArticulo,
@@ -9798,6 +9995,7 @@ async function sendProposalToSupabase() {
                     tipo_personalizacion: tipoPersonalizacion,
                     plazo_entrega: plazoEntrega,
                     variante_referencia: varianteReferencia,
+                    color_seleccionado: colorSeleccionado,
                     logo_url: item.logoUrl || null
                 });
             }

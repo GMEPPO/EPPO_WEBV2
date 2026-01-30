@@ -35,7 +35,8 @@ let supabaseClient = null;
 let brandSuggestions = [];
 
 // Colores VACAVALIENTE con sus códigos (5º y 6º dígito de la referencia)
-const VACAVALIENTE_COLORS = [
+// Se cargan desde Supabase, pero se inicializa con valores por defecto
+let VACAVALIENTE_COLORS = [
     { name: 'Merlot', code: 'B7' },
     { name: 'Red Clay', code: '25' },
     { name: 'Pink Sand', code: '13' },
@@ -194,6 +195,10 @@ const productFormTranslations = {
         save: 'Guardar',
         add: 'Adicionar',
         remove: 'Eliminar',
+        manageVacavalienteColors: 'Gerir Cores VACAVALIENTE',
+        addColor: 'Adicionar Nova Cor',
+        saveColor: 'Guardar Cor',
+        cancelColor: 'Cancelar',
         
         // Variantes de referencias
         reference: 'Referência',
@@ -317,6 +322,10 @@ const productFormTranslations = {
         save: 'Guardar',
         add: 'Agregar',
         remove: 'Eliminar',
+        manageVacavalienteColors: 'Gestionar Colores VACAVALIENTE',
+        addColor: 'Agregar Nuevo Color',
+        saveColor: 'Guardar Color',
+        cancelColor: 'Cancelar',
         
         // Variantes de referencias
         reference: 'Referencia',
@@ -389,6 +398,32 @@ function updateProductFormTranslations() {
             section.textContent = t.variantsPrices;
         }
     });
+    
+    // Actualizar textos del botón y modal de colores VACAVALIENTE
+    const vacavalienteBtn = document.getElementById('vacavaliente-colors-btn-text');
+    if (vacavalienteBtn) {
+        vacavalienteBtn.textContent = t.manageVacavalienteColors || 'Gestionar Colores VACAVALIENTE';
+    }
+    
+    const modalTitle = document.getElementById('vacavaliente-colors-modal-title');
+    if (modalTitle) {
+        modalTitle.textContent = t.manageVacavalienteColors || 'Gestionar Colores VACAVALIENTE';
+    }
+    
+    const addColorBtn = document.getElementById('add-color-btn-text');
+    if (addColorBtn) {
+        addColorBtn.textContent = t.addColor || 'Agregar Nuevo Color';
+    }
+    
+    const saveColorBtn = document.getElementById('save-color-btn-text');
+    if (saveColorBtn) {
+        saveColorBtn.textContent = t.saveColor || 'Guardar Color';
+    }
+    
+    const cancelColorBtn = document.getElementById('cancel-color-btn-text');
+    if (cancelColorBtn) {
+        cancelColorBtn.textContent = t.cancelColor || 'Cancelar';
+    }
     
     // Labels
     updateLabel('marca', t.brand);
@@ -668,6 +703,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('🔍 Modo detectado:', currentMode);
     
     await initSupabase();
+    await loadVacavalienteColors(); // Cargar colores VACAVALIENTE desde Supabase
     loadBrandSuggestions();
     loadCustomCategories();
     
@@ -898,15 +934,378 @@ async function loadBrandSuggestions() {
     }
 }
 
+// ============================================
+// GESTIÓN DE COLORES VACAVALIENTE
+// ============================================
+
+let editingVacavalienteColorId = null;
+
+/**
+ * Cargar colores VACAVALIENTE desde Supabase
+ */
+async function loadVacavalienteColors() {
+    if (!supabaseClient) {
+        console.warn('⚠️ Supabase no está inicializado, usando colores por defecto');
+        return;
+    }
+    
+    try {
+        const { data, error } = await supabaseClient
+            .from('vacavaliente_colors')
+            .select('*')
+            .order('name', { ascending: true });
+        
+        if (error) {
+            console.error('❌ Error cargando colores VACAVALIENTE:', error);
+            // Mantener los colores por defecto si hay error
+            return;
+        }
+        
+        if (data && data.length > 0) {
+            VACAVALIENTE_COLORS = data.map(color => ({
+                id: color.id,
+                name: color.name,
+                code: color.code
+            }));
+            console.log('✅ Colores VACAVALIENTE cargados desde Supabase:', VACAVALIENTE_COLORS.length);
+        } else {
+            console.log('ℹ️ No hay colores en Supabase, usando valores por defecto');
+        }
+    } catch (error) {
+        console.error('❌ Excepción cargando colores VACAVALIENTE:', error);
+        // Mantener los colores por defecto si hay excepción
+    }
+}
+
+/**
+ * Abrir modal para gestionar colores VACAVALIENTE
+ */
+async function openVacavalienteColorsManager() {
+    console.log('🎨 openVacavalienteColorsManager llamado');
+    const modal = document.getElementById('vacavalienteColorsModal');
+    if (!modal) {
+        console.error('❌ Error: vacavalienteColorsModal no encontrado');
+        alert('Error: No se encontró el modal. Verifica que el HTML esté correcto.');
+        return;
+    }
+    
+    console.log('✅ Modal encontrado, agregando clase active');
+    modal.classList.add('active');
+    
+    // Asegurar que el modal sea visible
+    modal.style.display = 'flex';
+    modal.style.alignItems = 'center';
+    modal.style.justifyContent = 'center';
+    
+    document.body.style.overflow = 'hidden';
+    
+    await loadVacavalienteColorsList();
+    
+    // Intentar configurar el handler si existe
+    if (typeof setupModalOverlayClickHandler === 'function') {
+        setupModalOverlayClickHandler();
+    }
+}
+
+// Hacer la función disponible globalmente
+window.openVacavalienteColorsManager = openVacavalienteColorsManager;
+
+/**
+ * Cerrar modal de colores VACAVALIENTE
+ */
+function closeVacavalienteColorsManager() {
+    const modal = document.getElementById('vacavalienteColorsModal');
+    if (modal) {
+        modal.classList.remove('active');
+        modal.style.display = 'none';
+    }
+    document.body.style.overflow = '';
+    cancelVacavalienteColorEdit();
+}
+
+// Hacer la función disponible globalmente
+window.closeVacavalienteColorsManager = closeVacavalienteColorsManager;
+
+/**
+ * Cargar lista de colores VACAVALIENTE
+ */
+async function loadVacavalienteColorsList() {
+    const listContainer = document.getElementById('vacavalienteColorsList');
+    if (!listContainer) return;
+    
+    listContainer.innerHTML = '<p>Cargando colores...</p>';
+    
+    if (!supabaseClient) {
+        listContainer.innerHTML = '<p style="color: #ef4444;">Error: Supabase no está inicializado</p>';
+        return;
+    }
+    
+    try {
+        const { data, error } = await supabaseClient
+            .from('vacavaliente_colors')
+            .select('*')
+            .order('name', { ascending: true });
+        
+        if (error) throw error;
+        
+        if (!data || data.length === 0) {
+            listContainer.innerHTML = '<p>No hay colores configurados. Agrega el primero usando el botón de arriba.</p>';
+            return;
+        }
+        
+        listContainer.innerHTML = data.map(color => `
+            <div class="category-item" style="display: flex; justify-content: space-between; align-items: center; padding: 15px; background: var(--bg-white); border: 1px solid var(--bg-gray-200); border-radius: 8px; margin-bottom: 10px;">
+                <div style="flex: 1;">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <div style="width: 40px; height: 40px; background: var(--bg-gray-200); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 600; color: var(--text-primary);">
+                            ${color.code}
+                        </div>
+                        <div>
+                            <h4 style="margin: 0; color: var(--text-primary); font-weight: 600;">${color.name}</h4>
+                            <p style="margin: 5px 0 0 0; color: var(--text-secondary); font-size: 0.9rem;">Código: ${color.code}</p>
+                        </div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-secondary" onclick="editVacavalienteColor('${color.id}')" style="padding: 8px 16px;">
+                        <i class="fas fa-edit"></i> Editar
+                    </button>
+                    <button class="btn btn-danger" onclick="deleteVacavalienteColor('${color.id}', '${color.name.replace(/'/g, "\\'")}')" style="padding: 8px 16px;">
+                        <i class="fas fa-trash"></i> Eliminar
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('❌ Error cargando lista de colores:', error);
+        listContainer.innerHTML = `<p style="color: #ef4444;">Error al cargar colores: ${error.message}</p>`;
+    }
+}
+
+/**
+ * Mostrar formulario para crear nuevo color
+ */
+function showCreateVacavalienteColorForm() {
+    editingVacavalienteColorId = null;
+    const formSection = document.getElementById('vacavalienteColorFormSection');
+    const formTitle = document.getElementById('vacavalienteColorFormTitle');
+    const nameInput = document.getElementById('vacavalienteColorName');
+    const codeInput = document.getElementById('vacavalienteColorCode');
+    
+    if (formSection) formSection.style.display = 'block';
+    if (formTitle) formTitle.textContent = 'Nuevo Color';
+    if (nameInput) nameInput.value = '';
+    if (codeInput) codeInput.value = '';
+    
+    // Scroll al formulario
+    formSection?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+/**
+ * Editar color existente
+ */
+async function editVacavalienteColor(colorId) {
+    if (!supabaseClient) {
+        showAlert('Error: Supabase no está inicializado', 'error');
+        return;
+    }
+    
+    try {
+        const { data, error } = await supabaseClient
+            .from('vacavaliente_colors')
+            .select('*')
+            .eq('id', colorId)
+            .single();
+        
+        if (error) throw error;
+        
+        editingVacavalienteColorId = colorId;
+        const formSection = document.getElementById('vacavalienteColorFormSection');
+        const formTitle = document.getElementById('vacavalienteColorFormTitle');
+        const nameInput = document.getElementById('vacavalienteColorName');
+        const codeInput = document.getElementById('vacavalienteColorCode');
+        
+        if (formSection) formSection.style.display = 'block';
+        if (formTitle) formTitle.textContent = `Editar Color: ${data.name}`;
+        if (nameInput) nameInput.value = data.name;
+        if (codeInput) codeInput.value = data.code;
+        
+        // Scroll al formulario
+        formSection?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } catch (error) {
+        console.error('❌ Error cargando color para editar:', error);
+        showAlert('Error al cargar el color: ' + error.message, 'error');
+    }
+}
+
+/**
+ * Guardar color (crear o actualizar)
+ */
+async function saveVacavalienteColor() {
+    if (!supabaseClient) {
+        showAlert('Error: Supabase no está inicializado', 'error');
+        return;
+    }
+    
+    const nameInput = document.getElementById('vacavalienteColorName');
+    const codeInput = document.getElementById('vacavalienteColorCode');
+    
+    if (!nameInput || !codeInput) {
+        showAlert('Error: Campos no encontrados', 'error');
+        return;
+    }
+    
+    const name = nameInput.value.trim();
+    const code = codeInput.value.trim().toUpperCase();
+    
+    // Validaciones
+    if (!name) {
+        showAlert('Por favor, ingresa un nombre para el color', 'error');
+        return;
+    }
+    
+    if (!code || code.length !== 2) {
+        showAlert('El código debe tener exactamente 2 caracteres', 'error');
+        return;
+    }
+    
+    if (!/^[A-Z0-9]{2}$/.test(code)) {
+        showAlert('El código solo puede contener letras mayúsculas y números', 'error');
+        return;
+    }
+    
+    try {
+        const colorData = {
+            name: name,
+            code: code
+        };
+        
+        let result;
+        if (editingVacavalienteColorId) {
+            // Actualizar
+            const { data, error } = await supabaseClient
+                .from('vacavaliente_colors')
+                .update(colorData)
+                .eq('id', editingVacavalienteColorId)
+                .select()
+                .single();
+            
+            if (error) throw error;
+            result = data;
+            showAlert('Color actualizado exitosamente', 'success');
+        } else {
+            // Crear
+            const { data, error } = await supabaseClient
+                .from('vacavaliente_colors')
+                .insert(colorData)
+                .select()
+                .single();
+            
+            if (error) throw error;
+            result = data;
+            showAlert('Color creado exitosamente', 'success');
+        }
+        
+        // Recargar colores y actualizar lista
+        await loadVacavalienteColors();
+        await loadVacavalienteColorsList();
+        cancelVacavalienteColorEdit();
+        
+        // Si hay productos VACAVALIENTE abiertos, actualizar los selects
+        updateVacavalienteColorSelects();
+        
+    } catch (error) {
+        console.error('❌ Error guardando color:', error);
+        if (error.code === '23505') {
+            if (error.message.includes('code')) {
+                showAlert('Ya existe un color con ese código', 'error');
+            } else {
+                showAlert('Ya existe un color con ese nombre', 'error');
+            }
+        } else {
+            showAlert('Error al guardar el color: ' + error.message, 'error');
+        }
+    }
+}
+
+/**
+ * Eliminar color
+ */
+async function deleteVacavalienteColor(colorId, colorName) {
+    if (!supabaseClient) {
+        showAlert('Error: Supabase no está inicializado', 'error');
+        return;
+    }
+    
+    if (!confirm(`¿Estás seguro de que deseas eliminar el color "${colorName}"?`)) {
+        return;
+    }
+    
+    try {
+        const { error } = await supabaseClient
+            .from('vacavaliente_colors')
+            .delete()
+            .eq('id', colorId);
+        
+        if (error) throw error;
+        
+        showAlert('Color eliminado exitosamente', 'success');
+        await loadVacavalienteColors();
+        await loadVacavalienteColorsList();
+        
+        // Si hay productos VACAVALIENTE abiertos, actualizar los selects
+        updateVacavalienteColorSelects();
+        
+    } catch (error) {
+        console.error('❌ Error eliminando color:', error);
+        showAlert('Error al eliminar el color: ' + error.message, 'error');
+    }
+}
+
+/**
+ * Cancelar edición de color
+ */
+function cancelVacavalienteColorEdit() {
+    editingVacavalienteColorId = null;
+    const formSection = document.getElementById('vacavalienteColorFormSection');
+    if (formSection) {
+        formSection.style.display = 'none';
+    }
+}
+
+/**
+ * Actualizar los selects de colores VACAVALIENTE en el formulario si hay productos abiertos
+ */
+function updateVacavalienteColorSelects() {
+    const container = document.getElementById('variantesReferenciasContainer');
+    if (!container) return;
+    
+    const colorSelects = container.querySelectorAll('.vacavaliente-color-select');
+    colorSelects.forEach(select => {
+        const currentValue = select.value;
+        const colorOptions = VACAVALIENTE_COLORS.map(color => 
+            `<option value="${color.code}" ${color.code === currentValue ? 'selected' : ''}>${color.name}</option>`
+        ).join('');
+        
+        select.innerHTML = colorOptions;
+    });
+}
+
 /**
  * Actualizar variantes de referencia cuando cambia la marca
  */
-function updateVariantesReferenciasForBrand() {
+async function updateVariantesReferenciasForBrand() {
     const container = document.getElementById('variantesReferenciasContainer');
     if (!container) return;
     
     const marcaField = document.getElementById('marca');
     const isVacavaliente = marcaField && marcaField.value && marcaField.value.toUpperCase().trim() === 'VACAVALIENTE';
+    
+    // Si se selecciona VACAVALIENTE, recargar los colores desde Supabase para asegurar que estén actualizados
+    if (isVacavaliente) {
+        await loadVacavalienteColors();
+        console.log('🔄 Colores VACAVALIENTE recargados desde Supabase');
+    }
     
     if (isVacavaliente) {
         // Si cambia a VACAVALIENTE, verificar si hay referencia base y generar todas las variantes
@@ -2110,6 +2509,15 @@ window.updateVacavalienteReferenceForItem = updateVacavalienteReferenceForItem;
 window.updateVacavalienteReferences = updateVacavalienteReferences;
 window.generateAllVacavalienteVariants = generateAllVacavalienteVariants;
 
+// Hacer funciones de gestión de colores VACAVALIENTE globales
+window.openVacavalienteColorsManager = openVacavalienteColorsManager;
+window.closeVacavalienteColorsManager = closeVacavalienteColorsManager;
+window.showCreateVacavalienteColorForm = showCreateVacavalienteColorForm;
+window.editVacavalienteColor = editVacavalienteColor;
+window.saveVacavalienteColor = saveVacavalienteColor;
+window.deleteVacavalienteColor = deleteVacavalienteColor;
+window.cancelVacavalienteColorEdit = cancelVacavalienteColorEdit;
+
 /**
  * Eliminar una variante de referencia
  */
@@ -3254,7 +3662,14 @@ async function fillFormWithProduct(product, isDuplicate = false) {
         modeloField.value = isDuplicate ? product.nombre + ' (Copia)' : product.nombre;
     }
     const marcaField = document.getElementById('marca');
-    if (marcaField && product.brand) marcaField.value = product.brand;
+    if (marcaField && product.brand) {
+        marcaField.value = product.brand;
+        // Si es VACAVALIENTE, recargar los colores desde Supabase
+        if (product.brand.toUpperCase().trim() === 'VACAVALIENTE') {
+            await loadVacavalienteColors();
+            console.log('🔄 Colores VACAVALIENTE recargados al cargar producto');
+        }
+    }
     const categoriaField = document.getElementById('categoria');
     if (categoriaField && product.categoria) {
         // Si la categoría tiene formato "categoria:subcategoria", separarla
@@ -4372,6 +4787,18 @@ function handleModalOverlayClick(event) {
     console.log('📍 event.target:', event.target);
     console.log('📍 event.currentTarget:', event.currentTarget);
     
+    // Verificar si el clic fue en el modal de colores VACAVALIENTE
+    const vacavalienteModal = document.getElementById('vacavalienteColorsModal');
+    if (vacavalienteModal && event.currentTarget === vacavalienteModal) {
+        const modalContent = vacavalienteModal.querySelector('.modal-content');
+        if (modalContent && !modalContent.contains(event.target)) {
+            console.log('🖱️ Clic fuera del contenido del modal VACAVALIENTE, cerrando...');
+            closeVacavalienteColorsManager();
+            return;
+        }
+    }
+    
+    // Manejar modal de categorías del home (código original)
     const modal = document.getElementById('homeCategoryModal');
     const modalContent = modal ? modal.querySelector('.modal-content') : null;
     
