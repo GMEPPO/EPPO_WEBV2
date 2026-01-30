@@ -206,8 +206,17 @@
                     <div class="option-icon" style="font-size: 3rem; color: #10b981;">
                         <i class="fas fa-boxes-stacked"></i>
                     </div>
-                    <h3 class="option-title" id="option-stock-title">Cargar Stock</h3>
-                    <p class="option-description" id="option-stock-desc">Actualizar stock desde archivo Excel PHC</p>
+                    <h3 class="option-title" id="stock-option-title">Cargar Stock</h3>
+                    <p class="option-description" id="stock-option-desc">Actualizar stock desde archivo Excel PHC</p>
+                </div>
+
+                <!-- Botón para Actualizar Precios -->
+                <div class="option-card" onclick="openPricesModal()" style="border-color: #3b82f6;">
+                    <div class="option-icon" style="font-size: 3rem; color: #3b82f6;">
+                        <i class="fas fa-euro-sign"></i>
+                    </div>
+                    <h3 class="option-title" id="prices-option-title">Actualizar Precios</h3>
+                    <p class="option-description" id="prices-option-desc">Actualizar precios desde archivo Excel</p>
                 </div>
 
                 <!-- Botón para Gestionar Colores VACAVALIENTE -->
@@ -1843,7 +1852,26 @@
                 categoryDesc: 'Criar ou editar categorias que aparecem na página principal',
                 createProduct: 'Criador/Editor',
                 stockTitle: 'Carregar Stock',
-                stockDesc: 'Atualizar stock desde ficheiro Excel PHC'
+                stockDesc: 'Atualizar stock desde ficheiro Excel PHC',
+                pricesTitle: 'Atualizar Preços',
+                pricesDesc: 'Atualizar preços desde ficheiro Excel',
+                pricesModalTitle: 'Atualizar Preços desde Excel',
+                pricesFormatTitle: 'Formato requerido do ficheiro Excel',
+                pricesDropTitle: 'Arraste o seu ficheiro Excel aqui',
+                pricesDropDesc: 'ou clique para selecionar (.xlsx, .xls)',
+                pricesFileLoaded: 'Ficheiro carregado',
+                pricesBtnCancel: 'Cancelar',
+                pricesBtnUpload: 'Subir para Base de Dados',
+                pricesBtnDone: 'Fechar',
+                pricesStatRecords: 'Registos',
+                pricesStatFound: 'Produtos encontrados',
+                pricesStatNotFound: 'Não encontrados',
+                pricesThRef: 'Ref_web',
+                pricesThCurrent: 'Preço Atual',
+                pricesThNew: 'Novo Preço',
+                pricesThStatus: 'Estado',
+                vacavalienteColorsTitle: 'Gerir Cores VACAVALIENTE',
+                vacavalienteColorsDesc: 'Gerir cores e códigos para produtos VACAVALIENTE'
             },
             es: {
                 title: 'Creador/Editor de Artículos',
@@ -1863,6 +1891,23 @@
                 createProduct: 'Creador/Editor',
                 stockTitle: 'Cargar Stock',
                 stockDesc: 'Actualizar stock desde archivo Excel PHC',
+                pricesTitle: 'Actualizar Precios',
+                pricesDesc: 'Actualizar precios desde archivo Excel',
+                pricesModalTitle: 'Actualizar Precios desde Excel',
+                pricesFormatTitle: 'Formato requerido del archivo Excel',
+                pricesDropTitle: 'Arrastra tu archivo Excel aquí',
+                pricesDropDesc: 'o haz clic para seleccionar (.xlsx, .xls)',
+                pricesFileLoaded: 'Archivo cargado',
+                pricesBtnCancel: 'Cancelar',
+                pricesBtnUpload: 'Subir a Base de Datos',
+                pricesBtnDone: 'Cerrar',
+                pricesStatRecords: 'Registros',
+                pricesStatFound: 'Productos encontrados',
+                pricesStatNotFound: 'No encontrados',
+                pricesThRef: 'Ref_web',
+                pricesThCurrent: 'Precio Actual',
+                pricesThNew: 'Nuevo Precio',
+                pricesThStatus: 'Estado',
                 vacavalienteColorsTitle: 'Gestionar Colores VACAVALIENTE',
                 vacavalienteColorsDesc: 'Gestionar colores y códigos para productos VACAVALIENTE'
             },
@@ -1883,7 +1928,26 @@
                 categoryDesc: 'Create or edit categories that appear on the main page',
                 createProduct: 'Creator/Editor',
                 stockTitle: 'Load Stock',
-                stockDesc: 'Update stock from Excel PHC file'
+                stockDesc: 'Update stock from Excel PHC file',
+                pricesTitle: 'Update Prices',
+                pricesDesc: 'Update prices from Excel file',
+                pricesModalTitle: 'Update Prices from Excel',
+                pricesFormatTitle: 'Required Excel file format',
+                pricesDropTitle: 'Drag your Excel file here',
+                pricesDropDesc: 'or click to select (.xlsx, .xls)',
+                pricesFileLoaded: 'File loaded',
+                pricesBtnCancel: 'Cancel',
+                pricesBtnUpload: 'Upload to Database',
+                pricesBtnDone: 'Close',
+                pricesStatRecords: 'Records',
+                pricesStatFound: 'Products found',
+                pricesStatNotFound: 'Not found',
+                pricesThRef: 'Ref_web',
+                pricesThCurrent: 'Current Price',
+                pricesThNew: 'New Price',
+                pricesThStatus: 'Status',
+                vacavalienteColorsTitle: 'Manage VACAVALIENTE Colors',
+                vacavalienteColorsDesc: 'Manage colors and codes for VACAVALIENTE products'
             }
         };
 
@@ -1925,10 +1989,62 @@
             if (categoryDesc) categoryDesc.textContent = t.categoryDesc;
             
             // Traducciones del botón de Stock
-            const stockTitle = document.getElementById('option-stock-title');
-            const stockDesc = document.getElementById('option-stock-desc');
+            const stockTitle = document.getElementById('stock-option-title');
+            const stockDesc = document.getElementById('stock-option-desc');
             if (stockTitle) stockTitle.textContent = t.stockTitle;
             if (stockDesc) stockDesc.textContent = t.stockDesc;
+            
+            // Traducciones del botón de Precios
+            const pricesTitle = document.getElementById('prices-option-title');
+            const pricesDesc = document.getElementById('prices-option-desc');
+            if (pricesTitle) pricesTitle.textContent = t.pricesTitle;
+            if (pricesDesc) pricesDesc.textContent = t.pricesDesc;
+            
+            // Traducciones del modal de precios
+            const pricesModalTitle = document.getElementById('prices-modal-title');
+            const pricesFormatTitle = document.getElementById('prices-format-title');
+            const pricesDropTitle = document.getElementById('prices-drop-title');
+            const pricesDropDesc = document.getElementById('prices-drop-desc');
+            const pricesFileLoaded = document.getElementById('prices-file-loaded');
+            const pricesBtnCancel = document.getElementById('prices-btn-cancel');
+            const pricesBtnUpload = document.getElementById('prices-btn-upload');
+            const pricesBtnDone = document.getElementById('prices-btn-done');
+            const pricesStatRecords = document.getElementById('prices-stat-records');
+            const pricesStatFound = document.getElementById('prices-stat-found');
+            const pricesStatNotFound = document.getElementById('prices-stat-notfound');
+            const pricesThRef = document.getElementById('prices-th-ref');
+            const pricesThCurrent = document.getElementById('prices-th-current');
+            const pricesThNew = document.getElementById('prices-th-new');
+            const pricesThStatus = document.getElementById('prices-th-status');
+            
+            if (pricesModalTitle) pricesModalTitle.textContent = t.pricesModalTitle || 'Actualizar Precios desde Excel';
+            if (pricesFormatTitle) pricesFormatTitle.textContent = t.pricesFormatTitle || 'Formato requerido del archivo Excel';
+            if (pricesDropTitle) pricesDropTitle.textContent = t.pricesDropTitle || 'Arrastra tu archivo Excel aquí';
+            if (pricesDropDesc) pricesDropDesc.textContent = t.pricesDropDesc || 'o haz clic para seleccionar (.xlsx, .xls)';
+            if (pricesFileLoaded) pricesFileLoaded.textContent = t.pricesFileLoaded || 'Archivo cargado';
+            if (pricesBtnCancel) pricesBtnCancel.textContent = t.pricesBtnCancel || 'Cancelar';
+            if (pricesBtnUpload) pricesBtnUpload.textContent = t.pricesBtnUpload || 'Subir a Base de Datos';
+            if (pricesBtnDone) pricesBtnDone.textContent = t.pricesBtnDone || 'Cerrar';
+            if (pricesStatRecords) pricesStatRecords.textContent = t.pricesStatRecords || 'Registros';
+            if (pricesStatFound) pricesStatFound.textContent = t.pricesStatFound || 'Productos encontrados';
+            if (pricesStatNotFound) pricesStatNotFound.textContent = t.pricesStatNotFound || 'No encontrados';
+            if (pricesThRef) pricesThRef.textContent = t.pricesThRef || 'Ref_web';
+            if (pricesThCurrent) pricesThCurrent.textContent = t.pricesThCurrent || 'Precio Actual';
+            if (pricesThNew) pricesThNew.textContent = t.pricesThNew || 'Nuevo Precio';
+            if (pricesThStatus) pricesThStatus.textContent = t.pricesThStatus || 'Estado';
+            
+            // Traducir etiquetas de escalones
+            const pricesThTier200plusLabel = document.getElementById('prices-th-tier-200plus-label');
+            const tierLabelText = lang === 'pt' ? '(Antigo / Novo)' : lang === 'es' ? '(Antiguo / Nuevo)' : '(Old / New)';
+            if (pricesThTier200plusLabel) pricesThTier200plusLabel.textContent = tierLabelText;
+            
+            // Traducir todos los encabezados de escalones
+            const tierLabels = document.querySelectorAll('[id^="prices-th-tier-"] span');
+            tierLabels.forEach(label => {
+                if (label.id !== 'prices-th-tier-200plus-label') {
+                    label.textContent = tierLabelText;
+                }
+            });
             
             // Traducciones del botón de Colores VACAVALIENTE
             const vacavalienteColorsTitle = document.getElementById('option-vacavaliente-colors-title');
@@ -2218,27 +2334,333 @@
                 </div>
             </div>
         </div>
-    </div>
+
+        <!-- Modal para subida de precios -->
+        <div id="pricesUploadModal" class="modal" style="display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); overflow: auto;">
+            <div class="modal-content" style="background: var(--bg-white); margin: 3% auto; padding: 0; border-radius: 16px; max-width: 800px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+                <!-- Header -->
+                <div style="background: linear-gradient(135deg, var(--primary-500, #3b82f6) 0%, var(--primary-600, #2563eb) 100%); padding: 25px 30px; border-radius: 16px 16px 0 0; display: flex; justify-content: space-between; align-items: center;">
+                    <h2 style="color: white; margin: 0; font-size: 1.4rem; display: flex; align-items: center; gap: 12px;">
+                        <i class="fas fa-euro-sign"></i>
+                        <span id="prices-modal-title">Actualizar Precios desde Excel</span>
+                    </h2>
+                    <button onclick="closePricesModal()" style="background: rgba(255,255,255,0.2); border: none; font-size: 1.2rem; color: white; cursor: pointer; padding: 8px 12px; border-radius: 8px; transition: all 0.2s;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <!-- Content -->
+                <div style="padding: 30px;">
+                    <!-- Información sobre el formato del Excel -->
+                    <div style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); padding: 20px; border-radius: 12px; margin-bottom: 25px; border: 2px solid #3b82f6;">
+                        <h4 style="display: flex; align-items: center; gap: 10px; margin: 0 0 15px 0; color: #1e40af; font-size: 1.1rem;">
+                            <i class="fas fa-info-circle"></i>
+                            <span id="prices-format-title">Formato requerido del archivo Excel</span>
+                        </h4>
+                        <div style="color: #1e3a8a; font-size: 0.9rem; line-height: 1.6;">
+                            <p style="margin: 0 0 12px 0; font-weight: 600;">El archivo Excel debe tener las siguientes columnas en la primera fila:</p>
+                            <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #93c5fd;">
+                                <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                                    <thead>
+                                        <tr style="background: #f1f5f9;">
+                                            <th style="padding: 8px 12px; text-align: left; border: 1px solid #cbd5e1; font-weight: 600; color: #1e3a8a;">Columna</th>
+                                            <th style="padding: 8px 12px; text-align: left; border: 1px solid #cbd5e1; font-weight: 600; color: #1e3a8a;">Descripción</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td style="padding: 8px 12px; border: 1px solid #cbd5e1; font-weight: 600; color: #1e40af;">1 - 10</td>
+                                            <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">Precio para cantidades de 1 a 10 unidades</td>
+                                        </tr>
+                                        <tr style="background: #f8fafc;">
+                                            <td style="padding: 8px 12px; border: 1px solid #cbd5e1; font-weight: 600; color: #1e40af;">11 - 50</td>
+                                            <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">Precio para cantidades de 11 a 50 unidades</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 8px 12px; border: 1px solid #cbd5e1; font-weight: 600; color: #1e40af;">51 - 100</td>
+                                            <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">Precio para cantidades de 51 a 100 unidades</td>
+                                        </tr>
+                                        <tr style="background: #f8fafc;">
+                                            <td style="padding: 8px 12px; border: 1px solid #cbd5e1; font-weight: 600; color: #1e40af;">101 - 200</td>
+                                            <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">Precio para cantidades de 101 a 200 unidades</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 8px 12px; border: 1px solid #cbd5e1; font-weight: 600; color: #1e40af;">200 +</td>
+                                            <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">Precio para cantidades de 200 o más unidades</td>
+                                        </tr>
+                                        <tr style="background: #fef3c7; border: 2px solid #f59e0b;">
+                                            <td style="padding: 8px 12px; border: 1px solid #cbd5e1; font-weight: 600; color: #92400e;">Ref_web</td>
+                                            <td style="padding: 8px 12px; border: 1px solid #cbd5e1; font-weight: 600; color: #92400e;">Referencia del producto (obligatoria)</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <p style="margin: 12px 0 0 0; font-size: 0.85rem; font-style: italic; color: #64748b;">
+                                <i class="fas fa-exclamation-triangle" style="color: #f59e0b;"></i>
+                                <span id="prices-format-note">Nota: La primera fila debe contener los encabezados. Los precios deben ser números (pueden usar coma o punto como separador decimal).</span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Upload Zone -->
+                    <div id="pricesDropZone" onclick="document.getElementById('pricesFileInput').click()" style="border: 3px dashed var(--border-color, #cbd5e1); border-radius: 12px; padding: 50px 30px; cursor: pointer; transition: all 0.3s; text-align: center; background: var(--bg-light, #f8fafc);">
+                        <i class="fas fa-file-excel" style="font-size: 3.5rem; color: #3b82f6; margin-bottom: 15px; display: block;"></i>
+                        <h3 style="font-size: 1.2rem; margin-bottom: 8px; color: var(--text-primary);" id="prices-drop-title">Arrastra tu archivo Excel aquí</h3>
+                        <p style="color: var(--text-secondary); font-size: 0.9rem; margin: 0;" id="prices-drop-desc">o haz clic para seleccionar (.xlsx, .xls)</p>
+                    </div>
+                    <input type="file" id="pricesFileInput" accept=".xlsx,.xls" style="display: none;" />
+
+                    <!-- File Info (hidden by default) -->
+                    <div id="pricesFileInfo" style="display: none; margin-top: 25px;">
+                    <div style="background: var(--bg-light, #eff6ff); padding: 20px; border-radius: 10px; border: 2px solid #3b82f6;">
+                        <h4 style="display: flex; align-items: center; gap: 10px; margin: 0 0 15px 0; color: #2563eb;">
+                            <i class="fas fa-check-circle"></i> <span id="prices-file-loaded">Archivo cargado</span>
+                        </h4>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+                            <div style="background: var(--bg-white); padding: 12px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 1.5rem; font-weight: 700; color: #3b82f6;" id="pricesStatRows">0</div>
+                                <div style="font-size: 0.8rem; color: var(--text-secondary);" id="prices-stat-records">Registros</div>
+                            </div>
+                            <div style="background: var(--bg-white); padding: 12px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;" id="pricesStatFound">0</div>
+                                <div style="font-size: 0.8rem; color: var(--text-secondary);" id="prices-stat-found">Productos encontrados</div>
+                            </div>
+                            <div style="background: var(--bg-white); padding: 12px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 1.5rem; font-weight: 700; color: #ef4444;" id="pricesStatNotFound">0</div>
+                                <div style="font-size: 0.8rem; color: var(--text-secondary);" id="prices-stat-notfound">No encontrados</div>
+                            </div>
+                        </div>
+                    </div>
+
+                        <!-- Preview Table -->
+                        <div style="margin-top: 20px; max-height: 300px; overflow-y: auto; border-radius: 8px; border: 1px solid var(--border-color, #e2e8f0);">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                            <thead>
+                                <tr style="background: var(--bg-light, #f8fafc);">
+                                    <th style="padding: 10px 15px; text-align: left; font-weight: 600; color: #1e293b; position: sticky; top: 0; background: #f1f5f9; border-bottom: 2px solid #cbd5e1;">#</th>
+                                    <th style="padding: 10px 15px; text-align: left; font-weight: 600; color: #1e293b; position: sticky; top: 0; background: #f1f5f9; border-bottom: 2px solid #cbd5e1;" id="prices-th-ref">Ref_web</th>
+                                    <th style="padding: 10px 15px; text-align: right; font-weight: 600; color: #1e293b; position: sticky; top: 0; background: #f1f5f9; border-bottom: 2px solid #cbd5e1;" id="prices-th-tier-1-10">1-10<br/><span style="font-size: 0.7rem; font-weight: 400; color: #64748b;">(Antiguo / Nuevo)</span></th>
+                                    <th style="padding: 10px 15px; text-align: right; font-weight: 600; color: #1e293b; position: sticky; top: 0; background: #f1f5f9; border-bottom: 2px solid #cbd5e1;" id="prices-th-tier-11-50">11-50<br/><span style="font-size: 0.7rem; font-weight: 400; color: #64748b;">(Antiguo / Nuevo)</span></th>
+                                    <th style="padding: 10px 15px; text-align: right; font-weight: 600; color: #1e293b; position: sticky; top: 0; background: #f1f5f9; border-bottom: 2px solid #cbd5e1;" id="prices-th-tier-51-100">51-100<br/><span style="font-size: 0.7rem; font-weight: 400; color: #64748b;">(Antiguo / Nuevo)</span></th>
+                                    <th style="padding: 10px 15px; text-align: right; font-weight: 600; color: #1e293b; position: sticky; top: 0; background: #f1f5f9; border-bottom: 2px solid #cbd5e1;" id="prices-th-tier-101-200">101-200<br/><span style="font-size: 0.7rem; font-weight: 400; color: #64748b;">(Antiguo / Nuevo)</span></th>
+                                    <th style="padding: 10px 15px; text-align: right; font-weight: 600; color: #1e293b; position: sticky; top: 0; background: #f1f5f9; border-bottom: 2px solid #cbd5e1;" id="prices-th-tier-200plus">200+<br/><span style="font-size: 0.7rem; font-weight: 400; color: #64748b;">(Antiguo / Nuevo)</span></th>
+                                    <th style="padding: 10px 15px; text-align: center; font-weight: 600; color: #1e293b; position: sticky; top: 0; background: #f1f5f9; border-bottom: 2px solid #cbd5e1;" id="prices-th-status">Estado</th>
+                                </tr>
+                            </thead>
+                                <tbody id="pricesPreviewBody"></tbody>
+                            </table>
+                        </div>
+
+                        <!-- Actions -->
+                        <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px;">
+                        <button onclick="resetPricesUpload()" style="padding: 12px 24px; background: #f1f5f9; color: #1e293b; border: 2px solid #cbd5e1; border-radius: 8px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s; font-size: 0.95rem;">
+                            <i class="fas fa-times"></i> <span id="prices-btn-cancel">Cancelar</span>
+                        </button>
+                            <button id="pricesUploadBtn" onclick="uploadPricesToSupabase()" style="padding: 12px 24px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s; font-size: 0.95rem; box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);">
+                                <i class="fas fa-cloud-upload-alt"></i> <span id="prices-btn-upload">Subir a Base de Datos</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Progress (hidden by default) -->
+                    <div id="pricesProgressSection" style="display: none; margin-top: 25px;">
+                    <h4 style="display: flex; align-items: center; gap: 10px; margin: 0 0 15px 0; color: var(--text-primary);">
+                        <i class="fas fa-spinner fa-spin"></i> <span id="prices-progress-title">Actualizando precios...</span>
+                    </h4>
+                    <div style="background: var(--bg-light, #e2e8f0); border-radius: 10px; height: 16px; overflow: hidden;">
+                        <div id="pricesProgressBar" style="height: 100%; background: linear-gradient(90deg, #3b82f6, #2563eb); border-radius: 10px; transition: width 0.3s; width: 0%;"></div>
+                    </div>
+                        <div id="pricesProgressText" style="text-align: center; color: var(--text-secondary); margin-top: 10px; font-size: 0.9rem;">0 de 0</div>
+                    </div>
+
+                    <!-- Results (hidden by default) -->
+                    <div id="pricesResultsSection" style="display: none; margin-top: 25px; text-align: center; padding: 30px; background: var(--bg-light, #eff6ff); border-radius: 12px;">
+                    <i class="fas fa-check-circle" style="font-size: 3rem; color: #3b82f6; margin-bottom: 15px;"></i>
+                    <h3 style="margin: 0 0 10px 0; color: var(--text-primary);" id="prices-result-title">¡Actualización completada!</h3>
+                    <p style="color: var(--text-secondary); margin: 0 0 20px 0;" id="prices-result-desc">Los precios han sido actualizados correctamente.</p>
+                    <div style="display: flex; justify-content: center; gap: 30px;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 2rem; font-weight: 700; color: #3b82f6;" id="pricesResultUpdated">0</div>
+                            <div style="font-size: 0.85rem; color: var(--text-secondary);" id="prices-result-updated">Actualizados</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 2rem; font-weight: 700; color: #ef4444;" id="pricesResultErrors">0</div>
+                            <div style="font-size: 0.85rem; color: var(--text-secondary);" id="prices-result-errors">Errores</div>
+                        </div>
+                    </div>
+                        <button onclick="resetPricesUpload()" style="margin-top: 25px; padding: 12px 30px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                            <i class="fas fa-check"></i> <span id="prices-btn-done">Cerrar</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
     <script>
+    // ============================================
+    // DEFINIR FUNCIONES GLOBALES PRIMERO
+    // ============================================
+    
+    // Función simple para abrir modal de precios (similar a stock)
+    window.openPricesModal = function() {
+        console.log('========================================');
+        console.log('🔵 [DEBUG] openPricesModal - INICIO');
+        console.log('========================================');
+        
+        try {
+            console.log('🔵 [DEBUG] Paso 1: Verificando modales abiertos...');
+            const stockModal = document.getElementById('stockUploadModal');
+            console.log('🔵 [DEBUG] stockModal encontrado:', stockModal);
+            if (stockModal && stockModal.style.display === 'block') {
+                console.log('🔵 [DEBUG] Cerrando modal de stock...');
+                window.closeStockUploadModal();
+            }
+            
+            console.log('🔵 [DEBUG] Paso 2: Buscando modal de precios...');
+            const pricesModal = document.getElementById('pricesUploadModal');
+            console.log('🔵 [DEBUG] pricesModal encontrado:', pricesModal);
+            console.log('🔵 [DEBUG] Tipo de pricesModal:', typeof pricesModal);
+            console.log('🔵 [DEBUG] pricesModal es null?', pricesModal === null);
+            console.log('🔵 [DEBUG] pricesModal es undefined?', pricesModal === undefined);
+            
+            if (!pricesModal) {
+                console.error('❌ [DEBUG] ERROR: Modal no encontrado en el DOM');
+                alert('Error: Modal de precios no encontrado. Ver consola para más detalles.');
+                return;
+            }
+            
+            console.log('🔵 [DEBUG] Paso 3: Verificando propiedades del modal...');
+            console.log('🔵 [DEBUG] Modal ID:', pricesModal.id);
+            console.log('🔵 [DEBUG] Modal class:', pricesModal.className);
+            console.log('🔵 [DEBUG] Modal display actual:', window.getComputedStyle(pricesModal).display);
+            console.log('🔵 [DEBUG] Modal visibility actual:', window.getComputedStyle(pricesModal).visibility);
+            console.log('🔵 [DEBUG] Modal opacity actual:', window.getComputedStyle(pricesModal).opacity);
+            console.log('🔵 [DEBUG] Modal z-index actual:', window.getComputedStyle(pricesModal).zIndex);
+            console.log('🔵 [DEBUG] Modal position actual:', window.getComputedStyle(pricesModal).position);
+            console.log('🔵 [DEBUG] Modal parentNode:', pricesModal.parentNode);
+            console.log('🔵 [DEBUG] Modal parentNode tagName:', pricesModal.parentNode?.tagName);
+            console.log('🔵 [DEBUG] Modal parentNode ID:', pricesModal.parentNode?.id);
+            
+            // CRÍTICO: Si el modal no está en el body, moverlo ahí SIEMPRE
+            if (pricesModal.parentNode !== document.body) {
+                console.log('🔵 [DEBUG] ⚠️ Modal NO está en el body!');
+                console.log('🔵 [DEBUG] Parent actual:', pricesModal.parentNode);
+                console.log('🔵 [DEBUG] Parent ID:', pricesModal.parentNode?.id);
+                
+                if (pricesModal.parentNode) {
+                    const parentStyle = window.getComputedStyle(pricesModal.parentNode);
+                    console.log('🔵 [DEBUG] Parent display:', parentStyle.display);
+                    console.log('🔵 [DEBUG] Parent visibility:', parentStyle.visibility);
+                    console.log('🔵 [DEBUG] Parent height:', parentStyle.height);
+                    console.log('🔵 [DEBUG] Parent width:', parentStyle.width);
+                }
+                
+                console.log('🔵 [DEBUG] Moviendo modal al body...');
+                document.body.appendChild(pricesModal);
+                console.log('🔵 [DEBUG] ✅ Modal movido al body');
+                console.log('🔵 [DEBUG] Nuevo parentNode:', pricesModal.parentNode);
+                console.log('🔵 [DEBUG] Nuevo parentNode es body?', pricesModal.parentNode === document.body);
+            } else {
+                console.log('🔵 [DEBUG] ✅ Modal ya está en el body');
+            }
+            
+            console.log('🔵 [DEBUG] Paso 4: Cambiando display a block...');
+            pricesModal.style.display = 'block';
+            console.log('🔵 [DEBUG] Display después de cambiar:', pricesModal.style.display);
+            console.log('🔵 [DEBUG] Display computado después:', window.getComputedStyle(pricesModal).display);
+            
+            console.log('🔵 [DEBUG] Paso 5: Cambiando overflow del body...');
+            document.body.style.overflow = 'hidden';
+            console.log('🔵 [DEBUG] Body overflow:', document.body.style.overflow);
+            
+            console.log('🔵 [DEBUG] Paso 6: Verificando funciones setup...');
+            console.log('🔵 [DEBUG] setupPricesDragAndDrop existe?', typeof setupPricesDragAndDrop);
+            console.log('🔵 [DEBUG] setupPricesFileInput existe?', typeof setupPricesFileInput);
+            
+            if (typeof setupPricesDragAndDrop === 'function') {
+                console.log('🔵 [DEBUG] Llamando setupPricesDragAndDrop...');
+                setupPricesDragAndDrop();
+                console.log('🔵 [DEBUG] setupPricesDragAndDrop ejecutada');
+            } else {
+                console.warn('⚠️ [DEBUG] setupPricesDragAndDrop NO está definida');
+            }
+            
+            if (typeof setupPricesFileInput === 'function') {
+                console.log('🔵 [DEBUG] Llamando setupPricesFileInput...');
+                setupPricesFileInput();
+                console.log('🔵 [DEBUG] setupPricesFileInput ejecutada');
+            } else {
+                console.warn('⚠️ [DEBUG] setupPricesFileInput NO está definida');
+            }
+            
+            console.log('🔵 [DEBUG] Paso 7: Verificando estado final del modal...');
+            const finalStyle = window.getComputedStyle(pricesModal);
+            console.log('🔵 [DEBUG] Display final:', finalStyle.display);
+            console.log('🔵 [DEBUG] Visibility final:', finalStyle.visibility);
+            console.log('🔵 [DEBUG] Opacity final:', finalStyle.opacity);
+            console.log('🔵 [DEBUG] Z-index final:', finalStyle.zIndex);
+            console.log('🔵 [DEBUG] Width final:', finalStyle.width);
+            console.log('🔵 [DEBUG] Height final:', finalStyle.height);
+            console.log('🔵 [DEBUG] Top final:', finalStyle.top);
+            console.log('🔵 [DEBUG] Left final:', finalStyle.left);
+            
+            const rect = pricesModal.getBoundingClientRect();
+            console.log('🔵 [DEBUG] BoundingClientRect:', {
+                top: rect.top,
+                left: rect.left,
+                width: rect.width,
+                height: rect.height,
+                visible: rect.width > 0 && rect.height > 0
+            });
+            
+            console.log('🔵 [DEBUG] offsetParent:', pricesModal.offsetParent);
+            console.log('🔵 [DEBUG] offsetWidth:', pricesModal.offsetWidth);
+            console.log('🔵 [DEBUG] offsetHeight:', pricesModal.offsetHeight);
+            
+            console.log('========================================');
+            console.log('✅ [DEBUG] openPricesModal - FIN');
+            console.log('========================================');
+            
+        } catch (error) {
+            console.error('========================================');
+            console.error('❌ [DEBUG] ERROR en openPricesModal');
+            console.error('========================================');
+            console.error('❌ [DEBUG] Error message:', error.message);
+            console.error('❌ [DEBUG] Error stack:', error.stack);
+            console.error('❌ [DEBUG] Error completo:', error);
+            alert('Error al abrir el modal: ' + error.message);
+        }
+    };
+    
     // ============================================
     // FUNCIONES PARA CARGAR STOCK
     // ============================================
     let stockData = [];
 
-    function openStockUploadModal() {
-        document.getElementById('stockUploadModal').style.display = 'block';
-        document.body.style.overflow = 'hidden';
-        loadStockLastUpdateInfo();
-        setupStockDragAndDrop();
-        setupStockFileInput();
-    }
+    window.openStockUploadModal = function() {
+        // Cerrar cualquier otro modal abierto primero
+        const pricesModal = document.getElementById('pricesUploadModal');
+        if (pricesModal && pricesModal.style.display === 'block') {
+            window.closePricesModal();
+        }
+        const stockModal = document.getElementById('stockUploadModal');
+        if (stockModal) {
+            stockModal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+            loadStockLastUpdateInfo();
+            setupStockDragAndDrop();
+            setupStockFileInput();
+        }
+    };
 
-    function closeStockUploadModal() {
-        document.getElementById('stockUploadModal').style.display = 'none';
+    window.closeStockUploadModal = function() {
+        const modal = document.getElementById('stockUploadModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
         document.body.style.overflow = '';
         resetStockUpload();
-    }
+    };
 
     function setupStockDragAndDrop() {
         const dropZone = document.getElementById('stockDropZone');
@@ -2339,7 +2761,7 @@
         }
     }
 
-    async function uploadStockToSupabase() {
+    window.uploadStockToSupabase = async function() {
         if (stockData.length === 0) return;
         
         document.getElementById('stockFileInfo').style.display = 'none';
@@ -2405,16 +2827,16 @@
         document.getElementById('stockResultErrors').textContent = errors.toLocaleString();
         
         loadStockLastUpdateInfo();
-    }
+    };
 
-    function resetStockUpload() {
+    window.resetStockUpload = function() {
         stockData = [];
         document.getElementById('stockFileInput').value = '';
         document.getElementById('stockDropZone').style.display = 'block';
         document.getElementById('stockFileInfo').style.display = 'none';
         document.getElementById('stockProgressSection').style.display = 'none';
         document.getElementById('stockResultsSection').style.display = 'none';
-    }
+    };
 
     async function loadStockLastUpdateInfo() {
         try {
@@ -2452,6 +2874,614 @@
         // Cerrar modal al hacer clic fuera
     document.getElementById('stockUploadModal')?.addEventListener('click', (e) => {
         if (e.target.id === 'stockUploadModal') closeStockUploadModal();
+    });
+
+    // ============================================
+    // FUNCIONES PARA SUBIDA DE PRECIOS
+    // ============================================
+    let pricesData = [];
+
+    window.closePricesModal = function() {
+        const modal = document.getElementById('pricesUploadModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+        document.body.style.overflow = '';
+        resetPricesUpload();
+    };
+
+    function setupPricesDragAndDrop() {
+        const dropZone = document.getElementById('pricesDropZone');
+        if (!dropZone || dropZone.dataset.initialized) return;
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            }, false);
+        });
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => {
+                dropZone.style.borderColor = '#3b82f6';
+                dropZone.style.background = 'rgba(59, 130, 246, 0.1)';
+            }, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => {
+                dropZone.style.borderColor = '';
+                dropZone.style.background = '';
+            }, false);
+        });
+        
+        dropZone.addEventListener('drop', (e) => {
+            const files = e.dataTransfer.files;
+            if (files.length > 0) handlePricesFile(files[0]);
+        }, false);
+        
+        dropZone.dataset.initialized = 'true';
+    }
+
+    function setupPricesFileInput() {
+        const fileInput = document.getElementById('pricesFileInput');
+        if (!fileInput || fileInput.dataset.initialized) return;
+        
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) handlePricesFile(e.target.files[0]);
+        });
+        
+        fileInput.dataset.initialized = 'true';
+    }
+
+    async function handlePricesFile(file) {
+        if (!file.name.match(/\.(xlsx|xls)$/i)) {
+            alert('Por favor, selecciona un archivo Excel (.xlsx o .xls)');
+            return;
+        }
+        
+        try {
+            const data = await file.arrayBuffer();
+            const workbook = XLSX.read(data);
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            
+            // Leer como JSON con headers para poder buscar por nombre de columna
+            const jsonData = XLSX.utils.sheet_to_json(worksheet);
+            
+            pricesData = [];
+            let found = 0;
+            let notFound = 0;
+            
+            // Debug: Ver todas las columnas disponibles
+            if (jsonData.length > 0) {
+                const allColumns = Object.keys(jsonData[0]);
+                console.log('[DEBUG] Columnas encontradas en el Excel:', allColumns);
+            }
+            
+            // Buscar las columnas necesarias (pueden tener diferentes nombres)
+            const refWebCol = findColumn(jsonData, ['Ref_web', 'Ref_we', 'Ref web', 'Ref we', 'REF_WEB', 'REF_WE', 'ref_web']);
+            const col1_10 = findColumn(jsonData, ['1 - 10', '1-10', '1_10', '1 a 10', '1 a 10', '1 - 10']);
+            const col11_50 = findColumn(jsonData, ['11 - 50', '11-50', '11_50', '11 a 50', '11 a 50', '11 - 50']);
+            const col51_100 = findColumn(jsonData, ['51 - 100', '51-100', '51_100', '51 a 100', '51 a 100', '51 - 100']);
+            const col101_200 = findColumn(jsonData, ['101 - 200', '101-200', '101_200', '101 a 200', '101 a 200', '101 - 200']);
+            const col200plus = findColumn(jsonData, ['200 +', '200+', '200plus', '200 plus', '200_plus', '200 +']);
+            
+            console.log('[DEBUG] Columnas encontradas:', {
+                refWebCol,
+                col1_10,
+                col11_50,
+                col51_100,
+                col101_200,
+                col200plus
+            });
+            
+            if (!refWebCol) {
+                alert('No se encontró la columna Ref_web en el archivo Excel');
+                return;
+            }
+            
+            // Advertencia si faltan columnas de precios
+            const missingCols = [];
+            if (!col1_10) missingCols.push('1 - 10');
+            if (!col11_50) missingCols.push('11 - 50');
+            if (!col51_100) missingCols.push('51 - 100');
+            if (!col101_200) missingCols.push('101 - 200');
+            if (!col200plus) missingCols.push('200 +');
+            
+            if (missingCols.length > 0) {
+                console.warn('[DEBUG] Columnas de precios no encontradas:', missingCols);
+            }
+            
+            for (const row of jsonData) {
+                const refWeb = String(row[refWebCol] || '').trim();
+                if (!refWeb) continue;
+                
+                // Convertir precios a números (pueden venir con comas como separador decimal)
+                const price1_10 = parsePrice(row[col1_10]);
+                const price11_50 = parsePrice(row[col11_50]);
+                const price51_100 = parsePrice(row[col51_100]);
+                const price101_200 = parsePrice(row[col101_200]);
+                const price200plus = parsePrice(row[col200plus]);
+                
+                console.log(`[DEBUG] Procesando ${refWeb}:`, {
+                    col1_10: col1_10,
+                    col11_50: col11_50,
+                    col51_100: col51_100,
+                    col101_200: col101_200,
+                    col200plus: col200plus,
+                    raw1_10: row[col1_10],
+                    raw11_50: row[col11_50],
+                    raw51_100: row[col51_100],
+                    raw101_200: row[col101_200],
+                    raw200plus: row[col200plus],
+                    parsed1_10: price1_10,
+                    parsed11_50: price11_50,
+                    parsed51_100: price51_100,
+                    parsed101_200: price101_200,
+                    parsed200plus: price200plus
+                });
+                
+                pricesData.push({
+                    ref_web: refWeb,
+                    price_1_10: price1_10,
+                    price_11_50: price11_50,
+                    price_51_100: price51_100,
+                    price_101_200: price101_200,
+                    price_200plus: price200plus
+                });
+            }
+            
+            // Verificar TODOS los productos para tener un conteo exacto
+            const client = supabaseClient || await initSupabase();
+            if (client) {
+                // Verificar todas las referencias para tener un conteo exacto
+                const refsToCheck = pricesData.map(item => item.ref_web);
+                
+                // Hacer consulta en batch para mejor rendimiento
+                const batchSize = 50;
+                for (let i = 0; i < refsToCheck.length; i += batchSize) {
+                    const batch = refsToCheck.slice(i, i + batchSize);
+                    const { data: products } = await client
+                        .from('products')
+                        .select('office_only')
+                        .in('office_only', batch);
+                    
+                    const foundRefs = new Set(products ? products.map(p => p.office_only) : []);
+                    
+                    for (const ref of batch) {
+                        if (foundRefs.has(ref)) {
+                            found++;
+                        } else {
+                            notFound++;
+                        }
+                    }
+                }
+            }
+            
+            document.getElementById('pricesStatRows').textContent = pricesData.length.toLocaleString();
+            document.getElementById('pricesStatFound').textContent = found.toLocaleString();
+            document.getElementById('pricesStatNotFound').textContent = notFound.toLocaleString();
+            
+            // Verificar productos encontrados y obtener precios actuales para el preview
+            const productDataMap = new Map();
+            if (client) {
+                const previewItems = pricesData.slice(0, 50);
+                const refsToCheck = previewItems.map(item => item.ref_web);
+                
+                // Consultar productos en batch
+                const batchSize = 50;
+                for (let i = 0; i < refsToCheck.length; i += batchSize) {
+                    const batch = refsToCheck.slice(i, i + batchSize);
+                    const { data: products } = await client
+                        .from('products')
+                        .select('id, office_only, price_tiers, precio')
+                        .in('office_only', batch);
+                    
+                    if (products) {
+                        products.forEach(product => {
+                            // Obtener los 5 escalones en orden (índices 0-4)
+                            const tiers = product.price_tiers || [];
+                            const currentTiers = [
+                                tiers[0]?.price || null,  // Primer escalón
+                                tiers[1]?.price || null,  // Segundo escalón
+                                tiers[2]?.price || null,  // Tercer escalón
+                                tiers[3]?.price || null,  // Cuarto escalón
+                                tiers[4]?.price || null   // Quinto escalón
+                            ];
+                            
+                            productDataMap.set(product.office_only, {
+                                found: true,
+                                currentPrice: product.precio || 0,
+                                currentTiers: currentTiers
+                            });
+                        });
+                    }
+                }
+                
+                // Marcar los que no se encontraron
+                previewItems.forEach(item => {
+                    if (!productDataMap.has(item.ref_web)) {
+                        productDataMap.set(item.ref_web, {
+                            found: false,
+                            currentPrice: null,
+                            currentTiers: [null, null, null, null, null]
+                        });
+                    }
+                });
+            }
+            
+            // Filtrar solo productos encontrados
+            const foundProducts = pricesData.filter(item => {
+                const productData = productDataMap.get(item.ref_web);
+                return productData && productData.found;
+            });
+            
+            // Función para formatear precio con comparación (para cada escalón)
+            function formatTierPriceComparison(newPrice, currentPrice) {
+                // Verificar si newPrice es válido (no null, no undefined, no NaN)
+                const hasNewPrice = newPrice !== null && newPrice !== undefined && !isNaN(newPrice) && newPrice > 0;
+                const hasCurrentPrice = currentPrice !== null && currentPrice !== undefined && !isNaN(currentPrice) && currentPrice > 0;
+                
+                if (!hasNewPrice && !hasCurrentPrice) {
+                    return '<div style="text-align: right; color: #94a3b8; font-size: 0.9rem;">-</div>';
+                }
+                
+                const newPriceStr = hasNewPrice ? newPrice.toFixed(2) + ' €' : '-';
+                const currentPriceStr = hasCurrentPrice ? currentPrice.toFixed(2) + ' €' : '-';
+                
+                // Obtener textos traducidos
+                const lang = localStorage.getItem('language') || 'pt';
+                const noCurrentPriceText = lang === 'pt' ? 'Sem preço atual' : lang === 'es' ? 'Sin precio actual' : 'No current price';
+                const noNewPriceText = lang === 'pt' ? 'Sem preço novo' : lang === 'es' ? 'Sin precio nuevo' : 'No new price';
+                
+                if (!hasCurrentPrice) {
+                    // Solo precio nuevo (sin precio actual)
+                    return `
+                        <div style="text-align: right;">
+                            <div style="color: #3b82f6; font-weight: 700; font-size: 0.95rem; margin-bottom: 2px;">${newPriceStr}</div>
+                            <div style="color: #94a3b8; font-size: 0.75rem;">${noCurrentPriceText}</div>
+                        </div>
+                    `;
+                }
+                
+                if (!hasNewPrice) {
+                    // Solo precio actual (sin precio nuevo)
+                    return `
+                        <div style="text-align: right;">
+                            <div style="color: #64748b; font-weight: 600; font-size: 0.95rem; margin-bottom: 2px;">${currentPriceStr}</div>
+                            <div style="color: #94a3b8; font-size: 0.75rem;">${noNewPriceText}</div>
+                        </div>
+                    `;
+                }
+                
+                // Ambos precios disponibles - comparar
+                const diff = newPrice - currentPrice;
+                const diffPercent = Math.abs(diff) > 0.01 ? ((diff / currentPrice) * 100).toFixed(1) : '0.0';
+                let newColor = '#3b82f6';
+                let arrow = '';
+                let changeText = '';
+                
+                if (diff > 0.01) {
+                    newColor = '#ef4444';
+                    arrow = ' ↗';
+                    changeText = `+${diffPercent}%`;
+                } else if (diff < -0.01) {
+                    newColor = '#10b981';
+                    arrow = ' ↘';
+                    changeText = `${diffPercent}%`;
+                } else {
+                    newColor = '#3b82f6';
+                    changeText = '0%';
+                }
+                
+                return `
+                    <div style="text-align: right;">
+                        <div style="color: ${newColor}; font-weight: 700; font-size: 0.95rem; margin-bottom: 2px;">${newPriceStr}${arrow}</div>
+                        <div style="color: #64748b; font-size: 0.75rem; text-decoration: line-through; margin-bottom: 1px;">${currentPriceStr}</div>
+                        <div style="color: #94a3b8; font-size: 0.7rem;">(${changeText})</div>
+                    </div>
+                `;
+            }
+            
+            // Preview con comparación de precios - SOLO PRODUCTOS ENCONTRADOS
+            const previewBody = document.getElementById('pricesPreviewBody');
+            previewBody.innerHTML = '';
+            
+            if (foundProducts.length === 0) {
+                previewBody.innerHTML = `
+                    <tr>
+                        <td colspan="8" style="padding: 40px; text-align: center; color: #475569; background: #f8fafc;">
+                            <i class="fas fa-info-circle" style="font-size: 2rem; margin-bottom: 10px; display: block; color: #64748b;"></i>
+                            <p style="margin: 0; color: #475569; font-size: 1rem;">No se encontraron productos para actualizar. Verifica que las referencias en el Excel coincidan con las referencias en la base de datos.</p>
+                        </td>
+                    </tr>
+                `;
+            } else {
+                foundProducts.forEach((item, index) => {
+                    const productData = productDataMap.get(item.ref_web);
+                    
+                    // Obtener precios actuales de cada escalón (en orden: índice 0-4)
+                    const currentTiers = productData.currentTiers || [null, null, null, null, null];
+                    const current1 = currentTiers[0];  // Primer escalón
+                    const current2 = currentTiers[1];  // Segundo escalón
+                    const current3 = currentTiers[2];  // Tercer escalón
+                    const current4 = currentTiers[3];  // Cuarto escalón
+                    const current5 = currentTiers[4];  // Quinto escalón
+                    
+                    // Obtener precios nuevos del Excel (en orden de columnas)
+                    const new1 = item.price_1_10;      // Primera columna del Excel
+                    const new2 = item.price_11_50;     // Segunda columna del Excel
+                    const new3 = item.price_51_100;    // Tercera columna del Excel
+                    const new4 = item.price_101_200;   // Cuarta columna del Excel
+                    const new5 = item.price_200plus;   // Quinta columna del Excel
+                    
+                    previewBody.innerHTML += `
+                        <tr style="border-bottom: 1px solid #e2e8f0; background: #ffffff;">
+                            <td style="padding: 12px 15px; color: #64748b; font-weight: 600; border-right: 1px solid #e2e8f0;">${index + 1}</td>
+                            <td style="padding: 12px 15px; color: #1e293b; font-weight: 700; border-right: 1px solid #e2e8f0;">${item.ref_web}</td>
+                            <td style="padding: 12px 15px; text-align: right; border-right: 1px solid #e2e8f0;">
+                                ${formatTierPriceComparison(new1, current1)}
+                            </td>
+                            <td style="padding: 12px 15px; text-align: right; border-right: 1px solid #e2e8f0;">
+                                ${formatTierPriceComparison(new2, current2)}
+                            </td>
+                            <td style="padding: 12px 15px; text-align: right; border-right: 1px solid #e2e8f0;">
+                                ${formatTierPriceComparison(new3, current3)}
+                            </td>
+                            <td style="padding: 12px 15px; text-align: right; border-right: 1px solid #e2e8f0;">
+                                ${formatTierPriceComparison(new4, current4)}
+                            </td>
+                            <td style="padding: 12px 15px; text-align: right; border-right: 1px solid #e2e8f0;">
+                                ${formatTierPriceComparison(new5, current5)}
+                            </td>
+                            <td style="padding: 12px 15px; text-align: center; color: #10b981; font-weight: 700; font-size: 1.2rem;">✅</td>
+                        </tr>
+                    `;
+                });
+            }
+            
+            document.getElementById('pricesDropZone').style.display = 'none';
+            document.getElementById('pricesFileInfo').style.display = 'block';
+            
+        } catch (error) {
+            console.error('Error leyendo Excel:', error);
+            alert('Error al leer el archivo: ' + error.message);
+        }
+    }
+
+    function findColumn(jsonData, possibleNames) {
+        if (jsonData.length === 0) return null;
+        const headers = Object.keys(jsonData[0]);
+        
+        // Buscar coincidencia exacta primero
+        for (const name of possibleNames) {
+            if (headers.includes(name)) {
+                console.log(`[DEBUG findColumn] Columna encontrada: "${name}"`);
+                return name;
+            }
+        }
+        
+        // Si no hay coincidencia exacta, buscar sin distinguir mayúsculas/minúsculas y sin espacios
+        for (const name of possibleNames) {
+            const normalizedName = name.toLowerCase().replace(/\s+/g, '');
+            for (const header of headers) {
+                const normalizedHeader = header.toLowerCase().replace(/\s+/g, '');
+                if (normalizedHeader === normalizedName) {
+                    console.log(`[DEBUG findColumn] Columna encontrada (normalizada): "${header}" (buscando "${name}")`);
+                    return header;
+                }
+            }
+        }
+        
+        console.log(`[DEBUG findColumn] Columna NO encontrada. Buscando: ${possibleNames.join(', ')}. Disponibles: ${headers.join(', ')}`);
+        return null;
+    }
+
+    function parsePrice(value) {
+        // Si es null, undefined o string vacío
+        if (value === null || value === undefined || value === '') {
+            console.log(`[DEBUG parsePrice] Input: "${value}" -> Output: null (vacío)`);
+            return null;
+        }
+        
+        // Si ya es un número
+        let num;
+        if (typeof value === 'number') {
+            num = isNaN(value) ? null : value;
+        } else {
+            // Convertir a string y limpiar
+            let str = String(value).trim();
+            
+            // Si está vacío después de trim
+            if (str === '') {
+                console.log(`[DEBUG parsePrice] Input: "${value}" -> Output: null (string vacío)`);
+                return null;
+            }
+            
+            // Reemplazar comas por puntos (separador decimal)
+            str = str.replace(/,/g, '.');
+            
+            // Eliminar espacios
+            str = str.replace(/\s/g, '');
+            
+            // Eliminar caracteres no numéricos excepto punto y signo menos al inicio
+            const cleanStr = str.replace(/[^\d.-]/g, '');
+            
+            // Intentar parsear
+            num = parseFloat(cleanStr);
+            if (isNaN(num) || cleanStr === '') {
+                console.log(`[DEBUG parsePrice] Input: "${value}" -> Output: null (no numérico)`);
+                return null;
+            }
+        }
+        
+        // Aplicar redondeo según el valor
+        let result;
+        if (num >= 1) {
+            // Precio >= 1 euro: máximo 3 decimales
+            result = Math.round(num * 1000) / 1000;
+        } else {
+            // Precio < 1 euro: máximo 4 decimales
+            result = Math.round(num * 10000) / 10000;
+        }
+        
+        console.log(`[DEBUG parsePrice] Input: "${value}" -> Parsed: ${num} -> Rounded: ${result} (${num >= 1 ? '3' : '4'} decimales)`);
+        return result;
+    }
+
+    window.uploadPricesToSupabase = async function() {
+        if (pricesData.length === 0) {
+            alert('No hay datos para actualizar. Por favor, carga un archivo Excel primero.');
+            return;
+        }
+        
+        // Verificar cuántos productos se van a actualizar realmente
+        const client = supabaseClient || await initSupabase();
+        let productsToUpdate = 0;
+        
+        if (client) {
+            const refsToCheck = pricesData.map(item => item.ref_web);
+            const batchSize = 50;
+            for (let i = 0; i < refsToCheck.length; i += batchSize) {
+                const batch = refsToCheck.slice(i, i + batchSize);
+                const { data: products } = await client
+                    .from('products')
+                    .select('id')
+                    .in('office_only', batch);
+                
+                if (products) {
+                    productsToUpdate += products.length;
+                }
+            }
+        }
+        
+        // Pedir confirmación antes de actualizar
+        const confirmMessage = `¿Estás seguro de que deseas actualizar los precios?\n\n` +
+            `- Referencias en el Excel: ${pricesData.length}\n` +
+            `- Productos encontrados en Supabase: ${productsToUpdate}\n` +
+            `- Referencias no encontradas: ${pricesData.length - productsToUpdate}\n\n` +
+            `Esta acción actualizará los precios de ${productsToUpdate} producto(s).`;
+        
+        if (!confirm(confirmMessage)) {
+            return; // El usuario canceló
+        }
+        
+        document.getElementById('pricesFileInfo').style.display = 'none';
+        document.getElementById('pricesProgressSection').style.display = 'block';
+        
+        const progressBar = document.getElementById('pricesProgressBar');
+        const progressText = document.getElementById('pricesProgressText');
+        
+        let processed = 0;
+        let updated = 0;
+        let errors = 0;
+        
+        // Reutilizar el client que ya fue declarado arriba
+        for (const priceItem of pricesData) {
+            try {
+                // Buscar productos con office_only = ref_web
+                const { data: products, error: findError } = await client
+                    .from('products')
+                    .select('id, price_tiers')
+                    .eq('office_only', priceItem.ref_web);
+                
+                if (findError) {
+                    console.error('Error buscando productos:', findError);
+                    errors++;
+                    continue;
+                }
+                
+                if (!products || products.length === 0) {
+                    // No se encontró el producto, continuar
+                    processed++;
+                    const progress = (processed / pricesData.length) * 100;
+                    progressBar.style.width = progress + '%';
+                    progressText.textContent = `${processed.toLocaleString()} de ${pricesData.length.toLocaleString()}`;
+                    continue;
+                }
+                
+                // Construir price_tiers desde los precios del Excel
+                const priceTiers = [];
+                
+                if (priceItem.price_1_10 !== null && priceItem.price_1_10 !== undefined) {
+                    priceTiers.push({ min_qty: 1, max_qty: 10, price: priceItem.price_1_10, currency: 'EUR' });
+                }
+                if (priceItem.price_11_50 !== null && priceItem.price_11_50 !== undefined) {
+                    priceTiers.push({ min_qty: 11, max_qty: 50, price: priceItem.price_11_50, currency: 'EUR' });
+                }
+                if (priceItem.price_51_100 !== null && priceItem.price_51_100 !== undefined) {
+                    priceTiers.push({ min_qty: 51, max_qty: 100, price: priceItem.price_51_100, currency: 'EUR' });
+                }
+                if (priceItem.price_101_200 !== null && priceItem.price_101_200 !== undefined) {
+                    priceTiers.push({ min_qty: 101, max_qty: 200, price: priceItem.price_101_200, currency: 'EUR' });
+                }
+                if (priceItem.price_200plus !== null && priceItem.price_200plus !== undefined) {
+                    priceTiers.push({ min_qty: 201, max_qty: null, price: priceItem.price_200plus, currency: 'EUR' });
+                }
+                
+                // Actualizar precio base (usar el precio del primer escalón)
+                const basePrice = priceTiers.length > 0 ? priceTiers[0].price : null;
+                
+                // Actualizar cada producto encontrado
+                for (const product of products) {
+                    const updateData = {
+                        price_tiers: priceTiers
+                    };
+                    
+                    if (basePrice !== null) {
+                        updateData.precio = basePrice;
+                    }
+                    
+                    const { error: updateError } = await client
+                        .from('products')
+                        .update(updateData)
+                        .eq('id', product.id);
+                    
+                    if (updateError) {
+                        console.error('Error actualizando producto:', updateError);
+                        errors++;
+                    } else {
+                        updated++;
+                    }
+                }
+                
+            } catch (err) {
+                console.error('Error procesando precio:', err);
+                errors++;
+            }
+            
+            processed++;
+            const progress = (processed / pricesData.length) * 100;
+            progressBar.style.width = progress + '%';
+            progressText.textContent = `${processed.toLocaleString()} de ${pricesData.length.toLocaleString()}`;
+            
+            await new Promise(resolve => setTimeout(resolve, 30));
+        }
+        
+        document.getElementById('pricesProgressSection').style.display = 'none';
+        document.getElementById('pricesResultsSection').style.display = 'block';
+        document.getElementById('pricesResultUpdated').textContent = updated.toLocaleString();
+        document.getElementById('pricesResultErrors').textContent = errors.toLocaleString();
+    };
+
+    window.resetPricesUpload = function() {
+        pricesData = [];
+        const fileInput = document.getElementById('pricesFileInput');
+        if (fileInput) fileInput.value = '';
+        const dropZone = document.getElementById('pricesDropZone');
+        if (dropZone) dropZone.style.display = 'block';
+        const fileInfo = document.getElementById('pricesFileInfo');
+        if (fileInfo) fileInfo.style.display = 'none';
+        const progressSection = document.getElementById('pricesProgressSection');
+        if (progressSection) progressSection.style.display = 'none';
+        const resultsSection = document.getElementById('pricesResultsSection');
+        if (resultsSection) resultsSection.style.display = 'none';
+    };
+
+    // Cerrar modal al hacer clic fuera
+    document.getElementById('pricesUploadModal')?.addEventListener('click', (e) => {
+        if (e.target.id === 'pricesUploadModal') closePricesModal();
     });
 
         // ============================================
