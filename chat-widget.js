@@ -7,7 +7,7 @@ class ChatWidget {
     constructor() {
         this.isOpen = false;
         this.messages = [];
-        this.webhookUrl = 'https://groupegmpi.app.n8n.cloud/webhook/761b05cc-158e-4140-9f11-8be71f4d2f3a';
+        this.webhookUrl = 'https://groupegmpi.app.n8n.cloud/webhook/761b05cc-158e-4140-9f11-8be71f4d2f77h';
         this.userName = null;
         this.userRole = null;
         this.supabase = null;
