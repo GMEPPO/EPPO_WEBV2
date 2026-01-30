@@ -124,13 +124,13 @@ class CartManager {
 
             // Cargar estado del modo 200+ desde la propuesta
             this.modo200 = proposal.modo_200_plus || proposal.modo_200 || false;
-            
+
             // Cargar productos exclusivos del cliente si existe
             await this.loadClientExclusiveProducts(proposal.nombre_cliente);
             
             // Recargar todos los productos para incluir los exclusivos del cliente
             await this.loadAllProducts();
-            
+
             console.log('📦 Productos cargados antes de cargar propuesta al carrito:', this.allProducts.length);
             console.log('📋 Artículos a cargar:', articulos ? articulos.length : 0);
 
@@ -537,7 +537,7 @@ class CartManager {
             // Primero intentar por ID/referencia
             if (articulo.referencia_articulo) {
                 product = this.allProducts.find(p => 
-                    String(p.id) === String(articulo.referencia_articulo) ||
+                String(p.id) === String(articulo.referencia_articulo) || 
                     String(p.id) === String(articulo.referencia_articulo).trim()
                 );
             }
@@ -736,7 +736,7 @@ class CartManager {
         
         console.log('🔄 Llamando a renderCart() con', this.cart.length, 'items en el carrito');
         try {
-            this.renderCart();
+        this.renderCart();
             console.log('✅ renderCart() completado exitosamente');
         } catch (renderError) {
             console.error('❌ ERROR en renderCart():', renderError);
@@ -1874,7 +1874,7 @@ class CartManager {
         }
 
         try {
-            const headersHTML = this.renderCartHeaders();
+        const headersHTML = this.renderCartHeaders();
             console.log('📋 Generando HTML de items...');
             const itemsHTML = this.cart.map((item, index) => {
                 try {
@@ -1893,7 +1893,7 @@ class CartManager {
             }).join('');
             
             console.log('📋 HTML generado, longitud:', itemsHTML.length);
-            cartItemsContainer.innerHTML = headersHTML + itemsHTML;
+        cartItemsContainer.innerHTML = headersHTML + itemsHTML;
             console.log('✅ HTML insertado en el DOM');
             
             // Después de renderizar, actualizar todos los plazos de entrega según stock
@@ -7176,40 +7176,40 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             }
             
             const words = paragraph.split(' ');
-            let currentLine = '';
+        let currentLine = '';
+        
+        words.forEach(word => {
+            const testLine = currentLine ? currentLine + ' ' + word : word;
+            const testWidth = doc.getTextWidth(testLine);
             
-            words.forEach(word => {
-                const testLine = currentLine ? currentLine + ' ' + word : word;
-                const testWidth = doc.getTextWidth(testLine);
-                
-                if (testWidth <= maxWidth && currentLine) {
-                    currentLine = testLine;
-                } else {
-                    if (currentLine) {
-                        lines.push(currentLine);
-                    }
-                    // Si una palabra sola es más ancha que maxWidth, dividirla por caracteres
-                    if (doc.getTextWidth(word) > maxWidth) {
-                        let charLine = '';
-                        for (let i = 0; i < word.length; i++) {
-                            const testCharLine = charLine + word[i];
-                            if (doc.getTextWidth(testCharLine) > maxWidth && charLine) {
-                                lines.push(charLine);
-                                charLine = word[i];
-                            } else {
-                                charLine = testCharLine;
-                            }
-                        }
-                        currentLine = charLine;
-                    } else {
-                        currentLine = word;
-                    }
+            if (testWidth <= maxWidth && currentLine) {
+                currentLine = testLine;
+            } else {
+                if (currentLine) {
+                    lines.push(currentLine);
                 }
-            });
-            
-            if (currentLine) {
-                lines.push(currentLine);
+                // Si una palabra sola es más ancha que maxWidth, dividirla por caracteres
+                if (doc.getTextWidth(word) > maxWidth) {
+                    let charLine = '';
+                    for (let i = 0; i < word.length; i++) {
+                        const testCharLine = charLine + word[i];
+                        if (doc.getTextWidth(testCharLine) > maxWidth && charLine) {
+                            lines.push(charLine);
+                            charLine = word[i];
+                        } else {
+                            charLine = testCharLine;
+                        }
+                    }
+                    currentLine = charLine;
+                } else {
+                    currentLine = word;
+                }
             }
+        });
+        
+        if (currentLine) {
+            lines.push(currentLine);
+        }
         });
         
         return lines.length > 0 ? lines : [text];
@@ -8573,8 +8573,57 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             throw new Error('Nombre de archivo vacío');
         }
         
-        console.log('💾 Ejecutando doc.save()...');
-        doc.save(fileName);
+        console.log('💾 Generando PDF para mostrar diálogo de guardar...');
+        
+        // Generar el PDF como blob
+        const pdfBlob = doc.output('blob');
+        
+        // Intentar usar la API moderna de File System Access (navegadores modernos)
+        if ('showSaveFilePicker' in window) {
+            try {
+                const fileHandle = await window.showSaveFilePicker({
+                    suggestedName: fileName,
+                    types: [{
+                        description: 'PDF files',
+                        accept: {
+                            'application/pdf': ['.pdf']
+                        }
+                    }]
+                });
+                
+                const writable = await fileHandle.createWritable();
+                await writable.write(pdfBlob);
+                await writable.close();
+                
+                console.log('✅ PDF guardado exitosamente usando File System Access API');
+                return;
+            } catch (fileError) {
+                // Si el usuario cancela el diálogo, no es un error
+                if (fileError.name === 'AbortError') {
+                    console.log('ℹ️ Usuario canceló el guardado del PDF');
+                    return;
+                }
+                console.warn('⚠️ Error con File System Access API, usando método alternativo:', fileError);
+            }
+        }
+        
+        // Método alternativo: crear un enlace de descarga temporal
+        const url = URL.createObjectURL(pdfBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        link.style.display = 'none';
+        
+        // Agregar al DOM, hacer clic y remover
+        document.body.appendChild(link);
+        link.click();
+        
+        // Limpiar después de un breve delay
+        setTimeout(() => {
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }, 100);
+        
         console.log('✅ PDF guardado exitosamente con nombre:', fileName);
     } catch (saveError) {
         console.error('❌ ERROR al guardar PDF:', saveError);
@@ -8582,11 +8631,25 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         console.error('   - Mensaje:', saveError.message);
         console.error('   - Stack:', saveError.stack);
         
-        // Intentar con nombre más simple
+        // Intentar con nombre más simple usando el método tradicional
         try {
             const simpleName = `propuesta_${new Date().getTime()}.pdf`;
             console.log('🔄 Intentando guardar con nombre simple:', simpleName);
-            doc.save(simpleName);
+            
+            // Generar blob con nombre simple
+            const pdfBlob = doc.output('blob');
+            const url = URL.createObjectURL(pdfBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = simpleName;
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            setTimeout(() => {
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            }, 100);
+            
             console.log('✅ PDF guardado con nombre simple');
         } catch (secondError) {
             console.error('❌ ERROR CRÍTICO: No se pudo guardar ni con nombre simple:', secondError);
