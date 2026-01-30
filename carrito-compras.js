@@ -2378,19 +2378,66 @@ class CartManager {
         `;
         }
         
-        // Renderizar selector de color (variantes de referencias) solo si hay variantes de referencias
+        // Renderizar selector de color (variantes de referencias)
+        // Mostrar si hay variantes O si hay un color guardado (para mantener historial)
         let colorSelector = '';
-        if (referenceVariants && Array.isArray(referenceVariants) && referenceVariants.length > 0) {
+        const hasVariants = referenceVariants && Array.isArray(referenceVariants) && referenceVariants.length > 0;
+        const hasColorGuardado = item.colorSeleccionadoGuardado && item.colorSeleccionadoGuardado.trim() !== '';
+        
+        if (hasVariants || hasColorGuardado) {
             try {
                 const colorLabel = this.currentLanguage === 'es' ? 'Color:' : this.currentLanguage === 'pt' ? 'Cor:' : 'Color:';
                 const selectPlaceholder = this.currentLanguage === 'es' ? 'Seleccionar color...' : this.currentLanguage === 'pt' ? 'Selecionar cor...' : 'Select color...';
                 const safeItemId = String(itemIdentifier).replace(/'/g, "\\'");
                 
-                const options = referenceVariants.map((variant, index) => {
-                    const color = (variant && variant.color) ? String(variant.color) : `Color ${index + 1}`;
-                    const isSelected = (item.selectedReferenceVariant === index) ? 'selected' : '';
-                    return `<option value="${index}" ${isSelected}>${color}</option>`;
-                }).join('');
+                let options = '';
+                let selectedValue = '';
+                
+                // Verificar si el color guardado está en las variantes actuales
+                let colorGuardadoEnVariantes = false;
+                let colorGuardadoIndex = -1;
+                
+                if (hasColorGuardado && hasVariants) {
+                    // Buscar si el color guardado existe en las variantes
+                    colorGuardadoIndex = referenceVariants.findIndex(v => 
+                        v && v.color && String(v.color).trim() === String(item.colorSeleccionadoGuardado).trim()
+                    );
+                    colorGuardadoEnVariantes = colorGuardadoIndex >= 0;
+                }
+                
+                // Si hay variantes, agregarlas como opciones
+                if (hasVariants) {
+                    options = referenceVariants.map((variant, index) => {
+                        const color = (variant && variant.color) ? String(variant.color) : `Color ${index + 1}`;
+                        const isSelected = (item.selectedReferenceVariant === index) || 
+                                         (hasColorGuardado && colorGuardadoEnVariantes && colorGuardadoIndex === index);
+                        if (isSelected) {
+                            selectedValue = index;
+                        }
+                        return `<option value="${index}" ${isSelected ? 'selected' : ''}>${color}</option>`;
+                    }).join('');
+                }
+                
+                // Si hay color guardado pero NO está en las variantes, agregarlo como opción deshabilitada y seleccionada
+                if (hasColorGuardado && !colorGuardadoEnVariantes) {
+                    const colorGuardadoText = String(item.colorSeleccionadoGuardado);
+                    const disabledText = this.currentLanguage === 'es' ? ' (eliminado)' : 
+                                        this.currentLanguage === 'pt' ? ' (eliminado)' : 
+                                        ' (removed)';
+                    
+                    // Si no hay variantes, solo mostrar el color guardado
+                    if (!hasVariants) {
+                        options = `<option value="-1" selected disabled style="color: #6b7280; font-style: italic;">${colorGuardadoText}${disabledText}</option>`;
+                        selectedValue = '-1';
+                    } else {
+                        // Si hay variantes, agregar el color guardado al inicio como deshabilitado
+                        options = `<option value="-1" selected disabled style="color: #6b7280; font-style: italic;">${colorGuardadoText}${disabledText}</option>` + options;
+                        selectedValue = '-1';
+                    }
+                } else if (hasVariants && !selectedValue && item.selectedReferenceVariant !== null && item.selectedReferenceVariant !== undefined) {
+                    // Si hay variantes y hay un índice seleccionado, usarlo
+                    selectedValue = item.selectedReferenceVariant;
+                }
                 
                 colorSelector = `
             <div class="cart-item-color-selector" style="grid-column: 1 / -1; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--bg-gray-200);">
@@ -2400,12 +2447,13 @@ class CartManager {
                 <select class="color-variant-select" 
                         onchange="changeReferenceVariant('${safeItemId}', this.value)"
                         style="width: 100%; padding: 8px 12px; border: 1px solid var(--bg-gray-300); border-radius: 6px; background: var(--bg-white); color: var(--text-primary); font-size: 0.875rem; cursor: pointer;">
-                    <option value="">${selectPlaceholder}</option>
+                    ${!hasColorGuardado || colorGuardadoEnVariantes ? `<option value="">${selectPlaceholder}</option>` : ''}
                     ${options}
                 </select>
             </div>
         `;
             } catch (error) {
+                console.error('Error renderizando selector de color:', error);
                 colorSelector = '';
             }
         }
@@ -4830,15 +4878,31 @@ function changeReferenceVariant(itemId, variantIndex) {
         // Actualizar selectedReferenceVariant
         if (variantIndex === '' || variantIndex === null || variantIndex === undefined) {
             item.selectedReferenceVariant = null;
+            // Si se deselecciona, también limpiar el color guardado
+            item.colorSeleccionadoGuardado = null;
         } else {
             const index = parseInt(variantIndex);
-            if (index >= 0 && index < item.variantes_referencias.length) {
+            
+            // Si se intenta seleccionar el color eliminado (-1), no permitirlo
+            if (index === -1) {
+                console.warn('⚠️ No se puede seleccionar un color eliminado. El color guardado se mantiene para historial.');
+                // Mantener el selectedReferenceVariant actual o null
+                // No actualizar nada, solo mostrar advertencia
+                return;
+            }
+            
+            if (index >= 0 && item.variantes_referencias && index < item.variantes_referencias.length) {
                 item.selectedReferenceVariant = index;
+                // Actualizar también el color guardado con el nuevo color seleccionado
+                const selectedVariant = item.variantes_referencias[index];
+                if (selectedVariant && selectedVariant.color) {
+                    item.colorSeleccionadoGuardado = selectedVariant.color;
+                }
                 console.log('✅ Color seleccionado guardado:', {
                     itemId: item.id,
                     itemName: item.name,
                     selectedIndex: index,
-                    color: item.variantes_referencias[index]?.color
+                    color: selectedVariant?.color
                 });
             } else {
                 console.error('Índice de variante de referencia inválido:', index);
