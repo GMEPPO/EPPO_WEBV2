@@ -95,6 +95,21 @@ class CartManager {
             if (articulosError) {
                 throw articulosError;
             }
+            
+            // DEBUG: Verificar qué precios están llegando desde Supabase
+            console.log('📦 Artículos cargados desde Supabase:', articulos?.length || 0);
+            if (articulos && articulos.length > 0) {
+                articulos.forEach((art, idx) => {
+                    console.log(`   Artículo ${idx + 1}:`, {
+                        nombre: art.nombre_articulo,
+                        precio: art.precio,
+                        tipoPrecio: typeof art.precio,
+                        precioString: String(art.precio),
+                        precioNumber: Number(art.precio),
+                        precioParseFloat: parseFloat(art.precio)
+                    });
+                });
+            }
 
             this.editingProposalData = {
                 id: proposal.id,
@@ -110,19 +125,24 @@ class CartManager {
             // Cargar estado del modo 200+ desde la propuesta
             this.modo200 = proposal.modo_200_plus || proposal.modo_200 || false;
             
-            // Si el modo 200+ está activo, aplicar los precios automáticamente
-            if (this.modo200) {
-                this.applyMode200Prices();
-                await this.updateMode200Button();
-            }
-
             // Cargar productos exclusivos del cliente si existe
             await this.loadClientExclusiveProducts(proposal.nombre_cliente);
             
             // Recargar todos los productos para incluir los exclusivos del cliente
             await this.loadAllProducts();
+            
+            console.log('📦 Productos cargados antes de cargar propuesta al carrito:', this.allProducts.length);
+            console.log('📋 Artículos a cargar:', articulos ? articulos.length : 0);
 
+            // IMPORTANTE: Cargar los artículos al carrito PRIMERO, antes de aplicar modo 200+
+            // Esto asegura que los precios guardados se carguen correctamente
             await this.loadProposalIntoCart();
+            
+            // NO aplicar modo 200+ cuando se está editando - los precios ya están guardados
+            // Solo actualizar el botón del modo 200+ para mostrar el estado
+            await this.updateMode200Button();
+            
+            console.log('✅ Carrito después de cargar propuesta:', this.cart.length, 'items');
         } catch (error) {
             // Error al cargar propuesta
         }
@@ -504,11 +524,36 @@ class CartManager {
 
         // Cargar cada artículo en el carrito
         for (const articulo of this.editingProposalData.articulos) {
-            // Buscar el producto en la base de datos
-            const product = this.allProducts.find(p => 
-                String(p.id) === String(articulo.referencia_articulo) || 
-                p.nombre === articulo.nombre_articulo
-            );
+            console.log('🔄 Cargando artículo al carrito:', {
+                nombre: articulo.nombre_articulo,
+                referencia: articulo.referencia_articulo,
+                precio: articulo.precio,
+                cantidad: articulo.cantidad
+            });
+            
+            // Buscar el producto en la base de datos con múltiples criterios
+            let product = null;
+            
+            // Primero intentar por ID/referencia
+            if (articulo.referencia_articulo) {
+                product = this.allProducts.find(p => 
+                    String(p.id) === String(articulo.referencia_articulo) ||
+                    String(p.id) === String(articulo.referencia_articulo).trim()
+                );
+            }
+            
+            // Si no se encuentra, intentar por nombre (comparación más flexible)
+            if (!product && articulo.nombre_articulo) {
+                const nombreArticulo = articulo.nombre_articulo.trim().toLowerCase();
+                product = this.allProducts.find(p => {
+                    const nombreProducto = (p.nombre || '').trim().toLowerCase();
+                    return nombreProducto === nombreArticulo || 
+                           nombreProducto.includes(nombreArticulo) ||
+                           nombreArticulo.includes(nombreProducto);
+                });
+            }
+            
+            console.log('🔍 Resultado de búsqueda:', product ? 'Producto encontrado' : 'Producto NO encontrado, agregando como pedido especial');
 
             if (product) {
                 // Normalizar cantidad según boxSize si existe
@@ -526,13 +571,44 @@ class CartManager {
                 const cartItemId = `cart-item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
                 
                 const nomeFornecedor = product.nombre_fornecedor || null;
-                const precioGuardado = parseFloat(articulo.precio);
+                
+                // IMPORTANTE: Parsear el precio correctamente desde presupuestos_articulos
+                // El precio viene como numeric(12, 4) de PostgreSQL, que Supabase devuelve como string
+                let precioGuardado = 0;
+                if (articulo.precio !== null && articulo.precio !== undefined && articulo.precio !== '') {
+                    // Supabase devuelve numeric como string, convertir a número
+                    const precioStr = String(articulo.precio).trim();
+                    precioGuardado = parseFloat(precioStr);
+                    
+                    // Si el parseo falla o da NaN, intentar Number directamente
+                    if (isNaN(precioGuardado)) {
+                        precioGuardado = Number(articulo.precio);
+                        // Si aún falla, usar 0
+                        if (isNaN(precioGuardado)) {
+                            console.warn('⚠️ No se pudo parsear el precio:', articulo.precio, 'para', articulo.nombre_articulo);
+                            precioGuardado = 0;
+                        }
+                    }
+                } else {
+                    console.warn('⚠️ Precio es null/undefined/vacío para:', articulo.nombre_articulo);
+                }
+                
                 const precioProducto = product.precio || 0;
                 
-                // Si el precio del producto es 0 y el precio guardado es diferente de 0,
-                // marcar como precio manual (fue editado por un admin)
-                const esPrecioManual = (precioProducto === 0 || precioProducto === null || precioProducto === undefined) && 
-                                       precioGuardado && precioGuardado !== 0 && precioGuardado !== precioProducto;
+                console.log('💰 Precio cargado desde BD:', {
+                    nombre: articulo.nombre_articulo,
+                    precioOriginal: articulo.precio,
+                    tipoPrecioOriginal: typeof articulo.precio,
+                    precioOriginalString: String(articulo.precio),
+                    precioGuardado: precioGuardado,
+                    precioGuardadoType: typeof precioGuardado,
+                    precioProducto: precioProducto
+                });
+                
+                // IMPORTANTE: Cuando se está editando una propuesta, SIEMPRE usar el precio guardado
+                // y marcarlo como manual para evitar que se recalcule (especialmente con modo 200+)
+                // Esto asegura que los precios guardados en presupuestos_articulos se mantengan
+                const esPrecioManual = true; // Siempre manual cuando se carga desde una propuesta guardada
                 
                 const cartItem = {
                     id: product.id,
@@ -540,8 +616,12 @@ class CartManager {
                     type: 'product',
                     name: articulo.nombre_articulo || product.nombre,
                     category: product.categoria,
-                    price: precioGuardado || product.precio,
+                    // IMPORTANTE: Usar SIEMPRE el precio guardado en presupuestos_articulos
+                    // Incluso si es 0 (Sobre consulta), debe mantenerse el precio guardado
+                    price: precioGuardado,
                     basePrice: product.precio,
+                    // Guardar el precio original para referencia
+                    originalPrice: precioGuardado,
                     image: product.foto,
                     quantity: quantity,
                     specs: this.getProductSpecs(product),
@@ -584,26 +664,85 @@ class CartManager {
                     logoUrl: articulo.logo_url || null
                 };
 
+                // IMPORTANTE: Asegurar que el precio se mantenga correctamente
+                // Verificar que el precio no se haya perdido
+                if (cartItem.price !== precioGuardado) {
+                    console.error('❌ ERROR: El precio se perdió al crear el item!', {
+                        precioGuardado: precioGuardado,
+                        precioEnItem: cartItem.price,
+                        nombre: cartItem.name
+                    });
+                    // Corregir el precio
+                    cartItem.price = precioGuardado;
+                }
+                
+                console.log('✅ Item agregado al carrito:', {
+                    nombre: cartItem.name,
+                    precio: cartItem.price,
+                    precioGuardado: precioGuardado,
+                    manualPrice: cartItem.manualPrice,
+                    basePrice: cartItem.basePrice,
+                    originalPrice: cartItem.originalPrice
+                });
+
                 this.cart.push(cartItem);
+                
+                // Verificar inmediatamente después de agregar
+                const lastItem = this.cart[this.cart.length - 1];
+                if (lastItem.price !== precioGuardado) {
+                    console.error('❌ ERROR: El precio se perdió después de agregar al carrito!', {
+                        precioEsperado: precioGuardado,
+                        precioActual: lastItem.price,
+                        nombre: lastItem.name
+                    });
+                    // Corregir el precio
+                    lastItem.price = precioGuardado;
+                }
             } else {
                 // Si no se encuentra el producto, agregar como pedido especial
+                // IMPORTANTE: Incluir todos los datos del artículo guardado
+                const cartItemId = `cart-item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                const precioGuardado = parseFloat(articulo.precio) || 0;
+                
+                console.log('📦 Agregando como pedido especial:', {
+                    nombre: articulo.nombre_articulo,
+                    precio: precioGuardado,
+                    cantidad: articulo.cantidad
+                });
+                
                 this.cart.push({
-                    id: `special-${Date.now()}`,
+                    id: articulo.referencia_articulo || `special-${Date.now()}`,
+                    cartItemId: cartItemId,
                     type: 'special',
-                    name: articulo.nombre_articulo,
+                    name: articulo.nombre_articulo || 'Producto sin nombre',
                     category: 'otros',
-                    price: parseFloat(articulo.precio) || 0,
-                    basePrice: parseFloat(articulo.precio) || 0,
+                    price: precioGuardado, // Usar el precio guardado (puede ser 0 para "Sobre consulta")
+                    basePrice: precioGuardado,
                     quantity: parseInt(articulo.cantidad) || 1,
                     referencia: articulo.referencia_articulo || '',
                     plazoEntrega: articulo.plazo_entrega || '',
-                    observations: articulo.observaciones || ''
+                    observations: articulo.observaciones || '',
+                    manualPrice: precioGuardado > 0, // Si tiene precio, es manual
+                    // Incluir datos adicionales si existen
+                    descripcionEs: '',
+                    descripcionPt: '',
+                    description: '',
+                    logoUrl: articulo.logo_url || null
                 });
             }
         }
 
         this.saveCart();
-        this.renderCart();
+        
+        console.log('🔄 Llamando a renderCart() con', this.cart.length, 'items en el carrito');
+        try {
+            this.renderCart();
+            console.log('✅ renderCart() completado exitosamente');
+        } catch (renderError) {
+            console.error('❌ ERROR en renderCart():', renderError);
+            console.error('   - Stack:', renderError.stack);
+        }
+        
         this.updateSummary();
         
         // Actualizar plazos según stock
@@ -612,13 +751,15 @@ class CartManager {
         // Prellenar formulario con datos de la propuesta
         this.prefillProposalForm();
 
-        // Si el modo 200+ está activo, aplicar precios automáticamente
-        if (this.modo200) {
-            this.applyMode200Prices();
-            this.saveCart();
-            this.renderCart();
-            this.updateSummary();
-        }
+        // IMPORTANTE: NO aplicar precios del modo 200+ cuando se está editando una propuesta
+        // Los precios ya están guardados en presupuestos_articulos y deben mantenerse
+        // El modo 200+ solo debe aplicarse cuando se crea una NUEVA propuesta, no al editar
+        // if (this.modo200) {
+        //     this.applyMode200Prices();
+        //     this.saveCart();
+        //     this.renderCart();
+        //     this.updateSummary();
+        // }
     }
 
     /**
@@ -1711,8 +1852,11 @@ class CartManager {
         
         // Verificar que el contenedor existe antes de usarlo
         if (!cartItemsContainer) {
+            console.error('❌ ERROR: No se encontró el contenedor cartItems en el DOM');
             return;
         }
+        
+        console.log('📋 renderCart() - Carrito tiene', this.cart.length, 'items');
         
         // Cargar rol del usuario para usarlo en renderCartItem
         if (!window.cachedRole) {
@@ -1724,20 +1868,33 @@ class CartManager {
         }
         
         if (this.cart.length === 0) {
+            console.log('📋 Carrito vacío, mostrando mensaje de carrito vacío');
             cartItemsContainer.innerHTML = this.getEmptyCartHTML();
             return;
         }
 
         try {
-        const headersHTML = this.renderCartHeaders();
-            const itemsHTML = this.cart.map(item => {
+            const headersHTML = this.renderCartHeaders();
+            console.log('📋 Generando HTML de items...');
+            const itemsHTML = this.cart.map((item, index) => {
                 try {
-                    return this.renderCartItem(item);
+                    console.log(`📦 Renderizando item ${index + 1}/${this.cart.length}:`, item.name || item.id);
+                    const html = this.renderCartItem(item);
+                    if (!html || html.trim() === '') {
+                        console.warn(`⚠️ Item ${index + 1} generó HTML vacío:`, item);
+                    }
+                    return html;
                 } catch (error) {
+                    console.error(`❌ ERROR renderizando item ${index + 1}:`, error);
+                    console.error('   - Item:', item);
+                    console.error('   - Stack:', error.stack);
                     return ''; // Retornar string vacío si hay error para no romper el renderizado
                 }
             }).join('');
-        cartItemsContainer.innerHTML = headersHTML + itemsHTML;
+            
+            console.log('📋 HTML generado, longitud:', itemsHTML.length);
+            cartItemsContainer.innerHTML = headersHTML + itemsHTML;
+            console.log('✅ HTML insertado en el DOM');
             
             // Después de renderizar, actualizar todos los plazos de entrega según stock
             // Esto asegura que todos los productos mantengan su cálculo de stock actualizado
@@ -1756,6 +1913,20 @@ class CartManager {
      * Renderizar un item del carrito
      */
     renderCartItem(item) {
+        // Declarar variables al principio para evitar errores de inicialización
+        // IMPORTANTE: Manejar correctamente el precio 0 (no usar || 0 que convertiría 0 en 0)
+        let unitPrice = (item.price !== null && item.price !== undefined) ? Number(item.price) : 0;
+        let minQuantity = null;
+        let isValidQuantity = true;
+        
+        console.log('🎨 renderCartItem - Inicializando:', {
+            nombre: item.name,
+            precioItem: item.price,
+            tipoPrecio: typeof item.price,
+            unitPriceInicial: unitPrice,
+            manualPrice: item.manualPrice
+        });
+        
         // Si es un producto, asegurar que tenga price_tiers y recalcular precio SIEMPRE
         if (item.type === 'product') {
             // Si no tiene price_tiers, intentar obtenerlos de la BD
@@ -1810,11 +1981,26 @@ class CartManager {
             
             // Si el precio fue editado manualmente (por admin para productos sobre consulta), no recalcular
             if (item.manualPrice && item.price !== undefined && item.price !== null) {
-                // Mantener el precio manual, pero actualizar unitPrice para mostrar
-                unitPrice = item.price;
+                // IMPORTANTE: Si hay originalPrice, usarlo (es el precio guardado en presupuestos_articulos)
+                // Si no, usar el precio actual del item
+                const precioAMantener = (item.originalPrice !== undefined && item.originalPrice !== null) 
+                    ? Number(item.originalPrice) 
+                    : Number(item.price);
+                
+                // Mantener el precio manual tal cual está guardado (puede ser 0 para "Sobre consulta")
+                unitPrice = precioAMantener;
                 item.price = unitPrice;
                 item.minQuantity = null;
                 item.isValidQuantity = true;
+                console.log('💰 Precio manual mantenido:', {
+                    nombre: item.name,
+                    precioOriginal: item.originalPrice,
+                    precioItem: item.price,
+                    precioFinal: unitPrice,
+                    manualPrice: item.manualPrice
+                });
+                // IMPORTANTE: Salir temprano para evitar que se recalcule el precio
+                // No continuar con el resto de la lógica de cálculo de precio
             } else if (priceTiersToUse && Array.isArray(priceTiersToUse) && priceTiersToUse.length > 0) {
                 // SIEMPRE recalcular precio según escalones si existen (a menos que el modo 200+ esté activo)
                 // Esto asegura que el precio se actualice cuando cambia la cantidad o la variante
@@ -1873,14 +2059,11 @@ class CartManager {
             }
         }
         
-        // Obtener precio unitario (sin multiplicar por cantidad)
-        // Asegurar que siempre tengamos un precio válido
-        let unitPrice = item.price || 0;
-        let minQuantity = null;
-        let isValidQuantity = true;
+        // IMPORTANTE: Si el precio es manual, NO recalcular (ya se hizo arriba)
+        const isManualPrice = item.manualPrice === true;
         
-        // Si es un producto, recalcular para asegurar que tenemos los valores correctos
-        if (item.type === 'product') {
+        // Si es un producto y NO es precio manual, recalcular para asegurar que tenemos los valores correctos
+        if (item.type === 'product' && !isManualPrice) {
             // Determinar qué price_tiers usar: variante seleccionada o base
             let priceTiersToUse = item.price_tiers || [];
             
@@ -2987,6 +3170,13 @@ class CartManager {
             // Solo procesar productos
             if (item.type !== 'product') {
                 console.log(`   ⏭️ Saltado: No es un producto (tipo: ${item.type})`);
+                itemsSkipped++;
+                return;
+            }
+
+            // IMPORTANTE: Si el precio es manual (viene de una propuesta guardada), NO recalcular
+            if (item.manualPrice === true) {
+                console.log(`   ⏭️ Saltado: Precio manual (guardado desde propuesta), mantener precio: €${item.price}`);
                 itemsSkipped++;
                 return;
             }
@@ -7392,13 +7582,21 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                     // Salto de línea vacío, agregar línea vacía
                     allLines.push({ text: '', bold: part.bold });
                 } else if (paragraph.trim() !== '') {
+                    // Limpiar el texto para evitar problemas con caracteres especiales
+                    // Preservar espacios normales pero asegurar que no haya espacios múltiples innecesarios
+                    let cleanParagraph = paragraph.trim();
+                    // Reemplazar múltiples espacios con uno solo, pero preservar espacios dentro de paréntesis
+                    cleanParagraph = cleanParagraph.replace(/\s{2,}/g, ' ');
+                    
                     // Dividir el párrafo en líneas que caben en el ancho
                     // Usar el ancho disponible completo pero con cuidado
-                    const lines = doc.splitTextToSize(paragraph.trim(), availableWidth);
+                    const lines = doc.splitTextToSize(cleanParagraph, availableWidth);
                     lines.forEach(line => {
-                        // Asegurar que la línea tenga contenido
+                        // Asegurar que la línea tenga contenido y limpiar espacios al inicio/final
                         if (line && line.trim()) {
-                            allLines.push({ text: line.trim(), bold: part.bold });
+                            // Limpiar espacios múltiples que puedan haberse introducido durante la división
+                            const cleanLine = line.trim().replace(/\s{2,}/g, ' ');
+                            allLines.push({ text: cleanLine, bold: part.bold });
                         }
                     });
                 }
@@ -7429,8 +7627,13 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             if (lineY >= minY && lineY <= maxY) {
                 doc.setFont('helvetica', line.bold ? 'bold' : 'normal');
                 const textX = x + (width / 2);
+                // Limpiar el texto de la línea antes de dibujarlo para evitar espacios múltiples
+                const cleanLineText = line.text.trim().replace(/\s{2,}/g, ' ');
                 // Usar maxWidth para asegurar que el texto no se salga
-                doc.text(line.text, textX, lineY, { align: 'center', maxWidth: availableWidth });
+                // Solo dibujar si hay texto válido
+                if (cleanLineText && cleanLineText.length > 0) {
+                    doc.text(cleanLineText, textX, lineY, { align: 'center', maxWidth: availableWidth });
+                }
             }
         });
     }
@@ -7728,9 +7931,15 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         doc.setFontSize(fontSize);
         doc.setFont('helvetica', 'normal');
         
+        // Limpiar el texto antes de dividirlo para evitar problemas con caracteres especiales
+        // Preservar espacios normales pero eliminar espacios múltiples innecesarios
+        let cleanDescriptionText = fullDescriptionText.trim();
+        // Reemplazar múltiples espacios con uno solo, pero preservar espacios dentro de paréntesis y números
+        cleanDescriptionText = cleanDescriptionText.replace(/\s{2,}/g, ' ');
+        
         // Dividir el texto completo en líneas
         // IMPORTANTE: Usar el ancho disponible completo para calcular correctamente
-        const descriptionLines = doc.splitTextToSize(fullDescriptionText, availableWidth);
+        const descriptionLines = doc.splitTextToSize(cleanDescriptionText, availableWidth);
         
         // Calcular altura considerando el espaciado entre líneas
         // Reducir padding para que las celdas se ajusten mejor al contenido

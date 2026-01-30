@@ -263,9 +263,9 @@ class ProposalsManager {
                 let articulosConcluidos = null;
                 try {
                     const { data } = await this.supabase
-                        .from('presupuestos_articulos_concluidos')
-                        .select('articulo_id')
-                        .in('presupuesto_id', presupuestoIds);
+                    .from('presupuestos_articulos_concluidos')
+                    .select('articulo_id')
+                    .in('presupuesto_id', presupuestoIds);
                     articulosConcluidos = data;
                 } catch (error) {
                     // Si la tabla no existe o hay error, continuar sin error
@@ -2609,8 +2609,8 @@ class ProposalsManager {
                     number2Input.value = '';
                 }
             } else {
-                number1Input.value = '';
-            }
+            number1Input.value = '';
+        }
         }
         if (number2Input && !numeroEncomenda) {
             number2Input.value = '';
@@ -4369,7 +4369,7 @@ class ProposalsManager {
                         cantidad_encomendada: null,
                         fecha_prevista_entrega: null
                     })
-                    .eq('presupuesto_id', proposalId);
+                .eq('presupuesto_id', proposalId);
 
                 if (unmarkError) {
                     console.warn('⚠️ Error al desmarcar artículos anteriores:', unmarkError);
