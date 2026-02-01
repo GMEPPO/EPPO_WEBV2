@@ -15,3 +15,4 @@ COMMENT ON COLUMN presupuestos_articulos.color_seleccionado IS 'Nombre del color
 CREATE INDEX IF NOT EXISTS idx_presupuestos_articulos_color_seleccionado 
 ON presupuestos_articulos(color_seleccionado);
 
+

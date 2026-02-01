@@ -2998,11 +2998,39 @@
                 if (!refWeb) continue;
                 
                 // Convertir precios a números (pueden venir con comas como separador decimal)
-                const price1_10 = parsePrice(row[col1_10]);
-                const price11_50 = parsePrice(row[col11_50]);
-                const price51_100 = parsePrice(row[col51_100]);
-                const price101_200 = parsePrice(row[col101_200]);
-                const price200plus = parsePrice(row[col200plus]);
+                // Leer todas las columnas de precios
+                const allPrices = [
+                    parsePrice(row[col1_10]),
+                    parsePrice(row[col11_50]),
+                    parsePrice(row[col51_100]),
+                    parsePrice(row[col101_200]),
+                    parsePrice(row[col200plus])
+                ];
+                
+                // Contar cuántos precios válidos hay (no null)
+                const validPrices = allPrices.filter(p => p !== null && p !== undefined);
+                const validCount = validPrices.length;
+                
+                // Si solo hay 1-2 precios válidos, asignarlos al primer escalón (y segundo si hay 2)
+                let price1_10, price11_50, price51_100, price101_200, price200plus;
+                
+                if (validCount <= 2) {
+                    // Asignar al primer escalón (y segundo si hay 2)
+                    price1_10 = validPrices[0] || null;
+                    price11_50 = validPrices[1] || null;
+                    price51_100 = null;
+                    price101_200 = null;
+                    price200plus = null;
+                    
+                    console.log(`[DEBUG] Procesando ${refWeb}: Solo ${validCount} precio(s) válido(s) - asignados al primer escalón (y segundo si hay 2)`);
+                } else {
+                    // Si hay más de 2 precios, mantener la asignación normal por columna
+                    price1_10 = allPrices[0];
+                    price11_50 = allPrices[1];
+                    price51_100 = allPrices[2];
+                    price101_200 = allPrices[3];
+                    price200plus = allPrices[4];
+                }
                 
                 console.log(`[DEBUG] Procesando ${refWeb}:`, {
                     col1_10: col1_10,
@@ -3015,6 +3043,7 @@
                     raw51_100: row[col51_100],
                     raw101_200: row[col101_200],
                     raw200plus: row[col200plus],
+                    validCount: validCount,
                     parsed1_10: price1_10,
                     parsed11_50: price11_50,
                     parsed51_100: price51_100,
@@ -3285,14 +3314,29 @@
             return null;
         }
         
+        // Convertir a string para verificar si contiene "Sobre consulta" o variaciones
+        let str = String(value).trim();
+        
+        // Ignorar textos de "Sobre consulta" o "S/ consulta"
+        const consultaPatterns = [
+            /sobre\s*consulta/i,
+            /s\/\s*consulta/i,
+            /s\.\s*consulta/i,
+            /consulta/i
+        ];
+        
+        for (const pattern of consultaPatterns) {
+            if (pattern.test(str)) {
+                console.log(`[DEBUG parsePrice] Input: "${value}" -> Output: null (ignorado: "Sobre consulta")`);
+                return null;
+            }
+        }
+        
         // Si ya es un número
         let num;
         if (typeof value === 'number') {
             num = isNaN(value) ? null : value;
         } else {
-            // Convertir a string y limpiar
-            let str = String(value).trim();
-            
             // Si está vacío después de trim
             if (str === '') {
                 console.log(`[DEBUG parsePrice] Input: "${value}" -> Output: null (string vacío)`);
