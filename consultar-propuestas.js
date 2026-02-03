@@ -296,6 +296,26 @@ class ProposalsManager {
                     });
                 }
 
+                // Cargar dossiers para cada presupuesto
+                let dossiersPorPresupuesto = {};
+                if (presupuestoIds && presupuestoIds.length > 0) {
+                    try {
+                        const { data: dossiers, error: dossiersError } = await this.supabase
+                            .from('presupuestos_dossiers')
+                            .select('*')
+                            .in('presupuesto_id', presupuestoIds);
+                        
+                        if (!dossiersError && dossiers) {
+                            dossiers.forEach(dossier => {
+                                dossiersPorPresupuesto[dossier.presupuesto_id] = dossier;
+                            });
+                            console.log('📁 Dossiers cargados:', dossiers.length);
+                        }
+                    } catch (error) {
+                        console.warn('⚠️ No se pudo cargar dossiers:', error);
+                    }
+                }
+
                 // Combinar datos (usar filteredPresupuestos si existe, sino presupuestos)
                 const presupuestosToUse = filteredPresupuestos || presupuestos;
                 this.allProposals = presupuestosToUse.map(presupuesto => {
@@ -314,13 +334,29 @@ class ProposalsManager {
                         historialModificaciones = [];
                     }
 
+                    // Obtener documentos del dossier
+                    const dossier = dossiersPorPresupuesto[presupuesto.id];
+                    let documentosUrls = [];
+                    if (dossier && dossier.documentos_urls) {
+                        if (typeof dossier.documentos_urls === 'string') {
+                            try {
+                                documentosUrls = JSON.parse(dossier.documentos_urls);
+                            } catch (e) {
+                                documentosUrls = [dossier.documentos_urls];
+                            }
+                        } else if (Array.isArray(dossier.documentos_urls)) {
+                            documentosUrls = dossier.documentos_urls;
+                        }
+                    }
+
                     return {
                     ...presupuesto,
                         historial_modificaciones: historialModificaciones,
                     articulos: articulosPorPresupuesto[presupuesto.id] || [],
                     total: (articulosPorPresupuesto[presupuesto.id] || []).reduce((sum, art) => {
                         return sum + (parseFloat(art.precio) || 0) * (parseInt(art.cantidad) || 0);
-                    }, 0)
+                    }, 0),
+                    dossier_documentos: documentosUrls
                     };
                 });
 
@@ -966,6 +1002,23 @@ class ProposalsManager {
                     transition: all 0.2s;
                 " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(245,158,11,0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
                     <i class="fas fa-image"></i> <span id="view-logos-text">${this.currentLanguage === 'es' ? 'Ver Logotipos' : this.currentLanguage === 'pt' ? 'Ver Logotipos' : 'View Logos'} (${logos.length})</span>
+                </button>
+                ` : ''}
+                ${proposal.dossier_documentos && proposal.dossier_documentos.length > 0 ? `
+                <button class="btn-view-dossiers" onclick="window.proposalsManager.viewProposalDossiers('${proposal.id}')" style="
+                    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+                    color: white;
+                    border: none;
+                    padding: 10px 20px;
+                    border-radius: 8px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    transition: all 0.2s;
+                " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(139,92,246,0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
+                    <i class="fas fa-folder"></i> <span id="view-dossiers-text">${this.currentLanguage === 'es' ? 'Ver Dossiers' : this.currentLanguage === 'pt' ? 'Ver Dossiers' : 'View Dossiers'} (${proposal.dossier_documentos.length})</span>
                 </button>
                 ` : ''}
                 <button class="btn-delete-proposal" onclick="window.proposalsManager.openDeleteConfirmModal('${proposal.id}')" style="
@@ -3255,6 +3308,185 @@ class ProposalsManager {
                                 <span>${t.quantity}: <strong>${logo.cantidad}</strong></span>
                                 <span>${t.reference}: <strong>${logo.referencia}</strong></span>
                             </div>
+                        </div>
+                    </div>
+                `;
+                }).join('')}
+            </div>
+        `;
+
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    /**
+     * Ver dossiers de la propuesta
+     */
+    viewProposalDossiers(proposalId) {
+        const proposal = this.allProposals.find(p => p.id === proposalId);
+        if (!proposal) {
+            console.error('Propuesta no encontrada:', proposalId);
+            return;
+        }
+
+        // Obtener documentos del dossier
+        const documentos = proposal.dossier_documentos || [];
+
+        if (documentos.length === 0) {
+            const message = this.currentLanguage === 'es' ? 
+                'No hay documentos en el dossier de esta propuesta' : 
+                this.currentLanguage === 'pt' ?
+                'Não há documentos no dossier desta proposta' :
+                'No documents in this proposal dossier';
+            this.showNotification(message, 'info');
+            return;
+        }
+
+        const modal = document.getElementById('proposalDossiersModal');
+        const content = document.getElementById('proposalDossiersContent');
+        const title = document.getElementById('dossiers-modal-title');
+
+        if (!modal || !content) {
+            console.error('Modal de dossiers no encontrado');
+            return;
+        }
+
+        // Traducciones
+        const translations = {
+            es: {
+                title: 'Documentos del Dossier',
+                document: 'Documento',
+                viewDocument: 'Ver Documento',
+                viewPDF: 'Ver PDF',
+                close: 'Cerrar'
+            },
+            pt: {
+                title: 'Documentos do Dossier',
+                document: 'Documento',
+                viewDocument: 'Ver Documento',
+                viewPDF: 'Ver PDF',
+                close: 'Fechar'
+            },
+            en: {
+                title: 'Dossier Documents',
+                document: 'Document',
+                viewDocument: 'View Document',
+                viewPDF: 'View PDF',
+                close: 'Close'
+            }
+        };
+
+        const t = translations[this.currentLanguage] || translations.es;
+
+        if (title) {
+            title.textContent = t.title;
+        }
+
+        // Función auxiliar para detectar si es PDF
+        const isPDF = (url) => {
+            if (!url) return false;
+            const urlLower = url.toLowerCase();
+            return urlLower.endsWith('.pdf') || 
+                   urlLower.includes('.pdf?') || 
+                   urlLower.includes('content-type=application/pdf') ||
+                   urlLower.includes('type=pdf');
+        };
+
+        // Función auxiliar para detectar si es imagen
+        const isImage = (url) => {
+            if (!url) return false;
+            const urlLower = url.toLowerCase();
+            return urlLower.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?|$)/i);
+        };
+
+        // Generar HTML con los documentos
+        content.innerHTML = `
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; padding: 20px 0;">
+                ${documentos.map((docUrl, index) => {
+                    const isPdfFile = isPDF(docUrl);
+                    const isImgFile = isImage(docUrl);
+                    const viewPdfText = t.viewPDF;
+                    const viewDocText = t.viewDocument;
+                    
+                    return `
+                    <div style="
+                        background: var(--bg-secondary, #1f2937);
+                        border: 1px solid var(--border-color, #374151);
+                        border-radius: 12px;
+                        padding: 16px;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        gap: 12px;
+                    ">
+                        <div style="
+                            width: 100%;
+                            height: 200px;
+                            background: white;
+                            border-radius: 8px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            overflow: hidden;
+                            border: 2px solid var(--border-color, #374151);
+                            position: relative;
+                        ">
+                            ${isPdfFile ? `
+                                <div style="text-align: center; padding: 20px; width: 100%;">
+                                    <i class="fas fa-file-pdf" style="font-size: 3rem; color: #ef4444; margin-bottom: 10px;"></i>
+                                    <div style="color: #1f2937; font-weight: 600; margin-bottom: 10px;">PDF</div>
+                                    <a href="${docUrl}" target="_blank" rel="noopener noreferrer" style="
+                                        color: #3b82f6;
+                                        text-decoration: none;
+                                        padding: 8px 16px;
+                                        background: #3b82f6;
+                                        color: white;
+                                        border-radius: 6px;
+                                        display: inline-block;
+                                        font-weight: 600;
+                                        transition: all 0.2s;
+                                    " onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">${viewPdfText}</a>
+                                </div>
+                            ` : isImgFile ? `
+                                <img src="${docUrl}" 
+                                     alt="${t.document} ${index + 1}" 
+                                     style="
+                                         max-width: 100%;
+                                         max-height: 100%;
+                                         object-fit: contain;
+                                         display: block;
+                                     "
+                                     onerror="
+                                         const parent = this.parentElement;
+                                         parent.innerHTML = '<div style=\\'text-align: center; padding: 20px; width: 100%;\\'><i class=\\'fas fa-file\\' style=\\'font-size: 3rem; color: #6b7280; margin-bottom: 10px;\\'></i><div style=\\'color: #1f2937; font-size: 0.875rem;\\'>Imagen no disponible</div><a href=\\'${docUrl}\\' target=\\'_blank\\' rel=\\'noopener noreferrer\\' style=\\'color: #3b82f6; text-decoration: none; margin-top: 10px; display: inline-block;\\'>Abrir enlace</a></div>';
+                                         console.error('Error cargando documento:', '${docUrl}');
+                                     ">
+                            ` : `
+                                <div style="text-align: center; padding: 20px; width: 100%;">
+                                    <i class="fas fa-file" style="font-size: 3rem; color: #6b7280; margin-bottom: 10px;"></i>
+                                    <div style="color: #1f2937; font-weight: 600; margin-bottom: 10px;">${t.document}</div>
+                                    <a href="${docUrl}" target="_blank" rel="noopener noreferrer" style="
+                                        color: #3b82f6;
+                                        text-decoration: none;
+                                        padding: 8px 16px;
+                                        background: #3b82f6;
+                                        color: white;
+                                        border-radius: 6px;
+                                        display: inline-block;
+                                        font-weight: 600;
+                                        transition: all 0.2s;
+                                    " onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">${viewDocText}</a>
+                                </div>
+                            `}
+                        </div>
+                        <div style="width: 100%; text-align: center;">
+                            <div style="
+                                font-weight: 600;
+                                color: var(--text-primary, #f9fafb);
+                                margin-bottom: 8px;
+                                font-size: 0.9rem;
+                                word-break: break-word;
+                            ">${t.document} ${index + 1}</div>
                         </div>
                     </div>
                 `;
@@ -6514,21 +6746,85 @@ async function handleDossierDocumentUpload(event) {
         await window.proposalsManager.initializeSupabase();
     }
 
+    // Crear un cliente específico para Storage sin headers globales que interfieran
+    // Esto evita que el header 'Content-Type': 'application/json' afecte las subidas de archivos
+    let storageClient;
+    try {
+        if (typeof supabase !== 'undefined' && window.SUPABASE_CONFIG) {
+            // Crear un cliente nuevo sin headers globales para Storage
+            storageClient = supabase.createClient(window.SUPABASE_CONFIG.url, window.SUPABASE_CONFIG.anonKey, {
+                auth: {
+                    persistSession: true,
+                    autoRefreshToken: true,
+                    detectSessionInUrl: true
+                },
+                // NO incluir 'global.headers' para que Supabase maneje automáticamente el Content-Type según el archivo
+            });
+            // Copiar la sesión del cliente principal si existe
+            if (window.proposalsManager.supabase && window.proposalsManager.supabase.auth) {
+                const { data: { session } } = await window.proposalsManager.supabase.auth.getSession();
+                if (session) {
+                    await storageClient.auth.setSession(session);
+                }
+            }
+        } else {
+            // Fallback al cliente compartido si no podemos crear uno nuevo
+            storageClient = window.proposalsManager.supabase;
+        }
+    } catch (error) {
+        console.warn('⚠️ No se pudo crear cliente específico para Storage, usando cliente compartido:', error);
+        storageClient = window.proposalsManager.supabase;
+    }
+
     for (const file of files) {
         try {
             // Subir documento a Supabase Storage
             const fileExt = file.name.split('.').pop().toLowerCase();
             const fileName = `dossiers/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
             
-            const { data, error } = await window.proposalsManager.supabase.storage
-                .from('product-images')
-                .upload(fileName, file);
+            // Obtener el tipo MIME del archivo
+            let contentType = file.type;
+            
+            // Si el archivo no tiene tipo MIME, intentar determinarlo por extensión
+            if (!contentType || contentType === 'application/octet-stream' || contentType === 'application/json') {
+                const mimeTypes = {
+                    'pdf': 'application/pdf',
+                    'png': 'image/png',
+                    'jpg': 'image/jpeg',
+                    'jpeg': 'image/jpeg',
+                    'gif': 'image/gif',
+                    'webp': 'image/webp',
+                    'doc': 'application/msword',
+                    'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    'xls': 'application/vnd.ms-excel',
+                    'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    'txt': 'text/plain',
+                    'zip': 'application/zip',
+                    'rar': 'application/x-rar-compressed'
+                };
+                contentType = mimeTypes[fileExt] || 'application/octet-stream';
+            }
+            
+            // Crear un nuevo File object con el tipo MIME correcto para evitar que Supabase lo detecte como JSON
+            let finalFile = file;
+            if (!file.type || file.type === 'application/json' || file.type === 'application/octet-stream') {
+                console.log(`🔧 Corrigiendo tipo MIME de "${file.type}" a "${contentType}"`);
+                finalFile = new File([file], file.name, { type: contentType });
+            }
+            
+            // Subir con el tipo MIME correcto al mismo bucket que los logos usando el cliente específico
+            const { data, error } = await storageClient.storage
+                .from('proposal-logos')
+                .upload(fileName, finalFile, {
+                    contentType: contentType,
+                    upsert: false
+                });
 
             if (error) throw error;
 
-            // Obtener URL pública
-            const { data: { publicUrl } } = window.proposalsManager.supabase.storage
-                .from('product-images')
+            // Obtener URL pública usando el mismo cliente
+            const { data: { publicUrl } } = storageClient.storage
+                .from('proposal-logos')
                 .getPublicUrl(fileName);
 
             // Crear elemento de documento
@@ -6717,6 +7013,14 @@ function closeProposalCodeModal() {
  */
 function closeProposalLogosModal() {
     const modal = document.getElementById('proposalLogosModal');
+    if (modal) {
+        modal.classList.remove('active');
+        document.body.style.overflow = 'auto';
+    }
+}
+
+function closeProposalDossiersModal() {
+    const modal = document.getElementById('proposalDossiersModal');
     if (modal) {
         modal.classList.remove('active');
         document.body.style.overflow = 'auto';

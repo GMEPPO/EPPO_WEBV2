@@ -2490,11 +2490,11 @@
                     </div>
                         <button onclick="resetPricesUpload()" style="margin-top: 25px; padding: 12px 30px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
                             <i class="fas fa-check"></i> <span id="prices-btn-done">Cerrar</span>
-                        </button>
-                    </div>
+                    </button>
                 </div>
             </div>
         </div>
+    </div>
 
     <script>
     // ============================================
@@ -2646,11 +2646,11 @@
         const stockModal = document.getElementById('stockUploadModal');
         if (stockModal) {
             stockModal.style.display = 'block';
-            document.body.style.overflow = 'hidden';
-            loadStockLastUpdateInfo();
-            setupStockDragAndDrop();
-            setupStockFileInput();
-        }
+        document.body.style.overflow = 'hidden';
+        loadStockLastUpdateInfo();
+        setupStockDragAndDrop();
+        setupStockFileInput();
+    }
     };
 
     window.closeStockUploadModal = function() {
@@ -2871,7 +2871,7 @@
         }
     }
 
-        // Cerrar modal al hacer clic fuera
+    // Cerrar modal al hacer clic fuera
     document.getElementById('stockUploadModal')?.addEventListener('click', (e) => {
         if (e.target.id === 'stockUploadModal') closeStockUploadModal();
     });

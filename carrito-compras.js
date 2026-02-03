@@ -2408,14 +2408,14 @@ class CartManager {
                 // Si hay variantes, agregarlas como opciones
                 if (hasVariants) {
                     options = referenceVariants.map((variant, index) => {
-                        const color = (variant && variant.color) ? String(variant.color) : `Color ${index + 1}`;
+                    const color = (variant && variant.color) ? String(variant.color) : `Color ${index + 1}`;
                         const isSelected = (item.selectedReferenceVariant === index) || 
                                          (hasColorGuardado && colorGuardadoEnVariantes && colorGuardadoIndex === index);
                         if (isSelected) {
                             selectedValue = index;
                         }
                         return `<option value="${index}" ${isSelected ? 'selected' : ''}>${color}</option>`;
-                    }).join('');
+                }).join('');
                 }
                 
                 // Si hay color guardado pero NO está en las variantes, agregarlo como opción deshabilitada y seleccionada
@@ -9817,7 +9817,7 @@ async function sendProposalToSupabase() {
 
                 if (updateError) {
                     console.warn('⚠️ Error al actualizar número de cliente:', updateError);
-                }
+            }
                 
                 // Aunque no haya cambios detectados, los artículos pueden haber cambiado
                 // Eliminar artículos antiguos e insertar los nuevos del carrito
