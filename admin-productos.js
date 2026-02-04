@@ -5382,6 +5382,18 @@ async function saveHomeCategory() {
         
         if (editingHomeCategoryId) {
             // MODO EDICIÓN: Actualizar categoría existente
+            // Primero obtener el nombre antiguo de la categoría para actualizar productos
+            const { data: oldCategory, error: fetchError } = await supabaseClient
+                .from('categorias_geral')
+                .select('nombre_es, nombre_pt')
+                .eq('id', editingHomeCategoryId)
+                .single();
+            
+            if (fetchError) {
+                console.warn('⚠️ No se pudo obtener la categoría antigua:', fetchError);
+            }
+            
+            // Actualizar la categoría
             const { error } = await supabaseClient
                 .from('categorias_geral')
                 .update(categoryData)
@@ -5390,6 +5402,41 @@ async function saveHomeCategory() {
             
             if (error) throw error;
             savedCategoryId = editingHomeCategoryId;
+            
+            // Si el nombre cambió, actualizar todos los productos con el nombre antiguo
+            if (oldCategory && (oldCategory.nombre_es !== nombreEs || oldCategory.nombre_pt !== nombrePt)) {
+                console.log('🔄 Nombre de categoría cambió, actualizando productos...');
+                console.log('   Nombre antiguo (ES):', oldCategory.nombre_es);
+                console.log('   Nombre nuevo (ES):', nombreEs);
+                
+                // Actualizar productos que tengan el nombre antiguo en español
+                if (oldCategory.nombre_es && oldCategory.nombre_es !== nombreEs) {
+                    const { error: updateErrorEs } = await supabaseClient
+                        .from('products')
+                        .update({ categoria: nombreEs })
+                        .eq('categoria', oldCategory.nombre_es);
+                    
+                    if (updateErrorEs) {
+                        console.error('❌ Error actualizando productos (ES):', updateErrorEs);
+                    } else {
+                        console.log('✅ Productos actualizados con nuevo nombre (ES)');
+                    }
+                }
+                
+                // Actualizar productos que tengan el nombre antiguo en portugués
+                if (oldCategory.nombre_pt && oldCategory.nombre_pt !== nombrePt) {
+                    const { error: updateErrorPt } = await supabaseClient
+                        .from('products')
+                        .update({ categoria: nombrePt })
+                        .eq('categoria', oldCategory.nombre_pt);
+                    
+                    if (updateErrorPt) {
+                        console.error('❌ Error actualizando productos (PT):', updateErrorPt);
+                    } else {
+                        console.log('✅ Productos actualizados con nuevo nombre (PT)');
+                    }
+                }
+            }
             
             // Guardar/actualizar campos asociados a la categoría
             console.log('🔍 Verificando campos antes de guardar...');

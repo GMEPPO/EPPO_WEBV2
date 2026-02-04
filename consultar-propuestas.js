@@ -1498,6 +1498,23 @@ class ProposalsManager {
                         <i class="fas fa-box-open" style="color: var(--primary-500, #3b82f6);"></i>
                         <span id="amostras-enviadas-title">${this.currentLanguage === 'es' ? 'Muestras Enviadas' : this.currentLanguage === 'pt' ? 'Amostras Enviadas' : 'Samples Sent'}</span>
                     </h4>
+                    <button onclick="window.proposalsManager.openAddAmostrasPhotosModal('${proposal.id}')" style="
+                        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+                        color: white;
+                        border: none;
+                        padding: 8px 16px;
+                        border-radius: 8px;
+                        font-weight: 600;
+                        cursor: pointer;
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                        font-size: 0.875rem;
+                        transition: all 0.2s;
+                    " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(59,130,246,0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
+                        <i class="fas fa-plus"></i>
+                        <span id="add-more-photos-text">${this.currentLanguage === 'es' ? 'Agregar más fotos' : this.currentLanguage === 'pt' ? 'Adicionar mais fotos' : 'Add more photos'}</span>
+                    </button>
                 </div>
                 <div style="margin-bottom: var(--space-3);">
                     <p style="color: var(--text-secondary, #6b7280); font-size: 0.875rem; margin-bottom: var(--space-3);">
@@ -5449,6 +5466,193 @@ class ProposalsManager {
         }
     }
 
+    /**
+     * Abrir modal para agregar más fotos a muestras enviadas (sin cambiar estado)
+     */
+    openAddAmostrasPhotosModal(proposalId) {
+        const proposal = this.allProposals.find(p => p.id === proposalId);
+        if (!proposal) {
+            console.error('Propuesta no encontrada:', proposalId);
+            return;
+        }
+
+        // Obtener fotos existentes
+        let existingPhotos = proposal.amostras_enviadas_fotos_urls || [];
+        if (!Array.isArray(existingPhotos)) {
+            existingPhotos = typeof existingPhotos === 'string' ? 
+                (existingPhotos ? [existingPhotos] : []) : 
+                [];
+        }
+
+        const modal = document.getElementById('addAmostrasPhotosModal');
+        const photosContainer = document.getElementById('add-amostras-photos-container');
+        
+        if (!modal) {
+            console.error('Modal add amostras photos not found');
+            return;
+        }
+
+        // Limpiar fotos anteriores del modal
+        if (photosContainer) {
+            photosContainer.innerHTML = '';
+        }
+
+        // Mostrar fotos existentes en el modal
+        if (photosContainer && Array.isArray(existingPhotos)) {
+            existingPhotos.forEach((fotoUrl, index) => {
+                const photoDiv = document.createElement('div');
+                photoDiv.style.cssText = 'position: relative; width: 150px; height: 150px; border-radius: 8px; overflow: hidden; border: 2px solid var(--bg-gray-300);';
+                photoDiv.innerHTML = `
+                    <img src="${fotoUrl}" data-url="${fotoUrl}" style="width: 100%; height: 100%; object-fit: cover;">
+                    <button type="button" onclick="removeAmostraPhotoFromModal(this)" style="position: absolute; top: 5px; right: 5px; background: #ef4444; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-times" style="font-size: 12px;"></i>
+                    </button>
+                `;
+                photosContainer.appendChild(photoDiv);
+            });
+        }
+
+        // Guardar el ID de la propuesta
+        modal.setAttribute('data-proposal-id', proposalId);
+
+        // Actualizar traducciones
+        this.updateAddAmostrasPhotosTranslations();
+
+        // Mostrar modal
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    /**
+     * Guardar fotos adicionales de muestras enviadas (sin cambiar estado)
+     */
+    async saveAddAmostrasPhotos() {
+        const modal = document.getElementById('addAmostrasPhotosModal');
+        const proposalId = modal?.getAttribute('data-proposal-id');
+        
+        if (!proposalId) {
+            console.error('Proposal ID not found');
+            return;
+        }
+
+        // Obtener todas las fotos del contenedor (existentes + nuevas)
+        const photosContainer = document.getElementById('add-amostras-photos-container');
+        const allPhotos = photosContainer ? 
+            Array.from(photosContainer.querySelectorAll('img[data-url]')).map(img => img.getAttribute('data-url')) : [];
+
+        if (allPhotos.length === 0) {
+            const message = this.currentLanguage === 'es' ? 
+                'No hay fotos para guardar' : 
+                this.currentLanguage === 'pt' ?
+                'Não há fotos para guardar' :
+                'No photos to save';
+            this.showNotification(message, 'warning');
+            return;
+        }
+
+        if (!this.supabase) {
+            await this.initializeSupabase();
+        }
+
+        try {
+            // Actualizar solo las fotos (mantener los artículos existentes)
+            const proposal = this.allProposals.find(p => p.id === proposalId);
+            const existingArticles = proposal?.amostras_enviadas_articulos_ids || [];
+
+            const { error: updateError } = await this.supabase
+                .from('presupuestos')
+                .update({
+                    amostras_enviadas_fotos_urls: allPhotos,
+                    amostras_enviadas_articulos_ids: existingArticles
+                })
+                .eq('id', proposalId);
+
+            if (updateError) {
+                console.error('❌ Error al actualizar fotos:', updateError);
+                throw updateError;
+            }
+
+            // Actualizar el objeto de la propuesta en memoria
+            if (proposal) {
+                proposal.amostras_enviadas_fotos_urls = allPhotos;
+            }
+
+            // Cerrar modal
+            this.closeAddAmostrasPhotosModal();
+
+            // Recargar propuestas para actualizar la vista
+            await this.loadProposals();
+
+            const successMessage = this.currentLanguage === 'es' ? 
+                'Fotos agregadas correctamente' : 
+                this.currentLanguage === 'pt' ?
+                'Fotos adicionadas com sucesso' :
+                'Photos added successfully';
+            this.showNotification(successMessage, 'success');
+
+        } catch (error) {
+            console.error('❌ Error al guardar fotos:', error);
+            const message = this.currentLanguage === 'es' ? 
+                `Error al guardar: ${error.message}` : 
+                this.currentLanguage === 'pt' ?
+                `Erro ao guardar: ${error.message}` :
+                `Error saving: ${error.message}`;
+            this.showNotification(message, 'error');
+        }
+    }
+
+    closeAddAmostrasPhotosModal() {
+        const modal = document.getElementById('addAmostrasPhotosModal');
+        if (modal) {
+            modal.classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+    }
+
+    updateAddAmostrasPhotosTranslations() {
+        const lang = this.currentLanguage;
+        const translations = {
+            pt: {
+                title: 'Adicionar Fotos de Amostras',
+                photosLabel: 'Fotos das amostras enviadas:',
+                addPhoto: 'Adicionar Foto',
+                cancel: 'Cancelar',
+                save: 'Guardar'
+            },
+            es: {
+                title: 'Agregar Fotos de Muestras',
+                photosLabel: 'Fotos de las muestras enviadas:',
+                addPhoto: 'Agregar Foto',
+                cancel: 'Cancelar',
+                save: 'Guardar'
+            },
+            en: {
+                title: 'Add Sample Photos',
+                photosLabel: 'Photos of sent samples:',
+                addPhoto: 'Add Photo',
+                cancel: 'Cancel',
+                save: 'Save'
+            }
+        };
+
+        const t = translations[lang] || translations.pt;
+
+        const elements = {
+            'add-amostras-photos-modal-title': t.title,
+            'add-amostras-photos-label': t.photosLabel,
+            'add-amostras-photos-add-btn': t.addPhoto,
+            'add-amostras-photos-cancel-btn': t.cancel,
+            'add-amostras-photos-save-text': t.save
+        };
+
+        Object.entries(elements).forEach(([id, text]) => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.textContent = text;
+            }
+        });
+    }
+
     showImageModal(imageUrl, title = '') {
         // Crear o reutilizar modal de imagen
         let modal = document.getElementById('imageModalAmostras');
@@ -6518,6 +6722,147 @@ function addAmostraPhoto() {
     const input = document.getElementById('amostra-enviada-photo-input');
     if (input) {
         input.click();
+    }
+}
+
+function addAmostraPhotoToModal() {
+    const input = document.getElementById('add-amostras-photo-input');
+    if (input) {
+        input.click();
+    }
+}
+
+function removeAmostraPhotoFromModal(button) {
+    button.closest('div').remove();
+}
+
+async function handleAddAmostraPhotoUpload(event) {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+
+    const container = document.getElementById('add-amostras-photos-container');
+    if (!container) return;
+
+    // Limitar a 10 fotos máximo
+    const existingPhotos = container.querySelectorAll('img[data-url]').length;
+    if (existingPhotos + files.length > 10) {
+        const message = window.proposalsManager?.currentLanguage === 'es' ? 
+            'Máximo 10 fotos permitidas' : 
+            window.proposalsManager?.currentLanguage === 'pt' ?
+            'Máximo 10 fotos permitidas' :
+            'Maximum 10 photos allowed';
+        alert(message);
+        return;
+    }
+
+    if (!window.proposalsManager || !window.proposalsManager.supabase) {
+        await window.proposalsManager.initializeSupabase();
+    }
+
+    // Crear un cliente específico para Storage sin headers globales que interfieran
+    let storageClient;
+    try {
+        if (window.SUPABASE_CONFIG && typeof supabase !== 'undefined' && supabase.createClient) {
+            storageClient = supabase.createClient(window.SUPABASE_CONFIG.url, window.SUPABASE_CONFIG.anonKey, {
+                auth: {
+                    persistSession: true,
+                    autoRefreshToken: true
+                },
+                global: {
+                    headers: {}
+                }
+            });
+        } else {
+            storageClient = window.proposalsManager.supabase;
+        }
+    } catch (e) {
+        console.warn('⚠️ No se pudo crear cliente específico para Storage, usando cliente existente:', e);
+        storageClient = window.proposalsManager.supabase;
+    }
+
+    for (const originalFile of files) {
+        try {
+            const fileExt = originalFile.name.split('.').pop().toLowerCase();
+            const mimeTypeMap = {
+                'jpg': 'image/jpeg',
+                'jpeg': 'image/jpeg',
+                'png': 'image/png',
+                'gif': 'image/gif',
+                'webp': 'image/webp',
+                'avif': 'image/avif',
+                'bmp': 'image/bmp',
+                'svg': 'image/svg+xml'
+            };
+            const correctMimeType = mimeTypeMap[fileExt] || 'image/jpeg';
+            
+            let fileToUpload = originalFile;
+            const needsCorrection = !originalFile.type || 
+                                   !originalFile.type.startsWith('image/') || 
+                                   originalFile.type === 'application/json' ||
+                                   originalFile.type === 'application/octet-stream';
+            
+            if (needsCorrection) {
+                fileToUpload = new File([originalFile], originalFile.name, { 
+                    type: correctMimeType,
+                    lastModified: originalFile.lastModified || Date.now()
+                });
+            }
+
+            const fileName = `amostras/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+            
+            const { data, error } = await storageClient.storage
+                .from('product-images')
+                .upload(fileName, fileToUpload, {
+                    contentType: correctMimeType,
+                    upsert: false
+                });
+
+            if (error) throw error;
+
+            const { data: urlData } = storageClient.storage
+                .from('product-images')
+                .getPublicUrl(fileName);
+
+            if (!urlData || !urlData.publicUrl) {
+                throw new Error('No se pudo obtener la URL pública de la imagen');
+            }
+
+            const publicUrl = urlData.publicUrl;
+
+            // Crear elemento de imagen
+            const imgDiv = document.createElement('div');
+            imgDiv.style.cssText = 'position: relative; width: 150px; height: 150px; border-radius: 8px; overflow: hidden; border: 2px solid var(--bg-gray-300);';
+            imgDiv.innerHTML = `
+                <img src="${publicUrl}" data-url="${publicUrl}" style="width: 100%; height: 100%; object-fit: cover;">
+                <button type="button" onclick="removeAmostraPhotoFromModal(this)" style="position: absolute; top: 5px; right: 5px; background: #ef4444; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-times" style="font-size: 12px;"></i>
+                </button>
+            `;
+            container.appendChild(imgDiv);
+        } catch (error) {
+            console.error('Error al subir foto:', error);
+            const message = window.proposalsManager?.currentLanguage === 'es' ? 
+                `Error al subir foto: ${error.message}` : 
+                window.proposalsManager?.currentLanguage === 'pt' ?
+                `Erro ao fazer upload da foto: ${error.message}` :
+                `Error uploading photo: ${error.message}`;
+            alert(message);
+        }
+    }
+
+    // Limpiar input
+    event.target.value = '';
+}
+
+function closeAddAmostrasPhotosModal() {
+    if (window.proposalsManager) {
+        window.proposalsManager.closeAddAmostrasPhotosModal();
+    }
+}
+
+function saveAddAmostrasPhotos() {
+    if (window.proposalsManager) {
+        window.proposalsManager.saveAddAmostrasPhotos();
     }
 }
 

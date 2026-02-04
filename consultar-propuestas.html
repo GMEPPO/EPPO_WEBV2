@@ -1347,6 +1347,36 @@
         </div>
     </div>
 
+    <!-- Modal para agregar más fotos de muestras enviadas -->
+    <div class="modal-overlay" id="addAmostrasPhotosModal">
+        <div class="modal" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="add-amostras-photos-modal-title">Agregar Fotos de Muestras</h3>
+                <button class="modal-close" onclick="closeAddAmostrasPhotosModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label" id="add-amostras-photos-label" style="font-weight: 600; margin-bottom: 10px; display: block;">Fotos de las muestras enviadas:</label>
+                    <div id="add-amostras-photos-container" style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
+                        <!-- Se llenará dinámicamente con fotos -->
+                    </div>
+                    <button type="button" class="btn-secondary" onclick="addAmostraPhotoToModal()" id="add-amostras-photos-add-btn">
+                        <i class="fas fa-plus"></i> <span id="add-amostras-photos-add-btn-text">Agregar Foto</span>
+                    </button>
+                    <input type="file" id="add-amostras-photo-input" accept="image/*" multiple style="display: none;" onchange="handleAddAmostraPhotoUpload(event)">
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeAddAmostrasPhotosModal()" id="add-amostras-photos-cancel-btn">Cancelar</button>
+                <button type="button" class="btn-primary" onclick="saveAddAmostrasPhotos()" id="add-amostras-photos-save-btn">
+                    <i class="fas fa-save"></i> <span id="add-amostras-photos-save-text">Guardar</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal para cambiar estado a Aguarda Aprovação de Dossier -->
     <div class="modal-overlay" id="aguardaAprovacaoDossierModal">
         <div class="modal" style="max-width: 700px;">
