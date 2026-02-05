@@ -239,6 +239,29 @@ class ProposalsManager {
                 }
             }
 
+            // Cargar productos para obtener categorías
+            if (!this.allProducts || this.allProducts.length === 0) {
+                console.log('🔄 Cargando productos para obtener categorías...');
+                const { data: products, error: productsError } = await this.supabase
+                    .from('products')
+                    .select('id, nombre, categoria');
+                
+                if (!productsError && products) {
+                    this.allProducts = products.map(p => ({
+                        id: p.id,
+                        nombre: p.nombre || '',
+                        categoria: p.categoria || ''
+                    }));
+                    console.log('✅ Productos cargados para categorías:', this.allProducts.length);
+                    if (this.allProducts.length > 0) {
+                        console.log('📋 Ejemplo de producto:', this.allProducts[0]);
+                    }
+                } else {
+                    console.warn('⚠️ No se pudieron cargar productos:', productsError);
+                    this.allProducts = [];
+                }
+            }
+
             // Cargar artículos para cada presupuesto
             if (filteredPresupuestos && filteredPresupuestos.length > 0) {
                 const presupuestoIds = filteredPresupuestos.map(p => p.id);
@@ -349,6 +372,9 @@ class ProposalsManager {
                         }
                     }
 
+                    // Obtener categorías únicas de los artículos de esta propuesta
+                    const categorias = this.getCategoriasFromArticulos(articulosPorPresupuesto[presupuesto.id] || []);
+
                     return {
                     ...presupuesto,
                         historial_modificaciones: historialModificaciones,
@@ -356,7 +382,8 @@ class ProposalsManager {
                     total: (articulosPorPresupuesto[presupuesto.id] || []).reduce((sum, art) => {
                         return sum + (parseFloat(art.precio) || 0) * (parseInt(art.cantidad) || 0);
                     }, 0),
-                    dossier_documentos: documentosUrls
+                    dossier_documentos: documentosUrls,
+                    categorias: categorias // Agregar categorías únicas
                     };
                 });
 
@@ -395,6 +422,172 @@ class ProposalsManager {
                 loadingIndicator.style.display = 'none';
             }
         }
+    }
+
+    /**
+     * Traducir nombre de categoría según el idioma actual
+     */
+    translateCategoryName(categorySlug) {
+        if (!categorySlug) return categorySlug;
+        
+        const translations = {
+            pt: {
+                'secadores': 'Secadores',
+                'accesorios': 'Acessórios',
+                'maleteros': 'Porta-malas',
+                'planchas': 'Ferros de passar',
+                'tablas-de-planchar': 'Tábuas de passar',
+                'bandejas': 'Bandejas',
+                'baldes-de-reciclage': 'Baldes de reciclagem',
+                'balde-wc': 'Balde WC',
+                'bascula': 'Balança',
+                'bolsas': 'Bolsas',
+                'boligrafos-y-lapiceros': 'Canetas e lápis',
+                'caja-para-kleenex': 'Caixa para lenços',
+                'caja-fuerte': 'Cofre',
+                'camas-y-cunas': 'Camas e berços',
+                'carros': 'Carrinhos',
+                'cuero-reciclado': 'Couro reciclado',
+                'espejos': 'Espelhos',
+                'escobillas': 'Escovas',
+                'kettles': 'Chaleiras',
+                'papeleras': 'Papeleiras',
+                'paraguas': 'Guardas-chuva',
+                'pedido-especial': 'Pedido especial',
+                'perchas': 'Cabides',
+                'silla-para-bebe': 'Cadeira para bebé',
+                'tendedero': 'Estendal'
+            },
+            es: {
+                'secadores': 'Secadores',
+                'accesorios': 'Accesorios',
+                'maleteros': 'Portamaletas',
+                'planchas': 'Planchas',
+                'tablas-de-planchar': 'Tablas de planchar',
+                'bandejas': 'Bandejas',
+                'baldes-de-reciclage': 'Cubos de reciclaje',
+                'balde-wc': 'Cubo WC',
+                'bascula': 'Báscula',
+                'bolsas': 'Bolsas',
+                'boligrafos-y-lapiceros': 'Bolígrafos y lápices',
+                'caja-para-kleenex': 'Caja para pañuelos',
+                'caja-fuerte': 'Caja fuerte',
+                'camas-y-cunas': 'Camas y cunas',
+                'carros': 'Carros',
+                'cuero-reciclado': 'Cuero reciclado',
+                'espejos': 'Espejos',
+                'escobillas': 'Escobillas',
+                'kettles': 'Teteras',
+                'papeleras': 'Papeleras',
+                'paraguas': 'Paraguas',
+                'pedido-especial': 'Pedido especial',
+                'perchas': 'Perchas',
+                'silla-para-bebe': 'Silla para bebé',
+                'tendedero': 'Tendedero'
+            },
+            en: {
+                'secadores': 'Hair Dryers',
+                'accesorios': 'Accessories',
+                'maleteros': 'Luggage Racks',
+                'planchas': 'Irons',
+                'tablas-de-planchar': 'Ironing Boards',
+                'bandejas': 'Trays',
+                'baldes-de-reciclage': 'Recycling Bins',
+                'balde-wc': 'WC Bucket',
+                'bascula': 'Scale',
+                'bolsas': 'Bags',
+                'boligrafos-y-lapiceros': 'Pens and Pencils',
+                'caja-para-kleenex': 'Tissue Box',
+                'caja-fuerte': 'Safe',
+                'camas-y-cunas': 'Beds and Cribs',
+                'carros': 'Carts',
+                'cuero-reciclado': 'Recycled Leather',
+                'espejos': 'Mirrors',
+                'escobillas': 'Brushes',
+                'kettles': 'Kettles',
+                'papeleras': 'Wastebaskets',
+                'paraguas': 'Umbrellas',
+                'pedido-especial': 'Special Order',
+                'perchas': 'Hangers',
+                'silla-para-bebe': 'Baby Chair',
+                'tendedero': 'Clothesline'
+            }
+        };
+        
+        const lang = this.currentLanguage || 'pt';
+        const categoryLower = categorySlug.toLowerCase().trim();
+        
+        // Buscar traducción exacta
+        if (translations[lang] && translations[lang][categoryLower]) {
+            return translations[lang][categoryLower];
+        }
+        
+        // Si no hay traducción, capitalizar la primera letra de cada palabra
+        return categorySlug
+            .split('-')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
+    }
+
+    /**
+     * Obtener categorías únicas de los artículos de una propuesta
+     */
+    getCategoriasFromArticulos(articulos) {
+        if (!articulos || articulos.length === 0) {
+            return [];
+        }
+        
+        if (!this.allProducts || this.allProducts.length === 0) {
+            console.warn('⚠️ No hay productos cargados para buscar categorías');
+            return [];
+        }
+        
+        const categoriasSet = new Set();
+        
+        articulos.forEach(articulo => {
+            let producto = null;
+            
+            // Primero intentar buscar por referencia_articulo (que puede ser el ID del producto como string)
+            if (articulo.referencia_articulo) {
+                producto = this.allProducts.find(p => {
+                    // Comparar ID como string (el referencia_articulo suele ser el ID del producto)
+                    return String(p.id) === String(articulo.referencia_articulo);
+                });
+            }
+            
+            // Si no se encontró por referencia, buscar por nombre
+            if (!producto && articulo.nombre_articulo) {
+                const nombreArticuloLower = articulo.nombre_articulo.toLowerCase().trim();
+                producto = this.allProducts.find(p => {
+                    if (!p.nombre) return false;
+                    const nombreProductoLower = p.nombre.toLowerCase().trim();
+                    // Comparación exacta (case-insensitive)
+                    if (nombreProductoLower === nombreArticuloLower) {
+                        return true;
+                    }
+                    // Comparación parcial (por si hay diferencias menores como espacios extra)
+                    // Solo usar comparación parcial si ambos nombres tienen al menos 5 caracteres
+                    if (nombreArticuloLower.length >= 5 && nombreProductoLower.length >= 5) {
+                        return nombreProductoLower.includes(nombreArticuloLower) ||
+                               nombreArticuloLower.includes(nombreProductoLower);
+                    }
+                    return false;
+                });
+            }
+            
+            if (producto && producto.categoria) {
+                categoriasSet.add(producto.categoria);
+            } else if (articulo.nombre_articulo) {
+                // Solo mostrar warning si realmente hay un nombre de artículo
+                console.warn(`⚠️ No se encontró producto para artículo: "${articulo.nombre_articulo}" (referencia: ${articulo.referencia_articulo || 'N/A'})`);
+            }
+        });
+        
+        const categorias = Array.from(categoriasSet).sort();
+        if (categorias.length > 0) {
+            console.log(`📂 Categorías encontradas (${categorias.length}):`, categorias);
+        }
+        return categorias;
     }
 
     renderProposals() {
@@ -481,11 +674,59 @@ class ProposalsManager {
                 `<td style="cursor: pointer; color: var(--brand-blue, #2563eb); text-decoration: underline;" onclick="window.proposalsManager.showProposalCodeBreakdown('${proposal.id}', '${proposal.codigo_propuesta}', '${(proposal.nombre_comercial || '').replace(/'/g, "\\'")}', '${(proposal.nombre_cliente || '').replace(/'/g, "\\'")}', '${proposal.fecha_inicial}', ${version})" title="Click para ver la fórmula">${proposalNumber}</td>` :
                 `<td>${proposalNumber}</td>`;
 
+            // Renderizar categorías como badges pequeños (máximo 3 + "otros" si hay más)
+            let categoriasHTML = '';
+            if (proposal.categorias && proposal.categorias.length > 0) {
+                const categoriasMostrar = proposal.categorias.slice(0, 3);
+                const hayMas = proposal.categorias.length > 3;
+                const cantidadOtros = proposal.categorias.length - 3;
+                
+                // Traducir las categorías antes de mostrarlas
+                categoriasHTML = categoriasMostrar.map(cat => {
+                    const categoriaTraducida = this.translateCategoryName(cat);
+                    return `<span style="
+                        display: inline-block;
+                        background: var(--primary-100, #dbeafe);
+                        color: var(--primary-700, #1e40af);
+                        padding: 2px 8px;
+                        border-radius: 12px;
+                        font-size: 0.7rem;
+                        font-weight: 500;
+                        margin: 2px;
+                        white-space: nowrap;
+                    ">${categoriaTraducida}</span>`;
+                }).join('');
+                
+                // Agregar badge "otros" si hay más categorías
+                if (hayMas) {
+                    const textoOtros = this.currentLanguage === 'es' ? 'otros' : 
+                                      this.currentLanguage === 'pt' ? 'outros' : 'others';
+                    categoriasHTML += `<span style="
+                        display: inline-block;
+                        background: var(--primary-100, #dbeafe);
+                        color: var(--primary-700, #1e40af);
+                        padding: 2px 8px;
+                        border-radius: 12px;
+                        font-size: 0.7rem;
+                        font-weight: 500;
+                        margin: 2px;
+                        white-space: nowrap;
+                    ">${textoOtros} (${cantidadOtros})</span>`;
+                }
+            } else {
+                categoriasHTML = '<span style="color: var(--text-muted, #9ca3af); font-size: 0.75rem;">-</span>';
+            }
+
             row.innerHTML = `
                 ${proposalNumberCell}
                 <td>${fechaInicioFormateada}</td>
                 <td>${proposal.nombre_cliente || '-'}</td>
                 <td>${proposal.nombre_comercial || '-'}</td>
+                <td style="max-width: 200px; padding: 8px;">
+                    <div style="display: flex; flex-wrap: wrap; gap: 4px; align-items: center;">
+                        ${categoriasHTML}
+                    </div>
+                </td>
                 <td>
                     <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                         ${this.canChangeStatus(proposal.estado_propuesta) ? `
@@ -2058,6 +2299,18 @@ class ProposalsManager {
     }
 
     setupEventListeners() {
+        // Listener para cambios de idioma
+        window.addEventListener('languageChanged', (event) => {
+            const newLanguage = event.detail?.language || localStorage.getItem('language') || 'pt';
+            if (this.currentLanguage !== newLanguage) {
+                this.currentLanguage = newLanguage;
+                console.log('🌐 Idioma actualizado en ProposalsManager:', this.currentLanguage);
+                // Actualizar traducciones y volver a renderizar
+                this.updateTranslations();
+                this.renderProposals();
+            }
+        });
+        
         // Filtros en tiempo real
         const searchClient = document.getElementById('searchClientInput');
         const searchCommercial = document.getElementById('searchCommercialInput');
@@ -2233,6 +2486,7 @@ class ProposalsManager {
                 lastUpdate: 'Última Actualização',
                 client: 'Cliente',
                 commercial: 'Comercial',
+                categories: 'Categorias',
                 articles: 'Produtos',
                 total: 'Total',
                 status: 'Estado',
@@ -2265,6 +2519,7 @@ class ProposalsManager {
                 lastUpdate: 'Última Actualización',
                 client: 'Cliente',
                 commercial: 'Comercial',
+                categories: 'Categorías',
                 articles: 'Productos',
                 total: 'Total',
                 status: 'Estado',
@@ -2297,6 +2552,7 @@ class ProposalsManager {
                 lastUpdate: 'Last Update',
                 client: 'Client',
                 commercial: 'Commercial',
+                categories: 'Categories',
                 articles: 'Products',
                 total: 'Total',
                 status: 'Status',
@@ -2333,6 +2589,7 @@ class ProposalsManager {
             'th-last-update': t.lastUpdate,
             'th-client': t.client,
             'th-commercial': t.commercial,
+            'th-categories': t.categories,
             'th-articles': t.articles,
             'th-total': t.total,
             'th-status': t.status,

@@ -511,6 +511,26 @@
             text-align: center;
         }
 
+        /* Estilos para drag and drop */
+        .cart-item[draggable="true"] {
+            cursor: move;
+            transition: opacity 0.2s, transform 0.2s;
+        }
+
+        .cart-item[draggable="true"]:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .cart-item.drag-over {
+            border-top: 3px solid var(--primary-500);
+            background: var(--primary-50);
+        }
+
+        .cart-item[draggable="true"]:active {
+            cursor: grabbing;
+        }
+
         .remove-item {
             background: none;
             border: none;

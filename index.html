@@ -604,9 +604,92 @@
             updateNavigationButtons(lang);
         }
 
+        /**
+         * Función para actualizar el contador del carrito en el botón de navegación
+         * Versión standalone que no requiere carrito-compras.js
+         */
+        function updateCartBadgeStandalone() {
+            try {
+                // Leer el carrito desde localStorage
+                const savedCart = localStorage.getItem('eppo_cart');
+                let cartCount = 0;
+                
+                if (savedCart) {
+                    try {
+                        const cart = JSON.parse(savedCart);
+                        cartCount = cart ? cart.length : 0;
+                    } catch (e) {
+                        cartCount = 0;
+                    }
+                }
+                
+                // Buscar el botón en todas las páginas
+                const cartLink = document.getElementById('nav-cart-link');
+                
+                if (cartLink) {
+                    // Remover badge existente si existe
+                    const existingBadge = cartLink.querySelector('.cart-badge');
+                    if (existingBadge) {
+                        existingBadge.remove();
+                    }
+                    
+                    // Agregar badge solo si hay items en el carrito
+                    if (cartCount > 0) {
+                        const badge = document.createElement('span');
+                        badge.className = 'cart-badge';
+                        // Agregar clase para números de dos dígitos
+                        if (cartCount > 9) {
+                            badge.classList.add('double-digit');
+                        }
+                        badge.textContent = cartCount;
+                        cartLink.appendChild(badge);
+                    }
+                }
+            } catch (error) {
+                console.error('Error actualizando badge del carrito:', error);
+            }
+        }
+
         // Inicializar idioma y cargar categorías al cargar la página
         document.addEventListener('DOMContentLoaded', async function() {
             console.log('🚀 DOMContentLoaded - Iniciando carga de index.html');
+            
+            // Actualizar contador del carrito al cargar la página
+            // Intentar usar la función global si está disponible, sino usar la standalone
+            if (typeof window.updateCartBadge === 'function') {
+                window.updateCartBadge();
+            } else {
+                updateCartBadgeStandalone();
+            }
+            
+            // También actualizar después de un pequeño delay para asegurar que el DOM esté completamente cargado
+            setTimeout(() => {
+                if (typeof window.updateCartBadge === 'function') {
+                    window.updateCartBadge();
+                } else {
+                    updateCartBadgeStandalone();
+                }
+            }, 500);
+            
+            // Actualizar el contador cuando la ventana recibe foco (cuando el usuario vuelve a esta página)
+            window.addEventListener('focus', function() {
+                if (typeof window.updateCartBadge === 'function') {
+                    window.updateCartBadge();
+                } else {
+                    updateCartBadgeStandalone();
+                }
+            });
+            
+            // Escuchar cambios en localStorage (para cuando se actualiza el carrito desde otra pestaña)
+            window.addEventListener('storage', function(e) {
+                if (e.key === 'eppo_cart') {
+                    if (typeof window.updateCartBadge === 'function') {
+                        window.updateCartBadge();
+                    } else {
+                        updateCartBadgeStandalone();
+                    }
+                }
+            });
             
             // Verificar si ya estamos en proceso de redirección (evitar bucles)
             const redirectFlag = sessionStorage.getItem('auth_redirecting');

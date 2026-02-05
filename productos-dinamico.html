@@ -536,6 +536,11 @@
                         });
                         
                         localStorage.setItem('eppo_cart', JSON.stringify(cart));
+                        
+                        // Actualizar contador en el botón de navegación
+                        if (typeof window.updateCartBadge === 'function') {
+                            window.updateCartBadge();
+                        }
                     }
                 } catch (error) {
                 }
@@ -741,6 +746,11 @@
             const isAuth = await window.authManager.requireAuth('login.html');
             if (!isAuth) {
                 return; // Redirige a login.html
+            }
+
+            // Actualizar contador del carrito al cargar la página
+            if (typeof window.updateCartBadge === 'function') {
+                window.updateCartBadge();
             }
 
             initTheme();

@@ -86,11 +86,12 @@ class CartManager {
                 throw proposalError;
             }
 
-            // Cargar artículos
+            // Cargar artículos ordenados por el campo 'orden' (si existe)
             const { data: articulos, error: articulosError } = await this.supabase
                 .from('presupuestos_articulos')
                 .select('*')
-                .eq('presupuesto_id', proposalId);
+                .eq('presupuesto_id', proposalId)
+                .order('orden', { ascending: true, nullsFirst: false });
 
             if (articulosError) {
                 throw articulosError;
@@ -610,9 +611,13 @@ class CartManager {
                 // Esto asegura que los precios guardados en presupuestos_articulos se mantengan
                 const esPrecioManual = true; // Siempre manual cuando se carga desde una propuesta guardada
                 
+                // Obtener el orden del artículo (si existe en la BD, sino usar el índice)
+                const orden = articulo.orden !== undefined && articulo.orden !== null ? articulo.orden : index;
+                
                 const cartItem = {
                     id: product.id,
                     cartItemId: cartItemId, // ID único para identificar este item específico en el carrito
+                    order: orden, // Orden para drag and drop
                     type: 'product',
                     name: articulo.nombre_articulo || product.nombre,
                     category: product.categoria,
@@ -1289,6 +1294,38 @@ class CartManager {
      */
     saveCart() {
         localStorage.setItem('eppo_cart', JSON.stringify(this.cart));
+        // Actualizar contador en el botón de navegación
+        this.updateCartBadge();
+    }
+    
+    /**
+     * Actualizar contador en el botón de navegación "Orçamento"
+     */
+    updateCartBadge() {
+        const cartCount = this.cart ? this.cart.length : 0;
+        
+        // Buscar el botón en todas las páginas
+        const cartLink = document.getElementById('nav-cart-link');
+        
+        if (cartLink) {
+            // Remover badge existente si existe
+            const existingBadge = cartLink.querySelector('.cart-badge');
+            if (existingBadge) {
+                existingBadge.remove();
+            }
+            
+            // Agregar badge solo si hay items en el carrito
+            if (cartCount > 0) {
+                const badge = document.createElement('span');
+                badge.className = 'cart-badge';
+                // Agregar clase para números de dos dígitos
+                if (cartCount > 9) {
+                    badge.classList.add('double-digit');
+                }
+                badge.textContent = cartCount;
+                cartLink.appendChild(badge);
+            }
+        }
     }
 
     /**
@@ -1366,6 +1403,11 @@ class CartManager {
                 }
             }
             
+            // Calcular el orden: será el último item + 1
+            const maxOrder = this.cart.length > 0 
+                ? Math.max(...this.cart.map(item => item.order !== undefined && item.order !== null ? item.order : 0))
+                : -1;
+            
             this.cart.push({
                 id: product.id,
             cartItemId: cartItemId, // ID único para identificar este item específico en el carrito
@@ -1392,7 +1434,8 @@ class CartManager {
                 box_size: product.box_size || null, // Guardar box_size
                 phc_ref: product.phc_ref || null, // Guardar phc_ref
                 nombre_fornecedor: nomeFornecedor, // Guardar nombre del fornecedor
-                observations: '' // Campo para observaciones del usuario
+                observations: '', // Campo para observaciones del usuario
+                order: maxOrder + 1 // Orden para drag and drop
             });
         
         // Guardar inmediatamente para asegurar que price_tiers se guarden
@@ -1461,6 +1504,11 @@ class CartManager {
      * Agregar categoría completa al carrito
      */
     addCategory(category, quantity, notes = '') {
+        // Calcular el orden: será el último item + 1
+        const maxOrder = this.cart.length > 0 
+            ? Math.max(...this.cart.map(item => item.order !== undefined && item.order !== null ? item.order : 0))
+            : -1;
+        
         const categoryItem = {
             id: `category_${category}_${Date.now()}`,
             type: 'category',
@@ -1469,7 +1517,8 @@ class CartManager {
             quantity: quantity,
             notes: notes,
             price: 0, // Se calculará basado en productos seleccionados
-            image: null // Las imágenes de categoría ahora vienen desde Supabase, no desde archivos locales
+            image: null, // Las imágenes de categoría ahora vienen desde Supabase, no desde archivos locales
+            order: maxOrder + 1 // Orden para drag and drop
         };
 
         this.cart.push(categoryItem);
@@ -1603,27 +1652,54 @@ class CartManager {
      * @param {string} specificItemId - Opcional: ID del item específico a actualizar. Si no se proporciona, actualiza todos.
      */
     async updateDeliveryTimesFromStock(specificItemId = null) {
-        // Si se especifica un itemId, solo actualizar ese elemento
+        // IMPORTANTE: Si NO se especifica un itemId, NO hacer nada
+        // Esto previene actualizaciones no deseadas de todos los productos
+        // Solo se debe actualizar todos los productos cuando se pasa '*' explícitamente
+        if (!specificItemId) {
+            console.warn('⚠️ updateDeliveryTimesFromStock llamado sin specificItemId - IGNORANDO para prevenir actualizaciones no deseadas');
+            console.warn('   Si necesitas actualizar todos los productos, pasa "*" como parámetro');
+            return Promise.resolve();
+        }
+        
+        // Si se especifica '*', actualizar todos los productos (solo para carga inicial)
         let deliveryElements;
-        if (specificItemId) {
+        if (specificItemId === '*') {
+            console.log('⚠️ Actualizando plazos de entrega de TODOS los productos (carga inicial)');
+            deliveryElements = document.querySelectorAll('.delivery-time[data-phc-ref]');
+        } else {
+            // Si se especifica un itemId específico, solo actualizar ese elemento
+            // Escapar el itemId para evitar problemas con caracteres especiales en el selector
+            const escapedItemId = String(specificItemId).replace(/"/g, '\\"');
             // Buscar el elemento específico usando el itemId
-            const cartItem = document.querySelector(`.cart-item[data-item-id="${specificItemId}"]`);
+            const cartItem = document.querySelector(`.cart-item[data-item-id="${escapedItemId}"]`);
             if (cartItem) {
                 const deliveryElement = cartItem.querySelector('.delivery-time[data-phc-ref]');
-                deliveryElements = deliveryElement ? [deliveryElement] : [];
+                if (deliveryElement) {
+                    // Verificar que el elemento tiene el itemId correcto
+                    const elementItemId = deliveryElement.getAttribute('data-item-id');
+                    if (String(elementItemId) === String(specificItemId) || elementItemId === specificItemId) {
+                        deliveryElements = [deliveryElement];
+                        console.log(`✅ Encontrado elemento de plazo de entrega para itemId: ${specificItemId}`);
+                    } else {
+                        console.warn(`⚠️ Elemento encontrado pero itemId no coincide: ${elementItemId} vs ${specificItemId}`);
+                        deliveryElements = [];
+                    }
+                } else {
+                    deliveryElements = [];
+                }
             } else {
                 // Si no se encuentra, intentar buscar de otra manera
+                console.warn(`⚠️ No se encontró cart-item con data-item-id="${escapedItemId}"`);
                 deliveryElements = [];
             }
             
             // IMPORTANTE: Si se especificó un itemId, NO actualizar otros elementos
             if (deliveryElements.length === 0) {
+                console.log(`⚠️ No se encontró elemento de plazo de entrega para itemId: ${specificItemId}`);
                 return Promise.resolve();
             }
-        } else {
-            // Solo actualizar todos si NO se especificó un itemId específico
-            // Esto solo debe ocurrir en la carga inicial o al cargar una propuesta
-            deliveryElements = document.querySelectorAll('.delivery-time[data-phc-ref]');
+            
+            console.log(`✅ Actualizando plazo de entrega SOLO para itemId: ${specificItemId} (${deliveryElements.length} elemento(s))`);
         }
         
         for (const element of deliveryElements) {
@@ -1631,9 +1707,22 @@ class CartManager {
             const quantity = parseInt(element.getAttribute('data-quantity') || '1');
             const elementItemId = element.getAttribute('data-item-id');
             
-            // Si se especificó un specificItemId, usar ese para buscar el item
-            // Si no, usar el itemId del elemento
-            const itemIdToUse = specificItemId || elementItemId;
+            // IMPORTANTE: Si se especificó un specificItemId (y no es '*'), verificar que este elemento sea el correcto
+            if (specificItemId && specificItemId !== '*') {
+                // Verificar que el elemento pertenece al itemId especificado
+                if (String(elementItemId) !== String(specificItemId) && elementItemId !== specificItemId) {
+                    console.log(`⚠️ Saltando elemento con itemId diferente: ${elementItemId} (esperado: ${specificItemId})`);
+                    continue; // Saltar este elemento, no es el que queremos actualizar
+                }
+                console.log(`✅ Procesando elemento correcto: itemId=${elementItemId}, phcRef=${phcRef}, quantity=${quantity}`);
+            } else if (specificItemId === '*') {
+                console.log(`⚠️ Procesando elemento (actualización global): itemId=${elementItemId}, phcRef=${phcRef}, quantity=${quantity}`);
+            }
+            
+            // Si se especificó un specificItemId (y no es '*'), usar ese para buscar el item
+            // Si es '*', usar el itemId del elemento (actualización global)
+            // Si no hay specificItemId, usar el itemId del elemento
+            const itemIdToUse = (specificItemId && specificItemId !== '*') ? specificItemId : elementItemId;
             
             // Obtener el plazo original del item
             // Buscar por cartItemId primero (para items duplicados), luego por id como fallback
@@ -1651,8 +1740,9 @@ class CartManager {
                 continue;
             }
             
-            // Si se especificó un specificItemId, usar la cantidad del item encontrado, no la del atributo
-            const quantityToUse = specificItemId ? item.quantity : quantity;
+            // Si se especificó un specificItemId (y no es '*'), usar la cantidad del item encontrado, no la del atributo
+            // Si es '*', usar la cantidad del atributo (actualización global)
+            const quantityToUse = (specificItemId && specificItemId !== '*') ? item.quantity : quantity;
             
             // VERIFICAR PRIMERO: Si hay una variante seleccionada con plazo de entrega, usar ese plazo exclusivamente
             if (item.selectedVariant !== null && item.selectedVariant !== undefined && item.variants && item.variants.length > 0) {
@@ -1729,6 +1819,16 @@ class CartManager {
                 }
                 
                 const t = this.getStockTranslations();
+                
+                // IMPORTANTE: Si se especificó un specificItemId (y no es '*'), verificar una vez más que este elemento es el correcto
+                // antes de actualizar su contenido
+                if (specificItemId && specificItemId !== '*') {
+                    const currentElementItemId = element.getAttribute('data-item-id');
+                    if (String(currentElementItemId) !== String(specificItemId) && currentElementItemId !== specificItemId) {
+                        console.warn(`⚠️ Saltando actualización de contenido: elemento con itemId ${currentElementItemId} no coincide con ${specificItemId}`);
+                        continue; // Saltar este elemento completamente
+                    }
+                }
                 
                 // Limpiar contenido anterior para evitar duplicados
                 element.innerHTML = '';
@@ -1875,6 +1975,20 @@ class CartManager {
         }
 
         try {
+        // Asegurar que todos los items tengan un campo 'order' para el ordenamiento
+        this.cart.forEach((item, index) => {
+            if (item.order === undefined || item.order === null) {
+                item.order = index;
+            }
+        });
+        
+        // Ordenar el carrito por el campo 'order' antes de renderizar
+        this.cart.sort((a, b) => {
+            const orderA = a.order !== undefined && a.order !== null ? a.order : 999999;
+            const orderB = b.order !== undefined && b.order !== null ? b.order : 999999;
+            return orderA - orderB;
+        });
+        
         const headersHTML = this.renderCartHeaders();
             console.log('📋 Generando HTML de items...');
             const itemsHTML = this.cart.map((item, index) => {
@@ -1894,16 +2008,82 @@ class CartManager {
             }).join('');
             
             console.log('📋 HTML generado, longitud:', itemsHTML.length);
+        
+        // IMPORTANTE: Antes de renderizar, preservar el contenido de los elementos de plazo de entrega
+        // que ya tienen información de stock calculada, para no perderla al re-renderizar
+        const preservedDeliveryTimes = new Map();
+        if (skipStockUpdate) {
+            // Solo preservar si estamos omitiendo la actualización de stock (para no perder información ya calculada)
+            const existingDeliveryElements = document.querySelectorAll('.delivery-time[data-item-id]');
+            existingDeliveryElements.forEach(element => {
+                const itemId = element.getAttribute('data-item-id');
+                const innerHTML = element.innerHTML;
+                // Detectar si el elemento tiene información de stock calculada:
+                // - Contiene "en stock" (indica stock disponible)
+                // - Contiene "unidades en stock" o "units in stock" (indica stock parcial)
+                // - Contiene colores específicos (verde para en stock, amarillo para parcial)
+                // - NO es el texto básico "(sujeto a confirmación de stock)" al final
+                const hasStockInfo = innerHTML && (
+                    innerHTML.includes('en stock') ||
+                    innerHTML.includes('Em stock') ||
+                    innerHTML.includes('In stock') ||
+                    innerHTML.includes('unidades en stock') ||
+                    innerHTML.includes('units in stock') ||
+                    innerHTML.includes('restantes') ||
+                    innerHTML.includes('Restantes') ||
+                    innerHTML.includes('Remaining') ||
+                    element.querySelector('span[style*="color: #10b981"]') || // Verde (en stock)
+                    element.querySelector('span[style*="color: #f59e0b"]')    // Amarillo (stock parcial)
+                );
+                
+                // Solo preservar si tiene información de stock calculada
+                if (hasStockInfo) {
+                    preservedDeliveryTimes.set(itemId, innerHTML);
+                    console.log(`💾 Preservando plazo de entrega con stock para itemId: ${itemId}`);
+                }
+            });
+        }
+        
         cartItemsContainer.innerHTML = headersHTML + itemsHTML;
             console.log('✅ HTML insertado en el DOM');
+            
+            // Configurar drag and drop después de insertar el HTML
+            this.setupDragAndDrop();
+            
+            // Restaurar el contenido preservado de los plazos de entrega
+            if (skipStockUpdate && preservedDeliveryTimes.size > 0) {
+                setTimeout(() => {
+                    preservedDeliveryTimes.forEach((innerHTML, itemId) => {
+                        // Escapar el itemId para el selector
+                        const escapedItemId = String(itemId).replace(/"/g, '\\"');
+                        const element = document.querySelector(`.delivery-time[data-item-id="${escapedItemId}"]`);
+                        if (element) {
+                            // Verificar que el elemento tiene el itemId correcto antes de restaurar
+                            const elementItemId = element.getAttribute('data-item-id');
+                            if (String(elementItemId) === String(itemId) || elementItemId === itemId) {
+                                element.innerHTML = innerHTML;
+                                console.log(`✅ Restaurado plazo de entrega para itemId: ${itemId}`);
+                            } else {
+                                console.warn(`⚠️ No se restauró plazo: itemId del elemento (${elementItemId}) no coincide con ${itemId}`);
+                            }
+                        } else {
+                            console.warn(`⚠️ No se encontró elemento de plazo de entrega para itemId: ${itemId}`);
+                        }
+                    });
+                }, 10);
+            }
             
             // Después de renderizar, actualizar todos los plazos de entrega según stock
             // Esto asegura que todos los productos mantengan su cálculo de stock actualizado
             // skipStockUpdate permite omitir esta actualización cuando se está actualizando un producto específico
             if (!skipStockUpdate) {
+                console.log('⚠️ renderCart: Actualizando plazos de entrega de TODOS los productos (skipStockUpdate=false)');
                 setTimeout(() => {
-                    this.updateDeliveryTimesFromStock();
+                    // Usar '*' como parámetro especial para indicar que se deben actualizar todos los productos
+                    this.updateDeliveryTimesFromStock('*');
                 }, 150);
+            } else {
+                console.log('✅ renderCart: Omitiendo actualización de plazos de entrega (skipStockUpdate=true)');
             }
         } catch (error) {
             cartItemsContainer.innerHTML = '<div style="padding: 20px; color: red;">Error al cargar el carrito. Por favor, recarga la página.</div>';
@@ -2535,7 +2715,7 @@ class CartManager {
         
         return `
             <div class="cart-item-wrapper">
-            <div class="cart-item" data-item-id="${itemIdentifier}">
+            <div class="cart-item" data-item-id="${itemIdentifier}" draggable="true" style="cursor: move;">
                 <div class="cart-item-image-container">
                     ${item.image ? 
                         `<img src="${item.image}" alt="${item.name}" class="cart-item-image" style="cursor: pointer;" onclick="showImageModal('${item.image.replace(/'/g, "\\'")}', '${productName.replace(/'/g, "\\'")}')" onerror="this.style.display='none'">` :
@@ -2588,16 +2768,23 @@ class CartManager {
                                 }
                             </div>`;
                         } else if (item.type === 'product') {
-                            // Verificar si el precio del producto es 0 o "sobre consulta"
-                            const basePrice = item.basePrice || 0;
-                            const precioEsCero = basePrice === 0 || basePrice === null || basePrice === undefined;
+                            // Verificar si el precio actual es 0 o "sobre consulta"
                             const precioActualEsCero = unitPrice === 0 || unitPrice === null || unitPrice === undefined;
+                            
+                            // Verificar si hay una variante personalizada seleccionada
+                            // Si hay variante seleccionada, NO mostrar input editable
+                            const tieneVarianteSeleccionada = item.selectedVariant !== null && 
+                                                              item.selectedVariant !== undefined && 
+                                                              item.variants && 
+                                                              item.variants.length > 0;
                             
                             // Verificar rol del usuario (usar caché si está disponible)
                             const userRole = window.cachedRole || null;
                             
-                            // Si el precio es 0 y el usuario es comercial, mostrar "Sobre consulta" en lugar del precio
-                            if (precioEsCero || precioActualEsCero) {
+                            // Solo mostrar input editable si:
+                            // 1. El precio es 0 (sobre consulta)
+                            // 2. NO hay variante personalizada seleccionada
+                            if (precioActualEsCero && !tieneVarianteSeleccionada) {
                                 if (userRole === 'comercial') {
                                     // Para comerciales, mostrar "Sobre consulta" en lugar del precio 0
                                     const translations = {
@@ -3060,6 +3247,92 @@ class CartManager {
         // No duplicar el listener aquí para evitar que se agreguen productos duplicados
 
         // Los controles de cantidad ahora usan onclick directamente en el HTML
+    }
+
+    /**
+     * Configurar drag and drop para reordenar items del carrito
+     */
+    setupDragAndDrop() {
+        const cartItems = document.querySelectorAll('.cart-item[draggable="true"]');
+        let draggedElement = null;
+        let draggedIndex = null;
+
+        cartItems.forEach((item, index) => {
+            // Prevenir que los inputs y botones inicien el drag
+            const nonDraggableElements = item.querySelectorAll('input, button, textarea, select, .quantity-input, .remove-item, .observations-btn');
+            nonDraggableElements.forEach(el => {
+                el.addEventListener('mousedown', (e) => {
+                    e.stopPropagation();
+                });
+            });
+
+            item.addEventListener('dragstart', (e) => {
+                draggedElement = item;
+                draggedIndex = index;
+                item.style.opacity = '0.5';
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/html', item.innerHTML);
+            });
+
+            item.addEventListener('dragend', (e) => {
+                item.style.opacity = '1';
+                // Remover clases de visualización
+                cartItems.forEach(cartItem => {
+                    cartItem.classList.remove('drag-over');
+                });
+            });
+
+            item.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                
+                // Agregar clase visual para indicar dónde se puede soltar
+                if (item !== draggedElement) {
+                    item.classList.add('drag-over');
+                }
+            });
+
+            item.addEventListener('dragleave', (e) => {
+                item.classList.remove('drag-over');
+            });
+
+            item.addEventListener('drop', (e) => {
+                e.preventDefault();
+                item.classList.remove('drag-over');
+                
+                if (draggedElement && draggedElement !== item) {
+                    const draggedItemId = draggedElement.getAttribute('data-item-id');
+                    const targetItemId = item.getAttribute('data-item-id');
+                    
+                    // Encontrar los items en el carrito
+                    const draggedCartItem = this.cart.find(cartItem => {
+                        const itemId = cartItem.cartItemId || cartItem.id;
+                        return String(itemId) === String(draggedItemId) || itemId === draggedItemId;
+                    });
+                    
+                    const targetCartItem = this.cart.find(cartItem => {
+                        const itemId = cartItem.cartItemId || cartItem.id;
+                        return String(itemId) === String(targetItemId) || itemId === targetItemId;
+                    });
+                    
+                    if (draggedCartItem && targetCartItem) {
+                        // Intercambiar los valores de 'order'
+                        const tempOrder = draggedCartItem.order;
+                        draggedCartItem.order = targetCartItem.order;
+                        targetCartItem.order = tempOrder;
+                        
+                        // Guardar y re-renderizar
+                        this.saveCart();
+                        this.renderCart(true); // skipStockUpdate=true para preservar plazos de entrega
+                        
+                        console.log('✅ Items reordenados:', {
+                            dragged: draggedCartItem.name,
+                            target: targetCartItem.name
+                        });
+                    }
+                }
+            });
+        });
     }
 
     /**
@@ -4791,42 +5064,14 @@ function changeProductVariant(itemId, variantIndex) {
                 }
             }
             
-            // Actualizar el producto que cambió (solo si no hay plazo de variante)
+            // Actualizar SOLO el producto que cambió (solo si no hay plazo de variante)
+            // NO actualizar los demás productos para evitar cambios innecesarios en sus plazos de entrega
             if (!variantDeliveryTime) {
-                window.cartManager.updateDeliveryTimesFromStock(itemIdentifier).then(() => {
-                    // Después de actualizar el producto que cambió, actualizar todos los demás
-                    const allDeliveryElements = document.querySelectorAll('.delivery-time[data-phc-ref]');
-                    const updatePromises = [];
-                    for (const element of allDeliveryElements) {
-                        const elementItemId = element.getAttribute('data-item-id');
-                        // Solo actualizar si NO es el producto que acabamos de actualizar
-                        if (String(elementItemId) !== String(itemIdentifier) && elementItemId !== itemIdentifier) {
-                            updatePromises.push(window.cartManager.updateDeliveryTimesFromStock(elementItemId));
-                        }
-                    }
-                    // Ejecutar todas las actualizaciones en paralelo
-                    Promise.all(updatePromises).catch(err => {
-                        console.error('Error actualizando plazos de entrega:', err);
-                    });
-                }).catch(err => {
+                window.cartManager.updateDeliveryTimesFromStock(itemIdentifier).catch(err => {
                     console.error('Error actualizando plazo de entrega del producto modificado:', err);
                 });
-            } else {
-                // Si hay plazo de variante, solo actualizar los demás productos
-                const allDeliveryElements = document.querySelectorAll('.delivery-time[data-phc-ref]');
-                const updatePromises = [];
-                for (const element of allDeliveryElements) {
-                    const elementItemId = element.getAttribute('data-item-id');
-                    // Solo actualizar si NO es el producto que acabamos de actualizar
-                    if (String(elementItemId) !== String(itemIdentifier) && elementItemId !== itemIdentifier) {
-                        updatePromises.push(window.cartManager.updateDeliveryTimesFromStock(elementItemId));
-                    }
-                }
-                // Ejecutar todas las actualizaciones en paralelo
-                Promise.all(updatePromises).catch(err => {
-                    console.error('Error actualizando plazos de entrega:', err);
-                });
             }
+            // Si hay plazo de variante, no necesitamos actualizar nada porque ya se mostró el plazo de la variante
         }, 100);
         
     } catch (error) {
@@ -5213,6 +5458,12 @@ async function addSpecialOrderToCart() {
                 image: mappedProduct.image || null
             };
             
+            // Calcular el orden: será el último item + 1
+            const maxOrder = window.cartManager.cart.length > 0 
+                ? Math.max(...window.cartManager.cart.map(item => item.order !== undefined && item.order !== null ? item.order : 0))
+                : -1;
+            cartItem.order = maxOrder + 1; // Orden para drag and drop
+            
             window.cartManager.cart.push(cartItem);
             window.cartManager.saveCart();
             window.cartManager.renderCart();
@@ -5586,7 +5837,8 @@ function simpleSetQuantity(itemId, quantity) {
                 console.log(`🔧 Precio manual mantenido para ${item.name}: €${item.price.toFixed(4)}`);
                 // Mantener el precio manual, solo actualizar cantidad
                 window.cartManager.saveCart();
-                window.cartManager.renderCart();
+                // skipStockUpdate=true para evitar actualizar todos los plazos de entrega
+                window.cartManager.renderCart(true);
                 window.cartManager.updateSummary();
                 return;
             }
@@ -5712,32 +5964,40 @@ function simpleSetQuantity(itemId, quantity) {
         window.cartManager.renderCart(true);
         window.cartManager.updateSummary();
         
-        // Actualizar mensajes de stock después de cambiar la cantidad
-        // Primero actualizar el item específico que cambió
-        // Luego actualizar todos los demás para asegurar que mantengan su cálculo de stock
+        // Actualizar mensajes de stock SOLO para el producto específico que cambió
+        // NO actualizar los demás productos para evitar cambios innecesarios en sus plazos de entrega
+        // Usar un timeout más largo para asegurar que el render haya terminado completamente
         setTimeout(() => {
-            // Actualizar el producto que cambió
-            window.cartManager.updateDeliveryTimesFromStock(itemId).then(() => {
-                // Después de actualizar el producto que cambió, actualizar todos los demás
-                // Esto es necesario porque renderCart() recrea el HTML con el plazo base
-                // Actualizar todos los productos EXCEPTO el que acabamos de actualizar
-                const allDeliveryElements = document.querySelectorAll('.delivery-time[data-phc-ref]');
-                const updatePromises = [];
-                for (const element of allDeliveryElements) {
-                    const elementItemId = element.getAttribute('data-item-id');
-                    // Solo actualizar si NO es el producto que acabamos de actualizar
-                    if (String(elementItemId) !== String(itemId) && elementItemId !== itemId) {
-                        updatePromises.push(window.cartManager.updateDeliveryTimesFromStock(elementItemId));
-                    }
-                }
-                // Ejecutar todas las actualizaciones en paralelo
-                Promise.all(updatePromises).catch(err => {
-                    console.error('Error actualizando plazos de entrega:', err);
-                });
-            }).catch(err => {
+            // Verificar que el itemId es válido antes de actualizar
+            if (!itemId) {
+                console.warn('⚠️ itemId no válido para actualizar plazo de entrega');
+                return;
+            }
+            
+            // Usar cartItemId si existe, sino usar item.id
+            // IMPORTANTE: El itemId que se pasa debe ser exactamente el mismo que se usa en el DOM (itemIdentifier)
+            const itemIdToUpdate = item.cartItemId || item.id;
+            
+            // Normalizar ambos IDs para comparación
+            const normalizedItemId = String(itemId).trim();
+            const normalizedItemIdToUpdate = String(itemIdToUpdate).trim();
+            
+            // Verificar que el itemIdToUpdate coincide con el itemId pasado
+            if (normalizedItemIdToUpdate !== normalizedItemId && itemIdToUpdate !== itemId) {
+                console.warn(`⚠️ itemId no coincide: itemId=${itemId}, itemIdToUpdate=${itemIdToUpdate}`);
+                // Intentar usar el itemId original si no coincide
+                console.log(`🔄 Intentando usar itemId original: ${itemId}`);
+            }
+            
+            // Usar el itemId original si hay discrepancia, pero preferir itemIdToUpdate si coincide
+            const finalItemId = (normalizedItemIdToUpdate === normalizedItemId || itemIdToUpdate === itemId) ? itemIdToUpdate : itemId;
+            
+            // Actualizar SOLO el producto que cambió usando el cartItemId o id correcto
+            console.log(`🔄 Actualizando plazo de entrega SOLO para itemId: ${finalItemId} (original: ${itemId}, itemIdToUpdate: ${itemIdToUpdate})`);
+            window.cartManager.updateDeliveryTimesFromStock(finalItemId).catch(err => {
                 console.error('Error actualizando plazo de entrega del producto modificado:', err);
             });
-        }, 100);
+        }, 200);
         
         // FORZAR ACTUALIZACIÓN DEL INPUT después del render para asegurar que se actualice
         // Esto es crítico: el input DEBE mostrar item.quantity (cantidad normalizada), nunca el valor crudo
@@ -5762,9 +6022,17 @@ function simpleSetQuantity(itemId, quantity) {
                     }
                     
                     // Actualizar también el atributo data-quantity en el elemento de plazo de entrega
+                    // IMPORTANTE: Solo actualizar el elemento que pertenece a este itemId específico
                     const deliveryElementAfter = cartItemElement.querySelector('.delivery-time[data-phc-ref]');
                     if (deliveryElementAfter) {
-                        deliveryElementAfter.setAttribute('data-quantity', item.quantity);
+                        // Verificar que el elemento tiene el itemId correcto antes de actualizar
+                        const deliveryItemId = deliveryElementAfter.getAttribute('data-item-id');
+                        if (String(deliveryItemId) === String(itemId) || deliveryItemId === itemId) {
+                            deliveryElementAfter.setAttribute('data-quantity', item.quantity);
+                            console.log(`✅ Actualizado data-quantity para itemId: ${itemId}, cantidad: ${item.quantity}`);
+                        } else {
+                            console.warn(`⚠️ No se actualizó data-quantity: itemId del elemento (${deliveryItemId}) no coincide con itemId esperado (${itemId})`);
+                        }
                     }
                     
                     return true;
@@ -7719,34 +7987,32 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         // Asegurar que el texto no se salga del cuadro
         const maxY = y + height - padding;
         const minY = y + padding;
-        let startY = y + (height - totalTextHeight) / 2 + actualLineHeight;
+        // Empezar desde arriba con padding mínimo para evitar espacio en blanco excesivo
+        let startY = minY + (actualLineHeight * 0.5);
         
-        // Ajustar si el texto se sale por arriba o por abajo
-        if (startY < minY) {
-            startY = minY + actualLineHeight;
-        }
+        // Verificar que el texto quepa
         const endY = startY + (allLines.length - 1) * actualLineHeight;
         if (endY > maxY) {
-            // Si no cabe, empezar desde arriba y permitir que se extienda
-            startY = minY + actualLineHeight;
+            // Si no cabe completamente, ajustar ligeramente hacia arriba
+            startY = minY + (actualLineHeight * 0.3);
         }
         
-        // Dibujar cada línea
+        // IMPORTANTE: Dibujar TODAS las líneas, incluso si se salen del cuadro
+        // Esto asegura que el texto completo se muestre (el PDF se ajustará automáticamente)
         doc.setFontSize(fontSize);
         allLines.forEach((line, index) => {
             // Usar el mismo actualLineHeight para el espaciado
             const lineY = startY + (index * actualLineHeight);
-            // Verificar que la línea esté dentro del cuadro (con un margen más generoso)
-            if (lineY >= minY - 1 && lineY <= maxY + 1) {
-                doc.setFont('helvetica', line.bold ? 'bold' : 'normal');
-                const textX = x + (width / 2);
-                // Limpiar el texto de la línea antes de dibujarlo para evitar espacios múltiples
-                const cleanLineText = line.text.trim().replace(/\s{2,}/g, ' ');
-                // Usar maxWidth para asegurar que el texto no se salga
-                // Solo dibujar si hay texto válido
-                if (cleanLineText && cleanLineText.length > 0) {
-                    doc.text(cleanLineText, textX, lineY, { align: 'center', maxWidth: availableWidth });
-                }
+            // Dibujar todas las líneas sin verificar límites para evitar que se corten
+            // El PDF ajustará automáticamente la altura si es necesario
+            doc.setFont('helvetica', line.bold ? 'bold' : 'normal');
+            const textX = x + (width / 2);
+            // Limpiar el texto de la línea antes de dibujarlo para evitar espacios múltiples
+            const cleanLineText = line.text.trim().replace(/\s{2,}/g, ' ');
+            // Usar maxWidth para asegurar que el texto no se salga horizontalmente
+            // Solo dibujar si hay texto válido
+            if (cleanLineText && cleanLineText.length > 0) {
+                doc.text(cleanLineText, textX, lineY, { align: 'center', maxWidth: availableWidth });
             }
         });
     }
@@ -8043,45 +8309,73 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         }
 
         // Calcular altura necesaria para esta fila basada en el contenido completo
-        // IMPORTANTE: Usar el mismo lineHeight que drawDescriptionWithBoldParts para consistencia
+        // IMPORTANTE: Simular el mismo proceso que drawDescriptionWithBoldParts para calcular correctamente
         const padding = 2;
         const availableWidth = colWidths.description - (padding * 2);
         const fontSize = 7;
-        // Usar el mismo lineHeight que drawDescriptionWithBoldParts (fontSize * 0.5)
-        const lineHeight = fontSize * 0.5;
+        const actualLineHeight = fontSize * 0.6; // Mismo lineHeight que drawDescriptionWithBoldParts
         
         // Establecer la fuente antes de dividir el texto para calcular correctamente
         doc.setFontSize(fontSize);
         doc.setFont('helvetica', 'normal');
         
-        // Limpiar el texto antes de dividirlo para evitar problemas con caracteres especiales
-        // Preservar espacios normales pero eliminar espacios múltiples innecesarios
-        let cleanDescriptionText = fullDescriptionText.trim();
-        // Reemplazar múltiples espacios con uno solo, pero preservar espacios dentro de paréntesis y números
-        cleanDescriptionText = cleanDescriptionText.replace(/\s{2,}/g, ' ');
+        // Simular el proceso de drawDescriptionWithBoldParts para contar líneas correctamente
+        // Dividir descripción base
+        let allLinesCount = 0;
+        if (description && description.trim()) {
+            const cleanDesc = description.trim().replace(/\s{2,}/g, ' ');
+            const descLines = doc.splitTextToSize(cleanDesc, availableWidth);
+            allLinesCount += descLines.length;
+        }
         
-        // Dividir el texto completo en líneas
-        // IMPORTANTE: Usar el ancho disponible completo para calcular correctamente
-        const descriptionLines = doc.splitTextToSize(cleanDescriptionText, availableWidth);
+        // Agregar líneas de variante si existe
+        if (variantText && variantText.trim()) {
+            const cleanVariant = variantText.trim().replace(/\s{2,}/g, ' ');
+            const variantLines = cleanVariant.split('\n');
+            variantLines.forEach(line => {
+                if (line.trim()) {
+                    const cleanLine = line.trim().replace(/\s{2,}/g, ' ');
+                    const lines = doc.splitTextToSize(cleanLine, availableWidth);
+                    allLinesCount += lines.length;
+                }
+            });
+            allLinesCount += 1; // Línea de "Personalizado"
+        }
         
-        // Calcular altura considerando el espaciado entre líneas
-        // Usar un lineHeight más generoso para evitar que se corte el texto
-        const actualLineHeight = fontSize * 0.6; // Aumentar ligeramente el lineHeight
+        // Agregar líneas de color si existe
+        if (selectedColorText && selectedColorText.trim()) {
+            allLinesCount += 1; // Línea de color
+        }
+        
+        // Agregar líneas de observaciones si existen
+        if (observations && observations.trim()) {
+            allLinesCount += 1; // Línea de "Notas:"
+            const cleanObs = observations.trim().replace(/\s{2,}/g, ' ');
+            const obsLines = doc.splitTextToSize(cleanObs, availableWidth);
+            allLinesCount += obsLines.length;
+        }
+        
+        // Calcular altura considerando el espaciado entre líneas y saltos de línea adicionales
+        // Agregar espacio extra para saltos de línea entre secciones (descripción, variante, color, notas)
+        // Reducir el espacio entre secciones para evitar demasiado espacio en blanco
+        const sectionBreaks = (variantText ? 1 : 0) + (selectedColorText ? 1 : 0) + (observations ? 1 : 0);
+        // Calcular altura más precisa: líneas * lineHeight + saltos de línea + padding mínimo
         const descriptionHeight = Math.max(
-            (descriptionLines.length * actualLineHeight) + (padding * 2), 
+            (allLinesCount * actualLineHeight) + (sectionBreaks * actualLineHeight * 0.5) + (padding * 2), 
             minRowHeight
         );
         
         console.log('📏 Cálculo de altura de descripción:', {
             itemName: item.name,
             fullDescriptionTextLength: fullDescriptionText.length,
-            numLines: descriptionLines.length,
+            numLines: allLinesCount,
             lineHeight: actualLineHeight,
             calculatedHeight: descriptionHeight,
             minRowHeight: minRowHeight,
             hasVariant: !!variantText,
             hasColor: !!selectedColorText,
-            hasObservations: !!(observations && observations.trim())
+            hasObservations: !!(observations && observations.trim()),
+            observationsText: observations ? observations.substring(0, 50) + '...' : null
         });
         
         // Obtener plazo de entrega: primero verificar si hay variante personalizada con plazo
@@ -8133,9 +8427,12 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         // La altura de la fila es la máxima entre todas las celdas
         // IMPORTANTE: Asegurar que la descripción tenga suficiente espacio
         // Agregar padding adicional para evitar que el texto se corte
-        // Usar un factor de seguridad mayor para descripciones largas
-        const safetyFactor = descriptionLines.length > 5 ? 1.2 : 1.1; // Factor de seguridad para descripciones largas
-        const minDescriptionHeight = (descriptionHeight * safetyFactor) + (padding * 4); // Más padding para descripción
+        // Usar un factor de seguridad mayor para descripciones largas o con observaciones
+        const hasObservations = observations && observations.trim();
+        // Reducir el factor de seguridad para evitar demasiado espacio en blanco
+        // Usar un factor más pequeño que se ajuste mejor al contenido
+        const safetyFactor = hasObservations ? 1.15 : (allLinesCount > 5 ? 1.1 : 1.05); // Factor de seguridad reducido
+        const minDescriptionHeight = (descriptionHeight * safetyFactor) + (padding * 2); // Padding mínimo
         
         const calculatedRowHeight = Math.max(
             baseRowHeight,
@@ -8149,7 +8446,8 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             descriptionHeight: descriptionHeight,
             minDescriptionHeight: minDescriptionHeight,
             calculatedRowHeight: calculatedRowHeight,
-            numDescriptionLines: descriptionLines.length
+            numDescriptionLines: allLinesCount,
+            hasObservations: !!(observations && observations.trim())
         });
         
         console.log(`🔄 Item ${i + 1}: Continuando después de calcular altura...`);
@@ -10048,6 +10346,9 @@ async function sendProposalToSupabase() {
 
                 console.log(`📦 Guardando artículo: ${nombreArticulo}, Cantidad: ${cantidad}, Precio: ${precio}, Color: ${colorSeleccionado || 'N/A'}`);
 
+                // Obtener el orden del item (para mantener el orden de drag and drop)
+                const orden = item.order !== undefined && item.order !== null ? item.order : index;
+                
                 articulos.push({
                     presupuesto_id: presupuesto.id,
                     nombre_articulo: nombreArticulo,
@@ -10060,7 +10361,8 @@ async function sendProposalToSupabase() {
                     plazo_entrega: plazoEntrega,
                     variante_referencia: varianteReferencia,
                     color_seleccionado: colorSeleccionado,
-                    logo_url: item.logoUrl || null
+                    logo_url: item.logoUrl || null,
+                    orden: orden // Guardar el orden para drag and drop
                 });
             }
         }
@@ -11514,9 +11816,9 @@ async function updateManualPrice(itemId, newPrice) {
             return;
         }
         
-        // Verificar que el precio base del producto es 0 (sobre consulta)
-        const basePrice = item.basePrice || 0;
-        if (basePrice !== 0 && basePrice !== null && basePrice !== undefined) {
+        // Verificar que el precio actual es 0 (sobre consulta)
+        const currentPrice = item.price || 0;
+        if (currentPrice !== 0 && currentPrice !== null && currentPrice !== undefined) {
             console.warn('⚠️ Solo se pueden editar precios de productos con precio 0 (sobre consulta)');
             alert(window.cartManager.currentLanguage === 'pt' ? 
                   'Apenas produtos com preço 0 (sobre consulta) podem ter preço editado manualmente.' :
@@ -11528,8 +11830,24 @@ async function updateManualPrice(itemId, newPrice) {
             const priceInput = document.querySelector(`input.cart-item-price-input[onchange*="${itemId}"]`);
             if (priceInput && item.price !== undefined && item.price !== null) {
                 priceInput.value = item.price.toFixed(4);
-            } else if (priceInput) {
-                priceInput.value = basePrice.toFixed(4);
+            }
+            return;
+        }
+        
+        // Verificar si hay una variante personalizada seleccionada
+        // Si hay variante seleccionada, NO permitir editar el precio
+        if (item.selectedVariant !== null && item.selectedVariant !== undefined && item.variants && item.variants.length > 0) {
+            console.warn('⚠️ No se puede editar el precio cuando hay una variante personalizada seleccionada');
+            alert(window.cartManager.currentLanguage === 'pt' ? 
+                  'Não é possível editar o preço quando há uma variante personalizada selecionada.' :
+                  window.cartManager.currentLanguage === 'es' ?
+                  'No se puede editar el precio cuando hay una variante personalizada seleccionada.' :
+                  'Cannot edit price when a personalized variant is selected.');
+            
+            // Restaurar precio anterior
+            const priceInput = document.querySelector(`input.cart-item-price-input[onchange*="${itemId}"]`);
+            if (priceInput && item.price !== undefined && item.price !== null) {
+                priceInput.value = item.price.toFixed(4);
             }
             return;
         }
@@ -11658,6 +11976,58 @@ function closeVersionModal(createNewVersion) {
         versionModalResolve = null;
     }
 }
+
+/**
+ * Función global para actualizar el contador del carrito en el botón de navegación
+ * Puede ser llamada desde cualquier página
+ */
+window.updateCartBadge = function() {
+    try {
+        // Intentar usar el cartManager si está disponible
+        if (window.cartManager && typeof window.cartManager.updateCartBadge === 'function') {
+            window.cartManager.updateCartBadge();
+            return;
+        }
+        
+        // Si no hay cartManager, leer directamente del localStorage
+        const savedCart = localStorage.getItem('eppo_cart');
+        let cartCount = 0;
+        
+        if (savedCart) {
+            try {
+                const cart = JSON.parse(savedCart);
+                cartCount = cart ? cart.length : 0;
+            } catch (e) {
+                cartCount = 0;
+            }
+        }
+        
+        // Buscar el botón en todas las páginas
+        const cartLink = document.getElementById('nav-cart-link');
+        
+        if (cartLink) {
+            // Remover badge existente si existe
+            const existingBadge = cartLink.querySelector('.cart-badge');
+            if (existingBadge) {
+                existingBadge.remove();
+            }
+            
+            // Agregar badge solo si hay items en el carrito
+            if (cartCount > 0) {
+                const badge = document.createElement('span');
+                badge.className = 'cart-badge';
+                // Agregar clase para números de dos dígitos
+                if (cartCount > 9) {
+                    badge.classList.add('double-digit');
+                }
+                badge.textContent = cartCount;
+                cartLink.appendChild(badge);
+            }
+        }
+    } catch (error) {
+        console.error('Error actualizando badge del carrito:', error);
+    }
+};
 
 // Hacer funciones globales
 window.showVersionModal = showVersionModal;

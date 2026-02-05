@@ -168,6 +168,38 @@ body {
   background: var(--bg-gray-100);
 }
 
+/* Badge de contador en botón Orçamento */
+.nav-link {
+  position: relative;
+}
+
+.cart-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: var(--primary-500);
+  color: white;
+  border-radius: 50%;
+  min-width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  padding: 0 4px;
+  white-space: nowrap;
+}
+
+/* Para números mayores a 9, hacer el badge más ancho y ovalado */
+.cart-badge.double-digit {
+  border-radius: 10px;
+  min-width: 24px;
+  padding: 0 6px;
+}
+
 .language-selector {
     display: flex;
   gap: var(--space-2);
