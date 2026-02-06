@@ -30,10 +30,11 @@ module.exports = async function handler(req, res) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
-        const status = proxyRes.status;
-        return res.status(status).json({ ok: status >= 200 && status < 300 });
+        const n8nOk = proxyRes.status >= 200 && proxyRes.status < 300;
+        // Siempre 200 al cliente para que no se muestre 404; el resultado real va en el body.
+        return res.status(200).json({ ok: n8nOk });
     } catch (err) {
         console.error('follow-up-webhook proxy error:', err);
-        return res.status(502).json({ error: 'Proxy failed', message: err.message });
+        return res.status(200).json({ ok: false, error: 'Proxy failed' });
     }
 };
