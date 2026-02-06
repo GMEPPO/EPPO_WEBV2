@@ -5,7 +5,7 @@
       "destination": "/api/follow-up-webhook"
     },
     {
-      "source": "/((?!.*\\.).*)$",
+      "source": "/((?!api/)(?!.*\\.).*)$",
       "destination": "/index.html"
     }
   ],
