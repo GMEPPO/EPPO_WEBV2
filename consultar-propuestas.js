@@ -339,6 +339,26 @@ class ProposalsManager {
                     }
                 }
 
+                // Cargar follow-ups por presupuesto
+                let followUpsPorPresupuesto = {};
+                if (presupuestoIds && presupuestoIds.length > 0) {
+                    try {
+                        const { data: followUps, error: followUpsError } = await this.supabase
+                            .from('presupuestos_follow_ups')
+                            .select('*')
+                            .in('presupuesto_id', presupuestoIds)
+                            .order('fecha_follow_up', { ascending: true });
+                        if (!followUpsError && followUps) {
+                            followUps.forEach(fu => {
+                                if (!followUpsPorPresupuesto[fu.presupuesto_id]) followUpsPorPresupuesto[fu.presupuesto_id] = [];
+                                followUpsPorPresupuesto[fu.presupuesto_id].push(fu);
+                            });
+                        }
+                    } catch (error) {
+                        console.warn('⚠️ No se pudo cargar follow-ups:', error);
+                    }
+                }
+
                 // Combinar datos (usar filteredPresupuestos si existe, sino presupuestos)
                 const presupuestosToUse = filteredPresupuestos || presupuestos;
                 this.allProposals = presupuestosToUse.map(presupuesto => {
@@ -383,7 +403,8 @@ class ProposalsManager {
                         return sum + (parseFloat(art.precio) || 0) * (parseInt(art.cantidad) || 0);
                     }, 0),
                     dossier_documentos: documentosUrls,
-                    categorias: categorias // Agregar categorías únicas
+                    categorias: categorias, // Agregar categorías únicas
+                    follow_ups: followUpsPorPresupuesto[presupuesto.id] || []
                     };
                 });
 
@@ -621,7 +642,12 @@ class ProposalsManager {
 
         this.filteredProposals.forEach(proposal => {
             const row = document.createElement('tr');
-            
+            const followUpAlert = this.isProposalInFollowUpAlert(proposal);
+            if (followUpAlert.isAlert) {
+                row.style.backgroundColor = 'rgba(220, 38, 38, 0.2)';
+                row.style.borderLeft = '4px solid #dc2626';
+            }
+
             // Formatear fechas
             const fechaInicio = new Date(proposal.fecha_inicial);
             const fechaInicioFormateada = fechaInicio.toLocaleDateString(this.currentLanguage === 'es' ? 'es-ES' : 
@@ -664,6 +690,7 @@ class ProposalsManager {
                 if (statusLower.includes('encomenda') && (statusLower.includes('en curso') || statusLower.includes('em curso'))) return 'encomenda_en_curso';
                 if (statusLower.includes('concluida') || statusLower.includes('concluída') || statusLower === 'encomenda_concluida') return 'encomenda_concluida';
                 if (statusLower.includes('rechazada') || statusLower.includes('rejeitada')) return 'rejeitada';
+                if (statusLower === 'follow_up' || statusLower.includes('follow up')) return 'follow_up';
                 return status; // Si no coincide, usar el valor original
             };
             
@@ -777,6 +804,7 @@ class ProposalsManager {
                                 ${estadoNormalizado === 'aguarda_creacion_cliente' ? `<option value="aguarda_creacion_cliente" selected>${this.getStatusText('aguarda_creacion_cliente')}</option>` : `<option value="aguarda_creacion_cliente">${this.getStatusText('aguarda_creacion_cliente')}</option>`}
                                 ${estadoNormalizado === 'aguarda_creacion_codigo_phc' ? `<option value="aguarda_creacion_codigo_phc" selected>${this.getStatusText('aguarda_creacion_codigo_phc')}</option>` : `<option value="aguarda_creacion_codigo_phc">${this.getStatusText('aguarda_creacion_codigo_phc')}</option>`}
                                 ${estadoNormalizado === 'aguarda_pagamento' ? `<option value="aguarda_pagamento" selected>${this.getStatusText('aguarda_pagamento')}</option>` : `<option value="aguarda_pagamento">${this.getStatusText('aguarda_pagamento')}</option>`}
+                                ${estadoNormalizado === 'follow_up' ? `<option value="follow_up" selected>${this.getStatusText('follow_up')}</option>` : `<option value="follow_up">${this.getStatusText('follow_up')}</option>`}
                                 ${estadoNormalizado === 'encomenda_en_curso' ? `<option value="encomenda_en_curso" selected>${this.getStatusText('encomenda_en_curso')}</option>` : `<option value="encomenda_en_curso">${this.getStatusText('encomenda_en_curso')}</option>`}
                                 ${estadoNormalizado === 'encomenda_concluida' ? `<option value="encomenda_concluida" selected>${this.getStatusText('encomenda_concluida')}</option>` : `<option value="encomenda_concluida">${this.getStatusText('encomenda_concluida')}</option>`}
                                 ${estadoNormalizado === 'rejeitada' ? `<option value="rejeitada" selected>${this.getStatusText('rejeitada')}</option>` : `<option value="rejeitada">${this.getStatusText('rejeitada')}</option>`}
@@ -827,6 +855,101 @@ class ProposalsManager {
 
             tbody.appendChild(row);
         });
+
+        // Enviar webhooks de alerta follow-up (sin bloquear la UI)
+        this.filteredProposals.forEach(proposal => {
+            const alert = this.isProposalInFollowUpAlert(proposal);
+            if (alert.isAlert) this.sendFollowUpAlertWebhookIfNeeded(proposal, alert);
+        });
+    }
+
+    /**
+     * Determina si una propuesta está en estado de alerta (sin follow-up a 15d o fecha futuro vencida)
+     * @returns {{ isAlert: boolean, is15dOverdue: boolean, isFutureFuOverdue: boolean }}
+     */
+    isProposalInFollowUpAlert(proposal) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const estado = (proposal.estado_propuesta || '').toLowerCase();
+        const isFollowUp = estado === 'follow_up' || estado.includes('follow up');
+
+        const fechaEnvio = proposal.fecha_envio_propuesta || proposal.fecha_propuesta || proposal.fecha_inicial;
+        const fechaEnvioDate = fechaEnvio ? new Date(fechaEnvio) : null;
+        let is15dOverdue = false;
+        if (fechaEnvioDate && !isFollowUp) {
+            fechaEnvioDate.setHours(0, 0, 0, 0);
+            const daysSinceSend = Math.floor((today - fechaEnvioDate) / (24 * 60 * 60 * 1000));
+            is15dOverdue = daysSinceSend >= 15;
+        }
+
+        let isFutureFuOverdue = false;
+        if (isFollowUp && proposal.follow_ups && proposal.follow_ups.length > 0) {
+            const futureDates = proposal.follow_ups
+                .map(fu => fu.fecha_follow_up_futuro)
+                .filter(Boolean)
+                .map(d => new Date(d));
+            if (futureDates.length > 0) {
+                const maxFuture = new Date(Math.max(...futureDates.map(d => d.getTime())));
+                maxFuture.setHours(0, 0, 0, 0);
+                isFutureFuOverdue = maxFuture < today;
+            }
+        }
+
+        return {
+            isAlert: is15dOverdue || isFutureFuOverdue,
+            is15dOverdue,
+            isFutureFuOverdue
+        };
+    }
+
+    /**
+     * Envía webhook de alerta follow-up si corresponde y actualiza flags para no spamear.
+     * Usa proxy (Vercel API route) para evitar CORS al llamar a n8n desde el navegador.
+     */
+    async sendFollowUpAlertWebhookIfNeeded(proposal, alert) {
+        const payload = {
+            numero_propuesta: proposal.codigo_propuesta || (proposal.id ? proposal.id.substring(0, 8).toUpperCase() : ''),
+            nombre_cliente: proposal.nombre_cliente || '',
+            nombre_comercial: proposal.nombre_comercial || '',
+            nombre_responsable: proposal.responsavel || ''
+        };
+
+        const send15d = alert.is15dOverdue;
+        const sendFuture = alert.isFutureFuOverdue;
+        const now = new Date().toISOString();
+
+        const origin = typeof window !== 'undefined' && window.location && window.location.origin;
+        const useProxy = origin && origin !== 'null' && !origin.startsWith('file');
+        const webhookTarget = useProxy ? (origin + '/api/follow-up-webhook') : null;
+
+        if (!webhookTarget) {
+            return;
+        }
+
+        try {
+            if (send15d && !proposal.webhook_15d_sent_at) {
+                const res = await fetch(webhookTarget, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ...payload, tipo_alerta: '15_dias_sin_follow_up' })
+                });
+                if (res.ok && this.supabase) {
+                    await this.supabase.from('presupuestos').update({ webhook_15d_sent_at: now }).eq('id', proposal.id);
+                }
+            }
+            if (sendFuture && !proposal.webhook_future_fu_sent_at) {
+                const res = await fetch(webhookTarget, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ...payload, tipo_alerta: 'fecha_follow_up_futuro_vencida' })
+                });
+                if (res.ok && this.supabase) {
+                    await this.supabase.from('presupuestos').update({ webhook_future_fu_sent_at: now }).eq('id', proposal.id);
+                }
+            }
+        } catch (e) {
+            console.warn('Error enviando webhook follow-up:', e);
+        }
     }
 
     getStatusClass(status) {
@@ -875,6 +998,8 @@ class ProposalsManager {
             return 'status-rejected';
         } else if (statusLower.includes('aprobada') || statusLower.includes('aprovada')) {
             return 'status-approved';
+        } else if (statusLower === 'follow_up' || statusLower.includes('follow up')) {
+            return 'status-pending';
         }
         
         return 'status-sent';
@@ -900,6 +1025,7 @@ class ProposalsManager {
                 'encomenda_en_curso': 'Encomenda en Curso',
                 'encomenda_concluida': 'Encomenda Concluída',
                 'rejeitada': 'Rechazada',
+                'follow_up': 'Follow up',
                 // Compatibilidad con estados antiguos
                 'propuesta enviada': 'Propuesta Enviada',
                 'muestra_entregada': 'Muestra Enviada' // Mantener compatibilidad
@@ -919,6 +1045,7 @@ class ProposalsManager {
                 'encomenda_en_curso': 'Encomenda em Curso',
                 'encomenda_concluida': 'Encomenda Concluída',
                 'rejeitada': 'Rejeitada',
+                'follow_up': 'Follow up',
                 // Compatibilidad con estados antiguos
                 'propuesta enviada': 'Proposta Enviada',
                 'muestra_entregada': 'Amostra Enviada' // Mantener compatibilidad
@@ -939,6 +1066,7 @@ class ProposalsManager {
                 'encomenda_en_curso': 'Order in Progress',
                 'encomenda_concluida': 'Order Completed',
                 'rejeitada': 'Rejected',
+                'follow_up': 'Follow up',
                 // Compatibilidad con estados antiguos
                 'propuesta enviada': 'Proposal Sent',
                 'encomendado': 'Ordered'
@@ -982,6 +1110,8 @@ class ProposalsManager {
             return map['encomenda_concluida'] || 'Encomenda Concluída';
         } else if (statusLower.includes('rechazada') || statusLower.includes('rejeitada')) {
             return map['rejeitada'] || 'Rechazada';
+        } else if (statusLower === 'follow_up' || statusLower.includes('follow up')) {
+            return map['follow_up'] || 'Follow up';
         }
 
         return status || map['propuesta_enviada'] || 'Enviada';
@@ -1196,6 +1326,59 @@ class ProposalsManager {
         // Traducciones para los detalles
         const detailLabels = this.getDetailLabels();
 
+        // Construir HTML de follow-ups (escapar observaciones para evitar rotura del template)
+        const locale = this.currentLanguage === 'es' ? 'es-ES' : this.currentLanguage === 'pt' ? 'pt-PT' : 'en-US';
+        let followUpsSectionHtml = `<p style="color: var(--text-secondary); font-size: 0.875rem;" id="no-follow-ups-${proposal.id}">${detailLabels.noFollowUps}</p>`;
+        if (proposal.follow_ups && proposal.follow_ups.length > 0) {
+            followUpsSectionHtml = proposal.follow_ups.map(fu => {
+                const fechaFu = fu.fecha_follow_up ? new Date(fu.fecha_follow_up).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' }) : '-';
+                const fechaFuturo = fu.fecha_follow_up_futuro ? (typeof fu.fecha_follow_up_futuro === 'string' ? fu.fecha_follow_up_futuro.split('T')[0] : fu.fecha_follow_up_futuro) : '';
+                const obsEscaped = (fu.observaciones || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+                const url1 = (fu.foto_url_1 || '').replace(/"/g, '&quot;');
+                const url2 = (fu.foto_url_2 || '').replace(/"/g, '&quot;');
+                const slot1Html = url1
+                    ? `<div class="follow-up-photo-slot" style="position:relative;display:inline-block;"><a href="${url1}" target="_blank" rel="noopener" style="display:block;width:80px;height:80px;border-radius:8px;overflow:hidden;border:1px solid var(--bg-gray-200);"><img src="${url1}" alt="Foto 1" style="width:100%;height:100%;object-fit:cover;"></a><button type="button" onclick="window.proposalsManager.removeFollowUpPhoto('${proposal.id}','${fu.id}',1)" style="position:absolute;top:2px;right:2px;background:var(--danger-500,#ef4444);color:white;border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:10px;"><i class="fas fa-times"></i></button></div>`
+                    : `<label style="display:inline-flex;align-items:center;justify-content:center;width:80px;height:80px;border:2px dashed var(--bg-gray-200);border-radius:8px;cursor:pointer;font-size:0.75rem;color:var(--text-secondary);"><input type="file" accept="image/*" id="fu-photo-${fu.id}-1" style="display:none;" onchange="window.proposalsManager.handleFollowUpPhotoInput('${proposal.id}','${fu.id}',1,event)"><i class="fas fa-plus" style="margin-right:4px;"></i>${detailLabels.addPhoto}</label>`;
+                const slot2Html = url2
+                    ? `<div class="follow-up-photo-slot" style="position:relative;display:inline-block;"><a href="${url2}" target="_blank" rel="noopener" style="display:block;width:80px;height:80px;border-radius:8px;overflow:hidden;border:1px solid var(--bg-gray-200);"><img src="${url2}" alt="Foto 2" style="width:100%;height:100%;object-fit:cover;"></a><button type="button" onclick="window.proposalsManager.removeFollowUpPhoto('${proposal.id}','${fu.id}',2)" style="position:absolute;top:2px;right:2px;background:var(--danger-500,#ef4444);color:white;border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:10px;"><i class="fas fa-times"></i></button></div>`
+                    : `<label style="display:inline-flex;align-items:center;justify-content:center;width:80px;height:80px;border:2px dashed var(--bg-gray-200);border-radius:8px;cursor:pointer;font-size:0.75rem;color:var(--text-secondary);"><input type="file" accept="image/*" id="fu-photo-${fu.id}-2" style="display:none;" onchange="window.proposalsManager.handleFollowUpPhotoInput('${proposal.id}','${fu.id}',2,event)"><i class="fas fa-plus" style="margin-right:4px;"></i>${detailLabels.addPhoto}</label>`;
+                return `<div class="follow-up-item" data-follow-up-id="${fu.id}" style="padding: var(--space-4); margin-bottom: var(--space-3); background: var(--bg-white); border-radius: 8px; border: 1px solid var(--bg-gray-200);">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;">
+                        <div style="flex: 1; min-width: 140px;">
+                            <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 4px;">${detailLabels.followUpDate}</div>
+                            <div style="font-weight: 600; color: var(--text-primary);">${fechaFu}</div>
+                        </div>
+                        <div style="flex: 2; min-width: 200px;">
+                            <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 4px;">${detailLabels.observations}</label>
+                            <textarea id="follow-up-obs-${fu.id}" rows="2" style="width: 100%; padding: 8px; border: 1px solid var(--bg-gray-200); border-radius: 6px; font-size: 0.875rem; background: var(--bg-white); color: var(--text-primary);">${obsEscaped}</textarea>
+                        </div>
+                        <div style="min-width: 160px;">
+                            <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 4px;">${detailLabels.futureFollowUpDate}</label>
+                            <input type="date" id="follow-up-futuro-${fu.id}" value="${fechaFuturo}" style="width: 100%; padding: 8px; border: 1px solid var(--bg-gray-200); border-radius: 6px; font-size: 0.875rem; background: var(--bg-white); color: var(--text-primary);">
+                        </div>
+                        <button type="button" onclick="window.proposalsManager.saveFollowUpEntry('${proposal.id}', '${fu.id}')" style="
+                            background: var(--primary-500);
+                            color: var(--text-white);
+                            border: none;
+                            padding: 8px 14px;
+                            border-radius: 6px;
+                            font-size: 0.875rem;
+                            font-weight: 500;
+                            cursor: pointer;
+                            align-self: flex-end;
+                        "><i class="fas fa-save"></i> ${detailLabels.save}</button>
+                    </div>
+                    <div style="margin-top: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--bg-gray-200);">
+                        <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 8px;">${detailLabels.followUpPhotos}</div>
+                        <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+                            ${slot1Html}
+                            ${slot2Html}
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
         content.innerHTML = `
             <div class="proposal-actions" style="display: flex; gap: 12px; flex-wrap: wrap;">
                 <button class="btn-edit-proposal" onclick="window.proposalsManager.editProposal('${proposal.id}')" style="
@@ -1262,6 +1445,7 @@ class ProposalsManager {
                     <i class="fas fa-folder"></i> <span id="view-dossiers-text">${this.currentLanguage === 'es' ? 'Ver Dossiers' : this.currentLanguage === 'pt' ? 'Ver Dossiers' : 'View Dossiers'} (${proposal.dossier_documentos.length})</span>
                 </button>
                 ` : ''}
+                ${window.cachedRole !== 'comercial' ? `
                 <button class="btn-delete-proposal" onclick="window.proposalsManager.openDeleteConfirmModal('${proposal.id}')" style="
                     background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
                     color: white;
@@ -1277,6 +1461,7 @@ class ProposalsManager {
                 " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(239,68,68,0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
                     <i class="fas fa-trash-alt"></i> <span id="delete-proposal-text">${detailLabels.deleteProposal}</span>
                 </button>
+                ` : ''}
             </div>
             <div class="proposal-details">
                 <div class="detail-item">
@@ -1453,6 +1638,40 @@ class ProposalsManager {
                             <label style="display: block; font-size: 0.875rem; font-weight: 600; color: var(--text-primary, #111827); margin-bottom: 6px;">Nº Guía de Preparação</label>
                             <input type="text" id="numero-guia-preparacao-${proposal.id}" value="${proposal.numero_guia_preparacao || ''}" style="width: 100%; padding: 8px; border: 1px solid var(--bg-gray-300, #d1d5db); border-radius: 6px; font-size: 0.875rem;">
                         </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sección Follow up -->
+            <div class="follow-up-section" style="margin: var(--space-6) 0; padding: var(--space-4); background: var(--bg-gray-50); border-radius: var(--radius-lg, 12px); border: 1px solid var(--bg-gray-200);">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-4);">
+                    <h4 style="font-size: 1.125rem; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-calendar-check"></i>
+                        <span id="follow-up-section-title">${detailLabels.followUpTitle}</span>
+                    </h4>
+                    <button type="button" onclick="window.proposalsManager.openAddFollowUpForm('${proposal.id}')" style="
+                        background: var(--primary-500);
+                        color: var(--text-white);
+                        border: none;
+                        padding: 6px 12px;
+                        border-radius: var(--radius-md, 8px);
+                        font-size: 0.875rem;
+                        font-weight: 500;
+                        cursor: pointer;
+                        display: flex;
+                        align-items: center;
+                        gap: 6px;
+                    "><i class="fas fa-plus"></i> <span id="add-follow-up-btn-text">${detailLabels.addFollowUp}</span></button>
+                </div>
+                <div id="follow-up-list-${proposal.id}">
+                    ${followUpsSectionHtml}
+                </div>
+                <div id="add-follow-up-form-${proposal.id}" style="display: none; padding: var(--space-4); margin-top: var(--space-3); background: var(--bg-white); border-radius: 8px; border: 1px dashed var(--bg-gray-200);">
+                    <label style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 6px; color: var(--text-primary);">${detailLabels.followUpDate}</label>
+                    <input type="date" id="new-follow-up-date-${proposal.id}" style="width: 100%; max-width: 200px; padding: 8px; border: 1px solid var(--bg-gray-200); border-radius: 6px; margin-bottom: 12px; background: var(--bg-white); color: var(--text-primary);">
+                    <div style="display: flex; gap: 8px;">
+                        <button type="button" onclick="window.proposalsManager.confirmAddFollowUp('${proposal.id}')" style="background: var(--primary-500); color: var(--text-white); border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 500;">${detailLabels.save}</button>
+                        <button type="button" onclick="window.proposalsManager.cancelAddFollowUpForm('${proposal.id}')" style="background: var(--bg-gray-200); color: var(--text-primary); border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">${detailLabels.cancel}</button>
                     </div>
                 </div>
             </div>
@@ -2639,6 +2858,7 @@ class ProposalsManager {
                     aguarda_creacion_cliente: 'Aguarda Criação do Cliente',
                     aguarda_creacion_codigo_phc: 'Aguarda Criação de Código PHC',
                     aguarda_pagamento: 'Aguarda Pagamento',
+                    follow_up: 'Follow up',
                     encomenda_en_curso: 'Encomenda em Curso',
                     encomenda_concluida: 'Encomenda Concluída',
                     rejeitada: 'Rejeitada'
@@ -2655,6 +2875,7 @@ class ProposalsManager {
                     aguarda_creacion_cliente: 'Aguarda Creación del Cliente',
                     aguarda_creacion_codigo_phc: 'Aguarda Creación de Código PHC',
                     aguarda_pagamento: 'Aguarda Pagamento',
+                    follow_up: 'Follow up',
                     encomenda_en_curso: 'Encomenda en Curso',
                     encomenda_concluida: 'Encomenda Concluída',
                     rejeitada: 'Rechazada'
@@ -2671,6 +2892,7 @@ class ProposalsManager {
                     aguarda_creacion_cliente: 'Awaiting Client Creation',
                     aguarda_creacion_codigo_phc: 'Awaiting PHC Code Creation',
                     aguarda_pagamento: 'Awaiting Payment',
+                    follow_up: 'Follow up',
                     encomenda_en_curso: 'Order in Progress',
                     encomenda_concluida: 'Order Completed',
                     rejeitada: 'Rejected'
@@ -2692,6 +2914,7 @@ class ProposalsManager {
                 <option value="aguarda_creacion_cliente">${statusT.aguarda_creacion_cliente}</option>
                 <option value="aguarda_creacion_codigo_phc">${statusT.aguarda_creacion_codigo_phc}</option>
                 <option value="aguarda_pagamento">${statusT.aguarda_pagamento}</option>
+                <option value="follow_up">${statusT.follow_up}</option>
                 <option value="encomenda_en_curso">${statusT.encomenda_en_curso}</option>
                 <option value="encomenda_concluida">${statusT.encomenda_concluida}</option>
                 <option value="rejeitada">${statusT.rejeitada}</option>
@@ -2735,7 +2958,15 @@ class ProposalsManager {
                 noComments: 'Nenhum comentário adicionado ainda.',
                 commentsPlaceholder: 'Adicione comentários ou observações sobre esta proposta...',
                 save: 'Guardar',
-                cancel: 'Cancelar'
+                cancel: 'Cancelar',
+                followUpTitle: 'Follow up',
+                followUpDate: 'Data follow up',
+                futureFollowUpDate: 'Data follow up futuro',
+                addFollowUp: 'Adicionar follow up',
+                noFollowUps: 'Nenhum follow up registado.',
+                followUpPhotos: 'Fotos',
+                addPhoto: 'Adicionar foto',
+                removePhoto: 'Remover'
             },
             es: {
                 client: 'Cliente',
@@ -2766,7 +2997,15 @@ class ProposalsManager {
                 noComments: 'No se han agregado comentarios aún.',
                 commentsPlaceholder: 'Agregue comentarios u observaciones sobre esta propuesta...',
                 save: 'Guardar',
-                cancel: 'Cancelar'
+                cancel: 'Cancelar',
+                followUpTitle: 'Follow up',
+                followUpDate: 'Fecha follow up',
+                futureFollowUpDate: 'Fecha follow up futuro',
+                addFollowUp: 'Añadir follow up',
+                noFollowUps: 'Ningún follow up registrado.',
+                followUpPhotos: 'Fotos',
+                addPhoto: 'Añadir foto',
+                removePhoto: 'Quitar'
             },
             en: {
                 client: 'Client',
@@ -2797,7 +3036,15 @@ class ProposalsManager {
                 noComments: 'No comments added yet.',
                 commentsPlaceholder: 'Add comments or observations about this proposal...',
                 save: 'Save',
-                cancel: 'Cancel'
+                cancel: 'Cancel',
+                followUpTitle: 'Follow up',
+                followUpDate: 'Follow up date',
+                futureFollowUpDate: 'Future follow up date',
+                addFollowUp: 'Add follow up',
+                noFollowUps: 'No follow ups recorded.',
+                followUpPhotos: 'Photos',
+                addPhoto: 'Add photo',
+                removePhoto: 'Remove'
             }
         };
         return labels[lang] || labels.pt;
@@ -2850,6 +3097,7 @@ class ProposalsManager {
         // Mapear variaciones a valores consistentes
         if (statusLower === 'muestra_pedida' || statusLower === 'amostra_pedida') return 'amostra_pedida';
         if (statusLower === 'muestra_entregada' || statusLower === 'amostra_enviada') return 'amostra_enviada';
+        if (statusLower === 'follow_up' || statusLower.includes('follow up')) return 'follow_up';
         return status;
     }
 
@@ -3275,6 +3523,15 @@ class ProposalsManager {
             if (isPropuestaEnviada) {
                 updateData.fecha_envio_propuesta = fechaCambio;
             }
+            // Al pasar a Follow up: quitar flag de webhook 15d para que al volver a estar sin follow-up se reenvíe
+            if (newStatusLower === 'follow_up') {
+                updateData.webhook_15d_sent_at = null;
+            }
+            // Al salir de Follow up: quitar flag de webhook fecha futuro vencida
+            const estadoAnteriorLower = (estadoAnterior || '').toLowerCase();
+            if ((estadoAnteriorLower === 'follow_up' || estadoAnteriorLower.includes('follow up')) && newStatusLower !== 'follow_up') {
+                updateData.webhook_future_fu_sent_at = null;
+            }
 
             const { error } = await this.supabase
                 .from('presupuestos')
@@ -3283,6 +3540,20 @@ class ProposalsManager {
 
             if (error) {
                 throw error;
+            }
+
+            // Si el estado cambia a "Follow up", crear el primer registro de follow-up si no existe ninguno
+            if (newStatusLower === 'follow_up') {
+                const followUps = proposal.follow_ups || [];
+                if (followUps.length === 0) {
+                    const today = new Date().toISOString().split('T')[0];
+                    await this.supabase.from('presupuestos_follow_ups').insert({
+                        presupuesto_id: proposalId,
+                        fecha_follow_up: today,
+                        observaciones: null,
+                        fecha_follow_up_futuro: null
+                    });
+                }
             }
 
             console.log('✅ Estado y historial actualizados en todos los artículos del presupuesto');
@@ -3326,6 +3597,7 @@ class ProposalsManager {
             'encomenda_en_curso': { es: 'Encomenda en Curso', pt: 'Encomenda em Curso', en: 'Order in Progress' },
             'encomenda_concluida': { es: 'Encomenda Concluída', pt: 'Encomenda Concluída', en: 'Order Completed' },
             'rejeitada': { es: 'Rechazada', pt: 'Rejeitada', en: 'Rejected' },
+            'follow_up': { es: 'Follow up', pt: 'Follow up', en: 'Follow up' },
             // Compatibilidad con estados antiguos
             'propuesta enviada': { es: 'Propuesta Enviada', pt: 'Proposta Enviada', en: 'Proposal Sent' },
             'aguarda_aprovacao': { es: 'Aguarda Aprobación de Dossier', pt: 'Aguarda Aprovação de Dossier', en: 'Awaiting Dossier Approval' },
@@ -4283,6 +4555,166 @@ class ProposalsManager {
             
             displayDiv.style.display = 'block';
             editDiv.style.display = 'none';
+        }
+    }
+
+    /**
+     * Abrir formulario para añadir follow-up manual
+     */
+    openAddFollowUpForm(proposalId) {
+        const form = document.getElementById(`add-follow-up-form-${proposalId}`);
+        const dateInput = document.getElementById(`new-follow-up-date-${proposalId}`);
+        if (form && dateInput) {
+            dateInput.value = new Date().toISOString().split('T')[0];
+            form.style.display = 'block';
+        }
+    }
+
+    /**
+     * Cancelar formulario de añadir follow-up
+     */
+    cancelAddFollowUpForm(proposalId) {
+        const form = document.getElementById(`add-follow-up-form-${proposalId}`);
+        if (form) form.style.display = 'none';
+    }
+
+    /**
+     * Confirmar y guardar nuevo follow-up (añadido manualmente)
+     */
+    async confirmAddFollowUp(proposalId) {
+        const dateInput = document.getElementById(`new-follow-up-date-${proposalId}`);
+        if (!dateInput || !dateInput.value) {
+            const msg = this.currentLanguage === 'es' ? 'Indique la fecha del follow up.' : this.currentLanguage === 'pt' ? 'Indique a data do follow up.' : 'Enter the follow up date.';
+            this.showNotification(msg, 'error');
+            return;
+        }
+        if (!this.supabase) await this.initializeSupabase();
+        try {
+            const { error } = await this.supabase.from('presupuestos_follow_ups').insert({
+                presupuesto_id: proposalId,
+                fecha_follow_up: dateInput.value,
+                observaciones: null,
+                fecha_follow_up_futuro: null
+            });
+            if (error) throw error;
+            this.cancelAddFollowUpForm(proposalId);
+            await this.loadProposals();
+            this.viewProposalDetails(proposalId);
+            const msg = this.currentLanguage === 'es' ? 'Follow up añadido.' : this.currentLanguage === 'pt' ? 'Follow up adicionado.' : 'Follow up added.';
+            this.showNotification(msg, 'success');
+        } catch (error) {
+            console.error('Error al añadir follow up:', error);
+            this.showNotification(error.message || 'Error', 'error');
+        }
+    }
+
+    /**
+     * Guardar observaciones y fecha follow up futuro de un follow-up
+     */
+    async saveFollowUpEntry(proposalId, followUpId) {
+        const obsEl = document.getElementById(`follow-up-obs-${followUpId}`);
+        const futuroEl = document.getElementById(`follow-up-futuro-${followUpId}`);
+        const observaciones = obsEl ? obsEl.value.trim() || null : null;
+        const fechaFuturo = futuroEl && futuroEl.value ? futuroEl.value : null;
+        if (!this.supabase) await this.initializeSupabase();
+        try {
+            const { error } = await this.supabase
+                .from('presupuestos_follow_ups')
+                .update({ observaciones, fecha_follow_up_futuro: fechaFuturo })
+                .eq('id', followUpId);
+            if (error) throw error;
+            await this.supabase.from('presupuestos').update({ webhook_future_fu_sent_at: null }).eq('id', proposalId);
+            await this.loadProposals();
+            this.viewProposalDetails(proposalId);
+            const msg = this.currentLanguage === 'es' ? 'Guardado.' : this.currentLanguage === 'pt' ? 'Guardado.' : 'Saved.';
+            this.showNotification(msg, 'success');
+        } catch (error) {
+            console.error('Error al guardar follow up:', error);
+            this.showNotification(error.message || 'Error', 'error');
+        }
+    }
+
+    /**
+     * Manejar selección de archivo para foto de follow-up (slot 1 o 2)
+     */
+    async handleFollowUpPhotoInput(proposalId, followUpId, slot, event) {
+        const file = event.target.files?.[0];
+        if (!file || !file.type.startsWith('image/')) {
+            const msg = this.currentLanguage === 'es' ? 'Seleccione una imagen.' : this.currentLanguage === 'pt' ? 'Selecione uma imagem.' : 'Please select an image.';
+            this.showNotification(msg, 'error');
+            event.target.value = '';
+            return;
+        }
+        await this.uploadFollowUpPhoto(proposalId, followUpId, slot, file);
+        event.target.value = '';
+    }
+
+    /**
+     * Subir una foto a follow-up-photos y guardar URL en el follow-up
+     */
+    async uploadFollowUpPhoto(proposalId, followUpId, slot, file) {
+        if (!this.supabase) await this.initializeSupabase();
+        const col = slot === 1 ? 'foto_url_1' : 'foto_url_2';
+        const bucket = 'follow-up-photos';
+        let storageClient = this.supabase;
+        try {
+            if (window.SUPABASE_CONFIG && typeof supabase !== 'undefined' && supabase.createClient) {
+                storageClient = supabase.createClient(window.SUPABASE_CONFIG.url, window.SUPABASE_CONFIG.anonKey, {
+                    auth: { persistSession: true, autoRefreshToken: true },
+                    global: { headers: {} }
+                });
+            }
+        } catch (e) {
+            storageClient = this.supabase;
+        }
+        const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const safeExt = ext || 'jpg';
+        const fileName = `${followUpId}/${slot}_${Date.now()}_${Math.random().toString(36).substring(7)}.${safeExt}`;
+        try {
+            const { error: uploadError } = await storageClient.storage
+                .from(bucket)
+                .upload(fileName, file, { cacheControl: '3600', upsert: false, contentType: file.type });
+            if (uploadError) throw uploadError;
+            const { data: urlData } = storageClient.storage.from(bucket).getPublicUrl(fileName);
+            const publicUrl = urlData?.publicUrl;
+            if (!publicUrl) throw new Error('No se pudo obtener la URL pública');
+            const { error: updateError } = await this.supabase
+                .from('presupuestos_follow_ups')
+                .update({ [col]: publicUrl })
+                .eq('id', followUpId);
+            if (updateError) throw updateError;
+            await this.loadProposals();
+            this.viewProposalDetails(proposalId);
+            const msg = this.currentLanguage === 'es' ? 'Foto subida.' : this.currentLanguage === 'pt' ? 'Foto adicionada.' : 'Photo uploaded.';
+            this.showNotification(msg, 'success');
+        } catch (error) {
+            console.error('Error al subir foto follow-up:', error);
+            const msg = (error.message || 'Error').includes('Bucket not found') || (error.message || '').includes('not found')
+                ? (this.currentLanguage === 'es' ? 'Cree el bucket "follow-up-photos" en Supabase (Storage).' : this.currentLanguage === 'pt' ? 'Crie o bucket "follow-up-photos" no Supabase (Storage).' : 'Create the "follow-up-photos" bucket in Supabase Storage.')
+                : (error.message || 'Error');
+            this.showNotification(msg, 'error');
+        }
+    }
+
+    /**
+     * Quitar una foto de un follow-up (borrar URL en BD; el archivo sigue en el bucket)
+     */
+    async removeFollowUpPhoto(proposalId, followUpId, slot) {
+        if (!this.supabase) await this.initializeSupabase();
+        const col = slot === 1 ? 'foto_url_1' : 'foto_url_2';
+        try {
+            const { error } = await this.supabase
+                .from('presupuestos_follow_ups')
+                .update({ [col]: null })
+                .eq('id', followUpId);
+            if (error) throw error;
+            await this.loadProposals();
+            this.viewProposalDetails(proposalId);
+            const msg = this.currentLanguage === 'es' ? 'Foto quitada.' : this.currentLanguage === 'pt' ? 'Foto removida.' : 'Photo removed.';
+            this.showNotification(msg, 'success');
+        } catch (error) {
+            console.error('Error al quitar foto follow-up:', error);
+            this.showNotification(error.message || 'Error', 'error');
         }
     }
 
