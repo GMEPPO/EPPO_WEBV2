@@ -1,4 +1,8 @@
 {
+  "functions": {
+    "api/follow-up-webhook.json.js": {},
+    "api/config.js": {}
+  },
   "rewrites": [
     {
       "source": "/((?!api/)(?!.*\\.).*)$",

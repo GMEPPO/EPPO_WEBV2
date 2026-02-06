@@ -72,11 +72,24 @@ Después de configurar y hacer redeploy:
 3. **Revisa los logs de deploy** en Vercel Dashboard para ver si hay errores
 4. **Verifica que la API route funcione:** visita `https://tu-app.vercel.app/api/config` (debería devolver JSON con url y anonKey)
 
-## 🔴 Si `/api/follow-up-webhook` devuelve 404
+## 🔴 Si `/api/follow-up-webhook.json` devuelve 404
 
-Ese endpoint es un proxy para las alertas follow-up (n8n). Si ves **404 (Not Found)** al cargar la lista de propuestas:
+Ese endpoint es un proxy para las alertas follow-up (n8n). Si ves **404 (Not Found)** al cargar la lista de propuestas, revisa en Vercel:
 
-1. **Root Directory:** En **Settings → General**, el campo **Root Directory** debe estar **vacío** o apuntar a la raíz del repo donde están la carpeta **`api/`** y el **`index.html`**. Si Root Directory es, por ejemplo, `dist` o `build`, la carpeta `api/` no se despliega y todas las rutas `/api/*` darán 404.
-2. **Comprobar que la función está desplegada:** Abre `https://tu-app.vercel.app/api/config` en el navegador. Si eso también da 404, la carpeta `api/` no está en el despliegue (revisa Root Directory).
-3. Después de cambiar Root Directory, haz un **nuevo deploy** (Redeploy o push).
+### En el Dashboard de Vercel (Settings)
+
+1. **Settings → General**
+   - **Root Directory:** debe estar **vacío**. Si pones `dist`, `build` o una carpeta, la carpeta `api/` no se incluye en el deploy y todas las rutas `/api/*` dan 404.
+   - **Framework Preset:** si lo tienes en "Other" o "Vite" etc., está bien. No uses un preset que tenga "Output Directory" que excluya la raíz.
+
+2. **Settings → Build & Development**
+   - **Build Command:** déjalo **vacío** (este proyecto no tiene build) o algo como `echo "no build"`. Si tienes un build que genera una carpeta (ej. `dist`), esa carpeta no incluye `api/` por defecto.
+   - **Output Directory:** déjalo **vacío**. Si está en `dist` o `public`, Vercel solo despliega el contenido de esa carpeta y la carpeta `api/` (que está en la raíz del repo) **no se despliega**.
+
+3. **Comprobar**
+   - Abre en el navegador: `https://eppo-ten.vercel.app/api/config`  
+     Si devuelve JSON con `url` y `anonKey` → la carpeta `api/` sí está desplegada; entonces el 404 sería solo para la ruta del webhook (revisa que exista el archivo `api/follow-up-webhook.json.js` en el repo y que esté en el último commit).
+   - Si `/api/config` también da 404 → la carpeta `api/` no se está desplegando; suele ser por **Output Directory** o **Root Directory**.
+
+4. Después de cambiar cualquier opción, haz **Redeploy** (Deployments → ⋯ → Redeploy) o un nuevo push.
 
