@@ -1,7 +1,6 @@
 /**
  * Proxy para el webhook de alertas follow-up (evita CORS desde el navegador).
- * Ruta con .json para que el rewrite de SPA no la capture en Vercel.
- * Uso: POST /api/follow-up-webhook.json
+ * Ruta con .json para que el rewrite de SPA no la capture: POST /api/follow-up-webhook.json
  */
 const N8N_WEBHOOK_URL = 'https://groupegmpi.app.n8n.cloud/webhook/7b435532-c75c-497a-a22c-377d6b23421fFLUP';
 

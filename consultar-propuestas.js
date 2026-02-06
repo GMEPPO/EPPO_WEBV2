@@ -927,10 +927,10 @@ class ProposalsManager {
         const sendFuture = alert.isFutureFuOverdue;
         const now = new Date().toISOString();
 
-        // Misma estrategia que el chat: llamar al webhook de n8n directamente (evita 404 del proxy en Vercel)
-        const N8N_FOLLOW_UP_WEBHOOK = 'https://groupegmpi.app.n8n.cloud/webhook/7b435532-c75c-497a-a22c-377d6b23421fFLUP';
-        const inBrowser = typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin !== 'null' && !window.location.origin.startsWith('file');
-        const webhookTarget = inBrowser ? N8N_FOLLOW_UP_WEBHOOK : null;
+        // Proxy en mismo origen (evita CORS). Ruta con .json para que Vercel no la mande a index.html.
+        const origin = typeof window !== 'undefined' && window.location && window.location.origin;
+        const useProxy = origin && origin !== 'null' && !origin.startsWith('file');
+        const webhookTarget = useProxy ? (origin + '/api/follow-up-webhook.json') : null;
 
         if (!webhookTarget) {
             return;

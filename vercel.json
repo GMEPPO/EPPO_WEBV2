@@ -1,10 +1,6 @@
 {
   "rewrites": [
     {
-      "source": "/api/follow-up-webhook.json",
-      "destination": "/api/follow-up-webhook"
-    },
-    {
       "source": "/((?!api/)(?!.*\\.).*)$",
       "destination": "/index.html"
     }
