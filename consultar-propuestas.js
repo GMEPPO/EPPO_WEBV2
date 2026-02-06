@@ -932,6 +932,12 @@ class ProposalsManager {
         const useProxy = origin && origin !== 'null' && !origin.startsWith('file');
         const webhookTarget = useProxy ? (origin + '/api/follow-up-webhook.json') : null;
 
+        // #region agent log
+        if (typeof fetch !== 'undefined' && webhookTarget) {
+            fetch('http://127.0.0.1:7242/ingest/4b122d53-ff1c-47b5-a69c-187cf0ec177c', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'consultar-propuestas.js:webhook-entry', message: 'sendFollowUpAlertWebhookIfNeeded', data: { origin: origin || null, webhookTarget, useProxy }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'H4-URL' }) }).catch(function () {});
+        }
+        // #endregion
+
         if (!webhookTarget) {
             return;
         }
@@ -943,6 +949,12 @@ class ProposalsManager {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ ...payload, tipo_alerta: '15_dias_sin_follow_up' })
                 });
+                // #region agent log
+                var ct = res.headers.get('content-type') || '';
+                var bodyPreview = '';
+                try { bodyPreview = (await res.clone().text()).slice(0, 300); } catch (e) { bodyPreview = String(e); }
+                if (typeof fetch !== 'undefined') { fetch('http://127.0.0.1:7242/ingest/4b122d53-ff1c-47b5-a69c-187cf0ec177c', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'consultar-propuestas.js:after-fetch-15d', message: 'response', data: { status: res.status, contentType: ct, bodyPreview: bodyPreview }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: res.status === 404 ? 'H1-H2-H3' : 'H1-H2-H3' }) }).catch(function () {}); }
+                // #endregion
                 if (res.ok && this.supabase) {
                     await this.supabase.from('presupuestos').update({ webhook_15d_sent_at: now }).eq('id', proposal.id);
                 }
@@ -953,12 +965,21 @@ class ProposalsManager {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ ...payload, tipo_alerta: 'fecha_follow_up_futuro_vencida' })
                 });
+                // #region agent log
+                var ct2 = res.headers.get('content-type') || '';
+                var bodyPreview2 = '';
+                try { bodyPreview2 = (await res.clone().text()).slice(0, 300); } catch (e) { bodyPreview2 = String(e); }
+                if (typeof fetch !== 'undefined') { fetch('http://127.0.0.1:7242/ingest/4b122d53-ff1c-47b5-a69c-187cf0ec177c', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'consultar-propuestas.js:after-fetch-future', message: 'response', data: { status: res.status, contentType: ct2, bodyPreview: bodyPreview2 }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: res.status === 404 ? 'H1-H2-H3' : 'H1-H2-H3' }) }).catch(function () {}); }
+                // #endregion
                 if (res.ok && this.supabase) {
                     await this.supabase.from('presupuestos').update({ webhook_future_fu_sent_at: now }).eq('id', proposal.id);
                 }
             }
         } catch (e) {
             console.warn('Error enviando webhook follow-up:', e);
+            // #region agent log
+            if (typeof fetch !== 'undefined') { fetch('http://127.0.0.1:7242/ingest/4b122d53-ff1c-47b5-a69c-187cf0ec177c', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'consultar-propuestas.js:catch', message: 'fetch threw', data: { err: String(e && e.message) }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'H5' }) }).catch(function () {}); }
+            // #endregion
         }
     }
 
