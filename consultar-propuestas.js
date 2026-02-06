@@ -4497,7 +4497,11 @@ class ProposalsManager {
 
         try {
             const { data: row } = await this.supabase.from('presupuestos').select('historial_modificaciones').eq('id', proposalId).single();
-            const historialActual = row?.historial_modificaciones || [];
+            let historialActual = row?.historial_modificaciones;
+            if (typeof historialActual === 'string') {
+                try { historialActual = JSON.parse(historialActual); } catch (e) { historialActual = []; }
+            }
+            if (!Array.isArray(historialActual)) historialActual = [];
             const descComentario = this.currentLanguage === 'pt' ? 'Comentários adicionados ou alterados na proposta.' : this.currentLanguage === 'en' ? 'Comments added or updated on the proposal.' : 'Comentarios añadidos o modificados en la propuesta.';
             const nuevoRegistro = {
                 fecha: new Date().toISOString(),
@@ -4507,13 +4511,17 @@ class ProposalsManager {
             };
             const nuevoHistorial = [...historialActual, nuevoRegistro];
 
-            const { error } = await this.supabase
+            let error = (await this.supabase
                 .from('presupuestos')
                 .update({ comentarios: newComments || null, historial_modificaciones: nuevoHistorial })
-                .eq('id', proposalId);
+                .eq('id', proposalId)).error;
 
             if (error) {
-                throw error;
+                const soloComentarios = (await this.supabase
+                    .from('presupuestos')
+                    .update({ comentarios: newComments || null })
+                    .eq('id', proposalId)).error;
+                if (soloComentarios) throw error;
             }
 
             // Actualizar la propuesta en memoria
