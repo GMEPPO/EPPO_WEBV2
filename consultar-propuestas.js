@@ -856,11 +856,20 @@ class ProposalsManager {
             tbody.appendChild(row);
         });
 
-        // Enviar webhooks de alerta follow-up (sin bloquear la UI)
+        // Enviar webhooks de alerta follow-up en secuencia (evitar muchas peticiones a la vez)
+        const toSend = [];
         this.filteredProposals.forEach(proposal => {
             const alert = this.isProposalInFollowUpAlert(proposal);
-            if (alert.isAlert) this.sendFollowUpAlertWebhookIfNeeded(proposal, alert);
+            if (alert.isAlert) toSend.push({ proposal, alert });
         });
+        if (toSend.length) {
+            (async () => {
+                for (const { proposal, alert } of toSend) {
+                    await this.sendFollowUpAlertWebhookIfNeeded(proposal, alert);
+                    if (toSend.length > 1) await new Promise(r => setTimeout(r, 250));
+                }
+            })();
+        }
     }
 
     /**
