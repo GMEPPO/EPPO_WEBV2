@@ -873,14 +873,23 @@ class ProposalsManager {
     }
 
     /**
-     * Determina si una propuesta está en estado de alerta (sin follow-up a 15d o fecha futuro vencida)
+     * Determina si una propuesta está en estado de alerta (sin follow-up a 15d o fecha futuro vencida).
+     * Solo aplica si el estado es: Proposta Enviada, Follow up, Aguarda Aprovação de Dossier o Aguarda Pagamento.
      * @returns {{ isAlert: boolean, is15dOverdue: boolean, isFutureFuOverdue: boolean }}
      */
     isProposalInFollowUpAlert(proposal) {
+        const estado = (proposal.estado_propuesta || '').toLowerCase();
+        const isPropostaEnviada = (estado.includes('proposta') || estado.includes('propuesta')) && estado.includes('enviada');
+        const isFollowUp = estado === 'follow_up' || estado.includes('follow up');
+        const isAguardaAprovacaoDossier = estado.includes('aguarda') && (estado.includes('aprovacao') || estado.includes('aprovação')) && estado.includes('dossier');
+        const isAguardaPagamento = estado.includes('aguarda') && estado.includes('pagamento');
+        const isEligibleStatus = isPropostaEnviada || isFollowUp || isAguardaAprovacaoDossier || isAguardaPagamento;
+        if (!isEligibleStatus) {
+            return { isAlert: false, is15dOverdue: false, isFutureFuOverdue: false };
+        }
+
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        const estado = (proposal.estado_propuesta || '').toLowerCase();
-        const isFollowUp = estado === 'follow_up' || estado.includes('follow up');
 
         const fechaEnvio = proposal.fecha_envio_propuesta || proposal.fecha_propuesta || proposal.fecha_inicial;
         const fechaEnvioDate = fechaEnvio ? new Date(fechaEnvio) : null;
