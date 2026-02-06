@@ -4170,6 +4170,9 @@ class ProposalsManager {
                     'producto_agregado': 'Producto Agregado',
                     'cantidad_modificada': 'Cantidad Modificada',
                     'observacion_agregada': 'Observación Agregada',
+                    'comentario_agregado': 'Comentarios Añadidos',
+                    'fecha_entrega_definida': 'Fecha Estimada de Entrega Definida',
+                    'fecha_entrega_alterada': 'Fecha Estimada de Entrega Alterada',
                     'precio_modificado': 'Precio Modificado',
                     'eliminacion': 'Eliminación',
                     'agregado': 'Agregado',
@@ -4190,6 +4193,9 @@ class ProposalsManager {
                     'producto_agregado': 'Produto Adicionado',
                     'cantidad_modificada': 'Quantidade Modificada',
                     'observacion_agregada': 'Observação Adicionada',
+                    'comentario_agregado': 'Comentários Adicionados',
+                    'fecha_entrega_definida': 'Data Prevista de Entrega Definida',
+                    'fecha_entrega_alterada': 'Data Prevista de Entrega Alterada',
                     'precio_modificado': 'Preço Modificado',
                     'eliminacion': 'Remoção',
                     'agregado': 'Adicionado',
@@ -4210,6 +4216,9 @@ class ProposalsManager {
                     'producto_agregado': 'Product Added',
                     'cantidad_modificada': 'Quantity Modified',
                     'observacion_agregada': 'Observation Added',
+                    'comentario_agregado': 'Comments Added',
+                    'fecha_entrega_definida': 'Expected Delivery Date Set',
+                    'fecha_entrega_alterada': 'Expected Delivery Date Changed',
                     'precio_modificado': 'Price Modified',
                     'eliminacion': 'Removal',
                     'agregado': 'Added',
@@ -4384,6 +4393,9 @@ class ProposalsManager {
             'producto_agregado': 'fas fa-plus-circle',
             'cantidad_modificada': 'fas fa-sort-numeric-up',
             'observacion_agregada': 'fas fa-comment-alt',
+            'comentario_agregado': 'fas fa-comments',
+            'fecha_entrega_definida': 'fas fa-calendar-plus',
+            'fecha_entrega_alterada': 'fas fa-calendar-alt',
             'precio_modificado': 'fas fa-euro-sign',
             'eliminacion': 'fas fa-trash-alt',
             'agregado': 'fas fa-plus-circle',
@@ -4403,6 +4415,9 @@ class ProposalsManager {
             'producto_agregado': '#10b981',
             'cantidad_modificada': '#f59e0b',
             'observacion_agregada': '#8b5cf6',
+            'comentario_agregado': '#8b5cf6',
+            'fecha_entrega_definida': '#059669',
+            'fecha_entrega_alterada': '#0d9488',
             'precio_modificado': '#ec4899',
             'eliminacion': '#ef4444',
             'agregado': '#10b981',
@@ -4481,9 +4496,20 @@ class ProposalsManager {
         const t = translations[this.currentLanguage] || translations.es;
 
         try {
+            const { data: row } = await this.supabase.from('presupuestos').select('historial_modificaciones').eq('id', proposalId).single();
+            const historialActual = row?.historial_modificaciones || [];
+            const descComentario = this.currentLanguage === 'pt' ? 'Comentários adicionados ou alterados na proposta.' : this.currentLanguage === 'en' ? 'Comments added or updated on the proposal.' : 'Comentarios añadidos o modificados en la propuesta.';
+            const nuevoRegistro = {
+                fecha: new Date().toISOString(),
+                tipo: 'comentario_agregado',
+                descripcion: descComentario,
+                usuario: localStorage.getItem('commercial_name') || 'Sistema'
+            };
+            const nuevoHistorial = [...historialActual, nuevoRegistro];
+
             const { error } = await this.supabase
                 .from('presupuestos')
-                .update({ comentarios: newComments || null })
+                .update({ comentarios: newComments || null, historial_modificaciones: nuevoHistorial })
                 .eq('id', proposalId);
 
             if (error) {
@@ -4998,12 +5024,10 @@ class ProposalsManager {
             return;
         }
 
-        // Mostrar TODOS los tipos de modificaciones (cambios de estado Y modificaciones de artículos)
+        // Mostrar cambios de estado, modificaciones de artículos, comentarios y fechas de entrega
         const historial = proposal.historial_modificaciones || [];
-        // Incluir todos los tipos: cambio_estado y modificacion_articulos
-        const todasLasModificaciones = historial.filter(r => 
-            r.tipo === 'cambio_estado' || r.tipo === 'modificacion_articulos'
-        );
+        const tiposEnAlteracoes = ['cambio_estado', 'modificacion_articulos', 'comentario_agregado', 'fecha_entrega_definida', 'fecha_entrega_alterada'];
+        const todasLasModificaciones = historial.filter(r => tiposEnAlteracoes.includes(r.tipo));
         
         // Crear el modal si no existe
         let modal = document.getElementById('statusChangesHistoryModal');
@@ -5088,7 +5112,10 @@ class ProposalsManager {
                 description: 'Descripción',
                 user: 'Usuario',
                 cambioEstado: 'Cambio de Estado',
-                modificacionArticulos: 'Modificación de Artículos'
+                modificacionArticulos: 'Modificación de Artículos',
+                comentarioAgregado: 'Comentarios Añadidos',
+                fechaEntregaDefinida: 'Fecha Estimada de Entrega Definida',
+                fechaEntregaAlterada: 'Fecha Estimada de Entrega Alterada'
             },
             pt: {
                 title: 'Alterações',
@@ -5098,7 +5125,10 @@ class ProposalsManager {
                 description: 'Descrição',
                 user: 'Usuário',
                 cambioEstado: 'Alteração de Estado',
-                modificacionArticulos: 'Modificação de Artigos'
+                modificacionArticulos: 'Modificação de Artigos',
+                comentarioAgregado: 'Comentários Adicionados',
+                fechaEntregaDefinida: 'Data Prevista de Entrega Definida',
+                fechaEntregaAlterada: 'Data Prevista de Entrega Alterada'
             },
             en: {
                 title: 'Changes',
@@ -5108,7 +5138,10 @@ class ProposalsManager {
                 description: 'Description',
                 user: 'User',
                 cambioEstado: 'Status Change',
-                modificacionArticulos: 'Article Modification'
+                modificacionArticulos: 'Article Modification',
+                comentarioAgregado: 'Comments Added',
+                fechaEntregaDefinida: 'Expected Delivery Date Set',
+                fechaEntregaAlterada: 'Expected Delivery Date Changed'
             }
         };
 
@@ -5150,15 +5183,27 @@ class ProposalsManager {
                         if (registro.tipo === 'cambio_estado') {
                             tipoTexto = t.type + ': ' + t.cambioEstado;
                             iconoTipo = 'fas fa-exchange-alt';
-                            colorTipo = '#3b82f6'; // Azul para cambios de estado
+                            colorTipo = '#3b82f6';
                         } else if (registro.tipo === 'modificacion_articulos') {
                             tipoTexto = t.type + ': ' + t.modificacionArticulos;
                             iconoTipo = 'fas fa-edit';
-                            colorTipo = '#10b981'; // Verde para modificaciones de artículos
+                            colorTipo = '#10b981';
+                        } else if (registro.tipo === 'comentario_agregado') {
+                            tipoTexto = t.type + ': ' + t.comentarioAgregado;
+                            iconoTipo = 'fas fa-comments';
+                            colorTipo = '#8b5cf6';
+                        } else if (registro.tipo === 'fecha_entrega_definida') {
+                            tipoTexto = t.type + ': ' + t.fechaEntregaDefinida;
+                            iconoTipo = 'fas fa-calendar-plus';
+                            colorTipo = '#059669';
+                        } else if (registro.tipo === 'fecha_entrega_alterada') {
+                            tipoTexto = t.type + ': ' + t.fechaEntregaAlterada;
+                            iconoTipo = 'fas fa-calendar-alt';
+                            colorTipo = '#0d9488';
                         } else {
                             tipoTexto = t.type + ': ' + (registro.tipo || 'Modificación');
                             iconoTipo = 'fas fa-info-circle';
-                            colorTipo = '#6b7280'; // Gris para otros tipos
+                            colorTipo = '#6b7280';
                         }
                         
                         return `
@@ -7141,41 +7186,67 @@ class ProposalsManager {
         const t = translations[this.currentLanguage] || translations.es;
 
         try {
-            // Obtener todos los inputs de fecha prevista de entrega
+            const proposal = this.allProposals.find(p => p.id === proposalId);
+            const articulosEncomendados = (proposal?.articulos || []).filter(a => a.encomendado === true || a.encomendado === 'true');
+
             const fechaInputs = document.querySelectorAll(`input[id^="fecha-prevista-entrega-"]`);
-            
             if (fechaInputs.length === 0) {
                 this.showNotification(t.noArticles, 'warning');
                 return;
             }
 
-            // Actualizar cada artículo con su fecha prevista de entrega
+            const formatDateForDesc = (val) => {
+                if (!val) return '';
+                const d = typeof val === 'string' ? val.split('T')[0] : val;
+                return new Date(d).toLocaleDateString(this.currentLanguage === 'es' ? 'es-ES' : this.currentLanguage === 'pt' ? 'pt-PT' : 'en-US', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            };
+            const usuario = localStorage.getItem('commercial_name') || 'Sistema';
+            const entradasHistorial = [];
+
+            for (const input of Array.from(fechaInputs)) {
+                const articuloId = input.getAttribute('data-articulo-id');
+                const nuevaFecha = input.value || null;
+                if (!articuloId) continue;
+                const articulo = articulosEncomendados.find(a => a.id === articuloId);
+                const nombreArt = articulo?.nombre_articulo || articuloId;
+                const fechaAntigua = articulo?.fecha_prevista_entrega ? (articulo.fecha_prevista_entrega.split ? articulo.fecha_prevista_entrega.split('T')[0] : articulo.fecha_prevista_entrega) : null;
+                const fechaAntiguaStr = formatDateForDesc(fechaAntigua);
+                const nuevaFechaStr = formatDateForDesc(nuevaFecha);
+
+                if (nuevaFecha && !fechaAntigua) {
+                    const desc = this.currentLanguage === 'pt' ? `Data prevista de entrega definida para "${nombreArt}": ${nuevaFechaStr}. (${usuario})` : this.currentLanguage === 'en' ? `Expected delivery date set for "${nombreArt}": ${nuevaFechaStr}. (${usuario})` : `Fecha estimada de entrega definida para "${nombreArt}": ${nuevaFechaStr}. (${usuario})`;
+                    entradasHistorial.push({ fecha: new Date().toISOString(), tipo: 'fecha_entrega_definida', descripcion: desc, usuario });
+                } else if (fechaAntigua && nuevaFecha && fechaAntiguaStr !== nuevaFechaStr) {
+                    const desc = this.currentLanguage === 'pt' ? `Data prevista de entrega alterada para "${nombreArt}": de ${fechaAntiguaStr} para ${nuevaFechaStr}. (${usuario})` : this.currentLanguage === 'en' ? `Expected delivery date changed for "${nombreArt}": from ${fechaAntiguaStr} to ${nuevaFechaStr}. (${usuario})` : `Fecha estimada de entrega alterada para "${nombreArt}": de ${fechaAntiguaStr} a ${nuevaFechaStr}. (${usuario})`;
+                    entradasHistorial.push({ fecha: new Date().toISOString(), tipo: 'fecha_entrega_alterada', descripcion: desc, usuario });
+                }
+            }
+
             const updatePromises = Array.from(fechaInputs).map(input => {
                 const articuloId = input.getAttribute('data-articulo-id');
                 const fechaPrevista = input.value || null;
-
-                if (!articuloId) {
-                    return Promise.resolve({ error: null });
-                }
-
+                if (!articuloId) return Promise.resolve({ error: null });
                 return this.supabase
                     .from('presupuestos_articulos')
-                    .update({
-                        fecha_prevista_entrega: fechaPrevista
-                    })
+                    .update({ fecha_prevista_entrega: fechaPrevista })
                     .eq('id', articuloId)
                     .eq('presupuesto_id', proposalId);
             });
 
             const updateResults = await Promise.all(updatePromises);
             const errors = updateResults.filter(r => r.error);
-
             if (errors.length > 0) {
                 console.error('❌ Errores al actualizar fechas:', errors);
                 throw new Error(errors[0].error?.message || 'Error al actualizar fechas');
             }
 
-            // Recargar propuestas para reflejar los cambios
+            if (entradasHistorial.length > 0) {
+                const { data: row } = await this.supabase.from('presupuestos').select('historial_modificaciones').eq('id', proposalId).single();
+                const historialActual = row?.historial_modificaciones || [];
+                const nuevoHistorial = [...historialActual, ...entradasHistorial];
+                await this.supabase.from('presupuestos').update({ historial_modificaciones: nuevoHistorial }).eq('id', proposalId);
+            }
+
             await this.loadProposals();
 
             // Recargar los detalles para mostrar los cambios
