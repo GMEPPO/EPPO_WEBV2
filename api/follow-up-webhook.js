@@ -1,7 +1,6 @@
 /**
  * Proxy para el webhook de alertas follow-up (evita CORS desde el navegador).
- * Recibe el payload y lo reenvía a n8n.
- * Uso en Vercel: POST /api/follow-up-webhook
+ * Ruta: POST /api/follow-up-webhook (también /api/follow-up-webhook.json vía rewrite en vercel.json).
  */
 const N8N_WEBHOOK_URL = 'https://groupegmpi.app.n8n.cloud/webhook/7b435532-c75c-497a-a22c-377d6b23421fFLUP';
 
