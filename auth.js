@@ -1,6 +1,7 @@
 /**
  * Sistema de Autenticación con Supabase Auth
- * Maneja login, registro, sesiones y verificación de autenticación
+ * Maneja login, registro, sesiones y verificación de autenticación.
+ * Nombre y rol se obtienen de la tabla user_roles por user_id (auth.users.id).
  */
 
 class AuthManager {
@@ -84,6 +85,7 @@ class AuthManager {
                                 
                                 this.processingSignIn = true;
                     this.currentUser = session?.user || null;
+                                if (this.currentUser) this.syncIdentityFromUserRoles().catch(() => {});
                                 console.log('✅ [auth.js] Usuario autenticado:', this.currentUser?.email);
                                 
                                 // El rol se consultará directamente desde Supabase cuando sea necesario
@@ -93,7 +95,7 @@ class AuthManager {
                                 this.processingSignIn = false;
                 } else if (event === 'SIGNED_OUT') {
                     this.currentUser = null;
-                            // Limpiar caché de rol al cerrar sesión
+                            try { localStorage.removeItem('commercial_name'); } catch (e) {}
                             if (typeof window.clearRoleCache === 'function') {
                                 window.clearRoleCache();
                             }
@@ -118,6 +120,32 @@ class AuthManager {
             }
             throw error;
         }
+    }
+
+    /**
+     * Sincronizar nombre (y rol en caché) desde la tabla user_roles por user_id de Auth.
+     */
+    async syncIdentityFromUserRoles() {
+        if (!this.supabase || !this.currentUser) return;
+        try {
+            const { data, error } = await this.supabase
+                .from('user_roles')
+                .select('"Name", role')
+                .eq('user_id', this.currentUser.id)
+                .single();
+
+            if (!error && data) {
+                const name = data.Name || this.currentUser.email || this.currentUser.id;
+                if (name) localStorage.setItem('commercial_name', String(name));
+                if (data.role && typeof window.setCachedRole === 'function') {
+                    const role = (data.role === 'editor' || data.role === 'viewer') ? 'comercial' : data.role;
+                    window.setCachedRole(role);
+                }
+            } else {
+                const fallback = this.currentUser.email || this.currentUser.id;
+                if (fallback) localStorage.setItem('commercial_name', String(fallback));
+            }
+        } catch (e) {}
     }
 
     /**
@@ -162,9 +190,8 @@ class AuthManager {
             if (error) throw error;
 
             this.currentUser = data.user;
-            
-            // Sistema de roles desactivado - no se carga el rol
-            
+            await this.syncIdentityFromUserRoles();
+
             return {
                 success: true,
                 user: data.user,
@@ -252,64 +279,56 @@ class AuthManager {
     }
 
     /**
-     * Verificar si el usuario está autenticado (optimizado para evitar timeouts)
+     * Verificar si el usuario está autenticado.
+     * Usa getUser() para validar el JWT con Supabase (no solo localStorage),
+     * así solo usuarios realmente registrados en Auth pueden acceder.
      */
     async isAuthenticated() {
         try {
-            // Si estamos usando file://, Supabase no puede funcionar correctamente
             if (window.location.protocol === 'file:') {
                 return false;
             }
 
-            // Si ya tenemos el usuario en memoria, retornar inmediatamente
-            if (this.currentUser) {
-                return true;
-            }
-
-            // Asegurar que esté inicializado (sin bloquear)
             if (!this.isInitialized) {
-                // Inicializar con timeout para evitar bloqueos
                 await Promise.race([
                     this.initialize(),
                     new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
-                ]).catch(() => {
-                    // Si hay timeout, continuar con verificación básica
-                });
+                ]).catch(() => {});
             }
 
-            // Obtener cliente (rápido, sin esperar mucho)
             const client = this.supabase || await this.getClient();
             if (!client) {
                 return false;
             }
-            
-            // Usar getSession() que lee de localStorage y es más confiable
-            // Con timeout para evitar bloqueos
+
             const sessionPromise = client.auth.getSession();
-            const timeoutPromise = new Promise((_, reject) => 
+            const timeoutPromise = new Promise((_, reject) =>
                 setTimeout(() => reject(new Error('Session timeout')), 2000)
             );
-            
-            const { data, error } = await Promise.race([sessionPromise, timeoutPromise]).catch(() => {
-                return { data: null, error: { message: 'Timeout' } };
-            });
-            
-            if (error) {
+            const { data: sessionData } = await Promise.race([sessionPromise, timeoutPromise]).catch(() => ({ data: null }));
+            if (!sessionData?.session?.access_token) {
+                this.currentUser = null;
                 return false;
             }
-            
-            if (data?.session && data.session.user) {
-                this.currentUser = data.session.user;
-                return true;
+
+            const userPromise = client.auth.getUser();
+            const userTimeout = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Timeout')), 4000)
+            );
+            const { data: userData, error } = await Promise.race([userPromise, userTimeout]).catch(() => ({ data: null, error: { message: 'Timeout' } }));
+
+            if (error || !userData?.user) {
+                this.currentUser = null;
+                return false;
             }
-            
-            return false;
+            this.currentUser = userData.user;
+            this.syncIdentityFromUserRoles().catch(() => {});
+            return true;
         } catch (error) {
-            // Silenciar errores de timeout o CORS
             if (error.message && (
-                error.message.includes('Timeout') || 
-                error.message.includes('CORS') || 
-                error.message.includes('Failed to fetch') || 
+                error.message.includes('Timeout') ||
+                error.message.includes('CORS') ||
+                error.message.includes('Failed to fetch') ||
                 error.message.includes('NetworkError')
             )) {
                 return false;
