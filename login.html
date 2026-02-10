@@ -303,6 +303,16 @@
             
             // Limpiar bandera de redirección si existe
             sessionStorage.removeItem('auth_redirecting');
+
+            // Mensaje si acaba de recuperar contraseña
+            if (location.search.indexOf('reset=1') !== -1) {
+                const successMsg = document.getElementById('successMessage');
+                if (successMsg) {
+                    successMsg.textContent = 'Contraseña actualizada. Ya puedes iniciar sesión con tu nueva contraseña.';
+                    successMsg.classList.add('show');
+                }
+                try { history.replaceState({}, '', location.pathname || 'login.html'); } catch (e) {}
+            }
             
             // Verificar si ya está autenticado (con timeout más largo)
             try {
