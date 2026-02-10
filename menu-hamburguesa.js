@@ -99,6 +99,14 @@ window.clearRoleCache = function() {
     console.log('🗑️ [menu-hamburguesa] Caché de rol y país limpiado');
 };
 
+// Permitir a auth.js establecer el rol tras cargar desde user_roles (evita doble consulta)
+window.setCachedRole = function(role) {
+    if (role) {
+        cachedRole = role;
+        roleCacheTimestamp = Date.now();
+    }
+};
+
 /**
  * Obtener país del usuario desde user_roles
  */
