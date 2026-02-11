@@ -654,6 +654,13 @@
         document.addEventListener('DOMContentLoaded', async function() {
             console.log('🚀 DOMContentLoaded - Iniciando carga de index.html');
             
+            // Si por rewrite se sirvió index para /reset-password, ir a la página dedicada (sin layout)
+            const pathname = (window.location.pathname || '').toLowerCase();
+            if (pathname.includes('reset-password')) {
+                window.location.replace(window.location.origin + '/reset-password.html' + (window.location.search || '') + (window.location.hash || ''));
+                return;
+            }
+            
             // Actualizar contador del carrito al cargar la página
             // Intentar usar la función global si está disponible, sino usar la standalone
             if (typeof window.updateCartBadge === 'function') {
@@ -739,9 +746,9 @@
                 // Solo redirigir si NO estamos usando file:// y NO está autenticado
                 // Y solo si no hay una bandera de redirección activa
                 if (!isAuth && window.location.protocol !== 'file:') {
-                    // Verificar que no estemos ya en login.html
+                    // No redirigir si estamos en login o en reset-password (flujo de recuperación sin sesión)
                     const currentPath = window.location.pathname || window.location.href;
-                    if (!currentPath.includes('login.html')) {
+                    if (!currentPath.includes('login.html') && !currentPath.includes('reset-password')) {
                         // Verificar que no hayamos redirigido recientemente
                         const lastRedirect = sessionStorage.getItem('last_auth_redirect');
                         const now = Date.now();

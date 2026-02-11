@@ -347,8 +347,11 @@ class AuthManager {
         
         const isAuth = await this.isAuthenticated();
         if (!isAuth) {
-                // Solo redirigir si no estamos ya en la página de login Y no estamos usando file://
-                if (!window.location.pathname.includes('login.html') && window.location.protocol !== 'file:') {
+                const path = window.location.pathname || '';
+                const isLogin = path.includes('login.html');
+                const isResetPassword = path.includes('reset-password');
+                // No redirigir en login ni en reset-password (flujo de recuperación sin sesión)
+                if (!isLogin && !isResetPassword && window.location.protocol !== 'file:') {
                 window.location.href = redirectTo;
             }
             return false;
