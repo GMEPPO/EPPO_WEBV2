@@ -1800,6 +1800,8 @@ class ProposalsManager {
                 <div id="add-follow-up-form-${proposal.id}" style="display: none; padding: var(--space-4); margin-top: var(--space-3); background: var(--bg-white); border-radius: 8px; border: 1px dashed var(--bg-gray-200);">
                     <label style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 6px; color: var(--text-primary);">${detailLabels.followUpDate}</label>
                     <input type="date" id="new-follow-up-date-${proposal.id}" style="width: 100%; max-width: 200px; padding: 8px; border: 1px solid var(--bg-gray-200); border-radius: 6px; margin-bottom: 12px; background: var(--bg-white); color: var(--text-primary);">
+                    <label style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 6px; color: var(--text-primary);">${detailLabels.observations}</label>
+                    <textarea id="new-follow-up-observacoes-${proposal.id}" rows="3" placeholder="-" style="width: 100%; padding: 8px; border: 1px solid var(--bg-gray-200); border-radius: 6px; margin-bottom: 12px; background: var(--bg-white); color: var(--text-primary); font-family: inherit; resize: vertical;" maxlength="2000"></textarea>
                     <div style="display: flex; gap: 8px;">
                         <button type="button" onclick="window.proposalsManager.confirmAddFollowUp('${proposal.id}')" style="background: var(--primary-500); color: var(--text-white); border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 500;">${detailLabels.save}</button>
                         <button type="button" onclick="window.proposalsManager.cancelAddFollowUpForm('${proposal.id}')" style="background: var(--bg-gray-200); color: var(--text-primary); border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">${detailLabels.cancel}</button>
@@ -4902,6 +4904,8 @@ class ProposalsManager {
     cancelAddFollowUpForm(proposalId) {
         const form = document.getElementById(`add-follow-up-form-${proposalId}`);
         if (form) form.style.display = 'none';
+        const observacoesEl = document.getElementById(`new-follow-up-observacoes-${proposalId}`);
+        if (observacoesEl) observacoesEl.value = '';
     }
 
     /**
@@ -4914,15 +4918,19 @@ class ProposalsManager {
             this.showNotification(msg, 'error');
             return;
         }
+        const observacoesEl = document.getElementById(`new-follow-up-observacoes-${proposalId}`);
+        const observacoes = observacoesEl && observacoesEl.value && observacoesEl.value.trim() !== '' ? observacoesEl.value.trim() : null;
         if (!this.supabase) await this.initializeSupabase();
         try {
             const { error } = await this.supabase.from('presupuestos_follow_ups').insert({
                 presupuesto_id: proposalId,
                 fecha_follow_up: dateInput.value,
-                observaciones: null,
+                observaciones: observacoes,
                 fecha_follow_up_futuro: null
             });
             if (error) throw error;
+            const observacoesEl = document.getElementById(`new-follow-up-observacoes-${proposalId}`);
+            if (observacoesEl) observacoesEl.value = '';
             this.cancelAddFollowUpForm(proposalId);
             await this.loadProposals();
             this.viewProposalDetails(proposalId);
