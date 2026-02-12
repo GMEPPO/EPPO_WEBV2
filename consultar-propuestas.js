@@ -427,6 +427,7 @@ class ProposalsManager {
                         return sum + (parseFloat(art.precio) || 0) * (parseInt(art.cantidad) || 0);
                     }, 0),
                     dossier_documentos: documentosUrls,
+                    presupuesto_dossier_id: dossier?.id || null,
                     categorias: categorias, // Agregar categorías únicas
                     follow_ups: followUpsPorPresupuesto[presupuesto.id] || []
                     };
@@ -711,6 +712,7 @@ class ProposalsManager {
                 if (statusLower.includes('aguarda') && statusLower.includes('creacion') && statusLower.includes('codigo') && statusLower.includes('phc')) return 'aguarda_creacion_codigo_phc';
                 if (statusLower.includes('aguarda') && statusLower.includes('pagamento')) return 'aguarda_pagamento';
                 // Estado 'encomendado' eliminado - ya no se usa
+                if (statusLower.includes('pedido') && statusLower.includes('encomenda')) return 'pedido_de_encomenda';
                 if (statusLower.includes('encomenda') && (statusLower.includes('en curso') || statusLower.includes('em curso'))) return 'encomenda_en_curso';
                 if (statusLower.includes('concluida') || statusLower.includes('concluída') || statusLower === 'encomenda_concluida') return 'encomenda_concluida';
                 if (statusLower.includes('rechazada') || statusLower.includes('rejeitada')) return 'rejeitada';
@@ -829,6 +831,7 @@ class ProposalsManager {
                                 ${estadoNormalizado === 'aguarda_creacion_codigo_phc' ? `<option value="aguarda_creacion_codigo_phc" selected>${this.getStatusText('aguarda_creacion_codigo_phc')}</option>` : `<option value="aguarda_creacion_codigo_phc">${this.getStatusText('aguarda_creacion_codigo_phc')}</option>`}
                                 ${estadoNormalizado === 'aguarda_pagamento' ? `<option value="aguarda_pagamento" selected>${this.getStatusText('aguarda_pagamento')}</option>` : `<option value="aguarda_pagamento">${this.getStatusText('aguarda_pagamento')}</option>`}
                                 ${estadoNormalizado === 'follow_up' ? `<option value="follow_up" selected>${this.getStatusText('follow_up')}</option>` : `<option value="follow_up">${this.getStatusText('follow_up')}</option>`}
+                                ${estadoNormalizado === 'pedido_de_encomenda' ? `<option value="pedido_de_encomenda" selected>${this.getStatusText('pedido_de_encomenda')}</option>` : `<option value="pedido_de_encomenda">${this.getStatusText('pedido_de_encomenda')}</option>`}
                                 ${estadoNormalizado === 'encomenda_en_curso' ? `<option value="encomenda_en_curso" selected>${this.getStatusText('encomenda_en_curso')}</option>` : `<option value="encomenda_en_curso">${this.getStatusText('encomenda_en_curso')}</option>`}
                                 ${estadoNormalizado === 'encomenda_concluida' ? `<option value="encomenda_concluida" selected>${this.getStatusText('encomenda_concluida')}</option>` : `<option value="encomenda_concluida">${this.getStatusText('encomenda_concluida')}</option>`}
                                 ${estadoNormalizado === 'rejeitada' ? `<option value="rejeitada" selected>${this.getStatusText('rejeitada')}</option>` : `<option value="rejeitada">${this.getStatusText('rejeitada')}</option>`}
@@ -1043,8 +1046,12 @@ class ProposalsManager {
             return 'status-aguarda-pagamento';
         }
         
+        // Pedido de encomenda (antes de encomenda en curso)
+        else if (statusLower.includes('pedido') && statusLower.includes('encomenda')) {
+            return 'status-pending';
+        }
         // Estados de encomenda (verde)
-        else if (statusLower.includes('encomenda') && statusLower.includes('en curso') || statusLower.includes('em curso')) {
+        else if (statusLower.includes('encomenda') && (statusLower.includes('en curso') || statusLower.includes('em curso'))) {
             return 'status-encomendado';
         } else if (statusLower.includes('encomendado')) {
             return 'status-encomendado';
@@ -1081,6 +1088,7 @@ class ProposalsManager {
                 'aguarda_creacion_cliente': 'Aguarda Creación del Cliente',
                 'aguarda_creacion_codigo_phc': 'Aguarda Creación de Código PHC',
                 'aguarda_pagamento': 'Aguarda Pagamento',
+                'pedido_de_encomenda': 'Pedido de Encomenda',
                 'encomenda_en_curso': 'Encomenda en Curso',
                 'encomenda_concluida': 'Encomenda Concluída',
                 'rejeitada': 'Rechazada',
@@ -1101,6 +1109,7 @@ class ProposalsManager {
                 'aguarda_creacion_cliente': 'Aguarda Criação do Cliente',
                 'aguarda_creacion_codigo_phc': 'Aguarda Criação de Código PHC',
                 'aguarda_pagamento': 'Aguarda Pagamento',
+                'pedido_de_encomenda': 'Pedido de Encomenda',
                 'encomenda_en_curso': 'Encomenda em Curso',
                 'encomenda_concluida': 'Encomenda Concluída',
                 'rejeitada': 'Rejeitada',
@@ -1122,6 +1131,7 @@ class ProposalsManager {
                 'aguarda_creacion_cliente': 'Awaiting Client Creation',
                 'aguarda_creacion_codigo_phc': 'Awaiting PHC Code Creation',
                 'aguarda_pagamento': 'Awaiting Payment',
+                'pedido_de_encomenda': 'Order Request',
                 'encomenda_en_curso': 'Order in Progress',
                 'encomenda_concluida': 'Order Completed',
                 'rejeitada': 'Rejected',
@@ -1161,7 +1171,9 @@ class ProposalsManager {
             return map['aguarda_creacion_codigo_phc'] || 'Aguarda Creación de Código PHC';
         } else if (statusLower.includes('aguarda') && statusLower.includes('pagamento')) {
             return map['aguarda_pagamento'] || 'Aguarda Pagamento';
-        } else if (statusLower.includes('encomenda') && statusLower.includes('en curso') || statusLower.includes('em curso')) {
+        } else if (statusLower.includes('pedido') && statusLower.includes('encomenda')) {
+            return map['pedido_de_encomenda'] || 'Pedido de Encomenda';
+        } else if (statusLower.includes('encomenda') && (statusLower.includes('en curso') || statusLower.includes('em curso'))) {
             return map['encomenda_en_curso'] || 'Encomenda en Curso';
         } else if (statusLower.includes('encomendado') || (statusLower.includes('encomenda') && statusLower.includes('curso'))) {
             return map['encomendado'] || 'Encomendado';
@@ -2815,6 +2827,7 @@ class ProposalsManager {
                 articlePersonalization: 'Personalização',
                 articleNotes: 'Observações',
                 editProposal: 'Editar Proposta',
+                editComments: 'Editar',
                 deleteProposal: 'Eliminar'
             },
             es: {
@@ -2849,6 +2862,7 @@ class ProposalsManager {
                 articlePersonalization: 'Personalización',
                 articleNotes: 'Observaciones',
                 editProposal: 'Editar Propuesta',
+                editComments: 'Editar',
                 deleteProposal: 'Eliminar'
             },
             en: {
@@ -2883,6 +2897,7 @@ class ProposalsManager {
                 articlePersonalization: 'Personalization',
                 articleNotes: 'Observations',
                 editProposal: 'Edit Proposal',
+                editComments: 'Edit',
                 deleteProposal: 'Delete'
             }
         };
@@ -2926,14 +2941,14 @@ class ProposalsManager {
 
         Object.entries(elements).forEach(([id, value]) => {
             const el = document.getElementById(id);
-            if (el) {
-                if (typeof value === 'string') {
-                    el.textContent = value;
-                } else {
-                    Object.entries(value).forEach(([key, val]) => {
-                        el[key] = val;
-                    });
-                }
+            if (!el) return;
+            if (value == null) return;
+            if (typeof value === 'string') {
+                el.textContent = value;
+            } else if (typeof value === 'object') {
+                Object.entries(value).forEach(([key, val]) => {
+                    el[key] = val;
+                });
             }
         });
 
@@ -2955,6 +2970,7 @@ class ProposalsManager {
                     aguarda_creacion_codigo_phc: 'Aguarda Criação de Código PHC',
                     aguarda_pagamento: 'Aguarda Pagamento',
                     follow_up: 'Follow up',
+                    pedido_de_encomenda: 'Pedido de Encomenda',
                     encomenda_en_curso: 'Encomenda em Curso',
                     encomenda_concluida: 'Encomenda Concluída',
                     rejeitada: 'Rejeitada'
@@ -2972,6 +2988,7 @@ class ProposalsManager {
                     aguarda_creacion_codigo_phc: 'Aguarda Creación de Código PHC',
                     aguarda_pagamento: 'Aguarda Pagamento',
                     follow_up: 'Follow up',
+                    pedido_de_encomenda: 'Pedido de Encomenda',
                     encomenda_en_curso: 'Encomenda en Curso',
                     encomenda_concluida: 'Encomenda Concluída',
                     rejeitada: 'Rechazada'
@@ -2989,6 +3006,7 @@ class ProposalsManager {
                     aguarda_creacion_codigo_phc: 'Awaiting PHC Code Creation',
                     aguarda_pagamento: 'Awaiting Payment',
                     follow_up: 'Follow up',
+                    pedido_de_encomenda: 'Order Request',
                     encomenda_en_curso: 'Order in Progress',
                     encomenda_concluida: 'Order Completed',
                     rejeitada: 'Rejected'
@@ -3011,6 +3029,7 @@ class ProposalsManager {
                 <option value="aguarda_creacion_codigo_phc">${statusT.aguarda_creacion_codigo_phc}</option>
                 <option value="aguarda_pagamento">${statusT.aguarda_pagamento}</option>
                 <option value="follow_up">${statusT.follow_up}</option>
+                <option value="pedido_de_encomenda">${statusT.pedido_de_encomenda}</option>
                 <option value="encomenda_en_curso">${statusT.encomenda_en_curso}</option>
                 <option value="encomenda_concluida">${statusT.encomenda_concluida}</option>
                 <option value="rejeitada">${statusT.rejeitada}</option>
@@ -3175,6 +3194,8 @@ class ProposalsManager {
             this.openAguardaPagamentoModal(proposal);
         } else if (normalizedStatus === 'encomenda_en_curso') {
             this.openEncomendaEnCursoModal(proposal);
+        } else if (normalizedStatus === 'pedido_de_encomenda') {
+            this.openPedidoEncomendaModal(proposal);
         } else if (normalizedStatus === 'encomenda_concluida') {
             this.openEncomendaConcluidaModal(proposal);
         } else if (normalizedStatus === 'rejeitada') {
@@ -3320,6 +3341,175 @@ class ProposalsManager {
             // o no tiene datos de encomenda, solo preguntar productos, sin números de encomenda
             // Esto es para casos donde tienen productos en stock y el cliente avanza solo con parte
             this.openEncomendaConcluidaProductsOnlyModal(proposal);
+        }
+    }
+
+    /**
+     * Abrir modal Pedido de Encomenda: listar productos de la propuesta con foto, PHC, fornecedor, cantidad;
+     * si no tienen PHC, mostrar Referencia, Designação, Peso, Quantidade por caixa, Personalizado, Observaciones.
+     */
+    async openPedidoEncomendaModal(proposal) {
+        const modal = document.getElementById('changeStatusPedidoEncomendaModal');
+        const listEl = document.getElementById('pedido-encomenda-products-list');
+        const subtitleEl = document.getElementById('pedido-encomenda-subtitle');
+        if (!modal || !listEl) return;
+
+        const lang = this.currentLanguage || 'pt';
+        const t = {
+            pt: { subtitle: 'Indique a quantidade a encomendar por produto. Produtos sem número PHC: preencha Referência, Designação, Peso, etc.', photo: 'Foto', phc: 'Nº PHC', fornecedor: 'Fornecedor', qty: 'Quantidade a encomendar', ref: 'Referência', designacao: 'Designação', peso: 'Peso', qtyCaixa: 'Quantidade por caixa', personalizado: 'Personalizado', personalizadoSim: 'Sim', personalizadoNao: 'Não', observacoes: 'Observações (personalizado)', dossierSection: 'Dossier / Logotipo', associateDossier: 'Incluir dossier da proposta neste artigo', hasLogo: 'Este artigo tem logotipo' },
+            es: { subtitle: 'Indique la cantidad a encomendar por producto. Productos sin número PHC: rellene Referencia, Designación, Peso, etc.', photo: 'Foto', phc: 'Nº PHC', fornecedor: 'Fornecedor', qty: 'Cantidad a encomendar', ref: 'Referencia', designacao: 'Designación', peso: 'Peso', qtyCaixa: 'Cantidad por caja', personalizado: 'Personalizado', personalizadoSim: 'Sí', personalizadoNao: 'No', observacoes: 'Observaciones (personalizado)', dossierSection: 'Dossier / Logotipo', associateDossier: 'Incluir dossier de la propuesta en este artículo', hasLogo: 'Este artículo tiene logotipo' },
+            en: { subtitle: 'Enter quantity to order per product. Products without PHC number: fill Reference, Designation, Weight, etc.', photo: 'Photo', phc: 'PHC No.', fornecedor: 'Supplier', qty: 'Qty to order', ref: 'Reference', designacao: 'Designation', peso: 'Weight', qtyCaixa: 'Qty per box', personalizado: 'Custom', personalizadoSim: 'Yes', personalizadoNao: 'No', observacoes: 'Notes (custom)', dossierSection: 'Dossier / Logo', associateDossier: 'Include proposal dossier with this item', hasLogo: 'This item has a logo' }
+        };
+        const L = t[lang] || t.pt;
+        if (subtitleEl) subtitleEl.textContent = L.subtitle;
+
+        modal.setAttribute('data-proposal-id', proposal.id);
+        listEl.innerHTML = '';
+
+        const articulos = proposal.articulos || [];
+        if (articulos.length === 0) {
+            listEl.innerHTML = '<p style="padding: var(--space-4); color: var(--text-secondary);">' + (lang === 'es' ? 'No hay productos en esta propuesta.' : lang === 'en' ? 'No products in this proposal.' : 'Não há produtos nesta proposta.') + '</p>';
+            modal.classList.add('active');
+            return;
+        }
+
+        const productMap = {};
+        if (this.allProducts && this.allProducts.length > 0) {
+            this.allProducts.forEach(p => {
+                if (p.id) productMap[p.id] = p;
+                if (p.phc_ref) productMap[p.phc_ref] = p;
+            });
+        }
+
+        articulos.forEach((articulo, index) => {
+            const product = productMap[articulo.referencia_articulo] || this.allProducts?.find(p => String(p.id) === String(articulo.referencia_articulo)) || this.allProducts?.find(p => String(p.phc_ref) === String(articulo.referencia_articulo));
+            const hasPhc = product && (product.phc_ref || '').toString().trim() !== '';
+            const phcRef = (product && product.phc_ref) ? String(product.phc_ref) : '';
+            const fornecedor = (product && product.nombre_fornecedor) ? String(product.nombre_fornecedor) : '-';
+            const fotoUrl = (product && product.foto) ? product.foto : '';
+            const articuloId = (articulo.id || `art-${index}`).toString().replace(/"/g, '');
+            const nomeArt = (articulo.nombre_articulo || '-').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+
+            const extraFields = !hasPhc ? `
+                <div class="pedido-encomenda-extra" style="margin-top: 10px; padding: 10px; background: var(--bg-gray-100); border-radius: 8px; display: grid; gap: 8px; grid-template-columns: 1fr 1fr;">
+                    <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.ref}</label><input type="text" id="ge-ref-${articuloId}" class="form-input" style="width:100%;padding:6px;" value="${(articulo.referencia_articulo || '').replace(/"/g, '&quot;')}" placeholder=""></div>
+                    <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.designacao}</label><input type="text" id="ge-designacao-${articuloId}" class="form-input" style="width:100%;padding:6px;" value="${nomeArt}" placeholder=""></div>
+                    <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.peso}</label><input type="text" id="ge-peso-${articuloId}" class="form-input" style="width:100%;padding:6px;" placeholder=""></div>
+                    <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.qtyCaixa}</label><input type="number" id="ge-qtycaixa-${articuloId}" class="form-input" style="width:100%;padding:6px;" min="0" placeholder=""></div>
+                    <div style="grid-column: 1 / -1;"><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.personalizado}</label><select id="ge-personalizado-${articuloId}" class="form-input" style="width:100%;padding:6px;"><option value="false">${L.personalizadoNao}</option><option value="true">${L.personalizadoSim}</option></select></div>
+                    <div style="grid-column: 1 / -1;"><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.observacoes}</label><textarea id="ge-obs-${articuloId}" class="form-input" style="width:100%;padding:6px;min-height:60px;" placeholder=""></textarea></div>
+                </div>
+            ` : '';
+
+            const hasDossier = proposal.presupuesto_dossier_id && ((proposal.dossier_documentos && proposal.dossier_documentos.length) || 0) > 0;
+            const hasLogo = articulo.logo_url && String(articulo.logo_url).trim() !== '';
+            const dossierLogoBlock = (hasDossier || hasLogo) ? `
+                <div class="pedido-encomenda-dossier-logo" style="margin-top: 10px; padding: 10px; background: var(--bg-gray-100); border-radius: 8px; border-left: 3px solid var(--primary, #3b82f6);">
+                    <div style="font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px;">${L.dossierSection}</div>
+                    ${hasDossier ? `<label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.85rem;"><input type="checkbox" id="ge-dossier-${articuloId}" class="form-input"> ${L.associateDossier}</label>` : ''}
+                    ${hasLogo ? `<div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 6px;"><i class="fas fa-image"></i> ${L.hasLogo}</div>` : ''}
+                </div>
+            ` : '';
+
+            const row = document.createElement('div');
+            row.className = 'pedido-encomenda-row';
+            row.style.cssText = 'display: flex; align-items: flex-start; gap: 16px; padding: 16px; border-bottom: 1px solid var(--bg-gray-200);';
+            row.innerHTML = `
+                <div style="flex-shrink: 0;">
+                    ${fotoUrl ? `<img src="${fotoUrl.replace(/"/g, '&quot;')}" alt="" style="width: 80px; height: 80px; object-fit: contain; border-radius: 8px; background: var(--bg-gray-100);">` : `<div style="width: 80px; height: 80px; background: var(--bg-gray-200); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary);"><i class="fas fa-image"></i></div>`}
+                </div>
+                <div style="flex: 1; min-width: 0;">
+                    <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 6px;">${nomeArt}</div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 4px;">${L.phc}: ${hasPhc ? phcRef : (lang === 'es' ? 'Sin PHC' : lang === 'en' ? 'No PHC' : 'Sem PHC')}</div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 8px;">${L.fornecedor}: ${(fornecedor || '-').replace(/</g, '&lt;')}</div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label style="font-size: 0.8rem; white-space: nowrap;">${L.qty}</label>
+                        <input type="number" id="ge-qty-${articuloId}" class="form-input" min="1" value="${articulo.cantidad || 1}" style="width: 100px; padding: 6px;">
+                    </div>
+                    ${extraFields}
+                    ${dossierLogoBlock}
+                </div>
+            `;
+            listEl.appendChild(row);
+        });
+
+        modal.classList.add('active');
+    }
+
+    closePedidoEncomendaModal() {
+        const modal = document.getElementById('changeStatusPedidoEncomendaModal');
+        if (modal) modal.classList.remove('active');
+        this.resetStatusSelects(modal?.getAttribute('data-proposal-id') || '');
+    }
+
+    async savePedidoEncomendaGestaoCompras() {
+        const modal = document.getElementById('changeStatusPedidoEncomendaModal');
+        const proposalId = modal?.getAttribute('data-proposal-id');
+        if (!proposalId || !this.supabase) {
+            this.showNotification(this.currentLanguage === 'es' ? 'Error: falta propuesta o conexión.' : this.currentLanguage === 'pt' ? 'Erro: falta proposta ou ligação.' : 'Error: missing proposal or connection.', 'error');
+            return;
+        }
+
+        const proposal = this.allProposals.find(p => p.id === proposalId);
+        if (!proposal || !proposal.articulos || proposal.articulos.length === 0) {
+            this.closePedidoEncomendaModal();
+            return;
+        }
+
+        const rows = [];
+        proposal.articulos.forEach((articulo, index) => {
+            const articuloId = (articulo.id && articulo.id.toString()) ? articulo.id.toString() : `art-${index}`;
+            const qtyEl = document.getElementById(`ge-qty-${articuloId}`);
+            const quantidade = qtyEl ? (parseInt(qtyEl.value, 10) || 1) : (articulo.cantidad || 1);
+
+            const product = this.allProducts?.find(p => String(p.id) === String(articulo.referencia_articulo)) || this.allProducts?.find(p => String(p.phc_ref) === String(articulo.referencia_articulo));
+            const hasPhc = product && (product.phc_ref || '').toString().trim() !== '';
+
+            const dossierCheckEl = document.getElementById(`ge-dossier-${articuloId}`);
+            const associateDossier = dossierCheckEl ? dossierCheckEl.checked : false;
+
+            const row = {
+                presupuesto_id: proposalId,
+                presupuesto_articulo_id: articulo.id || null,
+                phc_ref: (product && product.phc_ref) ? String(product.phc_ref) : null,
+                nome_fornecedor: (product && product.nombre_fornecedor) ? String(product.nombre_fornecedor) : null,
+                foto_url: (product && product.foto) ? product.foto : null,
+                quantidade_encomendar: quantidade,
+                nome_articulo: articulo.nombre_articulo || null,
+                presupuesto_dossier_id: (proposal.presupuesto_dossier_id && associateDossier) ? proposal.presupuesto_dossier_id : null,
+                logo_url: (articulo.logo_url && String(articulo.logo_url).trim() !== '') ? String(articulo.logo_url).trim() : null
+            };
+
+            if (!hasPhc) {
+                const refEl = document.getElementById(`ge-ref-${articuloId}`);
+                const designacaoEl = document.getElementById(`ge-designacao-${articuloId}`);
+                const pesoEl = document.getElementById(`ge-peso-${articuloId}`);
+                const qtyCaixaEl = document.getElementById(`ge-qtycaixa-${articuloId}`);
+                const personalizadoEl = document.getElementById(`ge-personalizado-${articuloId}`);
+                const obsEl = document.getElementById(`ge-obs-${articuloId}`);
+                row.referencia = refEl ? refEl.value.trim() || null : null;
+                row.designacao = designacaoEl ? designacaoEl.value.trim() || null : null;
+                row.peso = pesoEl ? pesoEl.value.trim() || null : null;
+                row.quantidade_por_caixa = qtyCaixaEl && qtyCaixaEl.value !== '' ? parseInt(qtyCaixaEl.value, 10) : null;
+                row.personalizado = personalizadoEl ? personalizadoEl.value === 'true' : false;
+                row.personalizado_observacoes = obsEl ? obsEl.value.trim() || null : null;
+            }
+
+            rows.push(row);
+        });
+
+        try {
+            await this.supabase.from('gestao_compras').delete().eq('presupuesto_id', proposalId);
+            const { error: insErr } = await this.supabase.from('gestao_compras').insert(rows);
+            if (insErr) throw insErr;
+            await this.updateProposalStatus(proposalId, 'pedido_de_encomenda');
+            this.resetStatusSelects(proposalId);
+            this.closePedidoEncomendaModal();
+            await this.loadProposals();
+            this.showNotification(this.currentLanguage === 'es' ? 'Guardado en Gestão Compras.' : this.currentLanguage === 'pt' ? 'Guardado em Gestão Compras.' : 'Saved to Gestão Compras.', 'success');
+        } catch (e) {
+            console.error('Error savePedidoEncomendaGestaoCompras:', e);
+            this.showNotification(e.message || 'Error al guardar', 'error');
         }
     }
 

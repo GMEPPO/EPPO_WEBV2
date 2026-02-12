@@ -1216,6 +1216,30 @@
         </div>
     </div>
 
+    <!-- Modal Pedido de Encomenda: productos a encomendar (Gestão Compras) -->
+    <div class="modal-overlay" id="changeStatusPedidoEncomendaModal">
+        <div class="modal" style="max-width: 900px;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="pedido-encomenda-modal-title">Pedido de Encomenda</h3>
+                <button class="modal-close" onclick="window.proposalsManager.closePedidoEncomendaModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p id="pedido-encomenda-subtitle" style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: var(--space-4);">Indique a quantidade a encomendar por produto. Produtos sem número PHC: preencha Referência, Designação, Peso, etc.</p>
+                <div id="pedido-encomenda-products-list" style="max-height: 60vh; overflow-y: auto;">
+                    <!-- Se llenará dinámicamente -->
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="window.proposalsManager.closePedidoEncomendaModal()">Cancelar</button>
+                <button type="button" class="btn-primary" onclick="window.proposalsManager.savePedidoEncomendaGestaoCompras()">
+                    <i class="fas fa-save"></i> <span id="pedido-encomenda-save-text">Guardar</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal para cambiar estado a Encomenda Concluída (solo productos) -->
     <div class="modal-overlay" id="changeStatusEncomendaConcluidaModal">
         <div class="modal" style="max-width: 700px;">
