@@ -1647,6 +1647,14 @@
                     <label class="form-label" for="clientNumberInput" id="client-number-label">Número de Cliente *</label>
                     <input type="text" class="form-input" id="clientNumberInput" placeholder="0 si el cliente no está creado" required autocomplete="off">
                 </div>
+                <div class="form-group">
+                    <label class="form-label" for="reposicaoInput" id="reposicao-label">¿Es una reposición? *</label>
+                    <select class="form-input" id="reposicaoInput" required>
+                        <option value="">Seleccionar...</option>
+                        <option value="false" id="reposicao-no-option">No</option>
+                        <option value="true" id="reposicao-si-option">Sí</option>
+                    </select>
+                </div>
                 <div class="modal-actions">
                     <button type="button" class="btn-secondary" onclick="closeSendProposalModal()" id="cancel-send-proposal-btn">Cancelar</button>
                     <button type="submit" class="btn-primary" id="send-proposal-submit-btn" style="background: #10b981;">

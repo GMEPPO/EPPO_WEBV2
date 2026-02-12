@@ -9886,8 +9886,11 @@ async function sendProposalToSupabase() {
             clientNumber = '0';
         }
 
+        const reposicaoInput = document.getElementById('reposicaoInput');
+        const reposicaoValue = reposicaoInput ? reposicaoInput.value : '';
+
         // Validar campos obligatorios solo para nuevas propuestas
-        if (!clientName || !commercialName || !proposalDate || !proposalCountry) {
+        if (!clientName || !commercialName || !proposalDate || !proposalCountry || reposicaoValue === '') {
             const message = window.cartManager.currentLanguage === 'es' ? 
                 'Por favor completa todos los campos obligatorios' : 
                 window.cartManager.currentLanguage === 'pt' ?
@@ -10196,6 +10199,8 @@ async function sendProposalToSupabase() {
             // Determinar país completo según selección
             const paisCompleto = proposalCountry === 'es' ? 'España' : 'Portugal';
             
+            const reposicao = reposicaoValue === 'true';
+
             const presupuestoData = {
                 nombre_cliente: clientName,
                 nombre_comercial: commercialName, // Mantener el valor del input para nombre_comercial
@@ -10206,7 +10211,8 @@ async function sendProposalToSupabase() {
                 numero_cliente: clientNumber || '0',
                 modo_200_plus: window.cartManager?.modo200 || false,
                 responsavel: responsableName, // Guardar el nombre del usuario autenticado en responsavel
-                version: 1 // Inicializar con versión 1
+                version: 1, // Inicializar con versión 1
+                reposicao: reposicao // Obligatorio: indica si el presupuesto es una reposición
             };
 
 
@@ -10518,6 +10524,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 proposalDate: 'Data do Pedido *',
                 proposalCountry: 'País *',
                 clientNumber: 'Número de Cliente *',
+                reposicao: 'É uma reposição? *',
+                reposicaoNo: 'Não',
+                reposicaoSim: 'Sim',
                 cancel: 'Cancelar',
                 send: 'Enviar Proposta'
             },
@@ -10528,6 +10537,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 proposalDate: 'Fecha del Pedido *',
                 proposalCountry: 'País *',
                 clientNumber: 'Número de Cliente *',
+                reposicao: '¿Es una reposición? *',
+                reposicaoNo: 'No',
+                reposicaoSim: 'Sí',
                 cancel: 'Cancelar',
                 send: 'Enviar Propuesta'
             },
@@ -10538,6 +10550,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 proposalDate: 'Order Date *',
                 proposalCountry: 'Country *',
                 clientNumber: 'Client Number',
+                reposicao: 'Is this a restock/reposition? *',
+                reposicaoNo: 'No',
+                reposicaoSim: 'Yes',
                 cancel: 'Cancel',
                 send: 'Send Proposal'
             }
@@ -10551,6 +10566,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const proposalDateLabel = document.getElementById('proposal-date-label');
         const proposalCountryLabel = document.getElementById('proposal-country-label');
         const clientNumberLabel = document.getElementById('client-number-label');
+        const reposicaoLabel = document.getElementById('reposicao-label');
+        const reposicaoNoOpt = document.getElementById('reposicao-no-option');
+        const reposicaoSiOpt = document.getElementById('reposicao-si-option');
         const cancelBtn = document.getElementById('cancel-send-proposal-btn');
         const sendBtn = document.getElementById('send-proposal-submit-text');
 
@@ -10560,6 +10578,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (proposalDateLabel) proposalDateLabel.textContent = t.proposalDate;
         if (proposalCountryLabel) proposalCountryLabel.textContent = t.proposalCountry;
         if (clientNumberLabel) clientNumberLabel.textContent = t.clientNumber;
+        if (reposicaoLabel) reposicaoLabel.textContent = t.reposicao;
+        if (reposicaoNoOpt) reposicaoNoOpt.textContent = t.reposicaoNo;
+        if (reposicaoSiOpt) reposicaoSiOpt.textContent = t.reposicaoSim;
         const selectCountryOption = document.getElementById('select-country-option');
         if (selectCountryOption) {
             selectCountryOption.textContent = lang === 'pt' ? 'Selecionar país...' : 
