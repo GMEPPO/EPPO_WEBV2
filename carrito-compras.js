@@ -1853,7 +1853,9 @@ class CartManager {
                 // Si tiene stock suficiente (stock >= cantidad solicitada)
                 if (stockDisponible >= quantityToUse) {
                     const span = document.createElement('span');
-                    span.style.color = '#10b981';
+                    // Verde solo si el stock es superior al doble de la cantidad; si no, amarillo (stock justo o escaso)
+                    const stockSuperiorAlDoble = stockDisponible > 2 * quantityToUse;
+                    span.style.color = stockSuperiorAlDoble ? '#10b981' : '#eab308';
                     span.style.fontWeight = '600';
                     span.style.display = 'block';
                     span.innerHTML = `${t.enStock}<br><span style="font-size: 0.85em; font-weight: 400;">${t.sujetoConfirmacion}</span>`;
@@ -2046,7 +2048,8 @@ class CartManager {
                     innerHTML.includes('restantes') ||
                     innerHTML.includes('Restantes') ||
                     innerHTML.includes('Remaining') ||
-                    element.querySelector('span[style*="color: #10b981"]') || // Verde (en stock)
+                    element.querySelector('span[style*="color: #10b981"]') || // Verde (en stock, stock > 2*cantidad)
+                    element.querySelector('span[style*="color: #eab308"]') ||  // Amarillo (en stock pero stock <= 2*cantidad)
                     element.querySelector('span[style*="color: #f59e0b"]')    // Amarillo (stock parcial)
                 );
                 

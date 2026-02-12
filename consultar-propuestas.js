@@ -157,6 +157,30 @@ class ProposalsManager {
         }
     }
 
+    /**
+     * Consultar stock disponible desde Supabase (stock_productos por referencia_phc).
+     * @param {string} phcRef - Referencia PHC del producto
+     * @returns {Promise<number|null>} - Stock disponible o null si no existe
+     */
+    async getStockForProduct(phcRef) {
+        if (!phcRef || !this.supabase) return null;
+        const normalized = String(phcRef).trim().toUpperCase();
+        if (!normalized) return null;
+        try {
+            const { data: stockRecords, error } = await this.supabase
+                .from('stock_productos')
+                .select('referencia_phc, stock_disponible')
+                .ilike('referencia_phc', normalized);
+            if (error || !stockRecords?.length) return null;
+            const record = stockRecords.find(r => r.referencia_phc && String(r.referencia_phc).trim().toUpperCase() === normalized);
+            if (!record) return null;
+            const stock = Number(record.stock_disponible);
+            return Number.isFinite(stock) ? stock : null;
+        } catch (e) {
+            return null;
+        }
+    }
+
     async loadProposals() {
         console.log('📋 loadProposals() llamado');
         
@@ -1349,6 +1373,24 @@ class ProposalsManager {
         // Traducciones para los detalles
         const detailLabels = this.getDetailLabels();
 
+        // Obtener stock actual de cada artículo para la columna Stock (reemplaza Total)
+        let articulosWithStock = proposal.articulos.map(a => ({ articulo: a, stock: null }));
+        if (this.supabase && proposal.articulos.length > 0) {
+            const productIds = [...new Set(proposal.articulos.map(a => a.referencia_articulo).filter(Boolean))];
+            let phcByRef = {};
+            if (productIds.length > 0) {
+                try {
+                    const { data: prods } = await this.supabase.from('products').select('id, phc_ref').in('id', productIds);
+                    (prods || []).forEach(p => { phcByRef[p.id] = p.phc_ref || null; });
+                } catch (e) {}
+            }
+            articulosWithStock = await Promise.all(proposal.articulos.map(async (articulo) => {
+                const phcRef = phcByRef[articulo.referencia_articulo] ?? this.allProducts?.find(p => String(p.id) === String(articulo.referencia_articulo))?.phc_ref;
+                const stock = phcRef ? await this.getStockForProduct(phcRef) : null;
+                return { articulo, stock };
+            }));
+        }
+
         // Construir HTML de follow-ups (escapar observaciones para evitar rotura del template)
         const locale = this.currentLanguage === 'es' ? 'es-ES' : this.currentLanguage === 'pt' ? 'pt-PT' : 'en-US';
         let followUpsSectionHtml = `<p style="color: var(--text-secondary); font-size: 0.875rem;" id="no-follow-ups-${proposal.id}">${detailLabels.noFollowUps}</p>`;
@@ -2061,14 +2103,14 @@ class ProposalsManager {
                             <th id="th-article-name">${detailLabels.name}</th>
                             <th id="th-article-qty">${detailLabels.quantity}</th>
                             <th id="th-article-price">${detailLabels.unitPrice}</th>
-                            <th id="th-article-total">${detailLabels.totalPrice}</th>
+                            <th id="th-article-total">${detailLabels.stock}</th>
                             <th id="th-article-delivery">${detailLabels.deliveryTime}</th>
                             <th id="th-article-personalization">${detailLabels.personalization}</th>
                             <th id="th-article-notes">${detailLabels.observations}</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${proposal.articulos.map(articulo => {
+                        ${articulosWithStock.map(({ articulo, stock }) => {
                             // Buscar la foto del producto usando la referencia
                             const producto = this.allProducts?.find(p => 
                                 String(p.id) === String(articulo.referencia_articulo) || 
@@ -2078,7 +2120,23 @@ class ProposalsManager {
                             );
                             const rawFoto = producto?.foto || articulo.foto_articulo || null;
                             const fotoUrl = this.getProductImageUrl(rawFoto);
-                            
+                            const qty = parseInt(articulo.cantidad) || 0;
+                            const lang = this.currentLanguage || localStorage.getItem('language') || 'pt';
+                            let stockText = '-';
+                            let stockColor = 'var(--text-secondary, #9ca3af)';
+                            if (stock !== null && stock !== undefined) {
+                                if (stock >= qty) {
+                                    stockText = lang === 'pt' ? 'Em stock' : lang === 'es' ? 'En stock' : 'In stock';
+                                    stockColor = stock > 2 * qty ? '#10b981' : '#eab308';
+                                } else if (stock > 0) {
+                                    stockText = `${stock} ${lang === 'pt' ? 'em stock' : lang === 'es' ? 'en stock' : 'in stock'}`;
+                                    stockColor = '#f59e0b';
+                                } else {
+                                    stockText = lang === 'pt' ? 'Sem stock' : lang === 'es' ? 'Sin stock' : 'No stock';
+                                }
+                            } else {
+                                stockText = lang === 'pt' ? 'N/D' : lang === 'es' ? 'N/D' : 'N/A';
+                            }
                             return `
                             <tr style="color: var(--text-primary, #f9fafb);">
                                 <td style="text-align: center;">
@@ -2108,22 +2166,7 @@ class ProposalsManager {
                                     }
                                     return `€${precio.toFixed(2)}`;
                                 })()}</td>
-                                <td style="color: var(--accent-500, #f59e0b); font-weight: 600;">${(() => {
-                                    const precio = parseFloat(articulo.precio) || 0;
-                                    const cantidad = parseInt(articulo.cantidad) || 0;
-                                    const total = precio * cantidad;
-                                    // Si el precio es 0 y el usuario es comercial, mostrar "Sobre consulta"
-                                    if (precio === 0 && window.cachedRole === 'comercial') {
-                                        const translations = {
-                                            'pt': 'Sobre consulta',
-                                            'es': 'Sobre consulta',
-                                            'en': 'On request'
-                                        };
-                                        const currentLang = this.currentLanguage || localStorage.getItem('language') || 'pt';
-                                        return translations[currentLang] || translations['pt'];
-                                    }
-                                    return `€${total.toFixed(2)}`;
-                                })()}</td>
+                                <td style="color: ${stockColor}; font-weight: 600;">${stockText}</td>
                                 <td style="color: var(--text-primary, #f9fafb);">${articulo.plazo_entrega || '-'}</td>
                                 <td>
                                     ${articulo.precio_personalizado ? 
@@ -2742,6 +2785,7 @@ class ProposalsManager {
                 articleQty: 'Quantidade',
                 articlePrice: 'Preço Unit.',
                 articleTotal: 'Total',
+                stock: 'Stock',
                 articleDelivery: 'Prazo de Entrega',
                 articlePersonalization: 'Personalização',
                 articleNotes: 'Observações',
@@ -2775,6 +2819,7 @@ class ProposalsManager {
                 articleQty: 'Cantidad',
                 articlePrice: 'Precio Unit.',
                 articleTotal: 'Total',
+                stock: 'Stock',
                 articleDelivery: 'Plazo de Entrega',
                 articlePersonalization: 'Personalización',
                 articleNotes: 'Observaciones',
@@ -2808,6 +2853,7 @@ class ProposalsManager {
                 articleQty: 'Quantity',
                 articlePrice: 'Unit Price',
                 articleTotal: 'Total',
+                stock: 'Stock',
                 articleDelivery: 'Delivery Time',
                 articlePersonalization: 'Personalization',
                 articleNotes: 'Observations',
@@ -2845,7 +2891,7 @@ class ProposalsManager {
             'th-article-name': t.articleName,
             'th-article-qty': t.articleQty,
             'th-article-price': t.articlePrice,
-            'th-article-total': t.articleTotal,
+            'th-article-total': t.stock || t.articleTotal,
             'th-article-delivery': t.articleDelivery,
             'th-article-personalization': t.articlePersonalization,
             'th-article-notes': t.articleNotes,
@@ -2974,6 +3020,7 @@ class ProposalsManager {
                 quantity: 'Quantidade',
                 unitPrice: 'Preço Unit.',
                 totalPrice: 'Total',
+                stock: 'Stock',
                 deliveryTime: 'Prazo de Entrega',
                 personalization: 'Personalização',
                 observations: 'Observações',
@@ -3013,6 +3060,7 @@ class ProposalsManager {
                 quantity: 'Cantidad',
                 unitPrice: 'Precio Unit.',
                 totalPrice: 'Total',
+                stock: 'Stock',
                 deliveryTime: 'Plazo de Entrega',
                 personalization: 'Personalización',
                 observations: 'Observaciones',
@@ -3052,6 +3100,7 @@ class ProposalsManager {
                 quantity: 'Quantity',
                 unitPrice: 'Unit Price',
                 totalPrice: 'Total',
+                stock: 'Stock',
                 deliveryTime: 'Delivery Time',
                 personalization: 'Personalization',
                 observations: 'Observations',
