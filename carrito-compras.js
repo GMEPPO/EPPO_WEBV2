@@ -65,6 +65,15 @@ class CartManager {
                 // Mostrar indicador de edición después de cargar datos
                 this.showEditingIndicator();
             }
+        } else {
+            // No estamos editando: si quedó datos de una edición anterior (salimos sin guardar o guardamos y volvimos), vaciar carrito
+            if (localStorage.getItem('editing_proposal')) {
+                localStorage.removeItem('editing_proposal');
+                this.editingProposalId = null;
+                this.editingProposalData = null;
+                this.cart = [];
+                this.saveCart();
+            }
         }
     }
 
@@ -1558,16 +1567,19 @@ class CartManager {
 
     /**
      * Limpiar todo el carrito
+     * @param {boolean} silent - Si true, no pide confirmación ni muestra notificación (p. ej. tras guardar propuesta)
      */
-    clearCart() {
+    clearCart(silent = false) {
         if (this.cart.length === 0) return;
         
-        if (confirm('¿Estás seguro de que quieres limpiar todo el carrito?')) {
+        if (silent || confirm('¿Estás seguro de que quieres limpiar todo el carrito?')) {
             this.cart = [];
             this.saveCart();
             this.renderCart();
             this.updateSummary();
-            this.showNotification('Carrito limpiado', 'info');
+            if (!silent) {
+                this.showNotification('Carrito limpiado', 'info');
+            }
         }
     }
 
@@ -3204,6 +3216,20 @@ class CartManager {
      * Configurar event listeners
      */
     setupEventListeners() {
+        // Al salir de la página en modo edición, limpiar carrito y datos de edición para que al volver a Orçamento no queden productos
+        window.addEventListener('beforeunload', () => {
+            if (this.editingProposalId) {
+                localStorage.removeItem('editing_proposal');
+                localStorage.setItem('eppo_cart', '[]');
+            }
+        });
+        window.addEventListener('pagehide', () => {
+            if (this.editingProposalId) {
+                localStorage.removeItem('editing_proposal');
+                localStorage.setItem('eppo_cart', '[]');
+            }
+        });
+
         // Formulario para agregar categoría
         const addCategoryForm = document.getElementById('addCategoryForm');
         if (addCategoryForm) {
@@ -10444,8 +10470,8 @@ async function sendProposalToSupabase() {
             (isEditing ? 'Proposal updated successfully' : 'Proposal sent successfully');
         window.cartManager.showNotification(message, 'success');
 
-        // Limpiar el carrito después de enviar
-        window.cartManager.clearCart();
+        // Limpiar el carrito después de enviar/guardar (sin pedir confirmación)
+        window.cartManager.clearCart(true);
         
         // Mostrar mensaje de éxito
         const successMessage = window.cartManager.currentLanguage === 'es' ? 
