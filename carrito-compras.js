@@ -37,6 +37,10 @@ class CartManager {
         
         // Actualizar plazos según stock después de cargar
         this.updateDeliveryTimesFromStock();
+        
+        // Cargar clientes para la barra de cliente y productos orçamentados anteriormente
+        if (typeof loadExistingClients === 'function') loadExistingClients();
+        if (typeof setupProposalClientBar === 'function') setupProposalClientBar();
     }
 
     async checkIfEditingProposal() {
@@ -841,6 +845,15 @@ class CartManager {
         if (clientNumberInput) {
             // Si no hay número de cliente o es null, usar "0"
             clientNumberInput.value = this.editingProposalData.numero_cliente || '0';
+        }
+        // Rellenar también la barra de cliente (visible en la página)
+        const proposalClientInput = document.getElementById('proposalClientNameInput');
+        if (proposalClientInput) {
+            proposalClientInput.value = this.editingProposalData.nombre_cliente || '';
+        }
+        const btnPrevious = document.getElementById('btnPreviousBudgetProducts');
+        if (btnPrevious && this.editingProposalData.nombre_cliente) {
+            btnPrevious.style.display = 'inline-flex';
         }
     }
 
@@ -9272,8 +9285,12 @@ async function openSendProposalModal() {
         dateInput.setAttribute('min', minDate); // Mínimo: hace un mes
     }
 
-    // Limpiar campos
-    document.getElementById('clientNameInput').value = '';
+    // Prellenar desde la barra de cliente si tiene valor; si no, limpiar campos
+    const mainClientInput = document.getElementById('proposalClientNameInput');
+    const modalClientInput = document.getElementById('clientNameInput');
+    if (modalClientInput) {
+        modalClientInput.value = (mainClientInput && mainClientInput.value.trim()) ? mainClientInput.value.trim() : '';
+    }
     const commercialSelect = document.getElementById('commercialNameInput');
     if (commercialSelect) {
         commercialSelect.value = '';
@@ -9281,7 +9298,22 @@ async function openSendProposalModal() {
     document.getElementById('proposalCountryInput').value = '';
     const clientNumberInput = document.getElementById('clientNumberInput');
     if (clientNumberInput) {
-        clientNumberInput.value = '0'; // Valor por defecto: "0" (cliente no creado)
+        const clientNameForNumber = (mainClientInput && mainClientInput.value.trim()) ? mainClientInput.value.trim() : '';
+        if (clientNameForNumber && window.cartManager?.supabase) {
+            try {
+                const { data: presupuestos } = await window.cartManager.supabase
+                    .from('presupuestos')
+                    .select('numero_cliente')
+                    .ilike('nombre_cliente', clientNameForNumber)
+                    .limit(1);
+                const presupuesto = (presupuestos && presupuestos[0]) ? presupuestos[0] : null;
+                clientNumberInput.value = (presupuesto && presupuesto.numero_cliente != null) ? String(presupuesto.numero_cliente) : '0';
+            } catch (_) {
+                clientNumberInput.value = '0';
+            }
+        } else {
+            clientNumberInput.value = '0';
+        }
     }
 
     // Cargar clientes y comerciales existentes para autocompletado
@@ -9334,6 +9366,201 @@ function closeSendProposalModal() {
 // Variables globales para almacenar clientes y comerciales existentes
 let existingClients = [];
 let existingCommercials = [];
+
+/**
+ * Abrir modal de productos orçamentados anteriormente para el cliente seleccionado
+ */
+async function openPreviousBudgetProductsModal() {
+    const input = document.getElementById('proposalClientNameInput');
+    const clientName = (input && input.value) ? input.value.trim() : '';
+    if (!clientName) {
+        if (window.cartManager) {
+            const msg = window.cartManager.currentLanguage === 'es' ? 'Indica el nombre del cliente.' : window.cartManager.currentLanguage === 'pt' ? 'Indique o nome do cliente.' : 'Enter the client name.';
+            window.cartManager.showNotification(msg, 'info');
+        }
+        return;
+    }
+    const modal = document.getElementById('previousBudgetProductsModal');
+    const listEl = document.getElementById('previousBudgetProductsList');
+    const titleEl = document.getElementById('previous-budget-products-modal-title');
+    const subtitleEl = document.getElementById('previous-budget-products-modal-subtitle');
+    if (!modal || !listEl) return;
+
+    const t = window.cartManager?.currentLanguage === 'pt' ? {
+        title: 'Produtos orçamentados anteriormente',
+        subtitle: 'Cliente: ',
+        loading: 'A carregar...',
+        noProducts: 'Nenhum produto encontrado em propostas anteriores para este cliente.',
+        add: 'Adicionar',
+        close: 'Fechar'
+    } : window.cartManager?.currentLanguage === 'es' ? {
+        title: 'Productos orçamentados anteriormente',
+        subtitle: 'Cliente: ',
+        loading: 'Cargando...',
+        noProducts: 'No se encontraron productos en propuestas anteriores para este cliente.',
+        add: 'Añadir',
+        close: 'Cerrar'
+    } : {
+        title: 'Previously budgeted products',
+        subtitle: 'Client: ',
+        loading: 'Loading...',
+        noProducts: 'No products found in previous proposals for this client.',
+        add: 'Add',
+        close: 'Close'
+    };
+
+    if (titleEl) titleEl.textContent = t.title;
+    if (subtitleEl) subtitleEl.textContent = t.subtitle + clientName;
+    listEl.innerHTML = `<div style="padding: var(--space-4); text-align: center; color: var(--text-secondary);"><i class="fas fa-spinner fa-spin" style="font-size: 2rem;"></i><p style="margin-top: 8px;">${t.loading}</p></div>`;
+    modal.classList.add('active');
+
+    if (!window.cartManager?.supabase) {
+        listEl.innerHTML = `<p style="padding: var(--space-4); color: var(--text-secondary);">${t.noProducts}</p>`;
+        return;
+    }
+
+    try {
+        const { data: presupuestos, error: errPres } = await window.cartManager.supabase
+            .from('presupuestos')
+            .select('id')
+            .ilike('nombre_cliente', clientName);
+        if (errPres || !presupuestos || presupuestos.length === 0) {
+            listEl.innerHTML = `<p style="padding: var(--space-4); color: var(--text-secondary);">${t.noProducts}</p>`;
+            return;
+        }
+        const presupuestoIds = presupuestos.map(p => p.id);
+        const { data: articulos, error: errArt } = await window.cartManager.supabase
+            .from('presupuestos_articulos')
+            .select('id, presupuesto_id, nombre_articulo, referencia_articulo, cantidad, precio, plazo_entrega')
+            .in('presupuesto_id', presupuestoIds)
+            .order('presupuesto_id', { ascending: false });
+
+        if (errArt || !articulos || articulos.length === 0) {
+            listEl.innerHTML = `<p style="padding: var(--space-4); color: var(--text-secondary);">${t.noProducts}</p>`;
+            return;
+        }
+
+        // Agrupar por producto (referencia o nombre) y quedarnos con el más reciente (precio/cantidad)
+        const byKey = {};
+        articulos.forEach(a => {
+            const key = (a.referencia_articulo || '').trim() || (a.nombre_articulo || '').trim();
+            if (!key) return;
+            if (!byKey[key]) byKey[key] = a;
+        });
+        const uniqueArticulos = Object.values(byKey);
+
+        listEl.innerHTML = uniqueArticulos.map((a, idx) => {
+            const nombre = (a.nombre_articulo || '-').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+            const ref = (a.referencia_articulo || '-').replace(/</g, '&lt;');
+            const precio = a.precio != null ? parseFloat(a.precio).toFixed(2) : '-';
+            const dataAttr = encodeURIComponent(JSON.stringify({
+                nombre_articulo: a.nombre_articulo,
+                referencia_articulo: a.referencia_articulo,
+                cantidad: a.cantidad,
+                precio: a.precio,
+                plazo_entrega: a.plazo_entrega
+            }));
+            return `
+            <div class="previous-budget-item" style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--bg-gray-200); gap: 12px;">
+                <div style="flex: 1; min-width: 0;">
+                    <div style="font-weight: 600; color: var(--text-primary);">${nombre}</div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary);">Ref: ${ref} · €${precio}</div>
+                </div>
+                <button type="button" class="btn-primary" style="padding: 6px 14px; font-size: 0.875rem;" data-prev-articulo="${dataAttr}" onclick="addPreviousBudgetProductToCart(this.getAttribute('data-prev-articulo'))">
+                    <i class="fas fa-plus"></i> ${t.add}
+                </button>
+            </div>`;
+        }).join('');
+    } catch (e) {
+        console.error('Error loading previous budget products:', e);
+        listEl.innerHTML = `<p style="padding: var(--space-4); color: var(--text-secondary);">${t.noProducts}</p>`;
+    }
+}
+
+/**
+ * Cerrar modal de productos orçamentados anteriormente
+ */
+function closePreviousBudgetProductsModal() {
+    const modal = document.getElementById('previousBudgetProductsModal');
+    if (modal) modal.classList.remove('active');
+}
+
+/**
+ * Añadir un producto de una propuesta anterior al carrito actual
+ * @param {string} dataJson - JSON string con { nombre_articulo, referencia_articulo, cantidad, precio, plazo_entrega }
+ */
+function addPreviousBudgetProductToCart(dataJson) {
+    if (!window.cartManager || !window.cartManager.allProducts) return;
+    let data;
+    try {
+        const raw = typeof dataJson === 'string' ? decodeURIComponent(dataJson) : dataJson;
+        data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    } catch (_) {
+        return;
+    }
+    const nombreArticulo = data.nombre_articulo || '';
+    const referenciaArticulo = data.referencia_articulo || '';
+    let quantity = parseInt(data.cantidad, 10) || 1;
+    let precioGuardado = 0;
+    if (data.precio != null && data.precio !== '') {
+        precioGuardado = parseFloat(data.precio);
+        if (isNaN(precioGuardado)) precioGuardado = 0;
+    }
+
+    let product = window.cartManager.allProducts.find(p =>
+        String(p.id) === String(referenciaArticulo) || String(p.id).trim() === String(referenciaArticulo).trim()
+    );
+    if (!product && nombreArticulo) {
+        const nombreLower = nombreArticulo.trim().toLowerCase();
+        product = window.cartManager.allProducts.find(p => {
+            const n = (p.nombre || '').trim().toLowerCase();
+            return n === nombreLower || n.includes(nombreLower) || nombreLower.includes(n);
+        });
+    }
+
+    if (!product) {
+        const msg = window.cartManager.currentLanguage === 'es' ? 'Producto no encontrado en el catálogo.' : window.cartManager.currentLanguage === 'pt' ? 'Produto não encontrado no catálogo.' : 'Product not found in catalog.';
+        window.cartManager.showNotification(msg, 'warning');
+        return;
+    }
+
+    if (product.box_size) {
+        const productForNorm = { id: product.id, boxSize: Number(product.box_size) || null };
+        quantity = window.cartManager.normalizeQuantityForBox(productForNorm, quantity);
+    }
+
+    const cartItemId = `cart-item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const cartItem = {
+        id: product.id,
+        cartItemId,
+        order: window.cartManager.cart.length,
+        type: 'product',
+        name: nombreArticulo || product.nombre,
+        category: product.categoria,
+        price: precioGuardado,
+        basePrice: product.precio,
+        originalPrice: precioGuardado,
+        manualPrice: true,
+        image: product.foto,
+        quantity,
+        specs: window.cartManager.getProductSpecs(product),
+        descripcionEs: product.descripcionEs || product.descripcion_es || '',
+        descripcionPt: product.descripcionPt || product.descripcion_pt || '',
+        description: window.cartManager.currentLanguage === 'es' ? (product.descripcionEs || product.descripcion_es || '') : (product.descripcionPt || product.descripcion_pt || ''),
+        referencia: referenciaArticulo || String(product.id),
+        plazoEntrega: data.plazo_entrega || product.plazoEntrega || product.plazo_entrega || '',
+        price_tiers: product.price_tiers || [],
+        variants: product.variants || [],
+        selectedVariant: null,
+        variantes_referencias: product.variantes_referencias || []
+    };
+    window.cartManager.cart.push(cartItem);
+    window.cartManager.saveCart();
+    window.cartManager.renderCart();
+    window.cartManager.updateSummary();
+    const msg = window.cartManager.currentLanguage === 'es' ? 'Producto añadido al presupuesto' : window.cartManager.currentLanguage === 'pt' ? 'Produto adicionado ao orçamento' : 'Product added to budget';
+    window.cartManager.showNotification(msg, 'success');
+}
 
 /**
  * Cargar clientes existentes desde Supabase
@@ -9720,6 +9947,75 @@ function selectClient(clientName) {
     if (commercialInput) {
         commercialInput.focus();
     }
+}
+
+/**
+ * Configurar barra de cliente en la página (campo cliente mientras se crea la propuesta)
+ * y mostrar/ocultar botón "Productos orçamentados anteriormente" cuando el cliente existe.
+ */
+function setupProposalClientBar() {
+    const input = document.getElementById('proposalClientNameInput');
+    const suggestionsContainer = document.getElementById('proposalClientSuggestions');
+    const btnPrevious = document.getElementById('btnPreviousBudgetProducts');
+
+    if (!input) return;
+
+    function updatePreviousButtonVisibility() {
+        if (!btnPrevious) return;
+        const value = (input.value || '').trim();
+        const isExisting = existingClients.some(c => String(c).trim().toLowerCase() === value.toLowerCase());
+        btnPrevious.style.display = isExisting ? 'inline-flex' : 'none';
+    }
+
+    input.addEventListener('input', function() {
+        const value = this.value.toLowerCase().trim();
+        updatePreviousButtonVisibility();
+        if (value.length < 2) {
+            if (suggestionsContainer) suggestionsContainer.style.display = 'none';
+            return;
+        }
+        const matches = existingClients.filter(client =>
+            client.toLowerCase().includes(value)
+        ).slice(0, 8);
+        if (!suggestionsContainer) return;
+        if (matches.length === 0) {
+            suggestionsContainer.style.display = 'none';
+            return;
+        }
+        suggestionsContainer.innerHTML = matches.map(client => `
+            <div class="autocomplete-item" style="padding: 12px 16px; cursor: pointer; border-bottom: 1px solid var(--border-color, #374151); transition: background 0.2s; display: flex; align-items: center; gap: 10px;"
+                onmouseover="this.style.background='var(--bg-hover, #374151)'" onmouseout="this.style.background='transparent'"
+                onclick="selectClientFromProposalBar('${client.replace(/'/g, "\\'")}')">
+                <i class="fas fa-user" style="color: var(--text-secondary, #9ca3af); font-size: 0.9rem;"></i>
+                <span style="color: var(--text-primary, #f9fafb);">${highlightMatch(client, value)}</span>
+            </div>
+        `).join('');
+        suggestionsContainer.style.display = 'block';
+    });
+
+    input.addEventListener('blur', function() {
+        setTimeout(updatePreviousButtonVisibility, 150);
+    });
+
+    document.addEventListener('click', function(e) {
+        if (suggestionsContainer && !e.target.closest('#proposalClientNameInput') && !e.target.closest('#proposalClientSuggestions')) {
+            suggestionsContainer.style.display = 'none';
+        }
+    });
+
+    updatePreviousButtonVisibility();
+}
+
+/**
+ * Seleccionar cliente desde la barra de la página (mientras se crea la propuesta)
+ */
+function selectClientFromProposalBar(clientName) {
+    const input = document.getElementById('proposalClientNameInput');
+    const suggestionsContainer = document.getElementById('proposalClientSuggestions');
+    const btnPrevious = document.getElementById('btnPreviousBudgetProducts');
+    if (input) input.value = clientName;
+    if (suggestionsContainer) suggestionsContainer.style.display = 'none';
+    if (btnPrevious) btnPrevious.style.display = 'inline-flex';
 }
 
 /**

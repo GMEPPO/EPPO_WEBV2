@@ -915,6 +915,18 @@ class ProposalsManager {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
+        // Si tiene al menos un follow-up con fecha futura, no marcar en rojo
+        const hasFutureFollowUp = proposal.follow_ups && proposal.follow_ups.length > 0 && proposal.follow_ups.some(fu => {
+            const f = fu.fecha_follow_up_futuro;
+            if (!f) return false;
+            const d = new Date(f);
+            d.setHours(0, 0, 0, 0);
+            return d >= today;
+        });
+        if (hasFutureFollowUp) {
+            return { isAlert: false, is15dOverdue: false, isFutureFuOverdue: false };
+        }
+
         const fechaEnvio = proposal.fecha_envio_propuesta || proposal.fecha_propuesta || proposal.fecha_inicial;
         const fechaEnvioDate = fechaEnvio ? new Date(fechaEnvio) : null;
         let is15dOverdue = false;
@@ -1415,7 +1427,7 @@ class ProposalsManager {
                         </div>
                         <div style="flex: 2; min-width: 200px;">
                             <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 4px;">${detailLabels.observations}</label>
-                            <textarea id="follow-up-obs-${fu.id}" rows="2" style="width: 100%; padding: 8px; border: 1px solid var(--bg-gray-200); border-radius: 6px; font-size: 0.875rem; background: var(--bg-white); color: var(--text-primary);">${obsEscaped}</textarea>
+                            <div style="width: 100%; padding: 8px; border: 1px solid var(--bg-gray-200); border-radius: 6px; font-size: 0.875rem; background: var(--bg-gray-50, #f9fafb); color: var(--text-primary); min-height: 2.5rem;">${obsEscaped || '-'}</div>
                         </div>
                         <div style="min-width: 160px;">
                             <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 4px;">${detailLabels.futureFollowUpDate}</label>
@@ -1722,6 +1734,30 @@ class ProposalsManager {
                             <input type="text" id="numero-guia-preparacao-${proposal.id}" value="${proposal.numero_guia_preparacao || ''}" style="width: 100%; padding: 8px; border: 1px solid var(--bg-gray-300, #d1d5db); border-radius: 6px; font-size: 0.875rem;">
                         </div>
                     </div>
+                    <div style="display: flex; gap: 8px; margin-top: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--bg-gray-200, #e5e7eb); justify-content: flex-end;">
+                        <button type="button" onclick="window.proposalsManager.cancelAdditionalDetailsEdit('${proposal.id}')" style="
+                            background: var(--bg-gray-200, #e5e7eb);
+                            color: var(--text-primary, #111827);
+                            border: none;
+                            padding: 8px 16px;
+                            border-radius: 6px;
+                            font-weight: 500;
+                            cursor: pointer;
+                        " onmouseover="this.style.background='var(--bg-gray-300, #d1d5db)';" onmouseout="this.style.background='var(--bg-gray-200, #e5e7eb)';">
+                            ${detailLabels.cancel}
+                        </button>
+                        <button type="button" onclick="window.proposalsManager.saveAdditionalDetails('${proposal.id}')" style="
+                            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                            color: white;
+                            border: none;
+                            padding: 8px 16px;
+                            border-radius: 6px;
+                            font-weight: 500;
+                            cursor: pointer;
+                        " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(16,185,129,0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
+                            <i class="fas fa-save"></i> ${detailLabels.save}
+                        </button>
+                    </div>
                 </div>
             </div>
             
@@ -1916,35 +1952,6 @@ class ProposalsManager {
                 </div>
             </div>
             ` : ''}
-
-                    <div style="display: flex; gap: 8px; margin-top: var(--space-4); justify-content: flex-end;">
-                        <button onclick="window.proposalsManager.cancelAdditionalDetailsEdit('${proposal.id}')" style="
-                            background: var(--bg-gray-200, #e5e7eb);
-                            color: var(--text-primary, #111827);
-                            border: none;
-                            padding: 8px 16px;
-                            border-radius: 6px;
-                            font-weight: 500;
-                            cursor: pointer;
-                            transition: all 0.2s;
-                        " onmouseover="this.style.background='var(--bg-gray-300, #d1d5db)';" onmouseout="this.style.background='var(--bg-gray-200, #e5e7eb)';">
-                            Cancelar
-                        </button>
-                        <button onclick="window.proposalsManager.saveAdditionalDetails('${proposal.id}')" style="
-                            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-                            color: white;
-                            border: none;
-                            padding: 8px 16px;
-                            border-radius: 6px;
-                            font-weight: 500;
-                            cursor: pointer;
-                            transition: all 0.2s;
-                        " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(16,185,129,0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
-                            <i class="fas fa-save"></i> Guardar
-                        </button>
-                    </div>
-                </div>
-            </div>
 
             <div class="comments-section" style="margin: var(--space-6) 0; padding: var(--space-4); background: var(--bg-gray-50, #f9fafb); border-radius: var(--radius-lg, 12px); border: 1px solid var(--bg-gray-200, #e5e7eb);">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-3);">
@@ -3912,8 +3919,8 @@ class ProposalsManager {
                                     " onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">${viewPdfText}</a>
                                 </div>
                             ` : `
-                                <img src="${logo.logoUrl}" 
-                                     alt="${logo.nombre}" 
+                                <img src="${(logo.logoUrl || '').replace(/"/g, '&quot;')}" 
+                                     alt="${(logo.nombre || '').replace(/"/g, '&quot;')}" 
                                      style="
                                          max-width: 100%;
                                          max-height: 100%;
@@ -3921,9 +3928,11 @@ class ProposalsManager {
                                          display: block;
                                      "
                                      onerror="
-                                         const parent = this.parentElement;
-                                         parent.innerHTML = '<div style=\\'text-align: center; padding: 20px; width: 100%;\\'><i class=\\'fas fa-image\\' style=\\'font-size: 3rem; color: #6b7280; margin-bottom: 10px;\\'></i><div style=\\'color: #1f2937; font-size: 0.875rem;\\'>Imagen no disponible</div><a href=\\'${logo.logoUrl}\\' target=\\'_blank\\' rel=\\'noopener noreferrer\\' style=\\'color: #3b82f6; text-decoration: none; margin-top: 10px; display: inline-block;\\'>Abrir enlace</a></div>';
-                                         console.error('Error cargando logo:', '${logo.logoUrl}');
+                                         var p = this.parentElement;
+                                         if (p && !p.dataset.logoFallback) {
+                                             p.dataset.logoFallback = '1';
+                                             p.innerHTML = '<div style=\\'text-align: center; padding: 20px; width: 100%;\\'><i class=\\'fas fa-image\\' style=\\'font-size: 3rem; color: #6b7280; margin-bottom: 10px;\\'></i><div style=\\'color: #1f2937; font-size: 0.875rem;\\'>Imagen no disponible</div></div>';
+                                         }
                                      ">
                             `}
                         </div>
@@ -4428,13 +4437,14 @@ class ProposalsManager {
                                                 color: var(--text-secondary);
                                             ">${fechaFormateada} ${horaFormateada}</span>
                                         </div>
-                                        <p style="margin: 0 0 8px 0; color: var(--text-primary); font-size: 0.95rem;">
-                                            ${registro.descripcion || registro.titulo || ''}
-                                        </p>
-                                        <span style="
-                                            font-size: 0.8rem;
-                                            color: var(--text-secondary);
-                                        ">
+                                        ${(function() {
+                                            const desc = (registro.descripcion || registro.titulo || '').trim();
+                                            if (!desc) return '<p style="margin: 0 0 8px 0;"></p>';
+                                            const partes = desc.split(/\s*;\s*/).filter(p => p.length > 0);
+                                            if (partes.length <= 1) return `<p style="margin: 0 0 8px 0; color: var(--text-primary); font-size: 0.95rem;">${(desc || '').replace(/</g, '&lt;')}</p>`;
+                                            return `<ul style="margin: 0 0 8px 0; padding-left: 20px; list-style: none; color: var(--text-primary); font-size: 0.9rem;">${partes.map(p => `<li style="margin-bottom: 6px; position: relative;"><span style="position: absolute; left: -14px; color: var(--text-secondary);">•</span>${(p.trim() || '').replace(/</g, '&lt;')}</li>`).join('')}</ul>`;
+                                        })()}
+                                        <span style="font-size: 0.8rem; color: var(--text-secondary);">
                                             <i class="fas fa-user" style="margin-right: 4px;"></i>
                                             ${registro.usuario || 'Sistema'}
                                         </span>
@@ -4735,18 +4745,16 @@ class ProposalsManager {
     }
 
     /**
-     * Guardar observaciones y fecha follow up futuro de un follow-up
+     * Guardar fecha follow up futuro de un follow-up (las observaciones no se editan tras guardar).
      */
     async saveFollowUpEntry(proposalId, followUpId) {
-        const obsEl = document.getElementById(`follow-up-obs-${followUpId}`);
         const futuroEl = document.getElementById(`follow-up-futuro-${followUpId}`);
-        const observaciones = obsEl ? obsEl.value.trim() || null : null;
         const fechaFuturo = futuroEl && futuroEl.value ? futuroEl.value : null;
         if (!this.supabase) await this.initializeSupabase();
         try {
             const { error } = await this.supabase
                 .from('presupuestos_follow_ups')
-                .update({ observaciones, fecha_follow_up_futuro: fechaFuturo })
+                .update({ fecha_follow_up_futuro: fechaFuturo })
                 .eq('id', followUpId);
             if (error) throw error;
             await this.supabase.from('presupuestos').update({ webhook_future_fu_sent_at: null }).eq('id', proposalId);
@@ -5377,9 +5385,23 @@ class ProposalsManager {
                                             color: var(--text-secondary);
                                         ">${fechaFormateada} ${horaFormateada}</span>
                                     </div>
-                                    <p style="margin: 0 0 8px 0; color: var(--text-primary); font-size: 0.95rem;">
-                                        ${registro.descripcion}
-                                    </p>
+                                    <div style="margin: 0 0 8px 0; color: var(--text-primary); font-size: 0.9rem;">
+                                        ${(function() {
+                                            const desc = (registro.descripcion || '').trim();
+                                            if (!desc) return '';
+                                            const partes = desc.split(/\s*;\s*/).filter(p => p.length > 0);
+                                            if (partes.length <= 1) return `<p style="margin: 0;">${desc.replace(/</g, '&lt;')}</p>`;
+                                            return `<ul style="margin: 0; padding-left: 20px; list-style: none;">
+                                                ${partes.map(p => {
+                                                    const text = p.trim().replace(/</g, '&lt;');
+                                                    return `<li style="margin-bottom: 6px; padding-left: 0; position: relative;">
+                                                        <span style="position: absolute; left: -14px; color: var(--text-secondary);">•</span>
+                                                        ${text}
+                                                    </li>`;
+                                                }).join('')}
+                                            </ul>`;
+                                        })()}
+                                    </div>
                                     <span style="
                                         font-size: 0.8rem;
                                         color: var(--text-secondary);

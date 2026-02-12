@@ -1390,6 +1390,45 @@
                 </div>
             </div>
 
+            <!-- Datos de la propuesta: Cliente (visible mientras se crea) -->
+            <div class="proposal-client-bar" style="
+                padding: var(--space-3) var(--space-4);
+                background: var(--bg-gray-100, #f3f4f6);
+                border-bottom: 1px solid var(--bg-gray-200, #e5e7eb);
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: var(--space-3);
+            ">
+                <div class="form-group" style="margin: 0; flex: 1; min-width: 200px; position: relative;">
+                    <label class="form-label" for="proposalClientNameInput" id="proposal-client-label" style="font-size: 0.875rem;">Cliente</label>
+                    <input type="text" class="form-input" id="proposalClientNameInput" placeholder="" autocomplete="off" style="padding: 8px 12px;">
+                    <div id="proposalClientSuggestions" class="autocomplete-suggestions" style="
+                        display: none;
+                        position: absolute;
+                        top: 100%;
+                        left: 0;
+                        right: 0;
+                        background: var(--bg-secondary, #1f2937);
+                        border: 1px solid var(--border-color, #374151);
+                        border-radius: 8px;
+                        max-height: 200px;
+                        overflow-y: auto;
+                        z-index: 1000;
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                        margin-top: 4px;
+                    "></div>
+                </div>
+                <button type="button" class="btn-secondary" id="btnPreviousBudgetProducts" onclick="openPreviousBudgetProductsModal()" style="
+                    display: none;
+                    align-self: flex-end;
+                    padding: 8px 14px;
+                    font-size: 0.875rem;
+                ">
+                    <i class="fas fa-history"></i> <span id="btn-previous-budget-products-text">Productos orçamentados anteriormente</span>
+                </button>
+            </div>
+
             <!-- Contenido del carrito -->
             <div class="cart-content">
                 <!-- Items del carrito -->
@@ -1665,6 +1704,28 @@
         </div>
     </div>
 
+    <!-- Modal: Productos orçamentados anteriormente (por cliente) -->
+    <div class="modal-overlay" id="previousBudgetProductsModal">
+        <div class="modal" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="previous-budget-products-modal-title">Productos orçamentados anteriormente</h3>
+                <button class="modal-close" onclick="closePreviousBudgetProductsModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <p id="previous-budget-products-modal-subtitle" style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: var(--space-4);"></p>
+            <div id="previousBudgetProductsList" style="max-height: 450px; overflow-y: auto; margin-bottom: var(--space-4);">
+                <div style="padding: var(--space-4); text-align: center; color: var(--text-secondary);">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 2rem;"></i>
+                    <p style="margin-top: 8px;">Cargando...</p>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closePreviousBudgetProductsModal()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
     <script src="carrito-compras.js"></script>
     
     <script>
@@ -1742,7 +1803,9 @@
                     generateProposal: 'Criar Proposta',
                     selectLanguageTitle: 'Selecionar Idioma do PDF',
                     selectLanguageDescription: 'Escolha o idioma em que deseja gerar a proposta:',
-                    cancel: 'Cancelar'
+                    cancel: 'Cancelar',
+                    proposalClientLabel: 'Cliente',
+                    previousBudgetProductsBtn: 'Produtos orçamentados anteriormente'
                 },
                 es: {
                     cartTitle: 'Preparador de Presupuesto',
@@ -1789,7 +1852,9 @@
                     sendProposal: 'Enviar Propuesta',
                     selectLanguageTitle: 'Seleccionar Idioma del PDF',
                     selectLanguageDescription: 'Elige el idioma en el que deseas generar la propuesta:',
-                    cancel: 'Cancelar'
+                    cancel: 'Cancelar',
+                    proposalClientLabel: 'Cliente',
+                    previousBudgetProductsBtn: 'Productos orçamentados anteriormente'
                 },
                 en: {
                     cartTitle: 'Budget Preparer',
@@ -1833,7 +1898,9 @@
                     specialOrderNotesPlaceholder: 'E.g: Black color, 220V voltage...',
                     continueShopping: 'Continue Shopping',
                     generateProposal: 'Create Proposal',
-                    sendProposal: 'Send Proposal'
+                    sendProposal: 'Send Proposal',
+                    proposalClientLabel: 'Client',
+                    previousBudgetProductsBtn: 'Previously budgeted products'
                 }
             };
 
@@ -1870,7 +1937,9 @@
                 'send-proposal-text': t.sendProposal,
                 'modal-title-text': t.selectLanguageTitle,
                 'modal-description-text': t.selectLanguageDescription,
-                'modal-cancel-text': t.cancel
+                'modal-cancel-text': t.cancel,
+                'proposal-client-label': t.proposalClientLabel,
+                'btn-previous-budget-products-text': t.previousBudgetProductsBtn
             };
             
             // Actualizar placeholder del input de búsqueda
