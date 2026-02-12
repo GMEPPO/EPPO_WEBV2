@@ -52,6 +52,8 @@ class CartManager {
             if (savedData) {
                 try {
                     this.editingProposalData = JSON.parse(savedData);
+                    // Sincronizar modo200 con la propuesta guardada (para saber si bloquear precio al cambiar cantidad)
+                    this.modo200 = !!(this.editingProposalData.modo_200_plus || this.editingProposalData.modo_200);
                     await this.loadProposalIntoCart();
                     // Mostrar indicador de edición después de cargar datos
                     this.showEditingIndicator();
@@ -129,10 +131,11 @@ class CartManager {
                 estado_propuesta: proposal.estado_propuesta,
                 codigo_propuesta: proposal.codigo_propuesta || null,
                 numero_cliente: proposal.numero_cliente || '0',
-                articulos: articulos || []
+                articulos: articulos || [],
+                modo_200_plus: proposal.modo_200_plus || proposal.modo_200 || false
             };
 
-            // Cargar estado del modo 200+ desde la propuesta
+            // Cargar estado del modo 200+ desde la propuesta (solo así se bloquea el precio al cambiar cantidad)
             this.modo200 = proposal.modo_200_plus || proposal.modo_200 || false;
 
             // Cargar productos exclusivos del cliente si existe
@@ -615,10 +618,9 @@ class CartManager {
                     precioProducto: precioProducto
                 });
                 
-                // IMPORTANTE: Cuando se está editando una propuesta, SIEMPRE usar el precio guardado
-                // y marcarlo como manual para evitar que se recalcule (especialmente con modo 200+)
-                // Esto asegura que los precios guardados en presupuestos_articulos se mantengan
-                const esPrecioManual = true; // Siempre manual cuando se carga desde una propuesta guardada
+                // Solo fijar precio (manual) cuando la propuesta se guardó con modo 200+ activo.
+                // Si no es modo 200+, el precio puede recalcularse al cambiar la cantidad.
+                const esPrecioManual = !!(this.modo200 || (this.editingProposalData && (this.editingProposalData.modo_200_plus || this.editingProposalData.modo_200)));
                 
                 // Obtener el orden del artículo (si existe en la BD, sino usar el índice)
                 const orden = articulo.orden !== undefined && articulo.orden !== null ? articulo.orden : index;

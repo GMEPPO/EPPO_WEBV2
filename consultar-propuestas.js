@@ -2165,7 +2165,8 @@ class ProposalsManager {
             nombre_comercial: proposal.nombre_comercial,
             fecha_inicial: proposal.fecha_inicial,
             estado_propuesta: proposal.estado_propuesta,
-            articulos: proposal.articulos || []
+            articulos: proposal.articulos || [],
+            modo_200_plus: proposal.modo_200_plus || proposal.modo_200 || false
         };
 
         localStorage.setItem('editing_proposal', JSON.stringify(proposalData));
