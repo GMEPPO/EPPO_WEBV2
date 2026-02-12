@@ -1529,9 +1529,27 @@ class ProposalsManager {
                 ` : ''}
             </div>
             <div class="proposal-details">
-                <div class="detail-item">
+                <div class="detail-item" id="client-name-row-${proposal.id}">
                     <div class="detail-label">${detailLabels.client}</div>
-                    <div class="detail-value">${proposal.nombre_cliente || '-'}</div>
+                    <div id="client-name-display-${proposal.id}" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        <div class="detail-value" id="client-name-value-${proposal.id}">${(proposal.nombre_cliente || '-').replace(/</g, '&lt;')}</div>
+                        <button type="button" onclick="window.proposalsManager.toggleClientNameEdit('${proposal.id}')" style="
+                            background: transparent;
+                            color: var(--primary-500, #3b82f6);
+                            border: none;
+                            padding: 4px 8px;
+                            font-size: 0.8rem;
+                            cursor: pointer;
+                            text-decoration: underline;
+                        "><span id="edit-client-name-text">${detailLabels.editComments}</span></button>
+                    </div>
+                    <div id="client-name-edit-${proposal.id}" style="display: none; margin-top: 4px;">
+                        <input type="text" id="client-name-input-${proposal.id}" value="${(proposal.nombre_cliente || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')}" style="width: 100%; max-width: 280px; padding: 8px; border: 1px solid var(--bg-gray-300, #d1d5db); border-radius: 6px; font-size: 0.875rem; margin-bottom: 8px;">
+                        <div style="display: flex; gap: 8px;">
+                            <button type="button" onclick="window.proposalsManager.cancelClientNameEdit('${proposal.id}')" style="background: var(--bg-gray-200); color: var(--text-primary); border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.875rem; cursor: pointer;">${detailLabels.cancel}</button>
+                            <button type="button" onclick="window.proposalsManager.saveClientName('${proposal.id}')" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.875rem; cursor: pointer;"><i class="fas fa-save"></i> ${detailLabels.save}</button>
+                        </div>
+                    </div>
                 </div>
                 <div class="detail-item">
                     <div class="detail-label">${detailLabels.commercial}</div>
@@ -1801,7 +1819,7 @@ class ProposalsManager {
                             <input type="date" id="data-resposta-fornecedor-${proposal.id}" value="${proposal.data_resposta_fornecedor ? proposal.data_resposta_fornecedor.split('T')[0] : ''}" style="width: 100%; padding: 8px; border: 1px solid var(--bg-gray-300, #d1d5db); border-radius: 6px; font-size: 0.875rem;">
                         </div>
                     </div>
-                    <div style="display: flex; gap: 8px; margin-top: var(--space-4); justify-content: flex-end;">
+                    <div style="display: flex; gap: 8px; margin-top: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--bg-gray-200, #e5e7eb); justify-content: flex-end;">
                         <button onclick="window.proposalsManager.cancelProcurementEdit('${proposal.id}')" style="
                             background: var(--bg-gray-200, #e5e7eb);
                             color: var(--text-primary, #111827);
@@ -2895,7 +2913,8 @@ class ProposalsManager {
             'th-article-delivery': t.articleDelivery,
             'th-article-personalization': t.articlePersonalization,
             'th-article-notes': t.articleNotes,
-            'edit-proposal-text': t.editProposal
+            'edit-proposal-text': t.editProposal,
+            'edit-client-name-text': t.editComments
         };
 
         Object.entries(elements).forEach(([id, value]) => {
@@ -4901,6 +4920,66 @@ class ProposalsManager {
         } catch (error) {
             console.error('Error al guardar detalles adicionales:', error);
             this.showErrorMessage(t.error);
+        }
+    }
+
+    /**
+     * Alternar modo de edición del nombre del cliente
+     */
+    toggleClientNameEdit(proposalId) {
+        const displayDiv = document.getElementById(`client-name-display-${proposalId}`);
+        const editDiv = document.getElementById(`client-name-edit-${proposalId}`);
+        if (displayDiv && editDiv) {
+            displayDiv.style.display = 'none';
+            editDiv.style.display = 'block';
+            const input = document.getElementById(`client-name-input-${proposalId}`);
+            if (input) {
+                input.focus();
+                input.select();
+            }
+        }
+    }
+
+    /**
+     * Cancelar edición del nombre del cliente
+     */
+    cancelClientNameEdit(proposalId) {
+        const displayDiv = document.getElementById(`client-name-display-${proposalId}`);
+        const editDiv = document.getElementById(`client-name-edit-${proposalId}`);
+        if (displayDiv && editDiv) {
+            displayDiv.style.display = 'flex';
+            editDiv.style.display = 'none';
+            const proposal = this.allProposals.find(p => p.id === proposalId);
+            const input = document.getElementById(`client-name-input-${proposalId}`);
+            if (input && proposal) input.value = proposal.nombre_cliente || '';
+        }
+    }
+
+    /**
+     * Guardar nombre del cliente
+     */
+    async saveClientName(proposalId) {
+        if (!this.supabase) await this.initializeSupabase();
+        const input = document.getElementById(`client-name-input-${proposalId}`);
+        if (!input) return;
+        const newName = (input.value || '').trim();
+        const proposal = this.allProposals.find(p => p.id === proposalId);
+        if (!proposal) return;
+        try {
+            const { error } = await this.supabase
+                .from('presupuestos')
+                .update({ nombre_cliente: newName || null })
+                .eq('id', proposalId);
+            if (error) throw error;
+            proposal.nombre_cliente = newName || null;
+            const valueEl = document.getElementById(`client-name-value-${proposalId}`);
+            if (valueEl) valueEl.textContent = newName || '-';
+            this.cancelClientNameEdit(proposalId);
+            const msg = this.currentLanguage === 'es' ? 'Nombre del cliente actualizado.' : this.currentLanguage === 'pt' ? 'Nome do cliente atualizado.' : 'Client name updated.';
+            this.showNotification(msg, 'success');
+        } catch (err) {
+            console.error('Error al guardar nombre del cliente:', err);
+            this.showNotification(err.message || 'Error al guardar', 'error');
         }
     }
 
