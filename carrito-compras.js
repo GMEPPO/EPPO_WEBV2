@@ -9540,7 +9540,7 @@ function addPreviousBudgetProductToCart(dataJson) {
         price: precioGuardado,
         basePrice: product.precio,
         originalPrice: precioGuardado,
-        manualPrice: true,
+        manualPrice: false,
         image: product.foto,
         quantity,
         specs: window.cartManager.getProductSpecs(product),
