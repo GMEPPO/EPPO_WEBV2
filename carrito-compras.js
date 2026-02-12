@@ -10154,7 +10154,7 @@ async function sendProposalToSupabase() {
     // Verificar si estamos editando una propuesta existente
     const isEditing = window.cartManager.editingProposalId !== null;
     
-    let clientName, commercialName, proposalDate, proposalCountry, clientNumber;
+    let clientName, commercialName, proposalDate, proposalCountry, clientNumber, reposicaoValue;
 
     if (isEditing) {
         // Si se está editando, usar los datos existentes de la propuesta
@@ -10162,6 +10162,7 @@ async function sendProposalToSupabase() {
         commercialName = window.cartManager.editingProposalData?.nombre_comercial || '';
         proposalDate = window.cartManager.editingProposalData?.fecha_inicial || '';
         clientNumber = window.cartManager.editingProposalData?.numero_cliente || '0';
+        reposicaoValue = window.cartManager.editingProposalData?.reposicao === true ? 'true' : 'false';
         // Para ediciones, obtener el país desde el campo pais de la propuesta o usar el idioma actual
         // Para ediciones, obtener el país desde el campo pais de la propuesta
         const paisFromData = window.cartManager.editingProposalData?.pais;
@@ -10188,7 +10189,7 @@ async function sendProposalToSupabase() {
         }
 
         const reposicaoInput = document.getElementById('reposicaoInput');
-        const reposicaoValue = reposicaoInput ? reposicaoInput.value : '';
+        reposicaoValue = reposicaoInput ? reposicaoInput.value : '';
 
         // Validar campos obligatorios solo para nuevas propuestas
         if (!clientName || !commercialName || !proposalDate || !proposalCountry || reposicaoValue === '') {
