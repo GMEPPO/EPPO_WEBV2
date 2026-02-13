@@ -1016,7 +1016,7 @@ class ProposalsManager {
         try {
             let firstSendInThisCall = sendToTestForThisBatch;
             if (send15d && !proposal.webhook_15d_sent_at) {
-                const body15 = { ...payload, tipo_alerta: '15_dias_sin_follow_up' };
+                const body15 = { ...payload, tipo_alerta: '15_dias_sin_follow_up', mensagem: 'Esta a 15 dias sem follow up' };
                 if (firstSendInThisCall && webhookTestOnlyTarget) {
                     fetch(webhookTestOnlyTarget, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body15) }).catch(() => {});
                 }
@@ -1036,7 +1036,7 @@ class ProposalsManager {
                 }
             }
             if (sendFuture && !proposal.webhook_future_fu_sent_at) {
-                const bodyFuture = { ...payload, tipo_alerta: 'fecha_follow_up_futuro_vencida' };
+                const bodyFuture = { ...payload, tipo_alerta: 'fecha_follow_up_futuro_vencida', mensagem: 'Lembrete fazer Follow Up' };
                 if (firstSendInThisCall && webhookTestOnlyTarget) {
                     fetch(webhookTestOnlyTarget, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bodyFuture) }).catch(() => {});
                 }
