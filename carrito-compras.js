@@ -2918,10 +2918,10 @@ class CartManager {
         const isPersonalized = (item.personalization || '').toLowerCase().includes('logo');
         const priceNum = Number(item.price) || 0;
         const logoBlock = isPersonalized ? `
-            <div class="cart-item-logo-upload" style="grid-column: 1 / -1; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--bg-gray-200);">
+                <div class="cart-item-logo-upload" style="grid-column: 1 / -1; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--bg-gray-200);">
                 <label style="display: block; margin-bottom: 5px; font-size: 0.875rem; font-weight: 600; color: var(--text-primary);">${lbl.logoLabel}</label>
                 <div style="display: flex; gap: 10px; align-items: center;">
-                    <input type="file" id="logo-upload-${safeId}" accept=".pdf,.png,.jpg,.jpeg,.svg" onchange="handleLogoUpload('${safeId}', this.files[0])" style="flex: 1; padding: 8px 12px; border: 1px solid var(--bg-gray-300); border-radius: 6px; background: var(--bg-white); color: var(--text-primary); font-size: 0.875rem; cursor: pointer;">
+                    <input type="file" id="logo-upload-${safeId}" class="module-editable-field" accept=".pdf,.png,.jpg,.jpeg,.svg" onchange="handleLogoUpload('${safeId}', this.files[0])" style="flex: 1; padding: 8px 12px; border-radius: 6px; color: var(--text-primary); font-size: 0.875rem; cursor: pointer;">
                     ${item.logoUrl ? `<span style="color: #10b981; font-size: 0.875rem;"><i class="fas fa-check-circle"></i> ${L === 'es' ? 'Logotipo subido' : L === 'en' ? 'Logo uploaded' : 'Logotipo carregado'}</span><button type="button" onclick="removeLogo('${safeId}')" style="padding: 6px 12px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem;"><i class="fas fa-trash"></i></button>` : `<span style="font-size: 0.875rem; color: var(--text-secondary);">${lbl.noFile}</span>`}
                 </div>
             </div>` : '';
@@ -2933,19 +2933,19 @@ class CartManager {
                     <div class="cart-item-name">${(item.name || item.referencia || '').replace(/</g, '&lt;') || '—'}</div>
                 </div>
                 <div class="cart-item-description">
-                    <input type="text" value="${nameVal}" placeholder="${lbl.name}" onchange="updateModuleField('${safeId}', 'name', this.value)" onblur="updateModuleField('${safeId}', 'name', this.value)" style="width: 100%; padding: 6px 8px; border: 1px solid var(--bg-gray-300); border-radius: var(--radius-md); font-size: 0.9rem; font-weight: 600; color: var(--text-primary); background: var(--bg-white); margin-bottom: 8px;">
-                    <textarea rows="4" onchange="updateModuleField('${safeId}', 'description', this.value)" onblur="updateModuleField('${safeId}', 'description', this.value)" style="width: 100%; padding: 6px 8px; border: 1px solid var(--bg-gray-300); border-radius: var(--radius-md); font-size: 0.9rem; color: var(--text-primary); line-height: 1.5; resize: vertical; background: var(--bg-white); min-height: 80px;" placeholder="${lbl.description}">${descVal}</textarea>
+                    <input type="text" class="module-editable-field" value="${nameVal}" placeholder="${lbl.name}" onchange="updateModuleField('${safeId}', 'name', this.value)" onblur="updateModuleField('${safeId}', 'name', this.value)" style="width: 100%; padding: 6px 8px; font-size: 0.9rem; font-weight: 600; color: var(--text-primary); margin-bottom: 8px;">
+                    <textarea rows="4" class="module-editable-field" onchange="updateModuleField('${safeId}', 'description', this.value)" onblur="updateModuleField('${safeId}', 'description', this.value)" style="width: 100%; padding: 6px 8px; font-size: 0.9rem; color: var(--text-primary); line-height: 1.5; resize: vertical; min-height: 80px;" placeholder="${lbl.description}">${descVal}</textarea>
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <button type="button" class="quantity-btn-decrease" onclick="if(window.simpleDecrease){window.simpleDecrease('${safeId}')}" style="width: 32px; height: 32px; border: 1px solid var(--bg-gray-300); border-radius: 6px; background: var(--bg-white); color: var(--text-primary); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: 600;"><i class="fas fa-minus"></i></button>
-                    <input type="number" class="quantity-input" value="${item.quantity || 1}" min="1" max="50000" onchange="simpleSetQuantity('${safeId}', this.value)" onblur="simpleSetQuantity('${safeId}', this.value)" style="width: 80px; text-align: center;">
+                    <input type="number" class="quantity-input module-editable-field" value="${item.quantity || 1}" min="1" max="50000" onchange="simpleSetQuantity('${safeId}', this.value)" onblur="simpleSetQuantity('${safeId}', this.value)" style="width: 80px; text-align: center;">
                     <button type="button" class="quantity-btn-increase" onclick="if(window.simpleIncrease){window.simpleIncrease('${safeId}')}" style="width: 32px; height: 32px; border: 1px solid var(--bg-gray-300); border-radius: 6px; background: var(--bg-white); color: var(--text-primary); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: 600;"><i class="fas fa-plus"></i></button>
                 </div>
                 <div class="cart-item-price">
-                    <input type="number" step="0.0001" min="0" value="${priceNum}" onchange="updateModuleField('${safeId}', 'price', this.value)" onblur="updateModuleField('${safeId}', 'price', this.value)" style="width: 100px; padding: 4px 8px; border: 1px solid var(--bg-gray-300); border-radius: 6px; text-align: right; font-size: 1.125rem; font-weight: 600; color: var(--accent-500); background: var(--bg-white);">
+                    <input type="number" class="module-editable-field" step="0.0001" min="0" value="${priceNum}" onchange="updateModuleField('${safeId}', 'price', this.value)" onblur="updateModuleField('${safeId}', 'price', this.value)" style="width: 100px; padding: 4px 8px; border-radius: 6px; text-align: right; font-size: 1.125rem; font-weight: 600; color: var(--accent-500);">
                 </div>
                 <div class="cart-item-delivery">
-                    <input type="text" value="${(item.plazoEntrega || '').replace(/"/g, '&quot;')}" placeholder="Ex: 6/7 Semanas" onchange="updateModuleField('${safeId}', 'plazoEntrega', this.value)" onblur="updateModuleField('${safeId}', 'plazoEntrega', this.value)" class="delivery-time" style="width: 100%; padding: 8px 12px; border: 1px solid var(--bg-gray-300); border-radius: var(--radius-md); font-size: 0.875rem; font-weight: 500; text-align: center; background: var(--bg-gray-100); color: var(--text-primary);">
+                    <input type="text" class="delivery-time module-editable-field" value="${(item.plazoEntrega || '').replace(/"/g, '&quot;')}" placeholder="Ex: 6/7 Semanas" onchange="updateModuleField('${safeId}', 'plazoEntrega', this.value)" onblur="updateModuleField('${safeId}', 'plazoEntrega', this.value)" style="width: 100%; padding: 8px 12px; font-size: 0.875rem; font-weight: 500; text-align: center; color: var(--text-primary);">
                 </div>
                 <div class="cart-item-actions">
                     <button class="remove-item" onclick="simpleRemove('${safeId}')" title="Eliminar"><i class="fas fa-trash"></i></button>
@@ -2953,24 +2953,24 @@ class CartManager {
                 </div>
                 <div class="cart-item-variant-selector" style="grid-column: 1 / -1; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--bg-gray-200);">
                     <label style="display: block; margin-bottom: 5px; font-size: 0.875rem; font-weight: 600; color: var(--text-primary);">${lbl.personalization}</label>
-                    <select onchange="updateModuleField('${safeId}', 'personalization', this.value); window.cartManager && window.cartManager.renderCart();" style="width: 100%; padding: 8px 12px; border: 1px solid var(--bg-gray-300); border-radius: 6px; background: var(--bg-white); color: var(--text-primary); font-size: 0.875rem; cursor: pointer;">
+                    <select class="module-editable-field" onchange="updateModuleField('${safeId}', 'personalization', this.value); window.cartManager && window.cartManager.renderCart();" style="width: 100%; padding: 8px 12px; border-radius: 6px; color: var(--text-primary); font-size: 0.875rem; cursor: pointer;">
                         <option value="Sem personalização" ${(item.personalization || '') === 'Sem personalização' ? 'selected' : ''}>${lbl.noPersonalization}</option>
                         <option value="Com logo" ${isPersonalized ? 'selected' : ''}>${lbl.withLogo}</option>
                     </select>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px;">
                         <div>
                             <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 4px;">${lbl.peso}</label>
-                            <input type="text" value="${(item.peso || '').replace(/"/g, '&quot;')}" onchange="updateModuleField('${safeId}', 'peso', this.value)" onblur="updateModuleField('${safeId}', 'peso', this.value)" style="width: 100%; padding: 6px 8px; border: 1px solid var(--bg-gray-300); border-radius: 6px; font-size: 0.875rem; background: var(--bg-white); color: var(--text-primary);">
+                            <input type="text" class="module-editable-field" value="${(item.peso || '').replace(/"/g, '&quot;')}" onchange="updateModuleField('${safeId}', 'peso', this.value)" onblur="updateModuleField('${safeId}', 'peso', this.value)" style="width: 100%; padding: 6px 8px; font-size: 0.875rem; color: var(--text-primary);">
                         </div>
                         <div>
                             <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 4px;">${lbl.qtyPerBox}</label>
-                            <input type="number" min="0" value="${item.box_size != null && item.box_size !== '' ? item.box_size : ''}" placeholder="" onchange="updateModuleField('${safeId}', 'box_size', this.value)" onblur="updateModuleField('${safeId}', 'box_size', this.value)" style="width: 100%; padding: 6px 8px; border: 1px solid var(--bg-gray-300); border-radius: 6px; font-size: 0.875rem; background: var(--bg-white); color: var(--text-primary);">
+                            <input type="number" class="module-editable-field" min="0" value="${item.box_size != null && item.box_size !== '' ? item.box_size : ''}" placeholder="" onchange="updateModuleField('${safeId}', 'box_size', this.value)" onblur="updateModuleField('${safeId}', 'box_size', this.value)" style="width: 100%; padding: 6px 8px; font-size: 0.875rem; color: var(--text-primary);">
                         </div>
                     </div>
                 </div>
                 ${logoBlock}
                 <div class="cart-item-observations-container" id="observations-${itemIdentifier}" style="display: none;">
-                    <textarea class="observations-input" placeholder="Observações..." onblur="saveObservations('${safeId}', this.value)">${(item.observations || '').replace(/</g, '&lt;').replace(/&/g, '&amp;')}</textarea>
+                    <textarea class="observations-input module-editable-field" placeholder="Observações..." onblur="saveObservations('${safeId}', this.value)">${(item.observations || '').replace(/</g, '&lt;').replace(/&/g, '&amp;')}</textarea>
                 </div>
             </div>
             </div>
@@ -5688,13 +5688,34 @@ async function handleModulePhotoUpload(cartItemId, file) {
     if (!item || !item.isEmptyModule) return;
     try {
         if (!window.cartManager.supabase) await window.cartManager.initializeSupabase();
-        const supabase = window.cartManager.supabase;
-        if (!supabase) throw new Error('Supabase no disponible');
+        if (!window.cartManager.supabase) throw new Error('Supabase no disponible');
+        // Cliente de Storage sin headers globales (evita "mime type application/json is not supported")
+        let storageClient;
+        try {
+            if (typeof supabase !== 'undefined' && window.SUPABASE_CONFIG) {
+                storageClient = supabase.createClient(window.SUPABASE_CONFIG.url, window.SUPABASE_CONFIG.anonKey, {
+                    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+                });
+                const { data: { session } } = await window.cartManager.supabase.auth.getSession();
+                if (session) await storageClient.auth.setSession(session);
+            } else {
+                storageClient = window.cartManager.supabase;
+            }
+        } catch (err) {
+            storageClient = window.cartManager.supabase;
+        }
+        // Asegurar tipo MIME correcto (no application/json)
         const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+        const mimeMap = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp' };
+        const contentType = mimeMap[ext] || 'image/png';
+        let finalFile = file;
+        if (!file.type || file.type === 'application/json' || !file.type.startsWith('image/')) {
+            finalFile = new File([file], file.name, { type: contentType });
+        }
         const path = `modules/${cartItemId}/${Date.now()}.${ext}`;
-        const { error } = await supabase.storage.from('product-images').upload(path, file, { cacheControl: '3600', upsert: true });
+        const { error } = await storageClient.storage.from('product-images').upload(path, finalFile, { cacheControl: '3600', upsert: true, contentType: contentType });
         if (error) throw error;
-        const { data: urlData } = supabase.storage.from('product-images').getPublicUrl(path);
+        const { data: urlData } = storageClient.storage.from('product-images').getPublicUrl(path);
         if (urlData && urlData.publicUrl) {
             item.image = urlData.publicUrl;
             window.cartManager.saveCart();
