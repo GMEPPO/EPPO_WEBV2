@@ -928,9 +928,9 @@ class ProposalsManager {
     }
 
     /**
-     * Determina si una propuesta está en estado de alerta (sin follow-up a 15d o fecha futuro vencida).
+     * Determina si una propuesta está en estado de alerta (sin follow-up a 15d, fecha futuro vencida, o en Aguarda Dossier/Pagamento).
      * Solo aplica si el estado es: Proposta Enviada, Follow up, Aguarda Aprovação de Dossier o Aguarda Pagamento.
-     * @returns {{ isAlert: boolean, is15dOverdue: boolean, isFutureFuOverdue: boolean }}
+     * @returns {{ isAlert: boolean, is15dOverdue: boolean, isFutureFuOverdue: boolean, isAguardaDossierAlert: boolean, isAguardaPagamentoAlert: boolean }}
      */
     isProposalInFollowUpAlert(proposal) {
         const estado = (proposal.estado_propuesta || '').toLowerCase();
@@ -940,7 +940,7 @@ class ProposalsManager {
         const isAguardaPagamento = estado.includes('aguarda') && estado.includes('pagamento');
         const isEligibleStatus = isPropostaEnviada || isFollowUp || isAguardaAprovacaoDossier || isAguardaPagamento;
         if (!isEligibleStatus) {
-            return { isAlert: false, is15dOverdue: false, isFutureFuOverdue: false };
+            return { isAlert: false, is15dOverdue: false, isFutureFuOverdue: false, isAguardaDossierAlert: false, isAguardaPagamentoAlert: false };
         }
 
         const today = new Date();
@@ -955,8 +955,11 @@ class ProposalsManager {
             return d >= today;
         });
         if (hasFutureFollowUp) {
-            return { isAlert: false, is15dOverdue: false, isFutureFuOverdue: false };
+            return { isAlert: false, is15dOverdue: false, isFutureFuOverdue: false, isAguardaDossierAlert: false, isAguardaPagamentoAlert: false };
         }
+
+        const isAguardaDossierAlert = isAguardaAprovacaoDossier;
+        const isAguardaPagamentoAlert = isAguardaPagamento;
 
         const fechaEnvio = proposal.fecha_envio_propuesta || proposal.fecha_propuesta || proposal.fecha_inicial;
         const fechaEnvioDate = fechaEnvio ? new Date(fechaEnvio) : null;
@@ -981,14 +984,27 @@ class ProposalsManager {
         }
 
         return {
-            isAlert: is15dOverdue || isFutureFuOverdue,
+            isAlert: is15dOverdue || isFutureFuOverdue || isAguardaDossierAlert || isAguardaPagamentoAlert,
             is15dOverdue,
-            isFutureFuOverdue
+            isFutureFuOverdue,
+            isAguardaDossierAlert,
+            isAguardaPagamentoAlert
         };
     }
 
     /**
-     * Envía webhook de alerta follow-up si corresponde y actualiza flags para no spamear.
+     * Indica si se puede enviar webhook hoy: no se envió aún o se envió en un día anterior (máx 1 por propuesta por día).
+     */
+    _canSendFollowUpWebhookToday(sentAt) {
+        if (!sentAt) return true;
+        const sent = new Date(sentAt);
+        const today = new Date();
+        return sent.getFullYear() !== today.getFullYear() || sent.getMonth() !== today.getMonth() || sent.getDate() !== today.getDate();
+    }
+
+    /**
+     * Envía webhook de alerta follow-up si corresponde. Máximo un webhook por tipo por propuesta por día;
+     * al día siguiente, si la propuesta sigue en alerta, se vuelve a enviar.
      * Usa proxy (Vercel API route) para evitar CORS al llamar a n8n desde el navegador.
      */
     async sendFollowUpAlertWebhookIfNeeded(proposal, alert, sendToTestForThisBatch = false) {
@@ -1001,7 +1017,30 @@ class ProposalsManager {
 
         const send15d = alert.is15dOverdue;
         const sendFuture = alert.isFutureFuOverdue;
+        const sendAguardaDossier = alert.isAguardaDossierAlert;
+        const sendAguardaPagamento = alert.isAguardaPagamentoAlert;
         const now = new Date().toISOString();
+        // Máximo un webhook de follow-up por propuesta por día (si ya se envió 15d o future hoy, no enviar otro).
+        const canSendToday = this._canSendFollowUpWebhookToday(proposal.webhook_15d_sent_at) && this._canSendFollowUpWebhookToday(proposal.webhook_future_fu_sent_at);
+
+        // Prioridad: Aguarda Dossier > Aguarda Pagamento > 15 días sin follow-up > Fecha futuro vencida
+        let tipoAlerta = '';
+        let mensagem = '';
+        if (sendAguardaDossier) {
+            tipoAlerta = 'aguarda_aprovacao_dossier';
+            mensagem = 'Aguarda aprovação de dossier';
+        } else if (sendAguardaPagamento) {
+            tipoAlerta = 'aguarda_aprovacao_pagamento';
+            mensagem = 'Aguarda aprovação de pagamento';
+        } else if (send15d) {
+            tipoAlerta = '15_dias_sin_follow_up';
+            mensagem = 'Esta a 15 dias sem follow up';
+        } else if (sendFuture) {
+            tipoAlerta = 'fecha_follow_up_futuro_vencida';
+            mensagem = 'Lembrete fazer Follow Up';
+        }
+
+        const shouldSend = canSendToday && (tipoAlerta && mensagem);
 
         // Proxy en mismo origen (evita CORS). Ruta con .json para que Vercel no la mande a index.html.
         const origin = typeof window !== 'undefined' && window.location && window.location.origin;
@@ -1009,51 +1048,28 @@ class ProposalsManager {
         const webhookTarget = useProxy ? (origin + '/api/follow-up-webhook.json') : null;
         const webhookTestOnlyTarget = useProxy ? (origin + '/api/follow-up-webhook-test-only') : null;
 
-        if (!webhookTarget) {
+        if (!webhookTarget || !shouldSend) {
             return;
         }
 
         try {
-            let firstSendInThisCall = sendToTestForThisBatch;
-            if (send15d && !proposal.webhook_15d_sent_at) {
-                const body15 = { ...payload, tipo_alerta: '15_dias_sin_follow_up', mensagem: 'Esta a 15 dias sem follow up' };
-                if (firstSendInThisCall && webhookTestOnlyTarget) {
-                    fetch(webhookTestOnlyTarget, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body15) }).catch(() => {});
-                }
-                const res = await fetch(webhookTarget, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Send-To-Test': firstSendInThisCall ? '1' : '0'
-                    },
-                    body: JSON.stringify(body15)
-                });
-                firstSendInThisCall = false;
-                var json15 = null;
-                if (res.ok) try { json15 = await res.json(); } catch (e) {}
-                if (res.ok && json15 && json15.ok && this.supabase) {
-                    await this.supabase.from('presupuestos').update({ webhook_15d_sent_at: now }).eq('id', proposal.id);
-                }
+            const firstSendInThisCall = sendToTestForThisBatch;
+            const body = { ...payload, tipo_alerta: tipoAlerta, mensagem: mensagem };
+            if (firstSendInThisCall && webhookTestOnlyTarget) {
+                fetch(webhookTestOnlyTarget, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).catch(() => {});
             }
-            if (sendFuture && !proposal.webhook_future_fu_sent_at) {
-                const bodyFuture = { ...payload, tipo_alerta: 'fecha_follow_up_futuro_vencida', mensagem: 'Lembrete fazer Follow Up' };
-                if (firstSendInThisCall && webhookTestOnlyTarget) {
-                    fetch(webhookTestOnlyTarget, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bodyFuture) }).catch(() => {});
-                }
-                const res = await fetch(webhookTarget, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Send-To-Test': firstSendInThisCall ? '1' : '0'
-                    },
-                    body: JSON.stringify(bodyFuture)
-                });
-                firstSendInThisCall = false;
-                var jsonFuture = null;
-                if (res.ok) try { jsonFuture = await res.json(); } catch (e) {}
-                if (res.ok && jsonFuture && jsonFuture.ok && this.supabase) {
-                    await this.supabase.from('presupuestos').update({ webhook_future_fu_sent_at: now }).eq('id', proposal.id);
-                }
+            const res = await fetch(webhookTarget, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Send-To-Test': firstSendInThisCall ? '1' : '0'
+                },
+                body: JSON.stringify(body)
+            });
+            var json = null;
+            if (res.ok) try { json = await res.json(); } catch (e) {}
+            if (res.ok && json && json.ok && this.supabase) {
+                await this.supabase.from('presupuestos').update({ webhook_15d_sent_at: now }).eq('id', proposal.id);
             }
         } catch (e) {
             console.warn('Error enviando webhook follow-up:', e);
