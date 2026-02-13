@@ -135,6 +135,7 @@ class CartManager {
                 estado_propuesta: proposal.estado_propuesta,
                 codigo_propuesta: proposal.codigo_propuesta || null,
                 numero_cliente: proposal.numero_cliente || '0',
+                tipo_cliente: proposal.tipo_cliente || '',
                 articulos: articulos || [],
                 modo_200_plus: proposal.modo_200_plus || proposal.modo_200 || false
             };
@@ -845,6 +846,10 @@ class CartManager {
         if (clientNumberInput) {
             // Si no hay número de cliente o es null, usar "0"
             clientNumberInput.value = this.editingProposalData.numero_cliente || '0';
+        }
+        const tipoClienteInput = document.getElementById('tipoClienteInput');
+        if (tipoClienteInput && this.editingProposalData.tipo_cliente) {
+            tipoClienteInput.value = this.editingProposalData.tipo_cliente || '';
         }
         // Rellenar también la barra de cliente (visible en la página)
         const proposalClientInput = document.getElementById('proposalClientNameInput');
@@ -9297,23 +9302,30 @@ async function openSendProposalModal() {
     }
     document.getElementById('proposalCountryInput').value = '';
     const clientNumberInput = document.getElementById('clientNumberInput');
-    if (clientNumberInput) {
-        const clientNameForNumber = (mainClientInput && mainClientInput.value.trim()) ? mainClientInput.value.trim() : '';
-        if (clientNameForNumber && window.cartManager?.supabase) {
-            try {
-                const { data: presupuestos } = await window.cartManager.supabase
-                    .from('presupuestos')
-                    .select('numero_cliente')
-                    .ilike('nombre_cliente', clientNameForNumber)
-                    .limit(1);
-                const presupuesto = (presupuestos && presupuestos[0]) ? presupuestos[0] : null;
-                clientNumberInput.value = (presupuesto && presupuesto.numero_cliente != null) ? String(presupuesto.numero_cliente) : '0';
-            } catch (_) {
-                clientNumberInput.value = '0';
-            }
-        } else {
-            clientNumberInput.value = '0';
+    const tipoClienteInput = document.getElementById('tipoClienteInput');
+    const clientNameForNumber = (mainClientInput && mainClientInput.value.trim()) ? mainClientInput.value.trim() : '';
+    // Si estamos editando, usar datos de la propuesta actual
+    if (window.cartManager?.editingProposalId && window.cartManager?.editingProposalData) {
+        if (clientNumberInput) clientNumberInput.value = window.cartManager.editingProposalData.numero_cliente || '0';
+        if (tipoClienteInput) tipoClienteInput.value = window.cartManager.editingProposalData.tipo_cliente || '';
+    } else if (clientNameForNumber && window.cartManager?.supabase) {
+        try {
+            const { data: presupuestos } = await window.cartManager.supabase
+                .from('presupuestos')
+                .select('numero_cliente, tipo_cliente')
+                .ilike('nombre_cliente', clientNameForNumber)
+                .order('created_at', { ascending: false })
+                .limit(1);
+            const presupuesto = (presupuestos && presupuestos[0]) ? presupuestos[0] : null;
+            if (clientNumberInput) clientNumberInput.value = (presupuesto && presupuesto.numero_cliente != null) ? String(presupuesto.numero_cliente) : '0';
+            if (tipoClienteInput) tipoClienteInput.value = (presupuesto && presupuesto.tipo_cliente) ? String(presupuesto.tipo_cliente).trim() : '';
+        } catch (_) {
+            if (clientNumberInput) clientNumberInput.value = '0';
+            if (tipoClienteInput) tipoClienteInput.value = '';
         }
+    } else {
+        if (clientNumberInput) clientNumberInput.value = '0';
+        if (tipoClienteInput) tipoClienteInput.value = '';
     }
 
     // Cargar clientes y comerciales existentes para autocompletado
@@ -9918,6 +9930,12 @@ function setupClientAutocomplete() {
             suggestionsContainer.style.display = 'none';
         }
     });
+
+    // Al salir del campo, rellenar número y tipo de cliente si existe una propuesta con ese nombre
+    newInput.addEventListener('blur', function() {
+        const name = (newInput.value || '').trim();
+        if (name.length >= 2) fillClientDataFromPreviousProposal(name);
+    });
 }
 
 /**
@@ -9926,6 +9944,32 @@ function setupClientAutocomplete() {
 function highlightMatch(text, query) {
     const regex = new RegExp(`(${query})`, 'gi');
     return text.replace(regex, '<strong style="color: var(--accent-500, #10b981);">$1</strong>');
+}
+
+/**
+ * Rellenar número de cliente y tipo de cliente desde la última propuesta con ese nombre de cliente
+ */
+async function fillClientDataFromPreviousProposal(clientName) {
+    const name = (clientName || '').trim();
+    if (!name || !window.cartManager?.supabase) return;
+    try {
+        const { data: presupuestos } = await window.cartManager.supabase
+            .from('presupuestos')
+            .select('numero_cliente, tipo_cliente')
+            .ilike('nombre_cliente', name)
+            .order('created_at', { ascending: false })
+            .limit(1);
+        const p = (presupuestos && presupuestos[0]) ? presupuestos[0] : null;
+        const clientNumberInput = document.getElementById('clientNumberInput');
+        const tipoClienteInput = document.getElementById('tipoClienteInput');
+        if (clientNumberInput) clientNumberInput.value = (p && p.numero_cliente != null) ? String(p.numero_cliente) : '0';
+        if (tipoClienteInput) tipoClienteInput.value = (p && p.tipo_cliente) ? String(p.tipo_cliente).trim() : '';
+    } catch (_) {
+        const clientNumberInput = document.getElementById('clientNumberInput');
+        const tipoClienteInput = document.getElementById('tipoClienteInput');
+        if (clientNumberInput) clientNumberInput.value = '0';
+        if (tipoClienteInput) tipoClienteInput.value = '';
+    }
 }
 
 /**
@@ -9941,6 +9985,8 @@ function selectClient(clientName) {
     if (suggestionsContainer) {
         suggestionsContainer.style.display = 'none';
     }
+    // Rellenar número y tipo de cliente desde la última propuesta de ese cliente
+    fillClientDataFromPreviousProposal(clientName);
     
     // Enfocar el siguiente campo
     const commercialInput = document.getElementById('commercialNameInput');
@@ -10502,6 +10548,8 @@ async function sendProposalToSupabase() {
             const paisCompleto = proposalCountry === 'es' ? 'España' : 'Portugal';
             
             const reposicao = reposicaoValue === 'true';
+            const tipoClienteEl = document.getElementById('tipoClienteInput');
+            const tipoCliente = (tipoClienteEl && tipoClienteEl.value && tipoClienteEl.value.trim()) ? tipoClienteEl.value.trim() : null;
 
             const presupuestoData = {
                 nombre_cliente: clientName,
@@ -10511,6 +10559,7 @@ async function sendProposalToSupabase() {
                 codigo_propuesta: codigoPropuesta,
                 pais: paisCompleto,
                 numero_cliente: clientNumber || '0',
+                tipo_cliente: tipoCliente,
                 modo_200_plus: window.cartManager?.modo200 || false,
                 responsavel: responsableName, // Guardar el nombre del usuario autenticado en responsavel
                 version: 1, // Inicializar con versión 1
@@ -10826,6 +10875,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 proposalDate: 'Data do Pedido *',
                 proposalCountry: 'País *',
                 clientNumber: 'Número de Cliente *',
+                tipoCliente: 'Tipo de Cliente',
                 reposicao: 'É uma reposição? *',
                 reposicaoNo: 'Não',
                 reposicaoSim: 'Sim',
@@ -10839,6 +10889,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 proposalDate: 'Fecha del Pedido *',
                 proposalCountry: 'País *',
                 clientNumber: 'Número de Cliente *',
+                tipoCliente: 'Tipo de Cliente',
                 reposicao: '¿Es una reposición? *',
                 reposicaoNo: 'No',
                 reposicaoSim: 'Sí',
@@ -10852,6 +10903,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 proposalDate: 'Order Date *',
                 proposalCountry: 'Country *',
                 clientNumber: 'Client Number',
+                tipoCliente: 'Client Type',
                 reposicao: 'Is this a restock/reposition? *',
                 reposicaoNo: 'No',
                 reposicaoSim: 'Yes',
@@ -10868,6 +10920,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const proposalDateLabel = document.getElementById('proposal-date-label');
         const proposalCountryLabel = document.getElementById('proposal-country-label');
         const clientNumberLabel = document.getElementById('client-number-label');
+        const tipoClienteLabel = document.getElementById('tipo-cliente-label');
         const reposicaoLabel = document.getElementById('reposicao-label');
         const reposicaoNoOpt = document.getElementById('reposicao-no-option');
         const reposicaoSiOpt = document.getElementById('reposicao-si-option');
@@ -10880,6 +10933,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (proposalDateLabel) proposalDateLabel.textContent = t.proposalDate;
         if (proposalCountryLabel) proposalCountryLabel.textContent = t.proposalCountry;
         if (clientNumberLabel) clientNumberLabel.textContent = t.clientNumber;
+        if (tipoClienteLabel) tipoClienteLabel.textContent = t.tipoCliente;
         if (reposicaoLabel) reposicaoLabel.textContent = t.reposicao;
         if (reposicaoNoOpt) reposicaoNoOpt.textContent = t.reposicaoNo;
         if (reposicaoSiOpt) reposicaoSiOpt.textContent = t.reposicaoSim;
