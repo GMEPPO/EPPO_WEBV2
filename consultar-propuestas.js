@@ -1007,7 +1007,7 @@ class ProposalsManager {
         const origin = typeof window !== 'undefined' && window.location && window.location.origin;
         const useProxy = origin && origin !== 'null' && !origin.startsWith('file');
         const webhookTarget = useProxy ? (origin + '/api/follow-up-webhook.json') : null;
-        const webhookTestOnlyTarget = useProxy ? (origin + '/api/follow-up-webhook-test-only.json') : null;
+        const webhookTestOnlyTarget = useProxy ? (origin + '/api/follow-up-webhook-test-only') : null;
 
         if (!webhookTarget) {
             return;
