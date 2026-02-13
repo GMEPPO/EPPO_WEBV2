@@ -143,11 +143,10 @@ class CartManager {
             // Cargar estado del modo 200+ desde la propuesta (solo así se bloquea el precio al cambiar cantidad)
             this.modo200 = proposal.modo_200_plus || proposal.modo_200 || false;
 
-            // Cargar productos exclusivos del cliente si existe
-            await this.loadClientExclusiveProducts(proposal.nombre_cliente);
-            
-            // Recargar todos los productos para incluir los exclusivos del cliente
+            // Primero cargar todos los productos generales; después añadir los exclusivos del cliente
+            // (si se hace al revés, loadAllProducts sustituye allProducts y se pierden los exclusivos)
             await this.loadAllProducts();
+            await this.loadClientExclusiveProducts(proposal.nombre_cliente);
 
             console.log('📦 Productos cargados antes de cargar propuesta al carrito:', this.allProducts.length);
             console.log('📋 Artículos a cargar:', articulos ? articulos.length : 0);
@@ -629,12 +628,16 @@ class CartManager {
                 
                 // Obtener el orden del artículo (si existe en la BD, sino usar el índice)
                 const orden = articulo.orden !== undefined && articulo.orden !== null ? articulo.orden : index;
+                // Productos creados desde el módulo editable: mostrar como módulo y permitir duplicar con Ctrl+arrastrar
+                const isModuleProduct = product.categoria === 'pedido-especial' || product.is_custom === true;
+                const itemType = isModuleProduct ? 'special' : 'product';
                 
                 const cartItem = {
                     id: product.id,
                     cartItemId: cartItemId, // ID único para identificar este item específico en el carrito
                     order: orden, // Orden para drag and drop
-                    type: 'product',
+                    type: itemType,
+                    isEmptyModule: !!isModuleProduct,
                     name: articulo.nombre_articulo || product.nombre,
                     category: product.categoria,
                     // IMPORTANTE: Usar SIEMPRE el precio guardado en presupuestos_articulos
@@ -721,35 +724,61 @@ class CartManager {
                     lastItem.price = precioGuardado;
                 }
             } else {
-                // Si no se encuentra el producto, agregar como pedido especial
-                // IMPORTANTE: Incluir todos los datos del artículo guardado
+                // Si no se encuentra el producto en allProducts, buscar en BD (ej. producto creado desde módulo editable)
+                // y agregar como pedido especial / módulo editable con foto y precio guardados
                 const cartItemId = `cart-item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-                const precioGuardado = parseFloat(articulo.precio) || 0;
+                let precioGuardado = 0;
+                if (articulo.precio !== null && articulo.precio !== undefined && articulo.precio !== '') {
+                    const precioStr = String(articulo.precio).trim();
+                    precioGuardado = parseFloat(precioStr);
+                    if (isNaN(precioGuardado)) precioGuardado = Number(articulo.precio) || 0;
+                }
+                let productFromDB = null;
+                if (articulo.referencia_articulo && this.supabase) {
+                    try {
+                        const { data: productData, error: productError } = await this.supabase
+                            .from('products')
+                            .select('*')
+                            .eq('id', articulo.referencia_articulo)
+                            .single();
+                        if (!productError && productData) productFromDB = productData;
+                    } catch (_) {}
+                }
+                const isFromModule = productFromDB && (productFromDB.categoria === 'pedido-especial' || productFromDB.is_custom === true);
+                const descripcion = productFromDB ? (productFromDB.descripcion_es || productFromDB.descripcion_pt || productFromDB.descripcionEs || productFromDB.descripcionPt || '') : '';
+                const foto = productFromDB && (productFromDB.foto || productFromDB.photo) ? (productFromDB.foto || productFromDB.photo) : null;
                 
-                console.log('📦 Agregando como pedido especial:', {
+                console.log('📦 Agregando como pedido especial / módulo:', {
                     nombre: articulo.nombre_articulo,
                     precio: precioGuardado,
-                    cantidad: articulo.cantidad
+                    cantidad: articulo.cantidad,
+                    tieneFoto: !!foto,
+                    isFromModule
                 });
                 
+                const orden = articulo.orden !== undefined && articulo.orden !== null ? articulo.orden : this.cart.length;
                 this.cart.push({
                     id: articulo.referencia_articulo || `special-${Date.now()}`,
                     cartItemId: cartItemId,
+                    order: orden,
                     type: 'special',
-                    name: articulo.nombre_articulo || 'Producto sin nombre',
+                    isEmptyModule: !!isFromModule,
+                    name: articulo.nombre_articulo || productFromDB?.nombre || 'Producto sin nombre',
                     category: 'otros',
-                    price: precioGuardado, // Usar el precio guardado (puede ser 0 para "Sobre consulta")
+                    price: precioGuardado,
                     basePrice: precioGuardado,
                     quantity: parseInt(articulo.cantidad) || 1,
                     referencia: articulo.referencia_articulo || '',
                     plazoEntrega: articulo.plazo_entrega || '',
                     observations: articulo.observaciones || '',
-                    manualPrice: precioGuardado > 0, // Si tiene precio, es manual
-                    // Incluir datos adicionales si existen
-                    descripcionEs: '',
-                    descripcionPt: '',
-                    description: '',
-                    logoUrl: articulo.logo_url || null
+                    manualPrice: precioGuardado > 0,
+                    image: foto,
+                    descripcionEs: descripcion,
+                    descripcionPt: descripcion,
+                    description: descripcion,
+                    logoUrl: articulo.logo_url || null,
+                    box_size: productFromDB?.box_size ?? null,
+                    peso: productFromDB?.peso ?? null
                 });
             }
         }
@@ -2928,8 +2957,9 @@ class CartManager {
         return `
             <div class="cart-item-wrapper">
             <div class="cart-item" data-item-id="${itemIdentifier}" draggable="true" style="cursor: move;">
-                <div class="cart-item-image-container">
-                    ${item.image ? `<img src="${(item.image || '').replace(/"/g, '&quot;')}" alt="" class="cart-item-image" onclick="showImageModal('${(item.image || '').replace(/'/g, "\\'")}', '${nameVal || 'Módulo'}')" onerror="this.style.display='none'">` : `<label style="width: 100px; height: 100px; border: 2px dashed var(--bg-gray-300); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.75rem; color: var(--text-secondary); background: var(--bg-gray-100);"><input type="file" accept="image/*" style="display:none" onchange="handleModulePhotoUpload('${safeId}', this.files[0])"><i class="fas fa-plus" style="margin-right: 4px;"></i>${lbl.addPhoto}</label>`}
+                <div class="cart-item-image-container" style="position: relative;">
+                    <div class="cart-item-drag-handle" title="${L === 'es' ? 'Arrastrar para reordenar. Mantenga Ctrl y arrastre para duplicar.' : L === 'pt' ? 'Arrastrar para reordenar. Mantenha Ctrl e arraste para duplicar.' : 'Drag to reorder. Hold Ctrl and drag to duplicate.'}" style="position: absolute; left: 4px; top: 4px; z-index: 2; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); cursor: move; background: var(--bg-gray-100); border-radius: 4px;"><i class="fas fa-grip-vertical"></i></div>
+                    ${item.image ? `<img draggable="false" src="${(item.image || '').replace(/"/g, '&quot;')}" alt="" class="cart-item-image" onclick="showImageModal('${(item.image || '').replace(/'/g, "\\'")}', '${nameVal || 'Módulo'}')" onerror="this.style.display='none'">` : `<label style="width: 100px; height: 100px; border: 2px dashed var(--bg-gray-300); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.75rem; color: var(--text-secondary); background: var(--bg-gray-100);"><input type="file" accept="image/*" style="display:none" onchange="handleModulePhotoUpload('${safeId}', this.files[0])"><i class="fas fa-plus" style="margin-right: 4px;"></i>${lbl.addPhoto}</label>`}
                     <div class="cart-item-name">${(item.name || item.referencia || '').replace(/</g, '&lt;') || '—'}</div>
                 </div>
                 <div class="cart-item-description">
@@ -3401,6 +3431,7 @@ class CartManager {
                 draggedElement = item;
                 draggedIndex = index;
                 dragWithCtrl = e.ctrlKey === true;
+                item.setAttribute('data-drag-ctrl', e.ctrlKey ? '1' : '0');
                 item.style.opacity = '0.5';
                 e.dataTransfer.effectAllowed = dragWithCtrl ? 'copy' : 'move';
                 e.dataTransfer.setData('text/html', item.innerHTML);
@@ -3408,6 +3439,7 @@ class CartManager {
 
             item.addEventListener('dragend', (e) => {
                 item.style.opacity = '1';
+                item.removeAttribute('data-drag-ctrl');
                 dragWithCtrl = false;
                 // Remover clases de visualización
                 cartItems.forEach(cartItem => {
@@ -3448,7 +3480,8 @@ class CartManager {
                     });
                     
                     if (draggedCartItem && targetCartItem) {
-                        const shouldDuplicate = (e.ctrlKey || dragWithCtrl) && draggedCartItem.isEmptyModule === true;
+                        const ctrlWasPressed = (draggedElement && draggedElement.getAttribute('data-drag-ctrl') === '1') || e.ctrlKey || dragWithCtrl;
+                        const shouldDuplicate = ctrlWasPressed && !!draggedCartItem.isEmptyModule;
                         
                         if (shouldDuplicate) {
                             // Duplicar módulo: insertar copia en la posición soltada (misma información, nuevo cartItemId)
