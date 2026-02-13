@@ -3409,30 +3409,40 @@ class ProposalsManager {
     }
 
     /**
-     * Abrir modal Pedido de Encomenda: listar productos de la propuesta con foto, PHC, fornecedor, cantidad;
-     * si no tienen PHC, mostrar Referencia, Designação, Peso, Quantidade por caixa, Personalizado, Observaciones.
+     * Abrir modal Pedido de Encomenda: paso 1 = seleccionar productos a encomendar; paso 2 = formularios (qty, preço, desconto, ref/designação si sem PHC).
      */
     async openPedidoEncomendaModal(proposal) {
         const modal = document.getElementById('changeStatusPedidoEncomendaModal');
-        const listEl = document.getElementById('pedido-encomenda-products-list');
-        const subtitleEl = document.getElementById('pedido-encomenda-subtitle');
-        if (!modal || !listEl) return;
+        const stepSelect = document.getElementById('pedido-encomenda-step-select');
+        const stepForms = document.getElementById('pedido-encomenda-step-forms');
+        const selectListEl = document.getElementById('pedido-encomenda-select-list');
+        const subtitleSelectEl = document.getElementById('pedido-encomenda-subtitle-select');
+        if (!modal || !selectListEl) return;
 
         const lang = this.currentLanguage || 'pt';
-        const t = {
-            pt: { subtitle: 'Indique a quantidade a encomendar por produto. Produtos sem número PHC: preencha Referência, Designação, Peso, etc.', photo: 'Foto', phc: 'Nº PHC', fornecedor: 'Fornecedor', qty: 'Quantidade a encomendar', ref: 'Referência', designacao: 'Designação', peso: 'Peso', qtyCaixa: 'Quantidade por caixa', personalizado: 'Personalizado', personalizadoSim: 'Sim', personalizadoNao: 'Não', observacoes: 'Observações (personalizado)', dossierSection: 'Dossier / Logotipo', associateDossier: 'Incluir dossier da proposta neste artigo', hasLogo: 'Este artigo tem logotipo' },
-            es: { subtitle: 'Indique la cantidad a encomendar por producto. Productos sin número PHC: rellene Referencia, Designación, Peso, etc.', photo: 'Foto', phc: 'Nº PHC', fornecedor: 'Fornecedor', qty: 'Cantidad a encomendar', ref: 'Referencia', designacao: 'Designación', peso: 'Peso', qtyCaixa: 'Cantidad por caja', personalizado: 'Personalizado', personalizadoSim: 'Sí', personalizadoNao: 'No', observacoes: 'Observaciones (personalizado)', dossierSection: 'Dossier / Logotipo', associateDossier: 'Incluir dossier de la propuesta en este artículo', hasLogo: 'Este artículo tiene logotipo' },
-            en: { subtitle: 'Enter quantity to order per product. Products without PHC number: fill Reference, Designation, Weight, etc.', photo: 'Photo', phc: 'PHC No.', fornecedor: 'Supplier', qty: 'Qty to order', ref: 'Reference', designacao: 'Designation', peso: 'Weight', qtyCaixa: 'Qty per box', personalizado: 'Custom', personalizadoSim: 'Yes', personalizadoNao: 'No', observacoes: 'Notes (custom)', dossierSection: 'Dossier / Logo', associateDossier: 'Include proposal dossier with this item', hasLogo: 'This item has a logo' }
+        const tSelect = {
+            pt: { subtitle: 'Selecione os produtos da proposta que deseja encomendar. Depois preencha quantidade, preço de custo e desconto.', noProducts: 'Não há produtos nesta proposta.', continuar: 'Continuar', voltar: 'Voltar', guardar: 'Guardar' },
+            es: { subtitle: 'Seleccione los productos de la propuesta que desea encomendar. Después indique cantidad, precio de costo y descuento.', noProducts: 'No hay productos en esta propuesta.', continuar: 'Continuar', voltar: 'Volver', guardar: 'Guardar' },
+            en: { subtitle: 'Select the products from the proposal you want to order. Then fill quantity, cost price and discount.', noProducts: 'No products in this proposal.', continuar: 'Continue', voltar: 'Back', guardar: 'Save' }
         };
-        const L = t[lang] || t.pt;
-        if (subtitleEl) subtitleEl.textContent = L.subtitle;
+        const Ls = tSelect[lang] || tSelect.pt;
+        if (subtitleSelectEl) subtitleSelectEl.textContent = Ls.subtitle;
+        const continuarEl = document.getElementById('pedido-encomenda-continuar-text');
+        const backEl = document.getElementById('pedido-encomenda-back-text');
+        const saveEl = document.getElementById('pedido-encomenda-save-text');
+        if (continuarEl) continuarEl.textContent = Ls.continuar;
+        if (backEl) backEl.textContent = Ls.voltar;
+        if (saveEl) saveEl.textContent = Ls.guardar;
 
         modal.setAttribute('data-proposal-id', proposal.id);
-        listEl.innerHTML = '';
+        modal.removeAttribute('data-selected-articulo-ids');
+        selectListEl.innerHTML = '';
+        if (stepSelect) stepSelect.style.display = 'block';
+        if (stepForms) stepForms.style.display = 'none';
 
         const articulos = proposal.articulos || [];
         if (articulos.length === 0) {
-            listEl.innerHTML = '<p style="padding: var(--space-4); color: var(--text-secondary);">' + (lang === 'es' ? 'No hay productos en esta propuesta.' : lang === 'en' ? 'No products in this proposal.' : 'Não há produtos nesta proposta.') + '</p>';
+            selectListEl.innerHTML = '<p style="padding: var(--space-4); color: var(--text-secondary);">' + Ls.noProducts + '</p>';
             modal.classList.add('active');
             return;
         }
@@ -3442,6 +3452,7 @@ class ProposalsManager {
             this.allProducts.forEach(p => {
                 if (p.id) productMap[p.id] = p;
                 if (p.phc_ref) productMap[p.phc_ref] = p;
+                if (p.referencia_fornecedor) productMap[p.referencia_fornecedor] = p;
             });
         }
 
@@ -3453,13 +3464,105 @@ class ProposalsManager {
             const fotoUrl = (product && product.foto) ? product.foto : '';
             const articuloId = (articulo.id || `art-${index}`).toString().replace(/"/g, '');
             const nomeArt = (articulo.nombre_articulo || '-').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+            const qtyProposta = articulo.cantidad || 1;
+
+            const row = document.createElement('div');
+            row.style.cssText = 'display: flex; align-items: center; gap: 12px; padding: 12px; border-bottom: 1px solid var(--bg-gray-200);';
+            row.innerHTML = `
+                <input type="checkbox" id="pedido-select-${articuloId}" class="form-input" data-articulo-id="${articuloId}">
+                <div style="flex-shrink: 0;">
+                    ${fotoUrl ? `<img src="${fotoUrl.replace(/"/g, '&quot;')}" alt="" style="width: 56px; height: 56px; object-fit: contain; border-radius: 8px; background: var(--bg-gray-100);">` : `<div style="width: 56px; height: 56px; background: var(--bg-gray-200); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary);"><i class="fas fa-image"></i></div>`}
+                </div>
+                <div style="flex: 1; min-width: 0;">
+                    <div style="font-weight: 600; color: var(--text-primary);">${nomeArt}</div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary);">${hasPhc ? 'Nº PHC: ' + phcRef : (lang === 'es' ? 'Sin PHC' : lang === 'en' ? 'No PHC' : 'Sem PHC')} · ${(fornecedor || '-').replace(/</g, '&lt;')} · ${lang === 'es' ? 'Cant.' : lang === 'en' ? 'Qty' : 'Qtd'}: ${qtyProposta}</div>
+                </div>
+            `;
+            selectListEl.appendChild(row);
+        });
+
+        modal.classList.add('active');
+    }
+
+    /** Paso 1 → 2: leer productos seleccionados y mostrar formularios solo para esos. */
+    pedidoEncomendaGoToStep2() {
+        const modal = document.getElementById('changeStatusPedidoEncomendaModal');
+        const proposalId = modal?.getAttribute('data-proposal-id');
+        const proposal = this.allProposals.find(p => p.id === proposalId);
+        if (!proposal || !proposal.articulos || proposal.articulos.length === 0) return;
+
+        const selectedIds = [];
+        proposal.articulos.forEach((articulo, index) => {
+            const articuloId = (articulo.id || `art-${index}`).toString();
+            const cb = document.getElementById(`pedido-select-${articuloId}`);
+            if (cb && cb.checked) selectedIds.push(articulo.id != null ? articulo.id : articuloId);
+        });
+
+        const lang = this.currentLanguage || 'pt';
+        if (selectedIds.length === 0) {
+            this.showNotification(lang === 'es' ? 'Seleccione al menos un producto.' : lang === 'pt' ? 'Selecione pelo menos um produto.' : 'Select at least one product.', 'error');
+            return;
+        }
+
+        modal.setAttribute('data-selected-articulo-ids', JSON.stringify(selectedIds));
+        this._buildPedidoEncomendaFormStep(proposal, selectedIds);
+        document.getElementById('pedido-encomenda-step-select').style.display = 'none';
+        document.getElementById('pedido-encomenda-step-forms').style.display = 'block';
+    }
+
+    pedidoEncomendaBackToStep1() {
+        document.getElementById('pedido-encomenda-step-forms').style.display = 'none';
+        document.getElementById('pedido-encomenda-step-select').style.display = 'block';
+    }
+
+    /**
+     * Construye la lista de formularios del paso 2 solo para articulos seleccionados.
+     * Referência = referencia do fornecedor para productos sin PHC. Precio costo y % descuento obligatorios para todos.
+     */
+    _buildPedidoEncomendaFormStep(proposal, selectedArticuloIds) {
+        const listEl = document.getElementById('pedido-encomenda-products-list');
+        const subtitleEl = document.getElementById('pedido-encomenda-subtitle');
+        if (!listEl) return;
+
+        const lang = this.currentLanguage || 'pt';
+        const t = {
+            pt: { subtitle: 'Preencha todos os campos obrigatórios: quantidade, preço de custo e percentagem de desconto (0% mínimo). Sem PHC: Referência (fornecedor), Designação, Peso, etc.', photo: 'Foto', phc: 'Nº PHC', fornecedor: 'Fornecedor', qty: 'Quantidade a encomendar', ref: 'Referência (fornecedor)', designacao: 'Designação', peso: 'Peso', qtyCaixa: 'Quantidade por caixa', personalizado: 'Personalizado', personalizadoSim: 'Sim', personalizadoNao: 'Não', observacoes: 'Observações (personalizado)', dossierSection: 'Dossier / Logotipo', associateDossier: 'Incluir dossier da proposta neste artigo', hasLogo: 'Este artigo tem logotipo', precoCusto: 'Preço de custo', percDesconto: 'Percentagem de desconto (%)' },
+            es: { subtitle: 'Rellene todos los campos obligatorios: cantidad, precio de costo y porcentaje de descuento (mín. 0%). Sin PHC: Referencia (fornecedor), Designación, Peso, etc.', photo: 'Foto', phc: 'Nº PHC', fornecedor: 'Fornecedor', qty: 'Cantidad a encomendar', ref: 'Referencia (fornecedor)', designacao: 'Designación', peso: 'Peso', qtyCaixa: 'Cantidad por caja', personalizado: 'Personalizado', personalizadoSim: 'Sí', personalizadoNao: 'No', observacoes: 'Observaciones (personalizado)', dossierSection: 'Dossier / Logotipo', associateDossier: 'Incluir dossier de la propuesta en este artículo', hasLogo: 'Este artículo tiene logotipo', precoCusto: 'Precio de costo', percDesconto: 'Porcentaje de descuento (%)' },
+            en: { subtitle: 'Fill all required fields: quantity, cost price and discount percentage (min 0%). No PHC: Reference (supplier), Designation, Weight, etc.', photo: 'Photo', phc: 'PHC No.', fornecedor: 'Supplier', qty: 'Qty to order', ref: 'Reference (supplier)', designacao: 'Designation', peso: 'Weight', qtyCaixa: 'Qty per box', personalizado: 'Custom', personalizadoSim: 'Yes', personalizadoNao: 'No', observacoes: 'Notes (custom)', dossierSection: 'Dossier / Logo', associateDossier: 'Include proposal dossier with this item', hasLogo: 'This item has a logo', precoCusto: 'Cost price', percDesconto: 'Discount (%)' }
+        };
+        const L = t[lang] || t.pt;
+        if (subtitleEl) subtitleEl.textContent = L.subtitle;
+
+        listEl.innerHTML = '';
+        const productMap = {};
+        if (this.allProducts && this.allProducts.length > 0) {
+            this.allProducts.forEach(p => {
+                if (p.id) productMap[p.id] = p;
+                if (p.phc_ref) productMap[p.phc_ref] = p;
+                if (p.referencia_fornecedor) productMap[p.referencia_fornecedor] = p;
+            });
+        }
+
+        const articulos = proposal.articulos.filter((a, idx) =>
+            selectedArticuloIds.some(sid => String(sid) === String(a.id != null ? a.id : `art-${idx}`))
+        );
+
+        articulos.forEach((articulo, index) => {
+            const product = productMap[articulo.referencia_articulo] || this.allProducts?.find(p => String(p.id) === String(articulo.referencia_articulo)) || this.allProducts?.find(p => String(p.phc_ref) === String(articulo.referencia_articulo));
+            const hasPhc = product && (product.phc_ref || '').toString().trim() !== '';
+            const phcRef = (product && product.phc_ref) ? String(product.phc_ref) : '';
+            const fornecedor = (product && product.nombre_fornecedor) ? String(product.nombre_fornecedor) : '-';
+            const refFornecedor = (product && product.referencia_fornecedor) ? String(product.referencia_fornecedor).replace(/"/g, '&quot;') : '';
+            const fotoUrl = (product && product.foto) ? product.foto : '';
+            const articuloId = (articulo.id || `art-${index}`).toString().replace(/"/g, '');
+            const nomeArt = (articulo.nombre_articulo || '-').replace(/</g, '&lt;').replace(/"/g, '&quot;');
 
             const extraFields = !hasPhc ? `
                 <div class="pedido-encomenda-extra" style="margin-top: 10px; padding: 10px; background: var(--bg-gray-100); border-radius: 8px; display: grid; gap: 8px; grid-template-columns: 1fr 1fr;">
-                    <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.ref}</label><input type="text" id="ge-ref-${articuloId}" class="form-input" style="width:100%;padding:6px;" value="${(articulo.referencia_articulo || '').replace(/"/g, '&quot;')}" placeholder=""></div>
-                    <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.designacao}</label><input type="text" id="ge-designacao-${articuloId}" class="form-input" style="width:100%;padding:6px;" value="${nomeArt}" placeholder=""></div>
-                    <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.peso}</label><input type="text" id="ge-peso-${articuloId}" class="form-input" style="width:100%;padding:6px;" placeholder=""></div>
-                    <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.qtyCaixa}</label><input type="number" id="ge-qtycaixa-${articuloId}" class="form-input" style="width:100%;padding:6px;" min="0" placeholder=""></div>
+                    <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.ref} <span style="color: var(--danger-500,#c00);">*</span></label><input type="text" id="ge-ref-${articuloId}" class="form-input" style="width:100%;padding:6px;" value="${refFornecedor}" placeholder="" required></div>
+                    <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.designacao} <span style="color: var(--danger-500,#c00);">*</span></label><input type="text" id="ge-designacao-${articuloId}" class="form-input" style="width:100%;padding:6px;" value="${nomeArt}" placeholder="" required></div>
+                    <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.peso} <span style="color: var(--danger-500,#c00);">*</span></label><input type="text" id="ge-peso-${articuloId}" class="form-input" style="width:100%;padding:6px;" placeholder="" required></div>
+                    <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.qtyCaixa} <span style="color: var(--danger-500,#c00);">*</span></label><input type="number" id="ge-qtycaixa-${articuloId}" class="form-input" style="width:100%;padding:6px;" min="0" placeholder="" required></div>
                     <div style="grid-column: 1 / -1;"><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.personalizado}</label><select id="ge-personalizado-${articuloId}" class="form-input" style="width:100%;padding:6px;"><option value="false">${L.personalizadoNao}</option><option value="true">${L.personalizadoSim}</option></select></div>
                     <div style="grid-column: 1 / -1;"><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.observacoes}</label><textarea id="ge-obs-${articuloId}" class="form-input" style="width:100%;padding:6px;min-height:60px;" placeholder=""></textarea></div>
                 </div>
@@ -3486,9 +3589,10 @@ class ProposalsManager {
                     <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 6px;">${nomeArt}</div>
                     <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 4px;">${L.phc}: ${hasPhc ? phcRef : (lang === 'es' ? 'Sin PHC' : lang === 'en' ? 'No PHC' : 'Sem PHC')}</div>
                     <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 8px;">${L.fornecedor}: ${(fornecedor || '-').replace(/</g, '&lt;')}</div>
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <label style="font-size: 0.8rem; white-space: nowrap;">${L.qty}</label>
-                        <input type="number" id="ge-qty-${articuloId}" class="form-input" min="1" value="${articulo.cantidad || 1}" style="width: 100px; padding: 6px;">
+                    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px;">
+                        <div><label style="font-size: 0.8rem;">${L.qty} <span style="color: var(--danger-500,#c00);">*</span></label><input type="number" id="ge-qty-${articuloId}" class="form-input" min="1" value="${articulo.cantidad || 1}" style="width: 100px; padding: 6px;" required></div>
+                        <div><label style="font-size: 0.8rem;">${L.precoCusto} <span style="color: var(--danger-500,#c00);">*</span></label><input type="number" id="ge-preco-${articuloId}" class="form-input" min="0" step="0.01" value="" style="width: 120px; padding: 6px;" placeholder="0.00" required></div>
+                        <div><label style="font-size: 0.8rem;">${L.percDesconto} <span style="color: var(--danger-500,#c00);">*</span></label><input type="number" id="ge-desconto-${articuloId}" class="form-input" min="0" max="100" step="0.01" value="0" style="width: 90px; padding: 6px;" required></div>
                     </div>
                     ${extraFields}
                     ${dossierLogoBlock}
@@ -3496,8 +3600,6 @@ class ProposalsManager {
             `;
             listEl.appendChild(row);
         });
-
-        modal.classList.add('active');
     }
 
     closePedidoEncomendaModal() {
@@ -3509,8 +3611,13 @@ class ProposalsManager {
     async savePedidoEncomendaGestaoCompras() {
         const modal = document.getElementById('changeStatusPedidoEncomendaModal');
         const proposalId = modal?.getAttribute('data-proposal-id');
+        const selectedIdsJson = modal?.getAttribute('data-selected-articulo-ids');
         if (!proposalId || !this.supabase) {
             this.showNotification(this.currentLanguage === 'es' ? 'Error: falta propuesta o conexión.' : this.currentLanguage === 'pt' ? 'Erro: falta proposta ou ligação.' : 'Error: missing proposal or connection.', 'error');
+            return;
+        }
+        if (!selectedIdsJson) {
+            this.showNotification(this.currentLanguage === 'es' ? 'Seleccione los productos y rellene los formularios.' : this.currentLanguage === 'pt' ? 'Selecione os produtos e preencha os formulários.' : 'Select products and fill the forms.', 'error');
             return;
         }
 
@@ -3520,11 +3627,46 @@ class ProposalsManager {
             return;
         }
 
+        let selectedArticuloIds;
+        try { selectedArticuloIds = JSON.parse(selectedIdsJson); } catch (e) { selectedArticuloIds = []; }
+        const articulos = proposal.articulos.filter((a, idx) =>
+            selectedArticuloIds.some(sid => String(sid) === String(a.id != null ? a.id : `art-${idx}`))
+        );
+
+        const lang = this.currentLanguage || 'pt';
+        const msgFill = lang === 'es' ? 'Rellene todos los campos obligatorios (precio de costo, descuento mínimo 0%).' : lang === 'pt' ? 'Preencha todos os campos obrigatórios (preço de custo, desconto mínimo 0%).' : 'Fill all required fields (cost price, discount min 0%).';
+        const msgRef = lang === 'es' ? 'Productos sin PHC: Referencia, Designación, Peso y Cantidad por caja obligatorios.' : lang === 'pt' ? 'Produtos sem PHC: Referência, Designação, Peso e Quantidade por caixa obrigatórios.' : 'Products without PHC: Reference, Designation, Weight and Qty per box required.';
+
+        const now = new Date().toISOString();
         const rows = [];
-        proposal.articulos.forEach((articulo, index) => {
+
+        for (let i = 0; i < articulos.length; i++) {
+            const articulo = articulos[i];
+            const index = proposal.articulos.indexOf(articulo);
             const articuloId = (articulo.id && articulo.id.toString()) ? articulo.id.toString() : `art-${index}`;
+
             const qtyEl = document.getElementById(`ge-qty-${articuloId}`);
-            const quantidade = qtyEl ? (parseInt(qtyEl.value, 10) || 1) : (articulo.cantidad || 1);
+            const precoEl = document.getElementById(`ge-preco-${articuloId}`);
+            const descontoEl = document.getElementById(`ge-desconto-${articuloId}`);
+
+            const quantidade = qtyEl ? (parseInt(qtyEl.value, 10) || 0) : 0;
+            const precoCustoRaw = precoEl ? precoEl.value.trim() : '';
+            const precoCusto = precoCustoRaw === '' ? NaN : parseFloat(precoCustoRaw.replace(',', '.'));
+            const descontoRaw = descontoEl ? descontoEl.value.trim() : '';
+            const porcentajeDesconto = descontoRaw === '' ? NaN : parseFloat(descontoRaw.replace(',', '.'));
+
+            if (quantidade < 1) {
+                this.showNotification(lang === 'es' ? 'Cantidad a encomendar debe ser al menos 1.' : lang === 'pt' ? 'Quantidade a encomendar deve ser pelo menos 1.' : 'Quantity to order must be at least 1.', 'error');
+                return;
+            }
+            if (isNaN(precoCusto) || precoCusto < 0) {
+                this.showNotification(msgFill, 'error');
+                return;
+            }
+            if (isNaN(porcentajeDesconto) || porcentajeDesconto < 0 || porcentajeDesconto > 100) {
+                this.showNotification(msgFill, 'error');
+                return;
+            }
 
             const product = this.allProducts?.find(p => String(p.id) === String(articulo.referencia_articulo)) || this.allProducts?.find(p => String(p.phc_ref) === String(articulo.referencia_articulo));
             const hasPhc = product && (product.phc_ref || '').toString().trim() !== '';
@@ -3541,7 +3683,10 @@ class ProposalsManager {
                 quantidade_encomendar: quantidade,
                 nome_articulo: articulo.nombre_articulo || null,
                 presupuesto_dossier_id: (proposal.presupuesto_dossier_id && associateDossier) ? proposal.presupuesto_dossier_id : null,
-                logo_url: (articulo.logo_url && String(articulo.logo_url).trim() !== '') ? String(articulo.logo_url).trim() : null
+                logo_url: (articulo.logo_url && String(articulo.logo_url).trim() !== '') ? String(articulo.logo_url).trim() : null,
+                precio_custo: precoCusto,
+                porcentaje_descuento: porcentajeDesconto,
+                fecha_precio: now
             };
 
             if (!hasPhc) {
@@ -3551,16 +3696,24 @@ class ProposalsManager {
                 const qtyCaixaEl = document.getElementById(`ge-qtycaixa-${articuloId}`);
                 const personalizadoEl = document.getElementById(`ge-personalizado-${articuloId}`);
                 const obsEl = document.getElementById(`ge-obs-${articuloId}`);
-                row.referencia = refEl ? refEl.value.trim() || null : null;
-                row.designacao = designacaoEl ? designacaoEl.value.trim() || null : null;
-                row.peso = pesoEl ? pesoEl.value.trim() || null : null;
-                row.quantidade_por_caixa = qtyCaixaEl && qtyCaixaEl.value !== '' ? parseInt(qtyCaixaEl.value, 10) : null;
+                const ref = refEl ? refEl.value.trim() : '';
+                const designacao = designacaoEl ? designacaoEl.value.trim() : '';
+                const peso = pesoEl ? pesoEl.value.trim() : '';
+                const qtyCaixa = qtyCaixaEl && qtyCaixaEl.value !== '' ? parseInt(qtyCaixaEl.value, 10) : null;
+                if (!ref || !designacao || !peso || qtyCaixa == null || qtyCaixa < 0) {
+                    this.showNotification(msgRef, 'error');
+                    return;
+                }
+                row.referencia = ref || null;
+                row.designacao = designacao || null;
+                row.peso = peso || null;
+                row.quantidade_por_caixa = qtyCaixa;
                 row.personalizado = personalizadoEl ? personalizadoEl.value === 'true' : false;
                 row.personalizado_observacoes = obsEl ? obsEl.value.trim() || null : null;
             }
 
             rows.push(row);
-        });
+        }
 
         try {
             await this.supabase.from('gestao_compras').delete().eq('presupuesto_id', proposalId);

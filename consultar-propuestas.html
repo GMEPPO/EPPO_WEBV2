@@ -1216,7 +1216,7 @@
         </div>
     </div>
 
-    <!-- Modal Pedido de Encomenda: productos a encomendar (Gestão Compras) -->
+    <!-- Modal Pedido de Encomenda: paso 1 selección de productos, paso 2 formularios -->
     <div class="modal-overlay" id="changeStatusPedidoEncomendaModal">
         <div class="modal" style="max-width: 900px;">
             <div class="modal-header">
@@ -1226,16 +1226,32 @@
                 </button>
             </div>
             <div class="modal-body">
-                <p id="pedido-encomenda-subtitle" style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: var(--space-4);">Indique a quantidade a encomendar por produto. Produtos sem número PHC: preencha Referência, Designação, Peso, etc.</p>
-                <div id="pedido-encomenda-products-list" style="max-height: 60vh; overflow-y: auto;">
-                    <!-- Se llenará dinámicamente -->
+                <!-- Paso 1: Seleccionar qué productos encomendar -->
+                <div id="pedido-encomenda-step-select" style="display: block;">
+                    <p id="pedido-encomenda-subtitle-select" style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: var(--space-4);">Selecione os produtos da proposta que deseja encomendar.</p>
+                    <div id="pedido-encomenda-select-list" style="max-height: 50vh; overflow-y: auto;">
+                        <!-- Checkboxes por producto -->
+                    </div>
+                    <div class="modal-actions" style="margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--bg-gray-200);">
+                        <button type="button" class="btn-secondary" onclick="window.proposalsManager.closePedidoEncomendaModal()">Cancelar</button>
+                        <button type="button" class="btn-primary" id="pedido-encomenda-btn-continuar" onclick="window.proposalsManager.pedidoEncomendaGoToStep2()">
+                            <i class="fas fa-arrow-right"></i> <span id="pedido-encomenda-continuar-text">Continuar</span>
+                        </button>
+                    </div>
                 </div>
-            </div>
-            <div class="modal-actions">
-                <button type="button" class="btn-secondary" onclick="window.proposalsManager.closePedidoEncomendaModal()">Cancelar</button>
-                <button type="button" class="btn-primary" onclick="window.proposalsManager.savePedidoEncomendaGestaoCompras()">
-                    <i class="fas fa-save"></i> <span id="pedido-encomenda-save-text">Guardar</span>
-                </button>
+                <!-- Paso 2: Formularios por producto seleccionado (quantidade, preço, desconto, ref/designação si sem PHC) -->
+                <div id="pedido-encomenda-step-forms" style="display: none;">
+                    <p id="pedido-encomenda-subtitle" style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: var(--space-4);">Indique a quantidade a encomendar por produto. Produtos sem número PHC: preencha Referência, Designação, Peso, etc. Preencha preço de custo e percentagem de desconto (obrigatório).</p>
+                    <div id="pedido-encomenda-products-list" style="max-height: 60vh; overflow-y: auto;">
+                        <!-- Se llenará dinámicamente -->
+                    </div>
+                    <div class="modal-actions" style="margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--bg-gray-200);">
+                        <button type="button" class="btn-secondary" onclick="window.proposalsManager.pedidoEncomendaBackToStep1()"><i class="fas fa-arrow-left"></i> <span id="pedido-encomenda-back-text">Voltar</span></button>
+                        <button type="button" class="btn-primary" onclick="window.proposalsManager.savePedidoEncomendaGestaoCompras()">
+                            <i class="fas fa-save"></i> <span id="pedido-encomenda-save-text">Guardar</span>
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
