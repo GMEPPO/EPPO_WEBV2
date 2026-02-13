@@ -2467,6 +2467,11 @@ class CartManager {
         }
         itemIdentifier = String(itemIdentifier);
         
+        // Módulo vacío editable (Nuevo módulo)
+        if (item.type === 'special' && item.isEmptyModule) {
+            return this.renderEmptyModuleItem(item, itemIdentifier);
+        }
+        
         // Obtener variantes del producto y asegurar que tengan price_tiers
         let productVariants = item.variants || [];
         if (!productVariants.length && item.type === 'product') {
@@ -2890,6 +2895,88 @@ class CartManager {
                 ${upsellSuggestionHTML}
                 <div class="cart-item-observations-container" id="observations-${itemIdentifier}" style="display: none;">
                     <textarea class="observations-input" placeholder="Agregar observaciones especiales..." onblur="saveObservations('${itemIdentifier}', this.value)">${item.observations || ''}</textarea>
+                </div>
+            </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Renderizar módulo vacío editable (Nuevo módulo)
+     */
+    renderEmptyModuleItem(item, itemIdentifier) {
+        const L = this.currentLanguage || 'pt';
+        const t = {
+            pt: { name: 'Nome', description: 'Descrição', quantity: 'Quantidade', price: 'Preço', delivery: 'Prazo de entrega', personalization: 'Personalizado', noPersonalization: 'Sem personalização', withLogo: 'Com logo do hotel', color: 'Cor', selectColor: 'Selecionar cor...', peso: 'Peso (opcional)', qtyPerBox: 'Quantidade por caixa (opcional)', addPhoto: 'Adicionar foto', logoLabel: 'Logotipo', uploadLogo: 'Subir PDF ou imagem' },
+            es: { name: 'Nombre', description: 'Descripción', quantity: 'Cantidad', price: 'Precio', delivery: 'Plazo de entrega', personalization: 'Personalizado', noPersonalization: 'Sin personalización', withLogo: 'Con logo del hotel', color: 'Color', selectColor: 'Seleccionar color...', peso: 'Peso (opcional)', qtyPerBox: 'Cantidad por caja (opcional)', addPhoto: 'Añadir foto', logoLabel: 'Logotipo', uploadLogo: 'Subir PDF o imagen' },
+            en: { name: 'Name', description: 'Description', quantity: 'Quantity', price: 'Price', delivery: 'Delivery time', personalization: 'Custom', noPersonalization: 'No customization', withLogo: 'With hotel logo', color: 'Color', selectColor: 'Select color...', peso: 'Weight (optional)', qtyPerBox: 'Qty per box (optional)', addPhoto: 'Add photo', logoLabel: 'Logo', uploadLogo: 'Upload PDF or image' }
+        };
+        const lbl = t[L] || t.pt;
+        const safeId = String(itemIdentifier).replace(/'/g, "\\'");
+        const nameVal = (item.name || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+        const descVal = (item.description || '').replace(/</g, '&lt;');
+        const isPersonalized = (item.personalization || '').toLowerCase().includes('logo') || (item.personalization || '').toLowerCase().includes('personaliz');
+        const logoBlock = isPersonalized ? `
+            <div class="cart-item-logo-upload" style="grid-column: 1 / -1; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--bg-gray-200);">
+                <label style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 4px;">${lbl.logoLabel}</label>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <input type="file" id="logo-upload-${safeId}" accept=".pdf,.png,.jpg,.jpeg,.svg" onchange="handleLogoUpload('${safeId}', this.files[0])" style="flex:1; padding: 6px; border: 1px solid var(--bg-gray-300); border-radius: 6px; font-size: 0.875rem;">
+                    ${item.logoUrl ? `<span style="color: #10b981; font-size: 0.8rem;"><i class="fas fa-check-circle"></i></span><button type="button" onclick="removeLogo('${safeId}')" style="padding: 4px 10px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.8rem;"><i class="fas fa-trash"></i></button>` : ''}
+                </div>
+            </div>` : '';
+        return `
+            <div class="cart-item-wrapper">
+            <div class="cart-item" data-item-id="${itemIdentifier}" draggable="true">
+                <div class="cart-item-image-container">
+                    ${item.image ? `<img src="${(item.image || '').replace(/"/g, '&quot;')}" alt="" class="cart-item-image" style="max-width:80px;max-height:80px;object-fit:contain;border-radius:8px;" onerror="this.style.display='none'">` : `<label style="width:80px;height:80px;border:2px dashed var(--bg-gray-300);border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:0.7rem;color:var(--text-secondary);"><input type="file" accept="image/*" style="display:none" onchange="handleModulePhotoUpload('${safeId}', this.files[0])"><i class="fas fa-plus" style="margin-right:4px;"></i>${lbl.addPhoto}</label>`}
+                    <div class="cart-item-name" style="font-size:0.75rem;color:var(--text-secondary);margin-top:4px;">${item.referencia || ''}</div>
+                </div>
+                <div class="cart-item-description">
+                    <label style="font-size:0.75rem;color:var(--text-secondary);display:block;margin-bottom:4px;">${lbl.name}</label>
+                    <input type="text" value="${nameVal}" placeholder="" onchange="updateModuleField('${safeId}', 'name', this.value)" onblur="updateModuleField('${safeId}', 'name', this.value)" style="width:100%;padding:6px;border:1px solid var(--bg-gray-300);border-radius:6px;font-size:0.875rem;background:var(--bg-white);color:var(--text-primary);margin-bottom:6px;">
+                    <label style="font-size:0.75rem;color:var(--text-secondary);display:block;margin-bottom:4px;">${lbl.description}</label>
+                    <textarea rows="3" onchange="updateModuleField('${safeId}', 'description', this.value)" onblur="updateModuleField('${safeId}', 'description', this.value)" style="width:100%;padding:6px;border:1px solid var(--bg-gray-300);border-radius:6px;font-size:0.875rem;resize:vertical;background:var(--bg-white);color:var(--text-primary);">${descVal}</textarea>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                    <label style="font-size:0.75rem;color:var(--text-secondary);">${lbl.quantity}</label>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <button type="button" onclick="if(window.simpleDecrease){window.simpleDecrease('${safeId}')}" style="width:28px;height:28px;border:1px solid var(--bg-gray-300);border-radius:6px;background:var(--bg-white);cursor:pointer;display:flex;align-items:center;justify-content:center;"><i class="fas fa-minus"></i></button>
+                        <input type="number" class="quantity-input" value="${item.quantity || 1}" min="1" max="50000" onchange="simpleSetQuantity('${safeId}', this.value)" style="width:70px;text-align:center;padding:6px;">
+                        <button type="button" onclick="if(window.simpleIncrease){window.simpleIncrease('${safeId}')}" style="width:28px;height:28px;border:1px solid var(--bg-gray-300);border-radius:6px;background:var(--bg-white);cursor:pointer;display:flex;align-items:center;justify-content:center;"><i class="fas fa-plus"></i></button>
+                    </div>
+                </div>
+                <div>
+                    <label style="font-size:0.75rem;color:var(--text-secondary);display:block;margin-bottom:4px;">${lbl.price}</label>
+                    <input type="number" step="0.0001" min="0" value="${Number(item.price) || 0}" onchange="updateModuleField('${safeId}', 'price', this.value)" onblur="updateModuleField('${safeId}', 'price', this.value)" style="width:100%;padding:6px;border:1px solid var(--bg-gray-300);border-radius:6px;font-size:0.875rem;"> €
+                </div>
+                <div>
+                    <label style="font-size:0.75rem;color:var(--text-secondary);display:block;margin-bottom:4px;">${lbl.delivery}</label>
+                    <input type="text" value="${(item.plazoEntrega || '').replace(/"/g, '&quot;')}" placeholder="" onchange="updateModuleField('${safeId}', 'plazoEntrega', this.value)" onblur="updateModuleField('${safeId}', 'plazoEntrega', this.value)" style="width:100%;padding:6px;border:1px solid var(--bg-gray-300);border-radius:6px;font-size:0.875rem;">
+                </div>
+                <div class="cart-item-actions">
+                    <button class="remove-item" onclick="simpleRemove('${safeId}')" title="Eliminar"><i class="fas fa-trash"></i></button>
+                    <button class="observations-btn" onclick="toggleObservations('${safeId}')" title="Observaciones"><i class="fas fa-comment"></i></button>
+                </div>
+                <div style="grid-column: 1 / -1; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--bg-gray-200); display: grid; gap: 8px; grid-template-columns: 1fr 1fr;">
+                    <div>
+                        <label style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 4px;">${lbl.personalization}</label>
+                        <select onchange="updateModuleField('${safeId}', 'personalization', this.value); window.cartManager && window.cartManager.renderCart();" style="width:100%;padding:8px;border:1px solid var(--bg-gray-300);border-radius:6px;font-size:0.875rem;">
+                            <option value="Sem personalização" ${(item.personalization || '') === 'Sem personalização' ? 'selected' : ''}>${lbl.noPersonalization}</option>
+                            <option value="Com logo" ${(item.personalization || '').toLowerCase().includes('logo') ? 'selected' : ''}>${lbl.withLogo}</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 4px;">${lbl.peso}</label>
+                        <input type="text" value="${(item.peso || '').replace(/"/g, '&quot;')}" placeholder="" onchange="updateModuleField('${safeId}', 'peso', this.value)" onblur="updateModuleField('${safeId}', 'peso', this.value)" style="width:100%;padding:6px;border:1px solid var(--bg-gray-300);border-radius:6px;font-size:0.875rem;">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 4px;">${lbl.qtyPerBox}</label>
+                        <input type="number" min="0" value="${item.box_size != null && item.box_size !== '' ? item.box_size : ''}" placeholder="" onchange="updateModuleField('${safeId}', 'box_size', this.value)" onblur="updateModuleField('${safeId}', 'box_size', this.value)" style="width:100%;padding:6px;border:1px solid var(--bg-gray-300);border-radius:6px;font-size:0.875rem;">
+                    </div>
+                </div>
+                ${logoBlock}
+                <div class="cart-item-observations-container" id="observations-${itemIdentifier}" style="display: none; grid-column: 1 / -1;">
+                    <textarea class="observations-input" placeholder="Observações..." onblur="saveObservations('${safeId}', this.value)">${(item.observations || '').replace(/</g, '&lt;').replace(/&/g, '&amp;')}</textarea>
                 </div>
             </div>
             </div>
@@ -5544,6 +5631,87 @@ async function addSpecialOrderToCart() {
 window.openAddSpecialOrderModal = openAddSpecialOrderModal;
 window.closeAddSpecialOrderModal = closeAddSpecialOrderModal;
 window.addSpecialOrderToCart = addSpecialOrderToCart;
+
+/**
+ * Añadir un módulo vacío editable al carrito (en lugar del modal de pedido especial)
+ */
+function addEmptyModule() {
+    if (!window.cartManager) return;
+    const cartItemId = `cart-item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const maxOrder = window.cartManager.cart.length > 0
+        ? Math.max(...window.cartManager.cart.map(item => (item.order != null ? item.order : 0)))
+        : -1;
+    const newItem = {
+        cartItemId,
+        id: `module-${Date.now()}`,
+        type: 'special',
+        isEmptyModule: true,
+        name: '',
+        description: '',
+        price: 0,
+        quantity: 1,
+        image: null,
+        plazoEntrega: '',
+        personalization: 'Sem personalização',
+        logoUrl: null,
+        peso: null,
+        box_size: null,
+        observations: '',
+        order: maxOrder + 1
+    };
+    window.cartManager.cart.push(newItem);
+    window.cartManager.saveCart();
+    window.cartManager.renderCart();
+    window.cartManager.updateSummary();
+    const msg = window.cartManager.currentLanguage === 'es' ? 'Módulo añadido. Rellene los campos.' :
+        window.cartManager.currentLanguage === 'pt' ? 'Módulo adicionado. Preencha os campos.' : 'Module added. Fill in the fields.';
+    window.cartManager.showNotification(msg, 'success');
+}
+window.addEmptyModule = addEmptyModule;
+
+/**
+ * Actualizar un campo de un módulo vacío en el carrito
+ */
+function updateModuleField(cartItemId, field, value) {
+    if (!window.cartManager || !cartItemId) return;
+    const item = window.cartManager.cart.find(i => (i.cartItemId && String(i.cartItemId) === String(cartItemId)) || (i.id && String(i.id) === String(cartItemId)));
+    if (!item || !item.isEmptyModule) return;
+    if (field === 'price') item[field] = parseFloat(value) || 0;
+    else if (field === 'quantity') item[field] = parseInt(value, 10) || 1;
+    else if (field === 'box_size') item[field] = value === '' || value === null ? null : (parseInt(value, 10) || null);
+    else item[field] = value;
+    window.cartManager.saveCart();
+    window.cartManager.renderCart();
+}
+window.updateModuleField = updateModuleField;
+
+/**
+ * Subir foto de un módulo vacío y asignar URL al item
+ */
+async function handleModulePhotoUpload(cartItemId, file) {
+    if (!file || !window.cartManager) return;
+    const item = window.cartManager.cart.find(i => (i.cartItemId && String(i.cartItemId) === String(cartItemId)) || (i.id && String(i.id) === String(cartItemId)));
+    if (!item || !item.isEmptyModule) return;
+    try {
+        if (!window.cartManager.supabase) await window.cartManager.initializeSupabase();
+        const supabase = window.cartManager.supabase;
+        if (!supabase) throw new Error('Supabase no disponible');
+        const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+        const path = `modules/${cartItemId}/${Date.now()}.${ext}`;
+        const { error } = await supabase.storage.from('product-images').upload(path, file, { cacheControl: '3600', upsert: true });
+        if (error) throw error;
+        const { data: urlData } = supabase.storage.from('product-images').getPublicUrl(path);
+        if (urlData && urlData.publicUrl) {
+            item.image = urlData.publicUrl;
+            window.cartManager.saveCart();
+            window.cartManager.renderCart();
+        }
+    } catch (e) {
+        console.error('Error subiendo foto del módulo:', e);
+        window.cartManager.showNotification(e.message || 'Error al subir la foto', 'error');
+    }
+}
+window.handleModulePhotoUpload = handleModulePhotoUpload;
 
 // Listener para enviar el formulario de pedido especial
 // Usar una variable para evitar registrar múltiples veces
@@ -10708,7 +10876,16 @@ async function sendProposalToSupabase() {
                 const referenciaArticulo = item.referencia || item.id || '';
                 const cantidad = item.quantity || 1;
                 const precio = Number(item.price) || 0; // Asegurar que sea número
-                const observaciones = item.observations || item.observations_text || '';
+                let observaciones = item.observations || item.observations_text || '';
+                if (item.isEmptyModule && item.description) {
+                    observaciones = (observaciones ? observaciones + '\n\n' : '') + (item.description || '');
+                }
+                if (item.isEmptyModule && (item.peso || item.box_size != null)) {
+                    const parts = [];
+                    if (item.peso) parts.push(`Peso: ${item.peso}`);
+                    if (item.box_size != null && item.box_size !== '') parts.push(`Qtd/caixa: ${item.box_size}`);
+                    if (parts.length) observaciones = (observaciones ? observaciones + '\n' : '') + parts.join(' | ');
+                }
                 const plazoEntrega = item.plazoEntrega || item.plazo_entrega || null;
 
                 console.log(`📦 Guardando artículo: ${nombreArticulo}, Cantidad: ${cantidad}, Precio: ${precio}`);

@@ -1355,8 +1355,8 @@
                     <button class="btn-primary" id="addExclusiveProductBtn" onclick="openAddExclusiveProductModal()" style="background: linear-gradient(135deg, #C6A15B 0%, #B8944F 100%); display: none;">
                         <i class="fas fa-star"></i> <span id="add-exclusive-product-text">Agregar Producto Exclusivo</span>
                     </button>
-                    <button class="btn-primary" onclick="openAddSpecialOrderModal()" style="background: #8b5cf6;">
-                        <i class="fas fa-edit"></i> <span id="add-special-order-text">Pedido Especial</span>
+                    <button class="btn-primary" onclick="addEmptyModule()" style="background: #8b5cf6;">
+                        <i class="fas fa-plus-square"></i> <span id="add-new-module-text">Novo módulo</span>
                     </button>
                     <button class="btn-mode-200" id="mode200Btn" onclick="toggleMode200()" style="
                         background: var(--bg-gray-200);
@@ -1794,6 +1794,7 @@
                     emptyCartTitle: 'Orçamento Vazio',
                     emptyCartText: 'Não há produtos no seu orçamento.',
                     addSpecialOrder: 'Pedido Especial',
+                    addNewModule: 'Novo módulo',
                     specialOrderModalTitle: 'Adicionar Pedido Especial',
                     specialOrderName: 'Nome do produto:',
                     specialOrderNamePlaceholder: 'Ex: Secador especial modelo X...',
@@ -1842,6 +1843,7 @@
                     emptyCartTitle: 'Presupuesto Vacío',
                     emptyCartText: 'No hay productos en tu presupuesto.',
                     addSpecialOrder: 'Pedido Especial',
+                    addNewModule: 'Nuevo módulo',
                     specialOrderModalTitle: 'Agregar Pedido Especial',
                     specialOrderName: 'Nombre del producto:',
                     specialOrderNamePlaceholder: 'Ej: Secador especial modelo X...',
@@ -1891,6 +1893,7 @@
                     emptyCartTitle: 'Empty Budget',
                     emptyCartText: 'There are no products in your budget.',
                     addSpecialOrder: 'Special Order',
+                    addNewModule: 'New module',
                     specialOrderModalTitle: 'Add Special Order',
                     specialOrderName: 'Product name:',
                     specialOrderNamePlaceholder: 'E.g: Special hairdryer model X...',
@@ -1930,6 +1933,7 @@
                 'product-quantity-label': t.productQuantity,
                 'add-product-to-cart-text': t.addProductToCart,
                 'add-special-order-text': t.addSpecialOrder,
+                'add-new-module-text': t.addNewModule,
                 'special-order-modal-title': t.specialOrderModalTitle,
                 'special-order-name-label': t.specialOrderName,
                 'special-order-desc-label': t.specialOrderDesc,
