@@ -3386,6 +3386,7 @@ class CartManager {
         const cartItems = document.querySelectorAll('.cart-item[draggable="true"]');
         let draggedElement = null;
         let draggedIndex = null;
+        let dragWithCtrl = false; // Ctrl + arrastrar = duplicar módulo
 
         cartItems.forEach((item, index) => {
             // Prevenir que los inputs y botones inicien el drag
@@ -3399,13 +3400,15 @@ class CartManager {
             item.addEventListener('dragstart', (e) => {
                 draggedElement = item;
                 draggedIndex = index;
+                dragWithCtrl = e.ctrlKey === true;
                 item.style.opacity = '0.5';
-                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.effectAllowed = dragWithCtrl ? 'copy' : 'move';
                 e.dataTransfer.setData('text/html', item.innerHTML);
             });
 
             item.addEventListener('dragend', (e) => {
                 item.style.opacity = '1';
+                dragWithCtrl = false;
                 // Remover clases de visualización
                 cartItems.forEach(cartItem => {
                     cartItem.classList.remove('drag-over');
@@ -3414,7 +3417,7 @@ class CartManager {
 
             item.addEventListener('dragover', (e) => {
                 e.preventDefault();
-                e.dataTransfer.dropEffect = 'move';
+                e.dataTransfer.dropEffect = (e.ctrlKey && draggedElement) ? 'copy' : 'move';
                 
                 // Agregar clase visual para indicar dónde se puede soltar
                 if (item !== draggedElement) {
@@ -3434,7 +3437,6 @@ class CartManager {
                     const draggedItemId = draggedElement.getAttribute('data-item-id');
                     const targetItemId = item.getAttribute('data-item-id');
                     
-                    // Encontrar los items en el carrito
                     const draggedCartItem = this.cart.find(cartItem => {
                         const itemId = cartItem.cartItemId || cartItem.id;
                         return String(itemId) === String(draggedItemId) || itemId === draggedItemId;
@@ -3446,19 +3448,46 @@ class CartManager {
                     });
                     
                     if (draggedCartItem && targetCartItem) {
-                        // Intercambiar los valores de 'order'
-                        const tempOrder = draggedCartItem.order;
-                        draggedCartItem.order = targetCartItem.order;
-                        targetCartItem.order = tempOrder;
+                        const shouldDuplicate = (e.ctrlKey || dragWithCtrl) && draggedCartItem.isEmptyModule === true;
                         
-                        // Guardar y re-renderizar
-                        this.saveCart();
-                        this.renderCart(true); // skipStockUpdate=true para preservar plazos de entrega
-                        
-                        console.log('✅ Items reordenados:', {
-                            dragged: draggedCartItem.name,
-                            target: targetCartItem.name
-                        });
+                        if (shouldDuplicate) {
+                            // Duplicar módulo: insertar copia en la posición soltada (misma información, nuevo cartItemId)
+                            const targetIndex = this.cart.indexOf(targetCartItem);
+                            const newCartItemId = `cart-item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                            const clone = {
+                                cartItemId: newCartItemId,
+                                id: `module-${Date.now()}`,
+                                type: draggedCartItem.type,
+                                isEmptyModule: true,
+                                name: draggedCartItem.name || '',
+                                description: draggedCartItem.description || '',
+                                price: draggedCartItem.price != null ? Number(draggedCartItem.price) : 0,
+                                quantity: draggedCartItem.quantity != null ? parseInt(draggedCartItem.quantity, 10) : 1,
+                                image: draggedCartItem.image || null,
+                                plazoEntrega: draggedCartItem.plazoEntrega || draggedCartItem.plazo_entrega || '',
+                                personalization: draggedCartItem.personalization || 'Sem personalização',
+                                logoUrl: draggedCartItem.logoUrl || null,
+                                peso: draggedCartItem.peso != null ? draggedCartItem.peso : null,
+                                box_size: draggedCartItem.box_size != null ? draggedCartItem.box_size : null,
+                                observations: draggedCartItem.observations || '',
+                                order: targetIndex
+                            };
+                            this.cart.splice(targetIndex, 0, clone);
+                            this.cart.forEach((it, i) => { it.order = i; });
+                            this.saveCart();
+                            this.renderCart(true);
+                            const msg = this.currentLanguage === 'es' ? 'Módulo duplicado' : this.currentLanguage === 'pt' ? 'Módulo duplicado' : 'Module duplicated';
+                            this.showNotification(msg, 'success');
+                            console.log('✅ Módulo duplicado con Ctrl+arrastrar');
+                        } else {
+                            // Reordenar: intercambiar los valores de 'order'
+                            const tempOrder = draggedCartItem.order;
+                            draggedCartItem.order = targetCartItem.order;
+                            targetCartItem.order = tempOrder;
+                            this.saveCart();
+                            this.renderCart(true);
+                            console.log('✅ Items reordenados:', { dragged: draggedCartItem.name, target: targetCartItem.name });
+                        }
                     }
                 }
             });
@@ -10801,7 +10830,8 @@ async function sendProposalToSupabase() {
                         box_size: item.box_size != null && item.box_size !== '' ? parseInt(item.box_size, 10) : null,
                         categoria: 'pedido-especial',
                         visible_en_catalogo: false,
-                        foto: item.image || null
+                        foto: item.image || null,
+                        cliente_id: (clientName && String(clientName).trim()) ? String(clientName).trim() : null
                     };
                     const { data: newProduct, error: productError } = await window.cartManager.supabase
                         .from('products')
@@ -10936,9 +10966,7 @@ async function sendProposalToSupabase() {
                 const cantidad = item.quantity || 1;
                 const precio = Number(item.price) || 0; // Asegurar que sea número
                 let observaciones = item.observations || item.observations_text || '';
-                if (item.isEmptyModule && item.description) {
-                    observaciones = (observaciones ? observaciones + '\n\n' : '') + (item.description || '');
-                }
+                // No guardar la descripción del módulo en observaciones (solo peso/caja si aplica)
                 if (item.isEmptyModule && (item.peso || item.box_size != null)) {
                     const parts = [];
                     if (item.peso) parts.push(`Peso: ${item.peso}`);
