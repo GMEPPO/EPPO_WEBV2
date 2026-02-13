@@ -917,8 +917,10 @@ class ProposalsManager {
         });
         if (toSend.length) {
             (async () => {
+                let sendToTestOnce = true;
                 for (const { proposal, alert } of toSend) {
-                    await this.sendFollowUpAlertWebhookIfNeeded(proposal, alert);
+                    await this.sendFollowUpAlertWebhookIfNeeded(proposal, alert, sendToTestOnce);
+                    sendToTestOnce = false;
                     if (toSend.length > 1) await new Promise(r => setTimeout(r, 250));
                 }
             })();
@@ -989,7 +991,7 @@ class ProposalsManager {
      * Envía webhook de alerta follow-up si corresponde y actualiza flags para no spamear.
      * Usa proxy (Vercel API route) para evitar CORS al llamar a n8n desde el navegador.
      */
-    async sendFollowUpAlertWebhookIfNeeded(proposal, alert) {
+    async sendFollowUpAlertWebhookIfNeeded(proposal, alert, sendToTestForThisBatch = false) {
         const payload = {
             numero_propuesta: proposal.codigo_propuesta || (proposal.id ? proposal.id.substring(0, 8).toUpperCase() : ''),
             nombre_cliente: proposal.nombre_cliente || '',
@@ -1011,12 +1013,17 @@ class ProposalsManager {
         }
 
         try {
+            let firstSendInThisCall = sendToTestForThisBatch;
             if (send15d && !proposal.webhook_15d_sent_at) {
                 const res = await fetch(webhookTarget, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Send-To-Test': firstSendInThisCall ? '1' : '0'
+                    },
                     body: JSON.stringify({ ...payload, tipo_alerta: '15_dias_sin_follow_up' })
                 });
+                firstSendInThisCall = false;
                 var json15 = null;
                 if (res.ok) try { json15 = await res.json(); } catch (e) {}
                 if (res.ok && json15 && json15.ok && this.supabase) {
@@ -1026,9 +1033,13 @@ class ProposalsManager {
             if (sendFuture && !proposal.webhook_future_fu_sent_at) {
                 const res = await fetch(webhookTarget, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Send-To-Test': firstSendInThisCall ? '1' : '0'
+                    },
                     body: JSON.stringify({ ...payload, tipo_alerta: 'fecha_follow_up_futuro_vencida' })
                 });
+                firstSendInThisCall = false;
                 var jsonFuture = null;
                 if (res.ok) try { jsonFuture = await res.json(); } catch (e) {}
                 if (res.ok && jsonFuture && jsonFuture.ok && this.supabase) {

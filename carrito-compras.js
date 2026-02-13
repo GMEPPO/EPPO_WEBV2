@@ -2782,12 +2782,14 @@ class CartManager {
         
         // itemIdentifier ya está definido arriba
         
+        const dragHandleTitle = this.currentLanguage === 'es' ? 'Arrastrar para reordenar. Mantenga Ctrl y arrastre para duplicar.' : this.currentLanguage === 'pt' ? 'Arrastrar para reordenar. Mantenha Ctrl e arraste para duplicar.' : 'Drag to reorder. Hold Ctrl and drag to duplicate.';
         return `
             <div class="cart-item-wrapper">
-            <div class="cart-item" data-item-id="${itemIdentifier}" draggable="true" style="cursor: move;">
+            <div class="cart-item" data-item-id="${itemIdentifier}" draggable="true" style="cursor: move; position: relative;">
+                <div class="cart-item-drag-handle" title="${dragHandleTitle}" style="position: absolute; right: 4px; top: 4px; z-index: 2; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); cursor: move; background: var(--bg-gray-100); border-radius: 4px;"><i class="fas fa-grip-vertical"></i></div>
                 <div class="cart-item-image-container">
                     ${item.image ? 
-                        `<img src="${item.image}" alt="${item.name}" class="cart-item-image" style="cursor: pointer;" onclick="showImageModal('${item.image.replace(/'/g, "\\'")}', '${productName.replace(/'/g, "\\'")}')" onerror="this.style.display='none'">` :
+                        `<img draggable="false" src="${item.image}" alt="${item.name}" class="cart-item-image" style="cursor: pointer;" onclick="showImageModal('${item.image.replace(/'/g, "\\'")}', '${productName.replace(/'/g, "\\'")}')" onerror="this.style.display='none'">` :
                         `<div style="width:80px;height:80px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;border-radius:8px;">
                             <i class="fas fa-image" style="font-size:1.5rem;color:#9ca3af;"></i>
                         </div>`
@@ -2954,11 +2956,12 @@ class CartManager {
                     ${item.logoUrl ? `<span style="color: #10b981; font-size: 0.875rem;"><i class="fas fa-check-circle"></i> ${L === 'es' ? 'Logotipo subido' : L === 'en' ? 'Logo uploaded' : 'Logotipo carregado'}</span><button type="button" onclick="removeLogo('${safeId}')" style="padding: 6px 12px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem;"><i class="fas fa-trash"></i></button>` : `<span style="font-size: 0.875rem; color: var(--text-secondary);">${lbl.noFile}</span>`}
                 </div>
             </div>` : '';
+        const dragHandleTitleMod = L === 'es' ? 'Arrastrar para reordenar. Mantenga Ctrl y arrastre para duplicar.' : L === 'pt' ? 'Arrastrar para reordenar. Mantenha Ctrl e arraste para duplicar.' : 'Drag to reorder. Hold Ctrl and drag to duplicate.';
         return `
             <div class="cart-item-wrapper">
-            <div class="cart-item" data-item-id="${itemIdentifier}" draggable="true" style="cursor: move;">
-                <div class="cart-item-image-container" style="position: relative;">
-                    <div class="cart-item-drag-handle" title="${L === 'es' ? 'Arrastrar para reordenar. Mantenga Ctrl y arrastre para duplicar.' : L === 'pt' ? 'Arrastrar para reordenar. Mantenha Ctrl e arraste para duplicar.' : 'Drag to reorder. Hold Ctrl and drag to duplicate.'}" style="position: absolute; left: 4px; top: 4px; z-index: 2; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); cursor: move; background: var(--bg-gray-100); border-radius: 4px;"><i class="fas fa-grip-vertical"></i></div>
+            <div class="cart-item" data-item-id="${itemIdentifier}" draggable="true" style="cursor: move; position: relative;">
+                <div class="cart-item-drag-handle" title="${dragHandleTitleMod}" style="position: absolute; right: 4px; top: 4px; z-index: 2; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); cursor: move; background: var(--bg-gray-100); border-radius: 4px;"><i class="fas fa-grip-vertical"></i></div>
+                <div class="cart-item-image-container">
                     ${item.image ? `<img draggable="false" src="${(item.image || '').replace(/"/g, '&quot;')}" alt="" class="cart-item-image" onclick="showImageModal('${(item.image || '').replace(/'/g, "\\'")}', '${nameVal || 'Módulo'}')" onerror="this.style.display='none'">` : `<label style="width: 100px; height: 100px; border: 2px dashed var(--bg-gray-300); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.75rem; color: var(--text-secondary); background: var(--bg-gray-100);"><input type="file" accept="image/*" style="display:none" onchange="handleModulePhotoUpload('${safeId}', this.files[0])"><i class="fas fa-plus" style="margin-right: 4px;"></i>${lbl.addPhoto}</label>`}
                     <div class="cart-item-name">${(item.name || item.referencia || '').replace(/</g, '&lt;') || '—'}</div>
                 </div>
