@@ -3,6 +3,32 @@
  * Carga y muestra todas las propuestas enviadas desde Supabase
  */
 
+/**
+ * Obtener una ruta de archivo única en el bucket: si ya existe un archivo con ese nombre,
+ * añade _1, _2, etc. para no duplicar nombres.
+ */
+async function getUniqueStorageFilePathConsultar(storageClient, bucket, folderPrefix, fileName) {
+    const sanitized = (fileName || 'file').replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').trim() || 'file';
+    const lastDot = sanitized.lastIndexOf('.');
+    const base = lastDot > 0 ? sanitized.slice(0, lastDot) : sanitized;
+    const ext = lastDot > 0 ? sanitized.slice(lastDot + 1) : '';
+    const extPart = ext ? '.' + ext : '';
+    let existingNames = [];
+    try {
+        const { data } = await storageClient.storage.from(bucket).list(folderPrefix, { limit: 2000 });
+        existingNames = (data || []).map((item) => (item && item.name) ? item.name : '').filter(Boolean);
+    } catch (_) {
+        existingNames = [];
+    }
+    let candidate = base + extPart;
+    let n = 1;
+    while (existingNames.includes(candidate)) {
+        candidate = base + '_' + n + extPart;
+        n++;
+    }
+    return folderPrefix ? folderPrefix + '/' + candidate : candidate;
+}
+
 class ProposalsManager {
     constructor() {
         this.supabase = null;
@@ -5001,7 +5027,8 @@ class ProposalsManager {
         }
         const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '');
         const safeExt = ext || 'jpg';
-        const fileName = `${followUpId}/${slot}_${Date.now()}_${Math.random().toString(36).substring(7)}.${safeExt}`;
+        const baseName = (file.name && file.name.trim()) ? file.name.trim() : `foto_${slot}.${safeExt}`;
+        const fileName = await getUniqueStorageFilePathConsultar(storageClient, bucket, followUpId, baseName);
         try {
             const { error: uploadError } = await storageClient.storage
                 .from(bucket)
@@ -7948,7 +7975,8 @@ async function handleAddAmostraPhotoUpload(event) {
                 });
             }
 
-            const fileName = `amostras/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+            const baseName = (originalFile.name && originalFile.name.trim()) ? originalFile.name.trim() : `foto.${fileExt}`;
+            const fileName = await getUniqueStorageFilePathConsultar(storageClient, 'product-images', 'amostras', baseName);
             
             const { data, error } = await storageClient.storage
                 .from('product-images')
@@ -8114,8 +8142,9 @@ async function handleAmostraPhotoUpload(event) {
                 size: fileToUpload.size
             });
 
-            // Subir imagen a Supabase Storage en el bucket product-images
-            const fileName = `amostras/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+            // Subir imagen a Supabase Storage en el bucket product-images (nombre único para no duplicar)
+            const baseName = (fileToUpload.name && fileToUpload.name.trim()) ? fileToUpload.name.trim() : `foto.${fileExt}`;
+            const fileName = await getUniqueStorageFilePathConsultar(storageClient, 'product-images', 'amostras', baseName);
             
             console.log('📤 Subiendo a Supabase Storage:', {
                 bucket: 'product-images',
@@ -8263,9 +8292,10 @@ async function handleDossierDocumentUpload(event) {
 
     for (const file of files) {
         try {
-            // Subir documento a Supabase Storage
+            // Subir documento a Supabase Storage (nombre único para no duplicar)
             const fileExt = file.name.split('.').pop().toLowerCase();
-            const fileName = `dossiers/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+            const baseName = (file.name && file.name.trim()) ? file.name.trim() : `doc.${fileExt}`;
+            const fileName = await getUniqueStorageFilePathConsultar(storageClient, 'proposal-logos', 'dossiers', baseName);
             
             // Obtener el tipo MIME del archivo
             let contentType = file.type;

@@ -7125,6 +7125,32 @@ function editCategoryFieldInForm(index) {
  */
 
 /**
+ * Obtener una ruta de archivo única en el bucket: si ya existe un archivo con ese nombre,
+ * añade _1, _2, etc. para no duplicar nombres.
+ */
+async function getUniqueStorageFilePath(storageClient, bucket, folderPrefix, fileName) {
+    const sanitized = (fileName || 'file').replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').trim() || 'file';
+    const lastDot = sanitized.lastIndexOf('.');
+    const base = lastDot > 0 ? sanitized.slice(0, lastDot) : sanitized;
+    const ext = lastDot > 0 ? sanitized.slice(lastDot + 1) : '';
+    const extPart = ext ? '.' + ext : '';
+    let existingNames = [];
+    try {
+        const { data } = await storageClient.storage.from(bucket).list(folderPrefix, { limit: 2000 });
+        existingNames = (data || []).map((item) => (item && item.name) ? item.name : '').filter(Boolean);
+    } catch (_) {
+        existingNames = [];
+    }
+    let candidate = base + extPart;
+    let n = 1;
+    while (existingNames.includes(candidate)) {
+        candidate = base + '_' + n + extPart;
+        n++;
+    }
+    return folderPrefix ? folderPrefix + '/' + candidate : candidate;
+}
+
+/**
  * Subir imagen a Supabase Storage
  * @param {File} file - Archivo de imagen a subir
  * @param {string} fieldName - Nombre del campo (foto, foto2)
@@ -7215,10 +7241,10 @@ async function uploadImageToSupabase(file, fieldName = 'foto') {
             }
         }
         
-        // Generar nombre único para el archivo
+        // Nombre único en el bucket: si ya existe un archivo con el mismo nombre, se añade _1, _2, etc.
         const fileExt = file.name.split('.').pop().toLowerCase();
-        const fileName = `${fieldName}_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-        const filePath = `productos/${fileName}`;
+        const baseName = (file.name && file.name.trim()) ? file.name.trim() : `${fieldName}.${fileExt}`;
+        const filePath = await getUniqueStorageFilePath(storageClient, 'product-images', 'productos', baseName);
         
         console.log(`📤 Subiendo imagen: ${file.name} (${file.type}, ${(file.size / 1024).toFixed(2)}KB) -> ${filePath}`);
         

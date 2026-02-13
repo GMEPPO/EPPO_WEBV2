@@ -5709,6 +5709,40 @@ function updateModuleField(cartItemId, field, value) {
 window.updateModuleField = updateModuleField;
 
 /**
+ * Obtener una ruta de archivo única en el bucket: si ya existe un archivo con ese nombre,
+ * añade _1, _2, etc. para no duplicar nombres.
+ * @param {object} storageClient - Cliente Supabase (con .storage)
+ * @param {string} bucket - Nombre del bucket
+ * @param {string} folderPrefix - Prefijo de carpeta (ej. "modules/xyz", "productos", "logos")
+ * @param {string} fileName - Nombre del archivo (ej. "foto.jpg")
+ * @returns {Promise<string>} Ruta completa única (ej. "modules/xyz/foto_2.jpg")
+ */
+async function getUniqueStorageFilePath(storageClient, bucket, folderPrefix, fileName) {
+    const sanitized = (fileName || 'file').replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').trim() || 'file';
+    const lastDot = sanitized.lastIndexOf('.');
+    const base = lastDot > 0 ? sanitized.slice(0, lastDot) : sanitized;
+    const ext = lastDot > 0 ? sanitized.slice(lastDot + 1) : '';
+    const extPart = ext ? '.' + ext : '';
+    let existingNames = [];
+    try {
+        const { data } = await storageClient.storage.from(bucket).list(folderPrefix, { limit: 2000 });
+        existingNames = (data || []).map((item) => (item && item.name) ? item.name : '').filter(Boolean);
+    } catch (_) {
+        existingNames = [];
+    }
+    let candidate = base + extPart;
+    let n = 1;
+    while (existingNames.includes(candidate)) {
+        candidate = base + '_' + n + extPart;
+        n++;
+    }
+    return folderPrefix ? folderPrefix + '/' + candidate : candidate;
+}
+if (typeof window !== 'undefined') {
+    window.getUniqueStorageFilePath = getUniqueStorageFilePath;
+}
+
+/**
  * Subir foto de un módulo vacío y asignar URL al item
  */
 async function handleModulePhotoUpload(cartItemId, file) {
@@ -5741,7 +5775,9 @@ async function handleModulePhotoUpload(cartItemId, file) {
         if (!file.type || file.type === 'application/json' || !file.type.startsWith('image/')) {
             finalFile = new File([file], file.name, { type: contentType });
         }
-        const path = `modules/${cartItemId}/${Date.now()}.${ext}`;
+        const folderPrefix = `modules/${cartItemId}`;
+        const baseName = (file.name && file.name.trim()) ? file.name.trim() : `foto.${ext}`;
+        const path = await getUniqueStorageFilePath(storageClient, 'product-images', folderPrefix, baseName);
         const { error } = await storageClient.storage.from('product-images').upload(path, finalFile, { cacheControl: '3600', upsert: true, contentType: contentType });
         if (error) throw error;
         const { data: urlData } = storageClient.storage.from('product-images').getPublicUrl(path);
@@ -5826,7 +5862,9 @@ async function uploadSpecialProductImage(file, productId) {
     }
 
     const ext = (finalFile.name.split('.').pop() || 'jpg').toLowerCase();
-    const path = `products/${productId || 'temp'}/main_${Date.now()}.${ext}`;
+    const folderPrefix = `products/${productId || 'temp'}`;
+    const baseName = (finalFile.name && finalFile.name.trim()) ? finalFile.name.trim() : `main.${ext}`;
+    const path = await getUniqueStorageFilePath(storageClient, 'product-images', folderPrefix, baseName);
 
     const { error } = await storageClient.storage
         .from('product-images')
@@ -7054,7 +7092,8 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
                     }
                 }
                 
-                // Crear un item especial, pero incluir descripción y foto si están disponibles
+                // Crear un item especial (ej. módulo editable), incluir descripción, foto y plazo de entrega
+                const plazoEntregaSpecial = articulo.plazo_entrega || (productFromDB ? (productFromDB.plazo_entrega || productFromDB.plazoEntrega || '') : '');
                 cartItems.push({
                     id: articulo.referencia_articulo || `special_${articulo.id}`,
                     type: 'special',
@@ -7063,8 +7102,9 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
                     price: articulo.precio,
                     observations: articulo.observaciones || '',
                     notes: articulo.observaciones || '',
+                    plazoEntrega: plazoEntregaSpecial,
+                    plazo_entrega: plazoEntregaSpecial,
                     // Incluir descripción y foto si el producto se encontró en la BD
-                    // Asegurar que se obtenga la descripción en ambos formatos (camelCase y snake_case)
                     descripcionEs: productFromDB ? (productFromDB.descripcion_es || productFromDB.descripcionEs || '') : '',
                     descripcionPt: productFromDB ? (productFromDB.descripcion_pt || productFromDB.descripcionPt || '') : '',
                     descripcion_es: productFromDB ? (productFromDB.descripcion_es || productFromDB.descripcionEs || '') : '',
@@ -10831,7 +10871,8 @@ async function sendProposalToSupabase() {
                         categoria: 'pedido-especial',
                         visible_en_catalogo: false,
                         foto: item.image || null,
-                        cliente_id: (clientName && String(clientName).trim()) ? String(clientName).trim() : null
+                        cliente_id: (clientName && String(clientName).trim()) ? String(clientName).trim() : null,
+                        is_custom: true
                     };
                     const { data: newProduct, error: productError } = await window.cartManager.supabase
                         .from('products')
@@ -11818,13 +11859,11 @@ async function handleLogoUpload(itemId, file) {
                 // Usuario canceló
                 return;
             } else if (selectedLogo === 'new') {
-                // Usuario quiere subir un nuevo logotipo
-                // Generar nombre temporal basado en timestamp e ID del item
-                const timestamp = Date.now();
-                const itemIdForFile = item.cartItemId || item.id || 'item';
-                const tempFileName = `logos/temp-${timestamp}-${itemIdForFile}.${fileExtension}`;
+                // Usuario quiere subir un nuevo logotipo (nombre único para no duplicar en el bucket)
+                const baseName = (file.name && file.name.trim()) ? file.name.trim() : `logo.${fileExtension}`;
+                const tempFileName = await getUniqueStorageFilePath(storageClient, 'proposal-logos', 'logos', baseName);
                 
-                // Subir nuevo logotipo con nombre temporal
+                // Subir nuevo logotipo con nombre único
                 const { data, error } = await storageClient.storage
                     .from('proposal-logos')
                     .upload(tempFileName, finalFile, {
@@ -11848,13 +11887,11 @@ async function handleLogoUpload(itemId, file) {
                 logoUrl = selectedLogo;
             }
         } else {
-            // No hay logotipos existentes o no hay nombre de cliente
-            // Generar nombre temporal basado en timestamp e ID del item
-            const timestamp = Date.now();
-            const itemIdForFile = item.cartItemId || item.id || 'item';
-            const tempFileName = `logos/temp-${timestamp}-${itemIdForFile}.${fileExtension}`;
+            // No hay logotipos existentes o no hay nombre de cliente (nombre único para no duplicar en el bucket)
+            const baseName = (file.name && file.name.trim()) ? file.name.trim() : `logo.${fileExtension}`;
+            const tempFileName = await getUniqueStorageFilePath(storageClient, 'proposal-logos', 'logos', baseName);
             
-            // Subir logotipo con nombre temporal
+            // Subir logotipo con nombre único
             const { data, error } = await storageClient.storage
                 .from('proposal-logos')
                 .upload(tempFileName, finalFile, {
