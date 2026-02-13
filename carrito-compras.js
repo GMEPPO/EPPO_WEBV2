@@ -2782,7 +2782,7 @@ class CartManager {
         
         // itemIdentifier ya está definido arriba
         
-        const dragHandleTitle = this.currentLanguage === 'es' ? 'Arrastrar para reordenar. Mantenga Ctrl y arrastre para duplicar.' : this.currentLanguage === 'pt' ? 'Arrastrar para reordenar. Mantenha Ctrl e arraste para duplicar.' : 'Drag to reorder. Hold Ctrl and drag to duplicate.';
+        const dragHandleTitle = this.currentLanguage === 'es' ? 'Arrastrar para reordenar. Triple clic para duplicar módulo.' : this.currentLanguage === 'pt' ? 'Arrastrar para reordenar. Triplo clique para duplicar módulo.' : 'Drag to reorder. Triple click to duplicate module.';
         return `
             <div class="cart-item-wrapper">
             <div class="cart-item" data-item-id="${itemIdentifier}" draggable="true" style="cursor: move; position: relative;">
@@ -2956,7 +2956,7 @@ class CartManager {
                     ${item.logoUrl ? `<span style="color: #10b981; font-size: 0.875rem;"><i class="fas fa-check-circle"></i> ${L === 'es' ? 'Logotipo subido' : L === 'en' ? 'Logo uploaded' : 'Logotipo carregado'}</span><button type="button" onclick="removeLogo('${safeId}')" style="padding: 6px 12px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem;"><i class="fas fa-trash"></i></button>` : `<span style="font-size: 0.875rem; color: var(--text-secondary);">${lbl.noFile}</span>`}
                 </div>
             </div>` : '';
-        const dragHandleTitleMod = L === 'es' ? 'Arrastrar para reordenar. Mantenga Ctrl y arrastre para duplicar.' : L === 'pt' ? 'Arrastrar para reordenar. Mantenha Ctrl e arraste para duplicar.' : 'Drag to reorder. Hold Ctrl and drag to duplicate.';
+        const dragHandleTitleMod = L === 'es' ? 'Arrastrar para reordenar. Triple clic para duplicar módulo.' : L === 'pt' ? 'Arrastrar para reordenar. Triplo clique para duplicar módulo.' : 'Drag to reorder. Triple click to duplicate module.';
         return `
             <div class="cart-item-wrapper">
             <div class="cart-item" data-item-id="${itemIdentifier}" draggable="true" style="cursor: move; position: relative;">
@@ -3413,13 +3413,13 @@ class CartManager {
     }
 
     /**
-     * Configurar drag and drop para reordenar items del carrito
+     * Configurar drag and drop para reordenar items del carrito y triple clic para duplicar módulo
      */
     setupDragAndDrop() {
         const cartItems = document.querySelectorAll('.cart-item[draggable="true"]');
         let draggedElement = null;
         let draggedIndex = null;
-        let dragWithCtrl = false; // Ctrl + arrastrar = duplicar módulo
+        let dragWithCtrl = false; // Ctrl + arrastrar = duplicar módulo (legacy, mantiene duplicar por arrastre si se usa)
 
         cartItems.forEach((item, index) => {
             // Prevenir que los inputs y botones inicien el drag
@@ -3428,6 +3428,50 @@ class CartManager {
                 el.addEventListener('mousedown', (e) => {
                     e.stopPropagation();
                 });
+            });
+
+            // Triple clic en el módulo = duplicar (solo para módulos editables)
+            let lastClickTime = 0;
+            let clickCount = 0;
+            item.addEventListener('click', (e) => {
+                if (e.target.closest('input, button, textarea, select, .remove-item, .observations-btn')) return;
+                const now = Date.now();
+                if (now - lastClickTime > 400) clickCount = 0;
+                lastClickTime = now;
+                clickCount++;
+                if (clickCount === 3) {
+                    clickCount = 0;
+                    const itemId = item.getAttribute('data-item-id');
+                    const cartItem = this.cart.find(c => String(c.cartItemId || c.id) === String(itemId) || c.cartItemId === itemId);
+                    if (cartItem && cartItem.isEmptyModule) {
+                        const currentIndex = this.cart.indexOf(cartItem);
+                        const newCartItemId = `cart-item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                        const clone = {
+                            cartItemId: newCartItemId,
+                            id: `module-${Date.now()}`,
+                            type: cartItem.type,
+                            isEmptyModule: true,
+                            name: cartItem.name || '',
+                            description: cartItem.description || '',
+                            price: cartItem.price != null ? Number(cartItem.price) : 0,
+                            quantity: cartItem.quantity != null ? parseInt(cartItem.quantity, 10) : 1,
+                            image: cartItem.image || null,
+                            plazoEntrega: cartItem.plazoEntrega || cartItem.plazo_entrega || '',
+                            personalization: cartItem.personalization || 'Sem personalização',
+                            logoUrl: cartItem.logoUrl || null,
+                            peso: cartItem.peso != null ? cartItem.peso : null,
+                            box_size: cartItem.box_size != null ? cartItem.box_size : null,
+                            observations: cartItem.observations || '',
+                            order: currentIndex + 1
+                        };
+                        this.cart.splice(currentIndex + 1, 0, clone);
+                        this.cart.forEach((it, i) => { it.order = i; });
+                        this.saveCart();
+                        this.renderCart(true);
+                        const msg = this.currentLanguage === 'es' ? 'Módulo duplicado' : this.currentLanguage === 'pt' ? 'Módulo duplicado' : 'Module duplicated';
+                        this.showNotification(msg, 'success');
+                    }
+                }
             });
 
             item.addEventListener('dragstart', (e) => {
