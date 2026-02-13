@@ -2,7 +2,7 @@
   "rewrites": [
     { "source": "/reset-password", "destination": "/reset-password.html" },
     { "source": "/reset-password/", "destination": "/reset-password.html" },
-    { "source": "/(?!api/)((?!.*\\.).*)$", "destination": "/index.html" }
+    { "source": "/:path((?!api/)(?!.*\\.).*)", "destination": "/index.html" }
   ],
   "headers": [
     {
