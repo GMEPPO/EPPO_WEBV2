@@ -10773,6 +10773,50 @@ async function sendProposalToSupabase() {
         for (const item of cart) {
             // Solo procesar productos y pedidos especiales
             if (item.type === 'product' || item.type === 'special') {
+                // Módulo vacío (Nuevo módulo): registrar como producto en la tabla products, igual que el antiguo pedido especial
+                if (item.isEmptyModule) {
+                    let priceForProduct = Number(item.price) || 0;
+                    if (window.cartManager && window.cartManager.supabase) {
+                        try {
+                            const user = await window.authManager?.getCurrentUser();
+                            if (user) {
+                                const { data: userRoleData, error: roleError } = await window.cartManager.supabase
+                                    .from('user_roles')
+                                    .select('"Name", role')
+                                    .eq('user_id', user.id)
+                                    .single();
+                                if (!roleError && userRoleData && userRoleData.role === 'comercial') {
+                                    const userName = (userRoleData.Name || '').toLowerCase().trim();
+                                    if (userName !== 'claudia cruz') priceForProduct = 0;
+                                }
+                            }
+                        } catch (_) {}
+                    }
+                    const productPayload = {
+                        nombre: (item.name || '').trim() || 'Produto módulo',
+                        descripcion_es: item.description || null,
+                        descripcion_pt: item.description || null,
+                        precio: priceForProduct,
+                        plazo_entrega: (item.plazoEntrega || item.plazo_entrega || '').trim() || null,
+                        box_size: item.box_size != null && item.box_size !== '' ? parseInt(item.box_size, 10) : null,
+                        categoria: 'pedido-especial',
+                        visible_en_catalogo: false,
+                        foto: item.image || null
+                    };
+                    const { data: newProduct, error: productError } = await window.cartManager.supabase
+                        .from('products')
+                        .insert([productPayload])
+                        .select()
+                        .single();
+                    if (productError) {
+                        console.error('Error creando producto desde módulo:', productError);
+                        throw productError;
+                    }
+                    item.id = newProduct.id;
+                    item.referencia = newProduct.id;
+                    console.log('✅ Producto creado desde módulo en tabla products:', newProduct.id);
+                }
+
                 // Para productos, recalcular el precio según la cantidad actual antes de guardar
                 if (item.type === 'product') {
                     // Verificar si el precio fue editado manualmente (para Laser Build)
