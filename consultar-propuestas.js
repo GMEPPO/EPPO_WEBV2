@@ -1007,6 +1007,7 @@ class ProposalsManager {
         const origin = typeof window !== 'undefined' && window.location && window.location.origin;
         const useProxy = origin && origin !== 'null' && !origin.startsWith('file');
         const webhookTarget = useProxy ? (origin + '/api/follow-up-webhook.json') : null;
+        const webhookTestOnlyTarget = useProxy ? (origin + '/api/follow-up-webhook-test-only.json') : null;
 
         if (!webhookTarget) {
             return;
@@ -1015,13 +1016,17 @@ class ProposalsManager {
         try {
             let firstSendInThisCall = sendToTestForThisBatch;
             if (send15d && !proposal.webhook_15d_sent_at) {
+                const body15 = { ...payload, tipo_alerta: '15_dias_sin_follow_up' };
+                if (firstSendInThisCall && webhookTestOnlyTarget) {
+                    fetch(webhookTestOnlyTarget, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body15) }).catch(() => {});
+                }
                 const res = await fetch(webhookTarget, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-Send-To-Test': firstSendInThisCall ? '1' : '0'
                     },
-                    body: JSON.stringify({ ...payload, tipo_alerta: '15_dias_sin_follow_up' })
+                    body: JSON.stringify(body15)
                 });
                 firstSendInThisCall = false;
                 var json15 = null;
@@ -1031,13 +1036,17 @@ class ProposalsManager {
                 }
             }
             if (sendFuture && !proposal.webhook_future_fu_sent_at) {
+                const bodyFuture = { ...payload, tipo_alerta: 'fecha_follow_up_futuro_vencida' };
+                if (firstSendInThisCall && webhookTestOnlyTarget) {
+                    fetch(webhookTestOnlyTarget, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bodyFuture) }).catch(() => {});
+                }
                 const res = await fetch(webhookTarget, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-Send-To-Test': firstSendInThisCall ? '1' : '0'
                     },
-                    body: JSON.stringify({ ...payload, tipo_alerta: 'fecha_follow_up_futuro_vencida' })
+                    body: JSON.stringify(bodyFuture)
                 });
                 firstSendInThisCall = false;
                 var jsonFuture = null;

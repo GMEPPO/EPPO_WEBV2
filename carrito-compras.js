@@ -3430,7 +3430,7 @@ class CartManager {
                 });
             });
 
-            // Triple clic en el módulo = duplicar (solo para módulos editables)
+            // Triple clic = duplicar (módulos editables o productos ya creados)
             let lastClickTime = 0;
             let clickCount = 0;
             item.addEventListener('click', (e) => {
@@ -3443,10 +3443,12 @@ class CartManager {
                     clickCount = 0;
                     const itemId = item.getAttribute('data-item-id');
                     const cartItem = this.cart.find(c => String(c.cartItemId || c.id) === String(itemId) || c.cartItemId === itemId);
-                    if (cartItem && cartItem.isEmptyModule) {
-                        const currentIndex = this.cart.indexOf(cartItem);
-                        const newCartItemId = `cart-item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-                        const clone = {
+                    if (!cartItem) return;
+                    const currentIndex = this.cart.indexOf(cartItem);
+                    const newCartItemId = `cart-item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                    let clone;
+                    if (cartItem.isEmptyModule) {
+                        clone = {
                             cartItemId: newCartItemId,
                             id: `module-${Date.now()}`,
                             type: cartItem.type,
@@ -3464,13 +3466,17 @@ class CartManager {
                             observations: cartItem.observations || '',
                             order: currentIndex + 1
                         };
-                        this.cart.splice(currentIndex + 1, 0, clone);
-                        this.cart.forEach((it, i) => { it.order = i; });
-                        this.saveCart();
-                        this.renderCart(true);
-                        const msg = this.currentLanguage === 'es' ? 'Módulo duplicado' : this.currentLanguage === 'pt' ? 'Módulo duplicado' : 'Module duplicated';
-                        this.showNotification(msg, 'success');
+                    } else {
+                        clone = JSON.parse(JSON.stringify(cartItem));
+                        clone.cartItemId = newCartItemId;
+                        clone.order = currentIndex + 1;
                     }
+                    this.cart.splice(currentIndex + 1, 0, clone);
+                    this.cart.forEach((it, i) => { it.order = i; });
+                    this.saveCart();
+                    this.renderCart(true);
+                    const msg = this.currentLanguage === 'es' ? 'Producto duplicado' : this.currentLanguage === 'pt' ? 'Produto duplicado' : 'Item duplicated';
+                    this.showNotification(msg, 'success');
                 }
             });
 
