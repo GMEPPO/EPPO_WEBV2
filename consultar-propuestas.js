@@ -2686,6 +2686,11 @@ class ProposalsManager {
     }
 
     setupEventListeners() {
+        // Refrescar listado cuando Gestão de Encomendas actualiza el estado de una propuesta (Pedido de encomenda → Encomenda en curso)
+        window.addEventListener('gestao-encomendas-estado-actualizado', () => {
+            if (this.supabase) this.loadProposals();
+        });
+
         // Listener para cambios de idioma
         window.addEventListener('languageChanged', (event) => {
             const newLanguage = event.detail?.language || localStorage.getItem('language') || 'pt';
@@ -3463,19 +3468,23 @@ class ProposalsManager {
             const fornecedor = (product && product.nombre_fornecedor) ? String(product.nombre_fornecedor) : '-';
             const fotoUrl = (product && product.foto) ? product.foto : '';
             const articuloId = (articulo.id || `art-${index}`).toString().replace(/"/g, '');
-            const nomeArt = (articulo.nombre_articulo || '-').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+            const nomeArtRaw = articulo.nombre_articulo || articulo.referencia_articulo || ('Producto ' + (index + 1));
+            const nomeArt = String(nomeArtRaw).replace(/</g, '&lt;').replace(/"/g, '&quot;');
             const qtyProposta = articulo.cantidad || 1;
+            const metaLine = (hasPhc ? 'Nº PHC: ' + phcRef : (lang === 'es' ? 'Sin PHC' : lang === 'en' ? 'No PHC' : 'Sem PHC')) + ' · ' + (fornecedor || '-') + ' · ' + (lang === 'es' ? 'Cant.' : lang === 'en' ? 'Qty' : 'Qtd') + ': ' + qtyProposta;
+            const metaLineEsc = metaLine.replace(/</g, '&lt;').replace(/"/g, '&quot;');
 
             const row = document.createElement('div');
-            row.style.cssText = 'display: flex; align-items: center; gap: 12px; padding: 12px; border-bottom: 1px solid var(--bg-gray-200);';
+            row.className = 'pedido-encomenda-select-row';
+            const imgBlock = fotoUrl
+                ? `<img src="${fotoUrl.replace(/"/g, '&quot;')}" alt="" class="pedido-select-img">`
+                : `<div class="pedido-select-img-wrap"><i class="fas fa-image"></i></div>`;
             row.innerHTML = `
                 <input type="checkbox" id="pedido-select-${articuloId}" class="form-input" data-articulo-id="${articuloId}">
-                <div style="flex-shrink: 0;">
-                    ${fotoUrl ? `<img src="${fotoUrl.replace(/"/g, '&quot;')}" alt="" style="width: 56px; height: 56px; object-fit: contain; border-radius: 8px; background: var(--bg-gray-100);">` : `<div style="width: 56px; height: 56px; background: var(--bg-gray-200); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary);"><i class="fas fa-image"></i></div>`}
-                </div>
-                <div style="flex: 1; min-width: 0;">
-                    <div style="font-weight: 600; color: var(--text-primary);">${nomeArt}</div>
-                    <div style="font-size: 0.8rem; color: var(--text-secondary);">${hasPhc ? 'Nº PHC: ' + phcRef : (lang === 'es' ? 'Sin PHC' : lang === 'en' ? 'No PHC' : 'Sem PHC')} · ${(fornecedor || '-').replace(/</g, '&lt;')} · ${lang === 'es' ? 'Cant.' : lang === 'en' ? 'Qty' : 'Qtd'}: ${qtyProposta}</div>
+                ${imgBlock}
+                <div class="pedido-select-info">
+                    <div class="pedido-select-name" title="${nomeArt}">${nomeArt}</div>
+                    <div class="pedido-select-meta" title="${metaLineEsc}">${metaLineEsc}</div>
                 </div>
             `;
             selectListEl.appendChild(row);
