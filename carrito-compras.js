@@ -8223,6 +8223,20 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     }
 
     /**
+     * Normaliza texto de descripción para PDF: colapsa múltiples saltos de línea y espacios
+     * para que el texto ocupe menos altura y no se desborde del cuadro.
+     */
+    function normalizeDescriptionForPdf(text) {
+        if (!text || typeof text !== 'string') return '';
+        return text
+            .replace(/\r\n/g, '\n')
+            .replace(/\r/g, '\n')
+            .replace(/\n{3,}/g, '\n\n')
+            .replace(/\s{2,}/g, ' ')
+            .trim();
+    }
+
+    /**
      * Dibujar descripción con partes en negrita (variante y observaciones)
      */
     function drawDescriptionWithBoldParts(x, y, width, height, baseDescription, variantText, observations, notesLabel, selectedColorText = '') {
@@ -8240,8 +8254,8 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         const fontSize = 7;
         const lineHeight = fontSize * 0.6; // Espaciado aumentado para evitar que se corte el texto
         
-        // Construir el texto completo con marcadores para las partes en negrita
-        let fullText = (baseDescription || '').trim();
+        // Construir el texto completo: normalizar para reducir espacios y saltos de línea excesivos
+        let fullText = normalizeDescriptionForPdf(baseDescription || '');
         let parts = [];
         
         console.log('🔍 [drawDescriptionWithBoldParts] Parámetros recibidos:', {
@@ -8267,8 +8281,8 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             const separator = fullText ? '\n\n' : '';
             parts.push({ text: separator + personalizedLabel, bold: true });
             // El texto de la variante en la siguiente línea, también en negrita
-            // Limpiar y formatear el texto de la variante
-            const cleanVariantText = variantText.trim();
+            // Limpiar y normalizar (colapsar espacios y saltos de línea excesivos)
+            const cleanVariantText = normalizeDescriptionForPdf(variantText);
             // Dividir por saltos de línea si los tiene (puede incluir el color)
             const variantLines = cleanVariantText.split('\n');
             variantLines.forEach((line, index) => {
@@ -8309,21 +8323,21 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             // Agregar salto de línea antes del color
             const hasContentBefore = (fullText && fullText.trim()) || (variantText && variantText.trim());
             const colorSeparator = hasContentBefore ? '\n\n' : '';
-            // El color se muestra en negrita
-            const colorPart = { text: colorSeparator + selectedColorText.trim(), bold: true };
+            // El color se muestra en negrita (normalizado)
+            const colorPart = { text: colorSeparator + normalizeDescriptionForPdf(selectedColorText), bold: true };
             parts.push(colorPart);
             console.log('✅ Color agregado a parts:', colorPart);
         } else {
             console.warn('⚠️ No se agregó color porque selectedColorText está vacío o es undefined');
         }
         
-        // Si hay observaciones, agregarlas
+        // Si hay observaciones, agregarlas (normalizadas para reducir espacio)
         if (observations && observations.trim()) {
             // Solo agregar salto de línea si ya hay contenido (descripción, variante o color)
             const hasContent = (fullText && fullText.trim()) || (variantText && variantText.trim()) || (selectedColorText && selectedColorText.trim());
             const notesText = hasContent ? '\n\n' + notesLabel + ': ' : notesLabel + ': ';
             parts.push({ text: notesText, bold: false });
-            parts.push({ text: observations.trim(), bold: true });
+            parts.push({ text: normalizeDescriptionForPdf(observations), bold: true });
         }
         
         // Si no hay nada, usar guión
@@ -8339,12 +8353,13 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             doc.setFont('helvetica', part.bold ? 'bold' : 'normal');
             doc.setFontSize(fontSize);
             
-            // Dividir por saltos de línea primero
+            // Dividir por saltos de línea primero; colapsar líneas vacías consecutivas a una sola
             const paragraphs = part.text.split('\n');
             paragraphs.forEach((paragraph, paraIndex) => {
                 if (paraIndex > 0 && paragraph.trim() === '') {
-                    // Salto de línea vacío, agregar línea vacía
-                    allLines.push({ text: '', bold: part.bold });
+                    // Solo agregar una línea vacía si la anterior no era vacía (evitar muchas líneas en blanco)
+                    const prevEmpty = allLines.length > 0 && allLines[allLines.length - 1].text === '';
+                    if (!prevEmpty) allLines.push({ text: '', bold: part.bold });
                 } else if (paragraph.trim() !== '') {
                     // Limpiar el texto para evitar problemas con caracteres especiales
                     // Preservar espacios normales pero asegurar que no haya espacios múltiples innecesarios
@@ -8707,24 +8722,22 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         doc.setFont('helvetica', 'normal');
         
         // Simular el proceso de drawDescriptionWithBoldParts para contar líneas correctamente
-        // Dividir descripción base
+        // Usar la misma normalización (colapsar espacios y saltos de línea) para consistencia
         let allLinesCount = 0;
         if (description && description.trim()) {
-            const cleanDesc = description.trim().replace(/\s{2,}/g, ' ');
+            const cleanDesc = normalizeDescriptionForPdf(description);
             const descLines = doc.splitTextToSize(cleanDesc, availableWidth);
             allLinesCount += descLines.length;
         }
         
-        // Agregar líneas de variante si existe
+        // Agregar líneas de variante si existe (normalizado)
         if (variantText && variantText.trim()) {
-            const cleanVariant = variantText.trim().replace(/\s{2,}/g, ' ');
-            const variantLines = cleanVariant.split('\n');
+            const cleanVariant = normalizeDescriptionForPdf(variantText);
+            const variantLines = cleanVariant.split('\n').filter(l => l.trim());
             variantLines.forEach(line => {
-                if (line.trim()) {
-                    const cleanLine = line.trim().replace(/\s{2,}/g, ' ');
-                    const lines = doc.splitTextToSize(cleanLine, availableWidth);
-                    allLinesCount += lines.length;
-                }
+                const cleanLine = line.trim().replace(/\s{2,}/g, ' ');
+                const lines = doc.splitTextToSize(cleanLine, availableWidth);
+                allLinesCount += lines.length;
             });
             allLinesCount += 1; // Línea de "Personalizado"
         }
@@ -8734,10 +8747,10 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             allLinesCount += 1; // Línea de color
         }
         
-        // Agregar líneas de observaciones si existen
+        // Agregar líneas de observaciones si existen (normalizado)
         if (observations && observations.trim()) {
             allLinesCount += 1; // Línea de "Notas:"
-            const cleanObs = observations.trim().replace(/\s{2,}/g, ' ');
+            const cleanObs = normalizeDescriptionForPdf(observations);
             const obsLines = doc.splitTextToSize(cleanObs, availableWidth);
             allLinesCount += obsLines.length;
         }
