@@ -8223,16 +8223,16 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     }
 
     /**
-     * Normaliza texto de descripción para PDF: colapsa múltiples saltos de línea y espacios
-     * para que el texto ocupe menos altura y no se desborde del cuadro.
+     * Normaliza texto de descripción para PDF: elimina líneas en blanco entre párrafos
+     * (varios saltos de línea seguidos → uno solo). Mantiene los saltos de línea y no
+     * modifica espacios para que el texto no se vea extraño.
      */
     function normalizeDescriptionForPdf(text) {
         if (!text || typeof text !== 'string') return '';
         return text
             .replace(/\r\n/g, '\n')
             .replace(/\r/g, '\n')
-            .replace(/\n{3,}/g, '\n\n')
-            .replace(/\s{2,}/g, ' ')
+            .replace(/\n{2,}/g, '\n')
             .trim();
     }
 
@@ -8353,32 +8353,21 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             doc.setFont('helvetica', part.bold ? 'bold' : 'normal');
             doc.setFontSize(fontSize);
             
-            // Dividir por saltos de línea primero; colapsar líneas vacías consecutivas a una sola
+            // Dividir por saltos de línea; no añadir líneas en blanco entre párrafos
             const paragraphs = part.text.split('\n');
-            paragraphs.forEach((paragraph, paraIndex) => {
-                if (paraIndex > 0 && paragraph.trim() === '') {
-                    // Solo agregar una línea vacía si la anterior no era vacía (evitar muchas líneas en blanco)
-                    const prevEmpty = allLines.length > 0 && allLines[allLines.length - 1].text === '';
-                    if (!prevEmpty) allLines.push({ text: '', bold: part.bold });
-                } else if (paragraph.trim() !== '') {
-                    // Limpiar el texto para evitar problemas con caracteres especiales
-                    // Preservar espacios normales pero asegurar que no haya espacios múltiples innecesarios
-                    let cleanParagraph = paragraph.trim();
-                    // Reemplazar múltiples espacios con uno solo, pero preservar espacios dentro de paréntesis
-                    cleanParagraph = cleanParagraph.replace(/\s{2,}/g, ' ');
+            paragraphs.forEach((paragraph) => {
+                if (paragraph.trim() === '') return;
+                // Limpiar solo espacios al inicio/final del párrafo; no tocar espacios internos
+                let cleanParagraph = paragraph.trim();
                     
                     // Dividir el párrafo en líneas que caben en el ancho
                     // Usar el ancho disponible completo pero con cuidado
                     const lines = doc.splitTextToSize(cleanParagraph, availableWidth);
                     lines.forEach(line => {
-                        // Asegurar que la línea tenga contenido y limpiar espacios al inicio/final
                         if (line && line.trim()) {
-                            // Limpiar espacios múltiples que puedan haberse introducido durante la división
-                            const cleanLine = line.trim().replace(/\s{2,}/g, ' ');
-                            allLines.push({ text: cleanLine, bold: part.bold });
+                            allLines.push({ text: line.trim(), bold: part.bold });
                         }
                     });
-                }
             });
         });
         
@@ -8410,9 +8399,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             doc.setFont('helvetica', line.bold ? 'bold' : 'normal');
             const textX = x + (width / 2);
             // Limpiar el texto de la línea antes de dibujarlo para evitar espacios múltiples
-            const cleanLineText = line.text.trim().replace(/\s{2,}/g, ' ');
-            // Usar maxWidth para asegurar que el texto no se salga horizontalmente
-            // Solo dibujar si hay texto válido
+            const cleanLineText = line.text.trim();
             if (cleanLineText && cleanLineText.length > 0) {
                 doc.text(cleanLineText, textX, lineY, { align: 'center', maxWidth: availableWidth });
             }
@@ -8735,8 +8722,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             const cleanVariant = normalizeDescriptionForPdf(variantText);
             const variantLines = cleanVariant.split('\n').filter(l => l.trim());
             variantLines.forEach(line => {
-                const cleanLine = line.trim().replace(/\s{2,}/g, ' ');
-                const lines = doc.splitTextToSize(cleanLine, availableWidth);
+                const lines = doc.splitTextToSize(line.trim(), availableWidth);
                 allLinesCount += lines.length;
             });
             allLinesCount += 1; // Línea de "Personalizado"
