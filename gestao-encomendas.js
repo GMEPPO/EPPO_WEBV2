@@ -28,7 +28,15 @@
             enCurso: 'Pedidos en curso',
             refPhc: 'Ref. PHC',
             observaciones: 'Observações',
-            faltaCriarCodigo: 'Falta criar código PHC'
+            faltaCriarCodigo: 'Falta criar código PHC',
+            refFornecedor: 'Ref. fornecedor',
+            designacao: 'Designação',
+            peso: 'Peso',
+            qtyCaixa: 'Qtd. por caixa',
+            personalizado: 'Personalizado',
+            sim: 'Sim',
+            nao: 'Não',
+            semPhc: 'Sem PHC'
         },
         es: {
             loading: 'Cargando...',
@@ -54,7 +62,15 @@
             enCurso: 'Pedidos en curso',
             refPhc: 'Ref. PHC',
             observaciones: 'Observaciones',
-            faltaCriarCodigo: 'Falta crear código PHC'
+            faltaCriarCodigo: 'Falta crear código PHC',
+            refFornecedor: 'Ref. fornecedor',
+            designacao: 'Designación',
+            peso: 'Peso',
+            qtyCaixa: 'Cant. por caja',
+            personalizado: 'Personalizado',
+            sim: 'Sí',
+            nao: 'No',
+            semPhc: 'Sin PHC'
         },
         en: {
             loading: 'Loading...',
@@ -80,7 +96,15 @@
             enCurso: 'Orders in progress',
             refPhc: 'PHC Ref.',
             observaciones: 'Observations',
-            faltaCriarCodigo: 'PHC code must be created'
+            faltaCriarCodigo: 'PHC code must be created',
+            refFornecedor: 'Supplier ref.',
+            designacao: 'Designation',
+            peso: 'Weight',
+            qtyCaixa: 'Qty per box',
+            personalizado: 'Custom',
+            sim: 'Yes',
+            nao: 'No',
+            semPhc: 'No PHC'
         }
     };
 
@@ -318,21 +342,18 @@
                 `;
                 const tbody = block.querySelector('.ge-fornecedor-tbody');
                 rows.forEach(gc => {
-                    const ref = (gc.referencia || gc.phc_ref || gc.nome_articulo || '-');
                     const preco = gc.precio_custo != null ? formatNumber(gc.precio_custo) : '-';
                     const desconto = gc.porcentaje_descuento != null ? formatNumber(gc.porcentaje_descuento) + '%' : '-';
                     const articuloId = (gc.presupuesto_articulo_id || '').toString();
                     const art = articuloId && articuloMap[articuloId] ? articuloMap[articuloId] : null;
                     const previsaoVal = art && art.fecha_prevista_entrega ? (typeof art.fecha_prevista_entrega === 'string' ? art.fecha_prevista_entrega.split('T')[0] : art.fecha_prevista_entrega) : '';
                     const hasArticuloId = articuloId && articuloId !== 'undefined';
-                    const isSemPhc = !!(gc.referencia || gc.designacao);
-                    const faltaCriarCodigo = isSemPhc && !(gc.phc_ref && String(gc.phc_ref).trim());
-                    const badgeFalta = faltaCriarCodigo ? ` <span class="ge-badge-falta" style="display:inline-block;margin-left:6px;padding:2px 8px;font-size:0.7rem;background:#b91c1c;color:#fff;border-radius:4px;">${t('faltaCriarCodigo')}</span>` : '';
+                    const productDetailsHtml = buildProductDetailsHtml(gc, { showFaltaBadge: true });
 
                     const tr = document.createElement('tr');
                     tr.setAttribute('data-articulo-id', articuloId);
                     tr.innerHTML = `
-                        <td>${escapeHtml(gc.nome_articulo || ref)} <span style="color: #94a3b8; font-size: 0.8rem;">${escapeHtml(ref)}</span>${badgeFalta}</td>
+                        <td style="vertical-align: top; min-width: 220px;">${productDetailsHtml}</td>
                         <td>${gc.quantidade_encomendar ?? '-'}</td>
                         <td>${preco}</td>
                         <td>${desconto}</td>
@@ -512,7 +533,7 @@
                     <div class="ge-table-wrap">
                         <table class="ge-table">
                             <thead><tr>
-                                <th>${t('refPhc')}</th>
+                                <th>${t('productoRef')} / ${t('detalles')}</th>
                                 <th>${t('numEncomenda')}</th>
                                 <th>${t('fechaEncomenda')}</th>
                                 <th>${t('previsaoEntrega')}</th>
@@ -533,17 +554,13 @@
                     const fechaEnc = art && art.fecha_encomenda ? (typeof art.fecha_encomenda === 'string' ? art.fecha_encomenda.split('T')[0] : art.fecha_encomenda) : '';
                     const previsaoVal = art && art.fecha_prevista_entrega ? (typeof art.fecha_prevista_entrega === 'string' ? art.fecha_prevista_entrega.split('T')[0] : art.fecha_prevista_entrega) : '';
                     const obsVal = (art && art.observaciones != null ? art.observaciones : '') || '';
-                    const isSemPhc = !!(gc.referencia || gc.designacao);
-                    const faltaCriarCodigo = isSemPhc && !(gc.phc_ref && String(gc.phc_ref).trim());
-                    const refPhcCell = faltaCriarCodigo
-                        ? `<span style="color: #b91c1c; font-weight: 500;">— ${escapeHtml(t('faltaCriarCodigo'))}</span>${gc.referencia ? ' <span style="color:#94a3b8;font-size:0.85rem;">(' + escapeHtml(gc.referencia) + ')</span>' : ''}`
-                        : escapeHtml((gc.phc_ref || gc.referencia || gc.nome_articulo || '-').trim());
                     const hasArticuloId = articuloId && articuloId !== 'undefined';
+                    const productDetailsHtml = buildProductDetailsHtml(gc, { showFaltaBadge: true });
 
                     const tr = document.createElement('tr');
                     tr.setAttribute('data-articulo-id', articuloId);
                     tr.innerHTML = `
-                        <td>${refPhcCell}</td>
+                        <td style="vertical-align: top; min-width: 220px;">${productDetailsHtml}</td>
                         <td>${escapeHtml(numero)}</td>
                         <td>${escapeHtml(fechaEnc)}</td>
                         <td>${hasArticuloId ? `<input type="date" class="ge-editable ge-encurso-previsao" data-articulo-id="${articuloId}" value="${escapeAttr(previsaoVal)}">` : '-'}</td>
@@ -612,6 +629,33 @@
     function formatNumber(n) {
         if (n == null) return '-';
         return Number(n).toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+    }
+
+    function buildProductDetailsHtml(gc, options) {
+        const { showFaltaBadge = false } = options || {};
+        const refFornecedor = (gc.referencia || '').trim() || '-';
+        const hasPhc = (gc.phc_ref || '').trim() !== '';
+        const phcLabel = hasPhc ? (gc.phc_ref || '').trim() : t('semPhc');
+        const isSemPhc = !!(gc.referencia || gc.designacao);
+        const faltaCriarCodigo = showFaltaBadge && isSemPhc && !hasPhc;
+        const faltaBadge = faltaCriarCodigo ? ` <span class="ge-badge-falta" style="display:inline-block;margin-left:6px;padding:2px 8px;font-size:0.7rem;background:#b91c1c;color:#fff;border-radius:4px;">${t('faltaCriarCodigo')}</span>` : '';
+        let html = `<div class="ge-product-details" style="font-size: 0.875rem;">`;
+        html += `<div style="font-weight: 600; margin-bottom: 4px;">${escapeHtml(gc.nome_articulo || gc.designacao || refFornecedor || '-')}${faltaBadge}</div>`;
+        html += `<div style="color: #94a3b8; font-size: 0.8rem; margin-bottom: 6px;">${t('refFornecedor')}: ${escapeHtml(refFornecedor)}</div>`;
+        html += `<div style="color: #94a3b8; font-size: 0.8rem; margin-bottom: 6px;">${t('refPhc')}: ${hasPhc ? escapeHtml(phcLabel) : `<span style="color: #f59e0b;">${escapeHtml(phcLabel)}</span>`}</div>`;
+        if (isSemPhc) {
+            html += `<div style="margin-top: 8px; padding-top: 6px; border-top: 1px solid #334155; font-size: 0.8rem; color: #cbd5e1;">`;
+            html += `<div><strong>${t('designacao')}:</strong> ${escapeHtml((gc.designacao || '').trim() || '-')}</div>`;
+            html += `<div><strong>${t('peso')}:</strong> ${escapeHtml((gc.peso || '').trim() || '-')}</div>`;
+            html += `<div><strong>${t('qtyCaixa')}:</strong> ${gc.quantidade_por_caixa != null ? escapeHtml(String(gc.quantidade_por_caixa)) : '-'}</div>`;
+            html += `<div><strong>${t('personalizado')}:</strong> ${gc.personalizado ? t('sim') : t('nao')}</div>`;
+            if ((gc.personalizado_observacoes || '').trim()) {
+                html += `<div style="margin-top: 4px;"><strong>${t('observaciones')}:</strong> ${escapeHtml((gc.personalizado_observacoes || '').trim())}</div>`;
+            }
+            html += `</div>`;
+        }
+        html += `</div>`;
+        return html;
     }
 
     function updateTexts() {
