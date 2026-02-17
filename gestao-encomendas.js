@@ -36,7 +36,8 @@
             personalizado: 'Personalizado',
             sim: 'Sim',
             nao: 'Não',
-            semPhc: 'Sem PHC'
+            semPhc: 'Sem PHC',
+            obrigatorioPhcSemCodigo: 'É obrigatório preencher a Ref. PHC para todos os produtos sem código PHC para guardar e deixar a encomenda em curso.'
         },
         es: {
             loading: 'Cargando...',
@@ -70,7 +71,8 @@
             personalizado: 'Personalizado',
             sim: 'Sí',
             nao: 'No',
-            semPhc: 'Sin PHC'
+            semPhc: 'Sin PHC',
+            obrigatorioPhcSemCodigo: 'Es obligatorio rellenar la Ref. PHC para todos los productos sin código PHC para guardar y dejar la encomienda en curso.'
         },
         en: {
             loading: 'Loading...',
@@ -104,7 +106,8 @@
             personalizado: 'Custom',
             sim: 'Yes',
             nao: 'No',
-            semPhc: 'No PHC'
+            semPhc: 'No PHC',
+            obrigatorioPhcSemCodigo: 'PHC Ref. is required for all products without PHC code to save and move the order to in progress.'
         }
     };
 
@@ -335,7 +338,7 @@
                     </div>
                     <div class="ge-table-wrap">
                         <table class="ge-table">
-                            <thead><tr><th>${t('productoRef')}</th><th>${t('cantidad')}</th><th>${t('precio')}</th><th>${t('desconto')}</th><th>${t('previsaoEntrega')}</th></tr></thead>
+                            <thead><tr><th>${t('productoRef')}</th><th>${t('refPhc')}</th><th>${t('cantidad')}</th><th>${t('precio')}</th><th>${t('desconto')}</th><th>${t('previsaoEntrega')}</th></tr></thead>
                             <tbody class="ge-fornecedor-tbody"></tbody>
                         </table>
                     </div>
@@ -349,11 +352,21 @@
                     const previsaoVal = art && art.fecha_prevista_entrega ? (typeof art.fecha_prevista_entrega === 'string' ? art.fecha_prevista_entrega.split('T')[0] : art.fecha_prevista_entrega) : '';
                     const hasArticuloId = articuloId && articuloId !== 'undefined';
                     const productDetailsHtml = buildProductDetailsHtml(gc, { showFaltaBadge: true });
+                    const hasPhc = (gc.phc_ref || '').trim() !== '';
+                    const isSemPhc = !!(gc.referencia || gc.designacao);
+                    const needsPhcInput = isSemPhc && !hasPhc;
+                    const gcId = (gc.id || '').toString();
+                    const phcCell = needsPhcInput
+                        ? `<input type="text" class="ge-editable ge-phc-ref-input" data-gc-id="${escapeAttr(gcId)}" value="${escapeAttr((gc.phc_ref || '').trim())}" placeholder="${escapeAttr(t('refPhc'))}" style="min-width: 100px;">`
+                        : escapeHtml((gc.phc_ref || '').trim() || '-');
 
                     const tr = document.createElement('tr');
                     tr.setAttribute('data-articulo-id', articuloId);
+                    if (gcId) tr.setAttribute('data-gc-id', gcId);
+                    if (needsPhcInput) tr.setAttribute('data-sem-phc', '1');
                     tr.innerHTML = `
                         <td style="vertical-align: top; min-width: 220px;">${productDetailsHtml}</td>
+                        <td style="vertical-align: top;">${phcCell}</td>
                         <td>${gc.quantidade_encomendar ?? '-'}</td>
                         <td>${preco}</td>
                         <td>${desconto}</td>
@@ -379,6 +392,15 @@
         const client = await getClient();
         if (!client) return;
 
+        const phcInputs = block.querySelectorAll('.ge-phc-ref-input');
+        for (const input of phcInputs) {
+            if (!(input.value || '').trim()) {
+                showNotification(t('obrigatorioPhcSemCodigo'), 'error');
+                input.focus();
+                return;
+            }
+        }
+
         const numEl = block.querySelector('.ge-fn-numero');
         const fechaEl = block.querySelector('.ge-fn-fecha');
         const numero_encomenda = numEl ? numEl.value.trim() || null : null;
@@ -403,6 +425,16 @@
                     })
                     .eq('id', articuloId);
 
+                if (error) throw error;
+            }
+            for (const input of phcInputs) {
+                const gcId = input.getAttribute('data-gc-id');
+                const phcRef = (input.value || '').trim() || null;
+                if (!gcId) continue;
+                const { error } = await client
+                    .from('gestao_compras')
+                    .update({ phc_ref: phcRef })
+                    .eq('id', gcId);
                 if (error) throw error;
             }
             showNotification(t('guardado'), 'success');
@@ -442,11 +474,18 @@
         try {
             const { data: gcRows, error: gcErr } = await client
                 .from('gestao_compras')
-                .select('presupuesto_articulo_id')
+                .select('id, presupuesto_articulo_id, referencia, designacao, phc_ref')
                 .eq('presupuesto_id', presupuestoId);
             if (gcErr || !gcRows || gcRows.length === 0) return;
             const articuloIds = [...new Set((gcRows || []).map(r => r.presupuesto_articulo_id).filter(Boolean))];
             if (articuloIds.length === 0) return;
+
+            const semPhcWithoutRef = (gcRows || []).filter(gc => {
+                const isSemPhc = !!((gc.referencia || '').trim() || (gc.designacao || '').trim());
+                const hasPhc = ((gc.phc_ref || '').trim() !== '');
+                return isSemPhc && !hasPhc;
+            });
+            if (semPhcWithoutRef.length > 0) return;
 
             const { data: articulos, error: artErr } = await client
                 .from('presupuestos_articulos')

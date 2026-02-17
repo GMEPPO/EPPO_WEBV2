@@ -1960,8 +1960,19 @@ class ProposalsManager {
                 </div>
             </div>
 
-            <!-- Sección ENCOMENDA -->
-            ${proposal.articulos && proposal.articulos.some(a => a.encomendado === true || a.encomendado === 'true') ? `
+            <!-- Sección ENCOMENDA: visible cuando hay artículos encomendados o cuando la propuesta está en "encomenda en curso" / "encomenda concluída" (Gestão de Encomendas) -->
+            ${(function() {
+                const estado = (proposal.estado_propuesta || '').toLowerCase();
+                const isEncomendaEnCurso = estado === 'encomenda_en_curso' || (estado.includes('encomenda') && (estado.includes('en curso') || estado.includes('em curso')));
+                const isEncomendaConcluida = estado === 'encomenda_concluida' || estado.includes('concluida') || estado.includes('concluída');
+                const hasEncomendados = proposal.articulos && proposal.articulos.some(a => a.encomendado === true || a.encomendado === 'true');
+                const hasNumeroEncomenda = proposal.articulos && proposal.articulos.some(a => (a.numero_encomenda || '').toString().trim() !== '');
+                const showEncomendaSection = proposal.articulos && (hasEncomendados || hasNumeroEncomenda || isEncomendaEnCurso || isEncomendaConcluida);
+                const encomendaRows = (proposal.articulos || []).filter(a =>
+                    a.encomendado === true || a.encomendado === 'true' || ((a.numero_encomenda || '').toString().trim() !== '')
+                );
+                return showEncomendaSection && encomendaRows.length > 0;
+            })() ? `
             <div class="encomenda-section" style="margin: var(--space-6) 0; padding: var(--space-4); background: var(--bg-gray-50, #f9fafb); border-radius: var(--radius-lg, 12px); border: 1px solid var(--bg-gray-200, #e5e7eb);">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-4);">
                     <h4 style="font-size: 1.125rem; font-weight: 600; color: var(--text-primary, #111827); display: flex; align-items: center; gap: 8px;">
@@ -1998,11 +2009,18 @@ class ProposalsManager {
                             </tr>
                         </thead>
                         <tbody>
-                            ${proposal.articulos
-                                .filter(a => a.encomendado === true || a.encomendado === 'true')
-                                .map((articulo, index) => {
+                            ${(function() {
+                                const estado = (proposal.estado_propuesta || '').toLowerCase();
+                                const isEncomendaEnCurso = estado === 'encomenda_en_curso' || (estado.includes('encomenda') && (estado.includes('en curso') || estado.includes('em curso')));
+                                const isEncomendaConcluida = estado === 'encomenda_concluida' || estado.includes('concluida') || estado.includes('concluída');
+                                const hasEncomendados = proposal.articulos && proposal.articulos.some(a => a.encomendado === true || a.encomendado === 'true');
+                                const hasNumeroEncomenda = proposal.articulos && proposal.articulos.some(a => (a.numero_encomenda || '').toString().trim() !== '');
+                                const rows = (proposal.articulos || []).filter(a =>
+                                    a.encomendado === true || a.encomendado === 'true' || ((a.numero_encomenda || '').toString().trim() !== '')
+                                );
+                                return rows.map((articulo) => {
                                     const fechaEncomenda = articulo.fecha_encomenda ? new Date(articulo.fecha_encomenda).toLocaleDateString('pt-PT') : '-';
-                                    const fechaPrevista = articulo.fecha_prevista_entrega ? articulo.fecha_prevista_entrega.split('T')[0] : '';
+                                    const fechaPrevista = articulo.fecha_prevista_entrega ? (typeof articulo.fecha_prevista_entrega === 'string' ? articulo.fecha_prevista_entrega.split('T')[0] : articulo.fecha_prevista_entrega) : '';
                                     return `
                                 <tr style="border-bottom: 1px solid var(--bg-gray-200, #e5e7eb);">
                                     <td style="padding: 12px; color: var(--text-primary, #111827);">
@@ -2022,7 +2040,8 @@ class ProposalsManager {
                                     </td>
                                 </tr>
                             `;
-                                }).join('')}
+                                }).join('');
+                            })()}
                         </tbody>
                     </table>
                 </div>
