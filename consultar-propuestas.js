@@ -3535,9 +3535,9 @@ class ProposalsManager {
 
         const lang = this.currentLanguage || 'pt';
         const t = {
-            pt: { subtitle: 'Preencha todos os campos obrigatórios: quantidade, preço de custo e percentagem de desconto (0% mínimo). Sem PHC: Referência (fornecedor), Designação, Peso, etc.', photo: 'Foto', phc: 'Nº PHC', fornecedor: 'Fornecedor', qty: 'Quantidade a encomendar', ref: 'Referência (fornecedor)', designacao: 'Designação', peso: 'Peso', qtyCaixa: 'Quantidade por caixa', personalizado: 'Personalizado', personalizadoSim: 'Sim', personalizadoNao: 'Não', observacoes: 'Observações (personalizado)', dossierSection: 'Dossier / Logotipo', associateDossier: 'Incluir dossier da proposta neste artigo', hasLogo: 'Este artigo tem logotipo', precoCusto: 'Preço de custo', percDesconto: 'Percentagem de desconto (%)' },
-            es: { subtitle: 'Rellene todos los campos obligatorios: cantidad, precio de costo y porcentaje de descuento (mín. 0%). Sin PHC: Referencia (fornecedor), Designación, Peso, etc.', photo: 'Foto', phc: 'Nº PHC', fornecedor: 'Fornecedor', qty: 'Cantidad a encomendar', ref: 'Referencia (fornecedor)', designacao: 'Designación', peso: 'Peso', qtyCaixa: 'Cantidad por caja', personalizado: 'Personalizado', personalizadoSim: 'Sí', personalizadoNao: 'No', observacoes: 'Observaciones (personalizado)', dossierSection: 'Dossier / Logotipo', associateDossier: 'Incluir dossier de la propuesta en este artículo', hasLogo: 'Este artículo tiene logotipo', precoCusto: 'Precio de costo', percDesconto: 'Porcentaje de descuento (%)' },
-            en: { subtitle: 'Fill all required fields: quantity, cost price and discount percentage (min 0%). No PHC: Reference (supplier), Designation, Weight, etc.', photo: 'Photo', phc: 'PHC No.', fornecedor: 'Supplier', qty: 'Qty to order', ref: 'Reference (supplier)', designacao: 'Designation', peso: 'Weight', qtyCaixa: 'Qty per box', personalizado: 'Custom', personalizadoSim: 'Yes', personalizadoNao: 'No', observacoes: 'Notes (custom)', dossierSection: 'Dossier / Logo', associateDossier: 'Include proposal dossier with this item', hasLogo: 'This item has a logo', precoCusto: 'Cost price', percDesconto: 'Discount (%)' }
+            pt: { subtitle: 'Preencha todos os campos obrigatórios: quantidade, preço de custo e percentagem de desconto (0% mínimo). Sem PHC: Referência (fornecedor), Designação, Peso, etc. Se não indicar Referência PHC, quem gerir o pedido terá de criar o código.', photo: 'Foto', phc: 'Nº PHC', fornecedor: 'Fornecedor', qty: 'Quantidade a encomendar', ref: 'Referência (fornecedor)', refPhcOpcional: 'Referência PHC (opcional)', refPhcOpcionalHint: 'Se preencher, quem gere o pedido usa este código. Se deixar vazio, terá de criar o código a partir dos outros dados.', designacao: 'Designação', peso: 'Peso', qtyCaixa: 'Quantidade por caixa', personalizado: 'Personalizado', personalizadoSim: 'Sim', personalizadoNao: 'Não', observacoes: 'Observações (personalizado)', dossierSection: 'Dossier / Logotipo', associateDossier: 'Incluir dossier da proposta neste artigo', hasLogo: 'Este artigo tem logotipo', precoCusto: 'Preço de custo', percDesconto: 'Percentagem de desconto (%)', addArtigoExterno: 'Adicionar artigo externo', artigoExterno: 'Artigo externo', remover: 'Remover', artigosExternos: 'Artigos externos (fora da proposta)' },
+            es: { subtitle: 'Rellene todos los campos obligatorios: cantidad, precio de costo y porcentaje de descuento (mín. 0%). Sin PHC: Referencia (fornecedor), Designación, Peso, etc. Si no indica Referencia PHC, quien gestione el pedido deberá crear el código.', photo: 'Foto', phc: 'Nº PHC', fornecedor: 'Fornecedor', qty: 'Cantidad a encomendar', ref: 'Referencia (fornecedor)', refPhcOpcional: 'Referencia PHC (opcional)', refPhcOpcionalHint: 'Si rellena, quien gestione el pedido usará este código. Si lo deja vacío, deberá crear el código a partir del resto de datos.', designacao: 'Designación', peso: 'Peso', qtyCaixa: 'Cantidad por caja', personalizado: 'Personalizado', personalizadoSim: 'Sí', personalizadoNao: 'No', observacoes: 'Observaciones (personalizado)', dossierSection: 'Dossier / Logotipo', associateDossier: 'Incluir dossier de la propuesta en este artículo', hasLogo: 'Este artículo tiene logotipo', precoCusto: 'Precio de costo', percDesconto: 'Porcentaje de descuento (%)', addArtigoExterno: 'Añadir artículo externo', artigoExterno: 'Artículo externo', remover: 'Quitar', artigosExternos: 'Artículos externos (fuera de la propuesta)' },
+            en: { subtitle: 'Fill all required fields: quantity, cost price and discount percentage (min 0%). No PHC: Reference (supplier), Designation, Weight, etc. If you leave PHC reference empty, the person managing the order will need to create the code.', photo: 'Photo', phc: 'PHC No.', fornecedor: 'Supplier', qty: 'Qty to order', ref: 'Reference (supplier)', refPhcOpcional: 'PHC reference (optional)', refPhcOpcionalHint: 'If filled, the person managing the order will use this code. If left empty, they must create the code from the other data.', designacao: 'Designation', peso: 'Weight', qtyCaixa: 'Qty per box', personalizado: 'Custom', personalizadoSim: 'Yes', personalizadoNao: 'No', observacoes: 'Notes (custom)', dossierSection: 'Dossier / Logo', associateDossier: 'Include proposal dossier with this item', hasLogo: 'This item has a logo', precoCusto: 'Cost price', percDesconto: 'Discount (%)', addArtigoExterno: 'Add external article', artigoExterno: 'External article', remover: 'Remove', artigosExternos: 'External articles (not in proposal)' }
         };
         const L = t[lang] || t.pt;
         if (subtitleEl) subtitleEl.textContent = L.subtitle;
@@ -3568,6 +3568,7 @@ class ProposalsManager {
 
             const extraFields = !hasPhc ? `
                 <div class="pedido-encomenda-extra" style="margin-top: 10px; padding: 10px; background: var(--bg-gray-100); border-radius: 8px; display: grid; gap: 8px; grid-template-columns: 1fr 1fr;">
+                    <div style="grid-column: 1 / -1;"><label style="font-size: 0.8rem; color: var(--text-secondary);">${L.refPhcOpcional}</label><input type="text" id="ge-phc-ref-${articuloId}" class="form-input" style="width:100%;padding:8px;" placeholder="" title="${(L.refPhcOpcionalHint || '').replace(/"/g, '&quot;')}"><div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 2px;">${L.refPhcOpcionalHint || ''}</div></div>
                     <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.ref} <span style="color: var(--danger-500,#c00);">*</span></label><input type="text" id="ge-ref-${articuloId}" class="form-input" style="width:100%;padding:6px;" value="${refFornecedor}" placeholder="" required></div>
                     <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.designacao} <span style="color: var(--danger-500,#c00);">*</span></label><input type="text" id="ge-designacao-${articuloId}" class="form-input" style="width:100%;padding:6px;" value="${nomeArt}" placeholder="" required></div>
                     <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.peso} <span style="color: var(--danger-500,#c00);">*</span></label><input type="text" id="ge-peso-${articuloId}" class="form-input" style="width:100%;padding:6px;" placeholder="" required></div>
@@ -3598,10 +3599,13 @@ class ProposalsManager {
                     <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 6px;">${nomeArt}</div>
                     <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 4px;">${L.phc}: ${hasPhc ? phcRef : (lang === 'es' ? 'Sin PHC' : lang === 'en' ? 'No PHC' : 'Sem PHC')}</div>
                     <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 8px;">${L.fornecedor}: ${(fornecedor || '-').replace(/</g, '&lt;')}</div>
-                    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px;">
-                        <div><label style="font-size: 0.8rem;">${L.qty} <span style="color: var(--danger-500,#c00);">*</span></label><input type="number" id="ge-qty-${articuloId}" class="form-input" min="1" value="${articulo.cantidad || 1}" style="width: 100px; padding: 6px;" required></div>
-                        <div><label style="font-size: 0.8rem;">${L.precoCusto} <span style="color: var(--danger-500,#c00);">*</span></label><input type="number" id="ge-preco-${articuloId}" class="form-input" min="0" step="0.01" value="" style="width: 120px; padding: 6px;" placeholder="0.00" required></div>
-                        <div><label style="font-size: 0.8rem;">${L.percDesconto} <span style="color: var(--danger-500,#c00);">*</span></label><input type="number" id="ge-desconto-${articuloId}" class="form-input" min="0" max="100" step="0.01" value="0" style="width: 90px; padding: 6px;" required></div>
+                    <div class="pedido-encomenda-main-fields" style="margin-bottom: 12px; padding: 14px; background: linear-gradient(135deg, var(--primary-50, #eff6ff) 0%, var(--primary-100, #dbeafe) 100%); border: 2px solid var(--primary, #3b82f6); border-radius: 10px;">
+                        <div style="font-size: 0.75rem; font-weight: 600; color: var(--primary-700, #1d4ed8); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.02em;">${lang === 'es' ? 'Cantidad, precio y descuento' : lang === 'en' ? 'Quantity, price & discount' : 'Quantidade, preço e desconto'}</div>
+                        <div style="display: flex; align-items: flex-end; gap: 20px; flex-wrap: wrap;">
+                            <div><label style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary); display: block; margin-bottom: 4px;">${L.qty} <span style="color: var(--danger-500,#c00);">*</span></label><input type="number" id="ge-qty-${articuloId}" class="form-input" min="1" value="${articulo.cantidad || 1}" style="width: 110px; padding: 10px 12px; font-size: 1rem; font-weight: 500; border: 2px solid var(--primary, #3b82f6); border-radius: 8px;" required></div>
+                            <div><label style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary); display: block; margin-bottom: 4px;">${L.precoCusto} <span style="color: var(--danger-500,#c00);">*</span></label><input type="number" id="ge-preco-${articuloId}" class="form-input" min="0" step="0.01" value="" style="width: 140px; padding: 10px 12px; font-size: 1rem; font-weight: 500; border: 2px solid var(--primary, #3b82f6); border-radius: 8px;" placeholder="0.00" required></div>
+                            <div><label style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary); display: block; margin-bottom: 4px;">${L.percDesconto} <span style="color: var(--danger-500,#c00);">*</span></label><input type="number" id="ge-desconto-${articuloId}" class="form-input" min="0" max="100" step="0.01" value="0" style="width: 100px; padding: 10px 12px; font-size: 1rem; font-weight: 500; border: 2px solid var(--primary, #3b82f6); border-radius: 8px;" required></div>
+                        </div>
                     </div>
                     ${extraFields}
                     ${dossierLogoBlock}
@@ -3609,6 +3613,71 @@ class ProposalsManager {
             `;
             listEl.appendChild(row);
         });
+
+        const externosWrap = document.createElement('div');
+        externosWrap.className = 'pedido-encomenda-externos-wrap';
+        externosWrap.style.cssText = 'margin-top: 24px; padding-top: 20px; border-top: 2px solid var(--primary, #3b82f6);';
+        externosWrap.innerHTML = `
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                <div style="font-weight: 600; font-size: 1rem; color: var(--text-primary);">${L.artigosExternos}</div>
+                <button type="button" class="btn-primary" id="pedido-encomenda-btn-add-externo" style="display: inline-flex; align-items: center; gap: 6px;">
+                    <i class="fas fa-plus"></i> ${L.addArtigoExterno}
+                </button>
+            </div>
+            <div id="pedido-encomenda-externos-list" style="display: flex; flex-direction: column; gap: 16px;"></div>
+        `;
+        listEl.appendChild(externosWrap);
+        const btnAddExt = document.getElementById('pedido-encomenda-btn-add-externo');
+        if (btnAddExt) btnAddExt.addEventListener('click', () => this._addPedidoEncomendaExternalRow());
+    }
+
+    _addPedidoEncomendaExternalRow() {
+        const listExt = document.getElementById('pedido-encomenda-externos-list');
+        if (!listExt) return;
+        const lang = this.currentLanguage || 'pt';
+        const t = {
+            pt: { ref: 'Referência (fornecedor)', refPhcOpcional: 'Referência PHC (opcional)', refPhcOpcionalHint: 'Se preencher, quem gere o pedido usa este código. Se deixar vazio, terá de criar o código.', designacao: 'Designação', peso: 'Peso', qtyCaixa: 'Quantidade por caixa', personalizado: 'Personalizado', personalizadoSim: 'Sim', personalizadoNao: 'Não', observacoes: 'Observações', fornecedor: 'Fornecedor', qty: 'Quantidade a encomendar', precoCusto: 'Preço de custo', percDesconto: 'Percentagem de desconto (%)', artigoExterno: 'Artigo externo', remover: 'Remover', mainFieldsLabel: 'Quantidade, preço e desconto' },
+            es: { ref: 'Referencia (fornecedor)', refPhcOpcional: 'Referencia PHC (opcional)', refPhcOpcionalHint: 'Si rellena, quien gestione el pedido usará este código.', designacao: 'Designación', peso: 'Peso', qtyCaixa: 'Cantidad por caja', personalizado: 'Personalizado', personalizadoSim: 'Sí', personalizadoNao: 'No', observacoes: 'Observaciones', fornecedor: 'Fornecedor', qty: 'Cantidad a encomendar', precoCusto: 'Precio de costo', percDesconto: 'Porcentaje de descuento (%)', artigoExterno: 'Artículo externo', remover: 'Quitar', mainFieldsLabel: 'Cantidad, precio y descuento' },
+            en: { ref: 'Reference (supplier)', refPhcOpcional: 'PHC reference (optional)', refPhcOpcionalHint: 'If filled, the person managing the order will use this code.', designacao: 'Designation', peso: 'Weight', qtyCaixa: 'Qty per box', personalizado: 'Custom', personalizadoSim: 'Yes', personalizadoNao: 'No', observacoes: 'Observations', fornecedor: 'Supplier', qty: 'Qty to order', precoCusto: 'Cost price', percDesconto: 'Discount (%)', artigoExterno: 'External article', remover: 'Remove', mainFieldsLabel: 'Quantity, price & discount' }
+        };
+        const L = t[lang] || t.pt;
+        const index = listExt.querySelectorAll('.pedido-encomenda-row-externo').length;
+        const extId = `ext-${index}`;
+        const row = document.createElement('div');
+        row.className = 'pedido-encomenda-row pedido-encomenda-row-externo';
+        row.setAttribute('data-pedido-externo-id', extId);
+        row.style.cssText = 'display: flex; align-items: flex-start; gap: 16px; padding: 16px; border: 1px solid var(--primary, #3b82f6); border-radius: 10px; background: var(--bg-gray-50, #f9fafb);';
+        row.innerHTML = `
+            <div style="flex-shrink: 0;">
+                <div style="width: 80px; height: 80px; background: var(--bg-gray-200); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary);"><i class="fas fa-box-open"></i></div>
+            </div>
+            <div style="flex: 1; min-width: 0;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                    <div style="font-weight: 600; color: var(--primary, #3b82f6);">${L.artigoExterno} #${index + 1}</div>
+                    <button type="button" class="btn-secondary pedido-encomenda-remove-externo" data-ext-id="${extId}" style="padding: 4px 10px; font-size: 0.8rem;"><i class="fas fa-times"></i> ${L.remover}</button>
+                </div>
+                <div class="pedido-encomenda-main-fields" style="margin-bottom: 12px; padding: 14px; background: linear-gradient(135deg, var(--primary-50, #eff6ff) 0%, var(--primary-100, #dbeafe) 100%); border: 2px solid var(--primary, #3b82f6); border-radius: 10px;">
+                    <div style="font-size: 0.75rem; font-weight: 600; color: var(--primary-700, #1d4ed8); margin-bottom: 10px; text-transform: uppercase;">${L.mainFieldsLabel}</div>
+                    <div style="display: flex; align-items: flex-end; gap: 20px; flex-wrap: wrap;">
+                        <div><label style="font-size: 0.85rem; font-weight: 600;">${L.qty} <span style="color: var(--danger-500,#c00);">*</span></label><input type="number" id="ge-${extId}-qty" class="form-input" min="1" value="1" style="width: 110px; padding: 10px 12px; font-size: 1rem; border: 2px solid var(--primary, #3b82f6); border-radius: 8px;" required></div>
+                        <div><label style="font-size: 0.85rem; font-weight: 600;">${L.precoCusto} <span style="color: var(--danger-500,#c00);">*</span></label><input type="number" id="ge-${extId}-preco" class="form-input" min="0" step="0.01" value="" style="width: 140px; padding: 10px 12px; font-size: 1rem; border: 2px solid var(--primary, #3b82f6); border-radius: 8px;" placeholder="0.00" required></div>
+                        <div><label style="font-size: 0.85rem; font-weight: 600;">${L.percDesconto} <span style="color: var(--danger-500,#c00);">*</span></label><input type="number" id="ge-${extId}-desconto" class="form-input" min="0" max="100" step="0.01" value="0" style="width: 100px; padding: 10px 12px; font-size: 1rem; border: 2px solid var(--primary, #3b82f6); border-radius: 8px;" required></div>
+                    </div>
+                </div>
+                <div class="pedido-encomenda-extra" style="margin-top: 10px; padding: 10px; background: var(--bg-gray-100); border-radius: 8px; display: grid; gap: 8px; grid-template-columns: 1fr 1fr;">
+                    <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.fornecedor} <span style="color: var(--danger-500,#c00);">*</span></label><input type="text" id="ge-${extId}-fornecedor" class="form-input" style="width:100%;padding:6px;" placeholder="" required></div>
+                    <div style="grid-column: 1 / -1;"><label style="font-size: 0.8rem; color: var(--text-secondary);">${L.refPhcOpcional}</label><input type="text" id="ge-${extId}-phc-ref" class="form-input" style="width:100%;padding:8px;"><div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 2px;">${L.refPhcOpcionalHint || ''}</div></div>
+                    <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.ref} <span style="color: var(--danger-500,#c00);">*</span></label><input type="text" id="ge-${extId}-ref" class="form-input" style="width:100%;padding:6px;" placeholder="" required></div>
+                    <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.designacao} <span style="color: var(--danger-500,#c00);">*</span></label><input type="text" id="ge-${extId}-designacao" class="form-input" style="width:100%;padding:6px;" placeholder="" required></div>
+                    <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.peso} <span style="color: var(--danger-500,#c00);">*</span></label><input type="text" id="ge-${extId}-peso" class="form-input" style="width:100%;padding:6px;" placeholder="" required></div>
+                    <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.qtyCaixa} <span style="color: var(--danger-500,#c00);">*</span></label><input type="number" id="ge-${extId}-qtycaixa" class="form-input" style="width:100%;padding:6px;" min="0" placeholder="" required></div>
+                    <div style="grid-column: 1 / -1;"><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.personalizado}</label><select id="ge-${extId}-personalizado" class="form-input" style="width:100%;padding:6px;"><option value="false">${L.personalizadoNao}</option><option value="true">${L.personalizadoSim}</option></select></div>
+                    <div style="grid-column: 1 / -1;"><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.observacoes}</label><textarea id="ge-${extId}-obs" class="form-input" style="width:100%;padding:6px;min-height:60px;"></textarea></div>
+                </div>
+            </div>
+        `;
+        listExt.appendChild(row);
+        row.querySelector('.pedido-encomenda-remove-externo')?.addEventListener('click', () => row.remove());
     }
 
     closePedidoEncomendaModal() {
@@ -3625,22 +3694,24 @@ class ProposalsManager {
             this.showNotification(this.currentLanguage === 'es' ? 'Error: falta propuesta o conexión.' : this.currentLanguage === 'pt' ? 'Erro: falta proposta ou ligação.' : 'Error: missing proposal or connection.', 'error');
             return;
         }
-        if (!selectedIdsJson) {
-            this.showNotification(this.currentLanguage === 'es' ? 'Seleccione los productos y rellene los formularios.' : this.currentLanguage === 'pt' ? 'Selecione os produtos e preencha os formulários.' : 'Select products and fill the forms.', 'error');
-            return;
-        }
-
         const proposal = this.allProposals.find(p => p.id === proposalId);
-        if (!proposal || !proposal.articulos || proposal.articulos.length === 0) {
-            this.closePedidoEncomendaModal();
+        if (!proposal) {
+            this.showNotification(this.currentLanguage === 'es' ? 'Propuesta no encontrada.' : this.currentLanguage === 'pt' ? 'Proposta não encontrada.' : 'Proposal not found.', 'error');
             return;
         }
 
-        let selectedArticuloIds;
-        try { selectedArticuloIds = JSON.parse(selectedIdsJson); } catch (e) { selectedArticuloIds = []; }
-        const articulos = proposal.articulos.filter((a, idx) =>
+        let selectedArticuloIds = [];
+        if (selectedIdsJson) {
+            try { selectedArticuloIds = JSON.parse(selectedIdsJson); } catch (e) { selectedArticuloIds = []; }
+        }
+        const articulos = (proposal.articulos && proposal.articulos.length) ? proposal.articulos.filter((a, idx) =>
             selectedArticuloIds.some(sid => String(sid) === String(a.id != null ? a.id : `art-${idx}`))
-        );
+        ) : [];
+        const externalRows = document.querySelectorAll('.pedido-encomenda-row-externo');
+        if (articulos.length === 0 && (!externalRows || externalRows.length === 0)) {
+            this.showNotification(this.currentLanguage === 'es' ? 'Seleccione al menos un producto de la propuesta o añada un artículo externo.' : this.currentLanguage === 'pt' ? 'Selecione pelo menos um produto da proposta ou adicione um artigo externo.' : 'Select at least one product from the proposal or add an external article.', 'error');
+            return;
+        }
 
         const lang = this.currentLanguage || 'pt';
         const msgFill = lang === 'es' ? 'Rellene todos los campos obligatorios (precio de costo, descuento mínimo 0%).' : lang === 'pt' ? 'Preencha todos os campos obrigatórios (preço de custo, desconto mínimo 0%).' : 'Fill all required fields (cost price, discount min 0%).';
@@ -3683,10 +3754,15 @@ class ProposalsManager {
             const dossierCheckEl = document.getElementById(`ge-dossier-${articuloId}`);
             const associateDossier = dossierCheckEl ? dossierCheckEl.checked : false;
 
+            // Obtener Referência PHC del formulario (solo para productos sin PHC)
+            // IMPORTANTE: Este valor se guarda SOLO en gestao_compras.phc_ref, NO se actualiza el producto en products.phc_ref
+            const phcRefFromForm = !hasPhc ? (() => { const el = document.getElementById(`ge-phc-ref-${articuloId}`); return el ? el.value.trim() || null : null; })() : null;
             const row = {
                 presupuesto_id: proposalId,
                 presupuesto_articulo_id: articulo.id || null,
-                phc_ref: (product && product.phc_ref) ? String(product.phc_ref) : null,
+                // phc_ref: Si el producto tiene PHC, usar ese. Si no tiene y se rellenó en el formulario, usar ese valor.
+                // Este valor solo se guarda en gestao_compras, NO modifica products.phc_ref
+                phc_ref: (product && product.phc_ref) ? String(product.phc_ref) : (phcRefFromForm || null),
                 nome_fornecedor: (product && product.nombre_fornecedor) ? String(product.nombre_fornecedor) : null,
                 foto_url: (product && product.foto) ? product.foto : null,
                 quantidade_encomendar: quantidade,
@@ -3722,6 +3798,68 @@ class ProposalsManager {
             }
 
             rows.push(row);
+        }
+
+        for (let ei = 0; ei < externalRows.length; ei++) {
+            const extRow = externalRows[ei];
+            const extId = extRow.getAttribute('data-pedido-externo-id');
+            if (!extId) continue;
+            const getVal = (suffix) => { const el = document.getElementById(`ge-${extId}-${suffix}`); return el ? el.value.trim() : ''; };
+            const getNum = (suffix, def) => { const v = getVal(suffix); return v === '' ? def : (parseFloat(v.replace(',', '.')) || def); };
+            const getInt = (suffix, def) => { const v = getVal(suffix); return v === '' ? def : (parseInt(v, 10) || def); };
+            const quantidade = getInt('qty', 0);
+            const precoCusto = getNum('preco', NaN);
+            const porcentajeDescuento = getNum('desconto', NaN);
+            const nomeFornecedor = getVal('fornecedor');
+            // Obtener Referência PHC del formulario (opcional)
+            // IMPORTANTE: Este valor se guarda SOLO en gestao_compras.phc_ref, NO se crea ni actualiza ningún producto en products
+            const phcRef = getVal('phc-ref') || null;
+            const ref = getVal('ref');
+            const designacao = getVal('designacao');
+            const peso = getVal('peso');
+            const qtyCaixa = getInt('qtycaixa', -1);
+            const personalizadoEl = document.getElementById(`ge-${extId}-personalizado`);
+            const personalizado = personalizadoEl ? personalizadoEl.value === 'true' : false;
+            const obs = getVal('obs') || null;
+
+            if (quantidade < 1) {
+                this.showNotification(lang === 'es' ? 'Cantidad a encomendar debe ser al menos 1 (artículo externo).' : lang === 'pt' ? 'Quantidade a encomendar deve ser pelo menos 1 (artigo externo).' : 'Quantity to order must be at least 1 (external article).', 'error');
+                return;
+            }
+            if (isNaN(precoCusto) || precoCusto < 0) {
+                this.showNotification(msgFill, 'error');
+                return;
+            }
+            if (isNaN(porcentajeDescuento) || porcentajeDescuento < 0 || porcentajeDescuento > 100) {
+                this.showNotification(msgFill, 'error');
+                return;
+            }
+            if (!nomeFornecedor || !ref || !designacao || !peso || qtyCaixa < 0) {
+                this.showNotification(msgRef, 'error');
+                return;
+            }
+
+            rows.push({
+                presupuesto_id: proposalId,
+                presupuesto_articulo_id: null,
+                // phc_ref: Solo se guarda en gestao_compras, NO se crea ni actualiza ningún producto en products
+                phc_ref: phcRef,
+                nome_fornecedor: nomeFornecedor,
+                foto_url: null,
+                quantidade_encomendar: quantidade,
+                nome_articulo: designacao,
+                referencia: ref,
+                designacao: designacao,
+                peso: peso,
+                quantidade_por_caixa: qtyCaixa,
+                personalizado: personalizado,
+                personalizado_observacoes: obs,
+                presupuesto_dossier_id: null,
+                logo_url: null,
+                precio_custo: precoCusto,
+                porcentaje_descuento: porcentajeDescuento,
+                fecha_precio: now
+            });
         }
 
         try {

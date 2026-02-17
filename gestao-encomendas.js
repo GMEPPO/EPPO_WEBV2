@@ -27,7 +27,8 @@
             pendientes: 'Pedidos pendientes',
             enCurso: 'Pedidos en curso',
             refPhc: 'Ref. PHC',
-            observaciones: 'Observações'
+            observaciones: 'Observações',
+            faltaCriarCodigo: 'Falta criar código PHC'
         },
         es: {
             loading: 'Cargando...',
@@ -52,7 +53,8 @@
             pendientes: 'Pedidos pendientes',
             enCurso: 'Pedidos en curso',
             refPhc: 'Ref. PHC',
-            observaciones: 'Observaciones'
+            observaciones: 'Observaciones',
+            faltaCriarCodigo: 'Falta crear código PHC'
         },
         en: {
             loading: 'Loading...',
@@ -77,7 +79,8 @@
             pendientes: 'Pending orders',
             enCurso: 'Orders in progress',
             refPhc: 'PHC Ref.',
-            observaciones: 'Observations'
+            observaciones: 'Observations',
+            faltaCriarCodigo: 'PHC code must be created'
         }
     };
 
@@ -322,11 +325,14 @@
                     const art = articuloId && articuloMap[articuloId] ? articuloMap[articuloId] : null;
                     const previsaoVal = art && art.fecha_prevista_entrega ? (typeof art.fecha_prevista_entrega === 'string' ? art.fecha_prevista_entrega.split('T')[0] : art.fecha_prevista_entrega) : '';
                     const hasArticuloId = articuloId && articuloId !== 'undefined';
+                    const isSemPhc = !!(gc.referencia || gc.designacao);
+                    const faltaCriarCodigo = isSemPhc && !(gc.phc_ref && String(gc.phc_ref).trim());
+                    const badgeFalta = faltaCriarCodigo ? ` <span class="ge-badge-falta" style="display:inline-block;margin-left:6px;padding:2px 8px;font-size:0.7rem;background:#b91c1c;color:#fff;border-radius:4px;">${t('faltaCriarCodigo')}</span>` : '';
 
                     const tr = document.createElement('tr');
                     tr.setAttribute('data-articulo-id', articuloId);
                     tr.innerHTML = `
-                        <td>${escapeHtml(gc.nome_articulo || ref)} <span style="color: #94a3b8; font-size: 0.8rem;">${escapeHtml(ref)}</span></td>
+                        <td>${escapeHtml(gc.nome_articulo || ref)} <span style="color: #94a3b8; font-size: 0.8rem;">${escapeHtml(ref)}</span>${badgeFalta}</td>
                         <td>${gc.quantidade_encomendar ?? '-'}</td>
                         <td>${preco}</td>
                         <td>${desconto}</td>
@@ -527,13 +533,17 @@
                     const fechaEnc = art && art.fecha_encomenda ? (typeof art.fecha_encomenda === 'string' ? art.fecha_encomenda.split('T')[0] : art.fecha_encomenda) : '';
                     const previsaoVal = art && art.fecha_prevista_entrega ? (typeof art.fecha_prevista_entrega === 'string' ? art.fecha_prevista_entrega.split('T')[0] : art.fecha_prevista_entrega) : '';
                     const obsVal = (art && art.observaciones != null ? art.observaciones : '') || '';
-                    const refPhc = (gc.phc_ref || gc.referencia || gc.nome_articulo || '-').trim();
+                    const isSemPhc = !!(gc.referencia || gc.designacao);
+                    const faltaCriarCodigo = isSemPhc && !(gc.phc_ref && String(gc.phc_ref).trim());
+                    const refPhcCell = faltaCriarCodigo
+                        ? `<span style="color: #b91c1c; font-weight: 500;">— ${escapeHtml(t('faltaCriarCodigo'))}</span>${gc.referencia ? ' <span style="color:#94a3b8;font-size:0.85rem;">(' + escapeHtml(gc.referencia) + ')</span>' : ''}`
+                        : escapeHtml((gc.phc_ref || gc.referencia || gc.nome_articulo || '-').trim());
                     const hasArticuloId = articuloId && articuloId !== 'undefined';
 
                     const tr = document.createElement('tr');
                     tr.setAttribute('data-articulo-id', articuloId);
                     tr.innerHTML = `
-                        <td>${escapeHtml(refPhc)}</td>
+                        <td>${refPhcCell}</td>
                         <td>${escapeHtml(numero)}</td>
                         <td>${escapeHtml(fechaEnc)}</td>
                         <td>${hasArticuloId ? `<input type="date" class="ge-editable ge-encurso-previsao" data-articulo-id="${articuloId}" value="${escapeAttr(previsaoVal)}">` : '-'}</td>
