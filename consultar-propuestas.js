@@ -1359,6 +1359,7 @@ class ProposalsManager {
             console.error('Propuesta no encontrada:', proposalId);
             return;
         }
+        const currentLang = this.currentLanguage || 'pt';
 
         // Cargar rol del usuario para mostrar precios correctamente
         if (!window.cachedRole) {
@@ -1994,18 +1995,18 @@ class ProposalsManager {
                         transition: all 0.2s;
                     " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(16,185,129,0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
                         <i class="fas fa-save"></i>
-                        <span>${this.currentLanguage === 'es' ? 'Guardar Fechas' : this.currentLanguage === 'pt' ? 'Guardar Datas' : 'Save Dates'}</span>
+                        <span>${currentLang === 'es' ? 'Guardar Fechas' : currentLang === 'pt' ? 'Guardar Datas' : 'Save Dates'}</span>
                     </button>
                 </div>
                 <div style="overflow-x: auto;">
                     <table style="width: 100%; border-collapse: collapse; font-size: 0.875rem;">
                         <thead>
                             <tr style="background: var(--bg-gray-100, #f3f4f6); border-bottom: 2px solid var(--bg-gray-300, #d1d5db);">
-                                <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--text-primary, #111827);">${this.currentLanguage === 'es' ? 'Producto' : this.currentLanguage === 'pt' ? 'Produto' : 'Product'}</th>
-                                <th style="padding: 12px; text-align: center; font-weight: 600; color: var(--text-primary, #111827);">${this.currentLanguage === 'es' ? 'Cantidad' : this.currentLanguage === 'pt' ? 'Quantidade' : 'Quantity'}</th>
-                                <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--text-primary, #111827);">${this.currentLanguage === 'es' ? 'Número de Encomenda' : this.currentLanguage === 'pt' ? 'Número de Encomenda' : 'Order Number'}</th>
-                                <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--text-primary, #111827);">${this.currentLanguage === 'es' ? 'Fecha de Encomenda' : this.currentLanguage === 'pt' ? 'Data de Encomenda' : 'Order Date'}</th>
-                                <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--text-primary, #111827);">${this.currentLanguage === 'es' ? 'Fecha Prevista de Entrega' : this.currentLanguage === 'pt' ? 'Data Prevista de Entrega' : 'Expected Delivery Date'}</th>
+                                <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--text-primary, #111827);">${currentLang === 'es' ? 'Producto' : currentLang === 'pt' ? 'Produto' : 'Product'}</th>
+                                <th style="padding: 12px; text-align: center; font-weight: 600; color: var(--text-primary, #111827);">${currentLang === 'es' ? 'Cantidad' : currentLang === 'pt' ? 'Quantidade' : 'Quantity'}</th>
+                                <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--text-primary, #111827);">${currentLang === 'es' ? 'Número de Encomenda' : currentLang === 'pt' ? 'Número de Encomenda' : 'Order Number'}</th>
+                                <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--text-primary, #111827);">${currentLang === 'es' ? 'Fecha de Encomenda' : currentLang === 'pt' ? 'Data de Encomenda' : 'Order Date'}</th>
+                                <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--text-primary, #111827);">${currentLang === 'es' ? 'Fecha Prevista de Entrega' : currentLang === 'pt' ? 'Data Prevista de Entrega' : 'Expected Delivery Date'}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -2036,7 +2037,7 @@ class ProposalsManager {
                                                value="${fechaPrevista}" 
                                                data-articulo-id="${articulo.id}"
                                                style="width: 100%; padding: 6px; border: 1px solid var(--bg-gray-300, #d1d5db); border-radius: 6px; font-size: 0.875rem; background: white;"
-                                               placeholder="${this.currentLanguage === 'es' ? 'Seleccionar fecha' : this.currentLanguage === 'pt' ? 'Selecionar data' : 'Select date'}">
+                                               placeholder="${currentLang === 'es' ? 'Seleccionar fecha' : currentLang === 'pt' ? 'Selecionar data' : 'Select date'}">
                                     </td>
                                 </tr>
                             `;
