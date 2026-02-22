@@ -66,8 +66,11 @@
                     <button type="button" class="ge-tab" data-tab="encurso" id="ge-tab-encurso">
                         <i class="fas fa-truck"></i> <span id="ge-tab-encurso-text">Pedidos en curso</span>
                     </button>
+                    <button type="button" class="ge-tab" data-tab="nuevos_proveedores" id="ge-tab-nuevos-proveedores">
+                        <i class="fas fa-handshake"></i> <span id="ge-tab-nuevos-proveedores-text">Pedidos nuevos proveedores</span>
+                    </button>
                 </div>
-                <div class="ge-table-wrap">
+                <div class="ge-table-wrap" id="ge-table-wrap-main">
                     <div id="ge-loading" class="ge-loading"><i class="fas fa-spinner fa-spin"></i> <span id="ge-loading-text">A carregar...</span></div>
                     <div id="ge-empty" class="ge-empty" style="display: none;"><span id="ge-empty-text">Nenhum pedido de encomenda.</span></div>
                     <table class="ge-table" id="ge-table" style="display: none;">
@@ -80,6 +83,23 @@
                             </tr>
                         </thead>
                         <tbody id="ge-tbody"></tbody>
+                    </table>
+                </div>
+                <!-- Tab Pedidos nuevos proveedores -->
+                <div id="ge-wrap-nuevos-proveedores" style="display: none;" class="ge-table-wrap">
+                    <div id="ge-np-loading" class="ge-loading"><i class="fas fa-spinner fa-spin"></i> A carregar...</div>
+                    <table class="ge-table" id="ge-table-np" style="display: none;">
+                        <thead>
+                            <tr>
+                                <th>Proveedor</th>
+                                <th>Tipo</th>
+                                <th>Observaciones</th>
+                                <th>Estado</th>
+                                <th>Responsable</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="ge-tbody-np"></tbody>
                     </table>
                 </div>
             </div>

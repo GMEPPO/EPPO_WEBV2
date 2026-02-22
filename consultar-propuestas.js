@@ -152,8 +152,8 @@ class ProposalsManager {
                 };
             });
 
-            // Obtener categorías únicas
-            this.productCategories = [...new Set(this.allProducts.map(p => p.categoria).filter(Boolean))];
+            // Obtener categorías únicas (principal + adicionales)
+            this.productCategories = [...new Set(this.allProducts.flatMap(p => [p.categoria, ...(Array.isArray(p.categorias) ? p.categorias : [])].filter(Boolean)))];
             this.filteredProducts = [...this.allProducts];
 
             console.log('✅ Productos cargados para búsqueda:', this.allProducts.length);
@@ -467,6 +467,7 @@ class ProposalsManager {
 
             // Reaplicar filtros actuales si existen, sino mostrar todas las propuestas
             this.applyFilters();
+            this.updateRegistroDirectoButtonVisibility();
 
         } catch (error) {
             console.error('❌ Error al cargar propuestas:', error);
@@ -648,8 +649,9 @@ class ProposalsManager {
                 });
             }
             
-            if (producto && producto.categoria) {
-                categoriasSet.add(producto.categoria);
+            if (producto) {
+                if (producto.categoria) categoriasSet.add(producto.categoria);
+                if (Array.isArray(producto.categorias)) producto.categorias.forEach(c => categoriasSet.add(c));
             } else if (articulo.nombre_articulo) {
                 // Solo mostrar warning si realmente hay un nombre de artículo
                 console.warn(`⚠️ No se encontró producto para artículo: "${articulo.nombre_articulo}" (referencia: ${articulo.referencia_articulo || 'N/A'})`);
@@ -2739,7 +2741,6 @@ class ProposalsManager {
         const searchCommercial = document.getElementById('searchCommercialInput');
         const filterDateFrom = document.getElementById('filterDateFrom');
         const filterDateTo = document.getElementById('filterDateTo');
-        const filterStatus = document.getElementById('filterStatus');
 
         if (searchClient) {
             searchClient.addEventListener('input', () => this.applyFilters());
@@ -2753,8 +2754,286 @@ class ProposalsManager {
         if (filterDateTo) {
             filterDateTo.addEventListener('change', () => this.applyFilters());
         }
-        if (filterStatus) {
-            filterStatus.addEventListener('change', () => this.applyFilters());
+        // Filtro múltiple de estados (checkboxes); por defecto excluye Encomenda Concluída y Rejeitada
+        this.setupFilterStatusMulti();
+        // Aplicar filtro inicial para ocultar Encomenda Concluída y Rejeitada
+        this.applyFilters();
+
+        // Registro directo (solo administradores)
+        const btnRegistro = document.getElementById('btnRegistroDirecto');
+        if (btnRegistro) {
+            btnRegistro.addEventListener('click', () => this.openRegistroDirectoModal());
+        }
+        const modalReg = document.getElementById('registroDirectoModal');
+        if (modalReg) {
+            document.getElementById('registroDirectoModalClose')?.addEventListener('click', () => this.closeRegistroDirectoModal());
+            modalReg.addEventListener('click', (e) => { if (e.target === modalReg) this.closeRegistroDirectoModal(); });
+        }
+        document.getElementById('registroDirectoBackBtn')?.addEventListener('click', () => this.registroDirectoBack());
+        document.getElementById('registroDirectoSubmitBtn')?.addEventListener('click', () => this.submitRegistroDirecto());
+        document.querySelectorAll('.registro-directo-type-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const type = btn.getAttribute('data-type');
+                if (type) this.registroDirectoSelectType(type);
+            });
+        });
+    }
+
+    updateRegistroDirectoButtonVisibility() {
+        const btn = document.getElementById('btnRegistroDirecto');
+        if (!btn) return;
+        const isAdmin = (window.cachedRole || '').toString().toLowerCase() === 'admin';
+        btn.style.display = isAdmin ? 'flex' : 'none';
+        const section = document.getElementById('contactoProveedoresSection');
+        if (section) section.style.display = isAdmin ? 'block' : 'none';
+        if (isAdmin) this.loadContactoProveedoresSection();
+    }
+
+    async loadContactoProveedoresSection() {
+        const section = document.getElementById('contactoProveedoresSection');
+        const loading = document.getElementById('contactoProveedoresLoading');
+        const table = document.getElementById('contactoProveedoresTable');
+        const tbody = document.getElementById('contactoProveedoresBody');
+        if (!section || !tbody) return;
+        if (loading) loading.style.display = 'block';
+        if (table) table.style.display = 'none';
+        try {
+            const { data, error } = await this.supabase.from('contacto_nuevos_proveedores').select('*').order('created_at', { ascending: false });
+            if (loading) loading.style.display = 'none';
+            if (error) {
+                tbody.innerHTML = '<tr><td colspan="5">Erro ao carregar.</td></tr>';
+                if (table) table.style.display = 'table';
+                return;
+            }
+            const tipoLabels = { solicitud_precios: 'Solicitud de precios', solicitud_muestras: 'Solicitud de muestras', solicitud_reunion: 'Solicitud de reunión' };
+            const estadoLabels = { pedidos_nuevos_proveedores: 'Pedidos nuevos proveedores', contacto_finalizado: 'Contacto finalizado' };
+            if (!data || data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5">Nenhum registo.</td></tr>';
+            } else {
+                tbody.innerHTML = data.map(r => `
+                    <tr>
+                        <td>${(r.nombre_proveedor || '').replace(/</g, '&lt;')}</td>
+                        <td>${tipoLabels[r.tipo_pedido] || r.tipo_pedido}</td>
+                        <td>${(r.observaciones || '-').replace(/</g, '&lt;')}</td>
+                        <td>${estadoLabels[r.estado] || r.estado}</td>
+                        <td>${(r.responsable || '-').replace(/</g, '&lt;')}</td>
+                    </tr>
+                `).join('');
+            }
+            if (table) table.style.display = 'table';
+        } catch (e) {
+            if (loading) loading.style.display = 'none';
+            tbody.innerHTML = '<tr><td colspan="5">Erro.</td></tr>';
+            if (table) table.style.display = 'table';
+        }
+    }
+
+    openRegistroDirectoModal() {
+        this.registroDirectoCurrentType = null;
+        document.getElementById('registroDirectoStep1').style.display = 'block';
+        document.getElementById('registroDirectoStep2').style.display = 'none';
+        document.getElementById('registroDirectoModal').style.display = 'flex';
+    }
+
+    closeRegistroDirectoModal() {
+        document.getElementById('registroDirectoModal').style.display = 'none';
+    }
+
+    registroDirectoBack() {
+        document.getElementById('registroDirectoStep1').style.display = 'block';
+        document.getElementById('registroDirectoStep2').style.display = 'none';
+    }
+
+    registroDirectoSelectType(type) {
+        this.registroDirectoCurrentType = type;
+        document.getElementById('registroDirectoStep1').style.display = 'none';
+        document.getElementById('registroDirectoStep2').style.display = 'block';
+        const container = document.getElementById('registroDirectoFormContainer');
+        if (!container) return;
+        const lang = this.currentLanguage || 'pt';
+        const t = this.getRegistroDirectoLabels(lang);
+        let html = '';
+        if (type === 'encomienda') {
+            html = `
+                <div class="form-group"><label class="form-label">${t.comercial} <span class="required">*</span></label><input type="text" id="rd_comercial" class="form-input" placeholder="${t.comercial}"></div>
+                <div class="form-group"><label class="form-label">${t.nombreCliente} <span class="required">*</span></label><input type="text" id="rd_nombre_cliente" class="form-input" required placeholder="${t.nombreCliente}"></div>
+                <div class="form-group"><label class="form-label">${t.numeroCliente}</label><input type="text" id="rd_numero_cliente" class="form-input" placeholder="${t.numeroCliente}"></div>
+                <div class="form-group"><label class="form-label">${t.numeroEncomenda}</label><input type="text" id="rd_numero_encomenda" class="form-input" placeholder="${t.numeroEncomenda}"></div>
+                <div class="form-group"><label class="form-label">${t.fechaPedido}</label><input type="date" id="rd_fecha_pedido" class="form-input"></div>
+                <div class="form-group"><label class="form-label">${t.observaciones}</label><textarea id="rd_observaciones" class="form-input" rows="3" placeholder="${t.observaciones}"></textarea></div>
+            `;
+        } else if (type === 'pedido_muestra') {
+            html = `
+                <div class="form-group"><label class="form-label">${t.comercial} <span class="required">*</span></label><input type="text" id="rd_comercial" class="form-input" required></div>
+                <div class="form-group"><label class="form-label">${t.nombreCliente} <span class="required">*</span></label><input type="text" id="rd_nombre_cliente" class="form-input" required></div>
+                <div class="form-group"><label class="form-label">${t.numeroCliente}</label><input type="text" id="rd_numero_cliente" class="form-input"></div>
+                <div class="form-group"><label class="form-label">${t.fechaPedido}</label><input type="date" id="rd_fecha_pedido" class="form-input"></div>
+                <div class="form-group"><label class="form-label">${t.observaciones}</label><textarea id="rd_observaciones" class="form-input" rows="3"></textarea></div>
+            `;
+        } else if (type === 'pedido_especial') {
+            html = `
+                <div class="form-group"><label class="form-label">${t.comercial} <span class="required">*</span></label><input type="text" id="rd_comercial" class="form-input" required></div>
+                <div class="form-group"><label class="form-label">${t.nombreCliente} <span class="required">*</span></label><input type="text" id="rd_nombre_cliente" class="form-input" required></div>
+                <div class="form-group"><label class="form-label">${t.numeroCliente}</label><input type="text" id="rd_numero_cliente" class="form-input"></div>
+                <div class="form-group"><label class="form-label">${t.fechaInicioProcurement}</label><input type="date" id="rd_fecha_inicio" class="form-input"></div>
+                <div class="form-group"><label class="form-label">${t.observaciones}</label><textarea id="rd_observaciones" class="form-input" rows="3"></textarea></div>
+            `;
+        } else if (type === 'contacto_proveedores') {
+            html = `
+                <div class="form-group"><label class="form-label">${t.nombreProveedor} <span class="required">*</span></label><input type="text" id="rd_nombre_proveedor" class="form-input" required></div>
+                <div class="form-group"><label class="form-label">${t.tipoPedido} <span class="required">*</span></label>
+                    <select id="rd_tipo_pedido" class="form-input" required>
+                        <option value="">${t.seleccione}</option>
+                        <option value="solicitud_precios">${t.solicitudPrecios}</option>
+                        <option value="solicitud_muestras">${t.solicitudMuestras}</option>
+                        <option value="solicitud_reunion">${t.solicitudReunion}</option>
+                    </select>
+                </div>
+                <div class="form-group"><label class="form-label">${t.observaciones}</label><textarea id="rd_observaciones" class="form-input" rows="3"></textarea></div>
+            `;
+        }
+        container.innerHTML = html;
+    }
+
+    getRegistroDirectoLabels(lang) {
+        const labels = {
+            pt: {
+                comercial: 'Comercial',
+                nombreCliente: 'Nome do cliente',
+                numeroCliente: 'Número do cliente',
+                numeroEncomenda: 'Número da encomenda',
+                fechaPedido: 'Data do pedido',
+                fechaInicioProcurement: 'Data de início do procurement',
+                observaciones: 'Observações',
+                nombreProveedor: 'Nome do fornecedor',
+                tipoPedido: 'Tipo de pedido',
+                seleccione: 'Selecione...',
+                solicitudPrecios: 'Solicitação de preços',
+                solicitudMuestras: 'Solicitação de amostras',
+                solicitudReunion: 'Solicitação de reunião',
+                guardado: 'Guardado.',
+                erro: 'Erro ao guardar.'
+            },
+            es: {
+                comercial: 'Comercial',
+                nombreCliente: 'Nombre del cliente',
+                numeroCliente: 'Número de cliente',
+                numeroEncomenda: 'Número de encomenda',
+                fechaPedido: 'Fecha del pedido',
+                fechaInicioProcurement: 'Fecha de inicio del procurement',
+                observaciones: 'Observaciones',
+                nombreProveedor: 'Nombre del proveedor',
+                tipoPedido: 'Tipo de pedido',
+                seleccione: 'Seleccione...',
+                solicitudPrecios: 'Solicitud de precios',
+                solicitudMuestras: 'Solicitud de muestras',
+                solicitudReunion: 'Solicitud de reunión',
+                guardado: 'Guardado.',
+                erro: 'Error al guardar.'
+            },
+            en: {
+                comercial: 'Commercial',
+                nombreCliente: 'Client name',
+                numeroCliente: 'Client number',
+                numeroEncomenda: 'Order number',
+                fechaPedido: 'Order date',
+                fechaInicioProcurement: 'Procurement start date',
+                observaciones: 'Observations',
+                nombreProveedor: 'Supplier name',
+                tipoPedido: 'Order type',
+                seleccione: 'Select...',
+                solicitudPrecios: 'Price request',
+                solicitudMuestras: 'Sample request',
+                solicitudReunion: 'Meeting request',
+                guardado: 'Saved.',
+                erro: 'Error saving.'
+            }
+        };
+        return labels[lang] || labels.pt;
+    }
+
+    async submitRegistroDirecto() {
+        const type = this.registroDirectoCurrentType;
+        if (!type || !this.supabase) return;
+        const lang = this.currentLanguage || 'pt';
+        const t = this.getRegistroDirectoLabels(lang);
+        try {
+            if (type === 'contacto_proveedores') {
+                const nombreProveedor = document.getElementById('rd_nombre_proveedor')?.value?.trim();
+                const tipoPedido = document.getElementById('rd_tipo_pedido')?.value;
+                const observaciones = document.getElementById('rd_observaciones')?.value?.trim() || null;
+                if (!nombreProveedor || !tipoPedido) {
+                    this.showNotification(lang === 'es' ? 'Nombre del proveedor y tipo de pedido son obligatorios.' : 'Nome do fornecedor e tipo de pedido são obrigatórios.', 'error');
+                    return;
+                }
+                const responsable = await this.getCurrentUserName();
+                const { error } = await this.supabase.from('contacto_nuevos_proveedores').insert({
+                    nombre_proveedor: nombreProveedor,
+                    tipo_pedido: tipoPedido,
+                    observaciones: observaciones,
+                    responsable: responsable || 'Usuario',
+                    estado: 'pedidos_nuevos_proveedores'
+                });
+                if (error) throw error;
+                this.showNotification(t.guardado, 'success');
+                this.closeRegistroDirectoModal();
+                window.location.href = 'gestao-encomendas.html';
+                return;
+            }
+            const nombreCliente = document.getElementById('rd_nombre_cliente')?.value?.trim();
+            if (!nombreCliente) {
+                this.showNotification(lang === 'es' ? 'El nombre del cliente es obligatorio.' : 'Nome do cliente é obrigatório.', 'error');
+                return;
+            }
+            const comercial = document.getElementById('rd_comercial')?.value?.trim() || '';
+            const numeroCliente = document.getElementById('rd_numero_cliente')?.value?.trim() || '';
+            const observaciones = document.getElementById('rd_observaciones')?.value?.trim() || null;
+            const fechaPedido = document.getElementById('rd_fecha_pedido')?.value || new Date().toISOString().slice(0, 10);
+            const codigo = 'REG-' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + Math.random().toString(36).slice(2, 8).toUpperCase();
+            const responsable = await this.getCurrentUserName();
+            let estadoInicial = 'propuesta_en_edicion';
+            let numeroEncomenda = null;
+            if (type === 'encomienda') {
+                estadoInicial = 'encomenda_en_curso';
+                numeroEncomenda = document.getElementById('rd_numero_encomenda')?.value?.trim() || null;
+            } else if (type === 'pedido_muestra') {
+                estadoInicial = 'amostra_pedida';
+            }
+            const presupuestoData = {
+                nombre_cliente: nombreCliente,
+                nombre_comercial: comercial,
+                numero_cliente: numeroCliente || '0',
+                fecha_inicial: fechaPedido,
+                fecha_propuesta: fechaPedido,
+                estado_propuesta: estadoInicial,
+                codigo_propuesta: codigo,
+                tipo_registro_directo: type === 'pedido_especial' ? 'pedido_especial' : type,
+                comentarios: observaciones,
+                responsavel: responsable || null,
+                numero_encomienda: numeroEncomenda,
+                version: 1
+            };
+            const { data: newPresupuesto, error } = await this.supabase.from('presupuestos').insert([presupuestoData]).select().single();
+            if (error) throw error;
+            this.showNotification(t.guardado, 'success');
+            this.closeRegistroDirectoModal();
+            await this.loadProposals();
+        } catch (err) {
+            console.error('Error registro directo:', err);
+            this.showNotification(err?.message || t.erro, 'error');
+        }
+    }
+
+    async getCurrentUserName() {
+        try {
+            const user = await window.authManager?.getCurrentUser();
+            if (!user) return null;
+            const client = window.universalSupabase?.getClient ? await window.universalSupabase.getClient() : this.supabase;
+            if (!client) return null;
+            const { data } = await client.from('user_roles').select('Name').eq('user_id', user.id).single();
+            return (data && data.Name) ? data.Name : null;
+        } catch (e) {
+            return null;
         }
     }
 
@@ -2763,7 +3042,7 @@ class ProposalsManager {
         const searchCommercial = document.getElementById('searchCommercialInput')?.value.toLowerCase() || '';
         const dateFrom = document.getElementById('filterDateFrom')?.value || '';
         const dateTo = document.getElementById('filterDateTo')?.value || '';
-        const status = document.getElementById('filterStatus')?.value || '';
+        const selectedStatuses = this.getSelectedStatusFilters();
 
         this.filteredProposals = this.allProposals.filter(proposal => {
             // Filtro por cliente
@@ -2794,13 +3073,10 @@ class ProposalsManager {
                 }
             }
 
-            // Filtro por estado (normalizar para que "Proposta Adjudicada" coincida con proposta_adjudicada)
-            if (status) {
-                const proposalStatusNorm = this.normalizeStatusValue(proposal.estado_propuesta) || '';
-                const proposalStatusLower = (proposal.estado_propuesta || '').toLowerCase();
-                const filterStatus = status.toLowerCase();
-                const match = proposalStatusNorm === filterStatus || proposalStatusLower === filterStatus || proposalStatusLower.includes(filterStatus);
-                if (!match) return false;
+            // Filtro por estado: solo mostrar si el estado está entre los seleccionados
+            const proposalKey = this.normalizeStatusValue(proposal.estado_propuesta) || '';
+            if (selectedStatuses.length > 0 && !selectedStatuses.includes(proposalKey)) {
+                return false;
             }
 
             return true;
@@ -2814,75 +3090,13 @@ class ProposalsManager {
         document.getElementById('searchCommercialInput').value = '';
         document.getElementById('filterDateFrom').value = '';
         document.getElementById('filterDateTo').value = '';
-        document.getElementById('filterStatus').value = '';
-        this.filteredProposals = [...this.allProposals];
-        this.renderProposals();
+        this.resetFilterStatusToDefault();
+        this.applyFilters();
     }
 
     showError(message) {
         console.error(message);
         // Podrías mostrar una notificación aquí
-    }
-
-    applyFilters() {
-        const searchClient = document.getElementById('searchClientInput')?.value.toLowerCase() || '';
-        const searchCommercial = document.getElementById('searchCommercialInput')?.value.toLowerCase() || '';
-        const dateFrom = document.getElementById('filterDateFrom')?.value || '';
-        const dateTo = document.getElementById('filterDateTo')?.value || '';
-        const status = document.getElementById('filterStatus')?.value || '';
-
-        this.filteredProposals = this.allProposals.filter(proposal => {
-            // Filtro por cliente
-            if (searchClient && !proposal.nombre_cliente?.toLowerCase().includes(searchClient)) {
-                return false;
-            }
-
-            // Filtro por comercial
-            if (searchCommercial && !proposal.nombre_comercial?.toLowerCase().includes(searchCommercial)) {
-                return false;
-            }
-
-            // Filtro por fecha
-            if (dateFrom) {
-                const proposalDate = new Date(proposal.fecha_inicial);
-                const fromDate = new Date(dateFrom);
-                if (proposalDate < fromDate) {
-                    return false;
-                }
-            }
-
-            if (dateTo) {
-                const proposalDate = new Date(proposal.fecha_inicial);
-                const toDate = new Date(dateTo);
-                toDate.setHours(23, 59, 59, 999);
-                if (proposalDate > toDate) {
-                    return false;
-                }
-            }
-
-            // Filtro por estado (normalizar para que "Proposta Adjudicada" coincida con proposta_adjudicada)
-            if (status) {
-                const proposalStatusNorm = this.normalizeStatusValue(proposal.estado_propuesta) || '';
-                const proposalStatusLower = (proposal.estado_propuesta || '').toLowerCase();
-                const filterStatus = status.toLowerCase();
-                const match = proposalStatusNorm === filterStatus || proposalStatusLower === filterStatus || proposalStatusLower.includes(filterStatus);
-                if (!match) return false;
-            }
-
-            return true;
-        });
-
-        this.renderProposals();
-    }
-
-    clearFilters() {
-        document.getElementById('searchClientInput').value = '';
-        document.getElementById('searchCommercialInput').value = '';
-        document.getElementById('filterDateFrom').value = '';
-        document.getElementById('filterDateTo').value = '';
-        document.getElementById('filterStatus').value = '';
-        this.filteredProposals = [...this.allProposals];
-        this.renderProposals();
     }
 
     showError(message) {
@@ -3050,93 +3264,8 @@ class ProposalsManager {
             }
         });
 
-        // Actualizar opciones del select de estado
-        const statusSelect = document.getElementById('filterStatus');
-        if (statusSelect) {
-            const lang = this.currentLanguage;
-            const statusOptions = {
-                pt: {
-                    all: 'Todos os estados',
-                    propuesta_en_curso: 'Proposta em Curso',
-                    propuesta_enviada: 'Proposta Enviada',
-                    propuesta_en_edicion: 'Proposta em Edição',
-                    muestra_pedida: 'Amostra Pedida',
-                    amostra_enviada: 'Amostra Enviada',
-                    aguarda_dossier: 'Aguarda Dossier',
-                    aguarda_aprovacao_dossier: 'Aguarda Aprovação de Dossier',
-                    aguarda_creacion_cliente: 'Aguarda Criação do Cliente',
-                    aguarda_creacion_codigo_phc: 'Aguarda Criação de Código PHC',
-                    aguarda_pagamento: 'Aguarda Pagamento',
-                    follow_up: 'Follow up',
-                    pedido_de_encomenda: 'Pedido de Encomenda',
-                    encomenda_en_curso: 'Encomenda em Curso',
-                    encomenda_concluida: 'Encomenda Concluída',
-                    rejeitada: 'Rejeitada',
-                    proposta_adjudicada: 'Proposta Adjudicada'
-                },
-                es: {
-                    all: 'Todos los estados',
-                    propuesta_en_curso: 'Propuesta en Curso',
-                    propuesta_enviada: 'Propuesta Enviada',
-                    propuesta_en_edicion: 'Propuesta en Edición',
-                    muestra_pedida: 'Muestra Pedida',
-                    amostra_enviada: 'Amostra Enviada',
-                    aguarda_dossier: 'Aguarda Dossier',
-                    aguarda_aprovacao_dossier: 'Aguarda Aprobación de Dossier',
-                    aguarda_creacion_cliente: 'Aguarda Creación del Cliente',
-                    aguarda_creacion_codigo_phc: 'Aguarda Creación de Código PHC',
-                    aguarda_pagamento: 'Aguarda Pagamento',
-                    follow_up: 'Follow up',
-                    pedido_de_encomenda: 'Pedido de Encomenda',
-                    encomenda_en_curso: 'Encomenda en Curso',
-                    encomenda_concluida: 'Encomenda Concluída',
-                    rejeitada: 'Rechazada',
-                    proposta_adjudicada: 'Propuesta Adjudicada'
-                },
-                en: {
-                    all: 'All statuses',
-                    propuesta_en_curso: 'Proposal in Progress',
-                    propuesta_enviada: 'Proposal Sent',
-                    propuesta_en_edicion: 'Proposal in Editing',
-                    muestra_pedida: 'Sample Requested',
-                    amostra_enviada: 'Sample Sent',
-                    aguarda_dossier: 'Awaiting Dossier',
-                    aguarda_aprovacao_dossier: 'Awaiting Dossier Approval',
-                    aguarda_creacion_cliente: 'Awaiting Client Creation',
-                    aguarda_creacion_codigo_phc: 'Awaiting PHC Code Creation',
-                    aguarda_pagamento: 'Awaiting Payment',
-                    follow_up: 'Follow up',
-                    pedido_de_encomenda: 'Order Request',
-                    encomenda_en_curso: 'Order in Progress',
-                    encomenda_concluida: 'Order Completed',
-                    rejeitada: 'Rejected',
-                    proposta_adjudicada: 'Proposal Awarded'
-                }
-            };
-
-            const statusT = statusOptions[lang] || statusOptions.pt;
-            
-            // Actualizar todas las opciones
-            statusSelect.innerHTML = `
-                <option value="">${statusT.all}</option>
-                <option value="propuesta_en_curso">${statusT.propuesta_en_curso}</option>
-                <option value="propuesta_enviada">${statusT.propuesta_enviada}</option>
-                <option value="propuesta_en_edicion">${statusT.propuesta_en_edicion}</option>
-                <option value="muestra_pedida">${statusT.muestra_pedida}</option>
-                <option value="amostra_enviada">${statusT.amostra_enviada}</option>
-                <option value="aguarda_dossier">${statusT.aguarda_dossier}</option>
-                <option value="aguarda_aprovacao_dossier">${statusT.aguarda_aprovacao_dossier}</option>
-                <option value="aguarda_creacion_cliente">${statusT.aguarda_creacion_cliente}</option>
-                <option value="aguarda_creacion_codigo_phc">${statusT.aguarda_creacion_codigo_phc}</option>
-                <option value="aguarda_pagamento">${statusT.aguarda_pagamento}</option>
-                <option value="follow_up">${statusT.follow_up}</option>
-                <option value="pedido_de_encomenda">${statusT.pedido_de_encomenda}</option>
-                <option value="encomenda_en_curso">${statusT.encomenda_en_curso}</option>
-                <option value="encomenda_concluida">${statusT.encomenda_concluida}</option>
-                <option value="rejeitada">${statusT.rejeitada}</option>
-                <option value="proposta_adjudicada">${statusT.proposta_adjudicada}</option>
-            `;
-        }
+        // Actualizar etiquetas del filtro múltiple de estados (idioma)
+        this.refreshFilterStatusLabels();
     }
 
 
@@ -3311,17 +3440,207 @@ class ProposalsManager {
     }
 
     /**
-     * Normalizar valor de estado para manejar variaciones
+     * Claves de estado para el filtro múltiple (orden de aparición).
+     * Por defecto quedan inactivos: encomenda_concluida, rejeitada.
+     */
+    static STATUS_FILTER_KEYS = [
+        'propuesta_en_curso', 'propuesta_enviada', 'propuesta_en_edicion',
+        'amostra_pedida', 'muestra_entregada', 'aguarda_dossier', 'aguarda_aprovacao_dossier',
+        'aguarda_creacion_cliente', 'aguarda_creacion_codigo_phc', 'aguarda_pagamento',
+        'follow_up', 'pedido_de_encomenda', 'encomenda_en_curso',
+        'encomenda_concluida', 'rejeitada', 'proposta_adjudicada'
+    ];
+    static STATUS_EXCLUDED_BY_DEFAULT = ['encomenda_concluida', 'rejeitada'];
+
+    /** Etiquetas por idioma para el filtro de estados (mismo orden que STATUS_FILTER_KEYS). */
+    static STATUS_LABELS = {
+        pt: {
+            all: 'Todos os estados',
+            propuesta_en_curso: 'Proposta em Curso',
+            propuesta_enviada: 'Proposta Enviada',
+            propuesta_en_edicion: 'Proposta em Edição',
+            amostra_pedida: 'Amostra Pedida',
+            muestra_entregada: 'Amostra Entregue',
+            aguarda_dossier: 'Aguarda Dossier',
+            aguarda_aprovacao_dossier: 'Aguarda Aprovação de Dossier',
+            aguarda_creacion_cliente: 'Aguarda Criação do Cliente',
+            aguarda_creacion_codigo_phc: 'Aguarda Criação de Código PHC',
+            aguarda_pagamento: 'Aguarda Pagamento',
+            follow_up: 'Follow up',
+            pedido_de_encomenda: 'Pedido de Encomenda',
+            encomenda_en_curso: 'Encomenda em Curso',
+            encomenda_concluida: 'Encomenda Concluída',
+            rejeitada: 'Rejeitada',
+            proposta_adjudicada: 'Proposta Adjudicada'
+        },
+        es: {
+            all: 'Todos los estados',
+            propuesta_en_curso: 'Propuesta en Curso',
+            propuesta_enviada: 'Propuesta Enviada',
+            propuesta_en_edicion: 'Propuesta en Edición',
+            amostra_pedida: 'Muestra Pedida',
+            muestra_entregada: 'Muestra Enviada',
+            aguarda_dossier: 'Aguarda Dossier',
+            aguarda_aprovacao_dossier: 'Aguarda Aprobación de Dossier',
+            aguarda_creacion_cliente: 'Aguarda Creación del Cliente',
+            aguarda_creacion_codigo_phc: 'Aguarda Creación de Código PHC',
+            aguarda_pagamento: 'Aguarda Pago',
+            follow_up: 'Follow up',
+            pedido_de_encomenda: 'Pedido de Encomenda',
+            encomenda_en_curso: 'Encomenda en Curso',
+            encomenda_concluida: 'Encomenda Concluída',
+            rejeitada: 'Rechazada',
+            proposta_adjudicada: 'Propuesta Adjudicada'
+        },
+        en: {
+            all: 'All statuses',
+            propuesta_en_curso: 'Proposal in Progress',
+            propuesta_enviada: 'Proposal Sent',
+            propuesta_en_edicion: 'Proposal in Editing',
+            amostra_pedida: 'Sample Requested',
+            muestra_entregada: 'Sample Sent',
+            aguarda_dossier: 'Awaiting Dossier',
+            aguarda_aprovacao_dossier: 'Awaiting Dossier Approval',
+            aguarda_creacion_cliente: 'Awaiting Client Creation',
+            aguarda_creacion_codigo_phc: 'Awaiting PHC Code Creation',
+            aguarda_pagamento: 'Awaiting Payment',
+            follow_up: 'Follow up',
+            pedido_de_encomenda: 'Order Request',
+            encomenda_en_curso: 'Order in Progress',
+            encomenda_concluida: 'Order Completed',
+            rejeitada: 'Rejected',
+            proposta_adjudicada: 'Proposal Awarded'
+        }
+    };
+
+    getStatusFilterLabels() {
+        return ProposalsManager.STATUS_LABELS[this.currentLanguage] || ProposalsManager.STATUS_LABELS.pt;
+    }
+
+    /** Devuelve los valores de estado actualmente seleccionados en el filtro (checkboxes). */
+    getSelectedStatusFilters() {
+        const selected = [];
+        ProposalsManager.STATUS_FILTER_KEYS.forEach(key => {
+            const cb = document.getElementById(`filterStatus_${key}`);
+            if (cb && cb.checked) selected.push(key);
+        });
+        return selected;
+    }
+
+    /** Restaura el filtro de estado al valor por defecto (todos activos excepto Encomenda Concluída y Rejeitada). */
+    resetFilterStatusToDefault() {
+        ProposalsManager.STATUS_FILTER_KEYS.forEach(key => {
+            const cb = document.getElementById(`filterStatus_${key}`);
+            if (cb) cb.checked = !ProposalsManager.STATUS_EXCLUDED_BY_DEFAULT.includes(key);
+        });
+        this.updateFilterStatusLabel();
+    }
+
+    updateFilterStatusLabel() {
+        const labelEl = document.getElementById('filterStatusLabel');
+        if (!labelEl) return;
+        const n = this.getSelectedStatusFilters().length;
+        const total = ProposalsManager.STATUS_FILTER_KEYS.length;
+        if (n === total) {
+            labelEl.textContent = this.getStatusFilterLabels().all || 'Todos os estados';
+        } else {
+            labelEl.textContent = n === 0 ? 'Estados (0)' : `Estados (${n})`;
+        }
+    }
+
+    /** Construye el dropdown de checkboxes y enlaces; por defecto excluye encomenda_concluida y rejeitada. */
+    setupFilterStatusMulti() {
+        const container = document.getElementById('filterStatusCheckboxes');
+        const toggleBtn = document.getElementById('filterStatusToggle');
+        const dropdown = document.getElementById('filterStatusDropdown');
+        const selectAllBtn = document.getElementById('filterStatusSelectAll');
+        const resetDefaultBtn = document.getElementById('filterStatusResetDefault');
+        if (!container || !toggleBtn || !dropdown) return;
+
+        const labels = this.getStatusFilterLabels();
+        const allLabel = labels.all || 'Todos os estados';
+        container.innerHTML = ProposalsManager.STATUS_FILTER_KEYS.map(key => {
+            const label = labels[key] || key;
+            const excluded = ProposalsManager.STATUS_EXCLUDED_BY_DEFAULT.includes(key);
+            const checked = !excluded;
+            return `<label class="filter-status-label"><input type="checkbox" id="filterStatus_${key}" value="${key}" ${checked ? 'checked' : ''}> ${label}</label>`;
+        }).join('');
+
+        container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            cb.addEventListener('change', () => {
+                this.applyFilters();
+                this.updateFilterStatusLabel();
+            });
+        });
+
+        toggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const open = dropdown.style.display === 'block';
+            dropdown.style.display = open ? 'none' : 'block';
+            toggleBtn.setAttribute('aria-expanded', !open);
+        });
+        document.addEventListener('click', (e) => {
+            if (!dropdown.contains(e.target) && !toggleBtn.contains(e.target)) {
+                dropdown.style.display = 'none';
+                toggleBtn.setAttribute('aria-expanded', 'false');
+            }
+        });
+        if (selectAllBtn) {
+            selectAllBtn.addEventListener('click', () => {
+                ProposalsManager.STATUS_FILTER_KEYS.forEach(key => {
+                    const el = document.getElementById(`filterStatus_${key}`);
+                    if (el) el.checked = true;
+                });
+                this.updateFilterStatusLabel();
+                this.applyFilters();
+            });
+        }
+        if (resetDefaultBtn) {
+            resetDefaultBtn.addEventListener('click', () => {
+                this.resetFilterStatusToDefault();
+                this.applyFilters();
+            });
+        }
+        this.updateFilterStatusLabel();
+    }
+
+    /** Actualiza solo los textos del filtro de estado al cambiar idioma (no cambia checked). */
+    refreshFilterStatusLabels() {
+        const labels = this.getStatusFilterLabels();
+        ProposalsManager.STATUS_FILTER_KEYS.forEach(key => {
+            const cb = document.getElementById(`filterStatus_${key}`);
+            if (!cb) return;
+            const label = labels[key] || key;
+            const textNode = cb.nextSibling;
+            if (textNode && textNode.nodeType === Node.TEXT_NODE) textNode.textContent = ` ${label}`;
+        });
+        this.updateFilterStatusLabel();
+    }
+
+    /**
+     * Normalizar valor de estado a clave canónica para comparación con filtros.
      */
     normalizeStatusValue(status) {
-        if (!status) return status;
-        const statusLower = status.toLowerCase();
-        // Mapear variaciones a valores consistentes
-        if (statusLower === 'muestra_pedida' || statusLower === 'amostra_pedida') return 'amostra_pedida';
-        if (statusLower === 'muestra_entregada' || statusLower === 'amostra_enviada') return 'amostra_enviada';
-        if (statusLower === 'follow_up' || statusLower.includes('follow up')) return 'follow_up';
-        if (statusLower.includes('adjudicada') || statusLower === 'proposta_adjudicada') return 'proposta_adjudicada';
-        return status;
+        if (!status) return '';
+        const s = (status || '').toString().toLowerCase().trim();
+        if (s === 'muestra_pedida' || s === 'amostra_pedida') return 'amostra_pedida';
+        if (s === 'muestra_entregada' || s === 'amostra_enviada') return 'muestra_entregada';
+        if (s === 'follow_up' || s.includes('follow up')) return 'follow_up';
+        if (s.includes('adjudicada') || s === 'proposta_adjudicada') return 'proposta_adjudicada';
+        if (s.includes('propuesta') && (s.includes('curso') || s.includes('curso'))) return 'propuesta_en_curso';
+        if (s.includes('propuesta') && (s.includes('enviada') || s.includes('enviada'))) return 'propuesta_enviada';
+        if (s.includes('edicion') || s.includes('edição')) return 'propuesta_en_edicion';
+        if (s.includes('dossier') && !s.includes('aprovacao') && !s.includes('aprovação')) return 'aguarda_dossier';
+        if (s.includes('dossier') && (s.includes('aprovacao') || s.includes('aprovação'))) return 'aguarda_aprovacao_dossier';
+        if (s.includes('cliente') && (s.includes('creacion') || s.includes('criação'))) return 'aguarda_creacion_cliente';
+        if (s.includes('phc') && (s.includes('creacion') || s.includes('código') || s.includes('codigo'))) return 'aguarda_creacion_codigo_phc';
+        if (s.includes('pagamento')) return 'aguarda_pagamento';
+        if (s.includes('pedido') && s.includes('encomenda')) return 'pedido_de_encomenda';
+        if (s.includes('encomenda') && (s.includes('curso') || s.includes('curso'))) return 'encomenda_en_curso';
+        if (s.includes('concluida') || s.includes('concluída')) return 'encomenda_concluida';
+        if (s.includes('rechazada') || s.includes('rejeitada')) return 'rejeitada';
+        if (ProposalsManager.STATUS_FILTER_KEYS.includes(s)) return s;
+        return s.replace(/\s+/g, '_');
     }
 
     /**

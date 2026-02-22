@@ -1410,11 +1410,14 @@ async function loadCustomCategories() {
         if (error) {
             console.error('Error cargando categorías del home:', error);
             select.innerHTML = '<option value="">Error al cargar categorías</option>';
+            const categoriasExtraSelect = document.getElementById('categorias_extra');
+            if (categoriasExtraSelect) categoriasExtraSelect.innerHTML = '<option value="">Error al cargar</option>';
             return;
         }
         
         if (data && data.length > 0) {
             const currentLang = localStorage.getItem('language') || 'pt';
+            const categoriasExtraSelect = document.getElementById('categorias_extra');
             
             data.forEach(cat => {
                 // Obtener nombre según idioma
@@ -1429,18 +1432,33 @@ async function loadCustomCategories() {
                     .replace(/\s+/g, '-')
                     .replace(/[^a-z0-9-]/g, '');
                 
-                // Agregar al dropdown
+                // Agregar al dropdown principal
                 const option = document.createElement('option');
                 option.value = categoryValue;
                 option.textContent = nombre;
                 option.setAttribute('data-category-id', cat.id);
                 option.setAttribute('data-category-name', cat.nombre_es);
                 select.appendChild(option);
+                
+                // Misma opción en el multi-select de categorías adicionales
+                if (categoriasExtraSelect) {
+                    const optExtra = document.createElement('option');
+                    optExtra.value = categoryValue;
+                    optExtra.textContent = nombre;
+                    optExtra.setAttribute('data-category-id', cat.id);
+                    categoriasExtraSelect.appendChild(optExtra);
+                }
             });
+            
+            if (categoriasExtraSelect && categoriasExtraSelect.options.length > 0 && categoriasExtraSelect.options[0].value === '') {
+                categoriasExtraSelect.removeChild(categoriasExtraSelect.options[0]);
+            }
             
             console.log('✅ Categorías del home cargadas:', data.length);
         } else {
             select.innerHTML = '<option value="">No hay categorías disponibles</option>';
+            const categoriasExtraSelect = document.getElementById('categorias_extra');
+            if (categoriasExtraSelect) categoriasExtraSelect.innerHTML = '<option value="">No hay categorías</option>';
             console.warn('⚠️ No se encontraron categorías activas');
         }
     } catch (error) {
@@ -2600,9 +2618,16 @@ document.getElementById('productForm').addEventListener('submit', async (e) => {
         showAlert('⚠️ Advertencia: No se ha subido ninguna imagen principal. El producto se guardará sin foto.', 'warning');
     }
     
+    const categoriasExtraSelect = document.getElementById('categorias_extra');
+    const categoriasExtraValues = categoriasExtraSelect
+        ? Array.from(categoriasExtraSelect.selectedOptions).map(o => o.value).filter(Boolean)
+        : [];
+    const categoriasUnicas = [...new Set([categoria, ...categoriasExtraValues])].filter(Boolean);
+
     const productData = {
         nombre: formData.get('modelo') || '', // Usar el campo modelo como nombre
         categoria: categoria,
+        categorias: categoriasUnicas,
         brand: formData.get('marca') || null,
         mercado: formData.get('mercado') || 'AMBOS', // Mercado: PT, ES o AMBOS
         badge_pt: formData.get('badge') || null, // Guardar badge (solo en PT, se traduce automáticamente)
@@ -3683,12 +3708,18 @@ async function fillFormWithProduct(product, isDuplicate = false) {
         }
     }
     const categoriaField = document.getElementById('categoria');
-    if (categoriaField && product.categoria) {
-        // Si la categoría tiene formato "categoria:subcategoria", separarla
-        const categoriaParts = product.categoria.split(':');
+    const categoriasExtraField = document.getElementById('categorias_extra');
+    const categoriasArray = Array.isArray(product.categorias) ? product.categorias : (product.categoria ? [product.categoria] : []);
+    const mainCategoria = product.categoria || (categoriasArray.length > 0 ? categoriasArray[0] : '');
+    if (categoriaField && mainCategoria) {
+        const categoriaParts = mainCategoria.split(':');
         categoriaField.value = categoriaParts[0];
         categoriaField.dispatchEvent(new Event('change'));
-        
+    }
+    if (categoriasExtraField) {
+        Array.from(categoriasExtraField.options).forEach(opt => {
+            opt.selected = categoriasArray.includes(opt.value) && opt.value !== mainCategoria;
+        });
     }
     const mercadoField = document.getElementById('mercado');
     if (mercadoField && product.mercado) {

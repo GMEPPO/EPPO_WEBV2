@@ -106,6 +106,115 @@
             box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         }
 
+        .filter-status-multi-wrapper {
+            position: relative;
+            min-width: 200px;
+        }
+        .filter-status-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            text-align: left;
+        }
+        .filter-status-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            margin-top: 4px;
+            background: var(--bg-white);
+            border: 1px solid var(--bg-gray-300);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-md);
+            z-index: 100;
+            min-width: 280px;
+            max-height: 320px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .filter-status-dropdown-inner {
+            overflow-y: auto;
+            max-height: 260px;
+            padding: var(--space-2);
+        }
+        .filter-status-dropdown-inner label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            color: var(--text-primary);
+        }
+        .filter-status-dropdown-inner label:hover {
+            background: var(--bg-gray-100);
+        }
+        .filter-status-dropdown-inner input {
+            margin: 0;
+        }
+        .filter-status-actions {
+            padding: 8px;
+            border-top: 1px solid var(--bg-gray-200);
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .filter-status-btn {
+            padding: 4px 10px;
+            font-size: 0.75rem;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--bg-gray-300);
+            background: var(--bg-white);
+            cursor: pointer;
+            color: var(--text-primary);
+        }
+        .filter-status-btn:hover {
+            background: var(--bg-gray-100);
+        }
+
+        .btn-registro-directo {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 18px;
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3);
+        }
+        .btn-registro-directo:hover {
+            background: linear-gradient(135deg, #047857 0%, #065f46 100%);
+            box-shadow: 0 4px 12px rgba(5, 150, 105, 0.4);
+        }
+        .registro-directo-type-btn {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            padding: 14px 16px;
+            text-align: left;
+            background: var(--bg-white);
+            border: 1px solid var(--bg-gray-300);
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            color: var(--text-primary);
+            transition: background 0.2s, border-color 0.2s;
+        }
+        .registro-directo-type-btn:hover {
+            background: var(--bg-gray-50);
+            border-color: var(--brand-blue);
+        }
+        .registro-directo-type-btn i {
+            color: var(--brand-blue);
+            font-size: 1.1rem;
+        }
+
         .proposals-table-container {
             background: var(--bg-white);
             border-radius: var(--radius-xl);
@@ -1047,8 +1156,12 @@
     <!-- Main Content -->
     <main class="main-content">
         <div class="proposals-container">
-            <div class="proposals-header">
+            <div class="proposals-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
                 <h1 class="proposals-title" id="proposals-page-title">Consultar Propuestas</h1>
+                <button type="button" id="btnRegistroDirecto" class="btn-registro-directo" style="display: none;" title="Registrar pedido sin pasar por propuesta">
+                    <i class="fas fa-plus-circle"></i>
+                    <span id="btnRegistroDirectoText">Registrar pedido sin propuesta</span>
+                </button>
             </div>
 
             <!-- Filtros -->
@@ -1057,23 +1170,21 @@
                 <input type="text" id="searchCommercialInput" class="filter-input" placeholder="Buscar por comercial...">
                 <input type="date" id="filterDateFrom" class="filter-input">
                 <input type="date" id="filterDateTo" class="filter-input">
-                <select id="filterStatus" class="filter-input">
-                    <option value="">Todos os estados</option>
-                    <option value="propuesta_en_curso">Proposta em Curso</option>
-                    <option value="propuesta_enviada">Proposta Enviada</option>
-                    <option value="propuesta_en_edicion">Proposta em Edição</option>
-                    <option value="amostra_pedida">Amostra Pedida</option>
-                    <option value="muestra_entregada">Amostra Entregue</option>
-                    <option value="aguarda_dossier">Aguarda Dossier</option>
-                    <option value="aguarda_aprovacao_dossier">Aguarda Aprovação de Dossier</option>
-                    <option value="aguarda_creacion_cliente">Aguarda Criação do Cliente</option>
-                    <option value="aguarda_creacion_codigo_phc">Aguarda Criação de Código PHC</option>
-                    <option value="aguarda_pagamento">Aguarda Pagamento</option>
-                    <option value="follow_up">Follow up</option>
-                    <option value="encomenda_en_curso">Encomenda em Curso</option>
-                    <option value="encomenda_concluida">Encomenda Concluída</option>
-                    <option value="rejeitada">Rejeitada</option>
-                </select>
+                <div class="filter-status-multi-wrapper">
+                    <button type="button" id="filterStatusToggle" class="filter-input filter-status-toggle" aria-haspopup="listbox" aria-expanded="false">
+                        <span id="filterStatusLabel">Estados</span>
+                        <i class="fas fa-chevron-down" style="margin-left: 6px; font-size: 0.8em;"></i>
+                    </button>
+                    <div id="filterStatusDropdown" class="filter-status-dropdown" role="listbox" style="display: none;">
+                        <div class="filter-status-dropdown-inner" id="filterStatusCheckboxes">
+                            <!-- Checkboxes generados por JS -->
+                        </div>
+                        <div class="filter-status-actions">
+                            <button type="button" id="filterStatusSelectAll" class="filter-status-btn">Marcar todos</button>
+                            <button type="button" id="filterStatusResetDefault" class="filter-status-btn">Por defecto</button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Tabla de propuestas -->
@@ -1104,6 +1215,23 @@
                     </tbody>
                 </table>
             </div>
+            <!-- Contactos con nuevos proveedores (solo administradores) -->
+            <div id="contactoProveedoresSection" style="display: none; margin-top: 2rem; padding: 1rem; background: var(--bg-gray-100, #f3f4f6); border-radius: 8px;">
+                <h2 style="font-size: 1.1rem; margin-bottom: 0.75rem;" id="contactoProveedoresTitle">Contactos con nuevos proveedores</h2>
+                <div id="contactoProveedoresLoading" style="padding: 1rem;">A carregar...</div>
+                <table id="contactoProveedoresTable" class="proposals-table" style="display: none; margin-top: 0.5rem;">
+                    <thead>
+                        <tr>
+                            <th>Proveedor</th>
+                            <th>Tipo</th>
+                            <th>Observaciones</th>
+                            <th>Estado</th>
+                            <th>Responsable</th>
+                        </tr>
+                    </thead>
+                    <tbody id="contactoProveedoresBody"></tbody>
+                </table>
+            </div>
         </div>
     </main>
 
@@ -1123,6 +1251,50 @@
             </div>
             <div class="modal-actions" style="padding: var(--space-4); border-top: 1px solid var(--bg-gray-200);">
                 <button type="button" class="btn-secondary" onclick="closeProposalCodeModal()" id="close-code-modal-btn">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Registro directo (solo administradores): elegir tipo y luego formulario -->
+    <div class="modal-overlay" id="registroDirectoModal">
+        <div class="modal" style="max-width: 560px;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="registroDirectoModalTitle">Registrar pedido sin propuesta</h3>
+                <button class="modal-close" type="button" id="registroDirectoModalClose">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body" style="padding: var(--space-6);">
+                <!-- Paso 1: Seleccionar tipo -->
+                <div id="registroDirectoStep1">
+                    <p style="color: var(--text-secondary); margin-bottom: 1rem;" id="registroDirectoStep1Subtitle">Seleccione el tipo de registro:</p>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <button type="button" class="registro-directo-type-btn" data-type="encomienda">
+                            <i class="fas fa-truck"></i>
+                            <span id="regTypeEncomienda">Encomienda</span>
+                        </button>
+                        <button type="button" class="registro-directo-type-btn" data-type="pedido_muestra">
+                            <i class="fas fa-box-open"></i>
+                            <span id="regTypePedidoMuestra">Pedido de muestra</span>
+                        </button>
+                        <button type="button" class="registro-directo-type-btn" data-type="pedido_especial">
+                            <i class="fas fa-file-invoice"></i>
+                            <span id="regTypePedidoEspecial">Pedido especial</span>
+                        </button>
+                        <button type="button" class="registro-directo-type-btn" data-type="contacto_proveedores">
+                            <i class="fas fa-handshake"></i>
+                            <span id="regTypeContactoProveedores">Contacto con nuevos proveedores</span>
+                        </button>
+                    </div>
+                </div>
+                <!-- Paso 2: Formulario (se rellena por JS según tipo) -->
+                <div id="registroDirectoStep2" style="display: none;">
+                    <div id="registroDirectoFormContainer"></div>
+                    <div class="modal-actions" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--bg-gray-200);">
+                        <button type="button" class="btn-secondary" id="registroDirectoBackBtn"><i class="fas fa-arrow-left"></i> <span id="registroDirectoBackText">Volver</span></button>
+                        <button type="button" class="btn-primary" id="registroDirectoSubmitBtn"><i class="fas fa-save"></i> <span id="registroDirectoSubmitText">Guardar</span></button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

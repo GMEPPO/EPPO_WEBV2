@@ -85,6 +85,17 @@ class DynamicProductsPage {
         // Esto evita inicializaciones múltiples
     }
 
+    /**
+     * Indica si un producto pertenece a una categoría (categoria principal o categorias adicionales).
+     */
+    productHasCategory(product, categorySlug) {
+        if (!categorySlug) return false;
+        const normSlug = this.normalizeCategoryName(categorySlug);
+        if (this.normalizeCategoryName(product.categoria || '') === normSlug) return true;
+        const categorias = Array.isArray(product.categorias) ? product.categorias : [];
+        return categorias.some(c => this.normalizeCategoryName(c) === normSlug);
+    }
+
     async init() {
         try {
             // Resetear flags
@@ -569,9 +580,11 @@ class DynamicProductsPage {
                                    null;
                 }
                 
+                const categoriasArray = Array.isArray(product.categorias) ? product.categorias : (product.categoria ? [product.categoria] : []);
                 return {
                     ...product,
                     categoria: normalizedCategoria,
+                    categorias: categoriasArray.length ? categoriasArray : [normalizedCategoria],
                     categoriaOriginal: product.categoria, // Guardar original para referencia
                     precio: product.precio !== null && product.precio !== undefined ? Number(product.precio) : 0,
                     potencia: potenciaValue !== null && potenciaValue !== undefined ? Number(potenciaValue) : null,
@@ -1052,7 +1065,7 @@ class DynamicProductsPage {
 
         const filteredByCategory = this.filters.categories.length === 0
             ? this.allProducts
-            : this.allProducts.filter(product => this.filters.categories.includes(product.categoria));
+            : this.allProducts.filter(product => this.filters.categories.some(cat => this.productHasCategory(product, cat)));
 
         filteredByCategory.forEach(product => {
             if (product.tipo && product.tipo.trim() !== '') {
@@ -1129,7 +1142,7 @@ class DynamicProductsPage {
 
         // Obtener potencias disponibles según las categorías seleccionadas
         this.filters.categories.forEach(category => {
-            this.allProducts.filter(product => product.categoria === category).forEach(product => {
+            this.allProducts.filter(product => this.productHasCategory(product, category)).forEach(product => {
                 if (product.potencia && product.potencia > 0) {
                     availablePowers.add(product.potencia);
                 }
@@ -1175,7 +1188,7 @@ class DynamicProductsPage {
 
         // Obtener colores disponibles según las categorías seleccionadas
         this.filters.categories.forEach(category => {
-            this.allProducts.filter(product => product.categoria === category).forEach(product => {
+            this.allProducts.filter(product => this.productHasCategory(product, category)).forEach(product => {
                 if (product.color && product.color.trim() !== '') {
                     availableColors.add(product.color);
                 }
@@ -1905,6 +1918,7 @@ class DynamicProductsPage {
                     product.descripcionEs || product.descripcion_es,
                     product.descripcionPt || product.descripcion_pt,
                     product.categoria,
+                    ...(Array.isArray(product.categorias) ? product.categorias : []),
                     product.tipo,
                     product.color,
                     product.caracteristicas,
@@ -1935,13 +1949,9 @@ class DynamicProductsPage {
                 }
             }
 
-            // Filtro por categorías
+            // Filtro por categorías (categoria principal o cualquier categoría adicional)
             if (this.filters.categories.length > 0) {
-                const productCategoryNormalized = this.normalizeCategoryName(product.categoria);
-                const normalizedFilterCategories = this.filters.categories.map(cat => 
-                    this.normalizeCategoryName(cat)
-                );
-                if (!normalizedFilterCategories.includes(productCategoryNormalized)) {
+                if (!this.filters.categories.some(cat => this.productHasCategory(product, cat))) {
                     return false;
                 }
             }

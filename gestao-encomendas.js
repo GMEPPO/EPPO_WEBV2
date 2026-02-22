@@ -114,7 +114,7 @@
     let supabase = null;
     let lang = 'pt';
     let listData = []; // { presupuesto_id, codigo_propuesta, responsavel, fornecedores: string[], isEnCurso: boolean }
-    let currentTab = 'pendientes'; // 'pendientes' | 'encurso'
+    let currentTab = 'pendientes'; // 'pendientes' | 'encurso' | 'nuevos_proveedores'
 
     function t(key) {
         return (TEXTS[lang] || TEXTS.pt)[key] || key;
@@ -257,6 +257,68 @@
             tbody.appendChild(tr);
         });
         setEmpty(filtered.length === 0);
+    }
+
+    const TIPO_PEDIDO_LABELS = { solicitud_precios: 'Solicitud de precios', solicitud_muestras: 'Solicitud de muestras', solicitud_reunion: 'Solicitud de reunión' };
+    const ESTADO_NP_LABELS = { pedidos_nuevos_proveedores: 'Pedidos nuevos proveedores', contacto_finalizado: 'Contacto finalizado' };
+
+    async function loadNuevosProveedores() {
+        const loading = document.getElementById('ge-np-loading');
+        const table = document.getElementById('ge-table-np');
+        const tbody = document.getElementById('ge-tbody-np');
+        if (!tbody) return;
+        if (loading) loading.style.display = 'block';
+        if (table) table.style.display = 'none';
+        try {
+            const client = await getClient();
+            if (!client) throw new Error('No client');
+            const { data, error } = await client.from('contacto_nuevos_proveedores').select('*').order('created_at', { ascending: false });
+            if (loading) loading.style.display = 'none';
+            if (error) throw error;
+            if (!data || data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6">Nenhum registo.</td></tr>';
+            } else {
+                tbody.innerHTML = data.map(r => {
+                    const estadoLabel = ESTADO_NP_LABELS[r.estado] || r.estado;
+                    const tipoLabel = TIPO_PEDIDO_LABELS[r.tipo_pedido] || r.tipo_pedido;
+                    const canFinalize = r.estado === 'pedidos_nuevos_proveedores';
+                    const btnHtml = canFinalize
+                        ? `<button type="button" class="ge-btn ge-btn-primary" data-np-id="${r.id}">Marcar como Contacto finalizado</button>`
+                        : '';
+                    return `<tr>
+                        <td>${escapeHtml(r.nombre_proveedor || '')}</td>
+                        <td>${escapeHtml(tipoLabel)}</td>
+                        <td>${escapeHtml(r.observaciones || '-')}</td>
+                        <td>${escapeHtml(estadoLabel)}</td>
+                        <td>${escapeHtml(r.responsable || '-')}</td>
+                        <td>${btnHtml}</td>
+                    </tr>`;
+                }).join('');
+                tbody.querySelectorAll('button[data-np-id]').forEach(btn => {
+                    btn.addEventListener('click', () => markContactoFinalizado(btn.getAttribute('data-np-id')));
+                });
+            }
+            if (table) table.style.display = 'table';
+        } catch (e) {
+            console.error('loadNuevosProveedores:', e);
+            if (loading) loading.style.display = 'none';
+            tbody.innerHTML = '<tr><td colspan="6">Erro ao carregar.</td></tr>';
+            if (table) table.style.display = 'table';
+        }
+    }
+
+    async function markContactoFinalizado(id) {
+        if (!id) return;
+        try {
+            const client = await getClient();
+            if (!client) throw new Error('No client');
+            const { error } = await client.from('contacto_nuevos_proveedores').update({ estado: 'contacto_finalizado' }).eq('id', id);
+            if (error) throw error;
+            showNotification(t('guardado'), 'success');
+            loadNuevosProveedores();
+        } catch (e) {
+            showNotification(e.message || t('error'), 'error');
+        }
     }
 
     async function showDetails(presupuestoId) {
@@ -729,7 +791,17 @@
                 currentTab = tabVal;
                 document.querySelectorAll('.ge-tab').forEach(t => t.classList.remove('ge-tab-active'));
                 tab.classList.add('ge-tab-active');
-                renderList();
+                const wrapMain = document.getElementById('ge-table-wrap-main');
+                const wrapNp = document.getElementById('ge-wrap-nuevos-proveedores');
+                if (tabVal === 'nuevos_proveedores') {
+                    if (wrapMain) wrapMain.style.display = 'none';
+                    if (wrapNp) wrapNp.style.display = 'block';
+                    loadNuevosProveedores();
+                } else {
+                    if (wrapMain) wrapMain.style.display = 'block';
+                    if (wrapNp) wrapNp.style.display = 'none';
+                    renderList();
+                }
             });
         });
 
