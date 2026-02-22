@@ -247,8 +247,9 @@ class ProposalsManager {
             let filteredPresupuestos = presupuestos;
             if (presupuestos && presupuestos.length > 0) {
                 try {
-                    // Obtener rol del usuario
+                    // Obtener rol del usuario y cachearlo para el dropdown de estados (comercial solo ve 4 opciones)
                     const role = await window.getUserRole?.();
+                    window.cachedRole = role || window.cachedRole;
                     
                     if (role === 'comercial') {
                         console.log('🔒 [consultar-propuestas] Usuario comercial detectado, filtrando propuestas...');
@@ -828,7 +829,7 @@ class ProposalsManager {
                             " onfocus="this.style.borderColor='var(--primary-500, #2563eb)'; this.style.boxShadow='0 0 0 2px rgba(37,99,235,0.2)';" onblur="this.style.borderColor='var(--bg-gray-300, #d1d5db)'; this.style.boxShadow='none';">
                                 ${(() => {
                                     const hasPassedPropuestaEnviada = this.hasPassedThroughStatus(proposal, 'propuesta_enviada');
-                                    const isComercial = window.cachedRole === 'comercial';
+                                    const isComercial = (window.cachedRole || '').toString().toLowerCase() === 'comercial';
                                     const allowedComercial = ['propuesta_enviada', 'propuesta_en_edicion', 'rejeitada', 'proposta_adjudicada'];
                                     
                                     let options = '';
