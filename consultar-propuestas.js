@@ -828,41 +828,29 @@ class ProposalsManager {
                                 padding-right: 32px;
                             " onfocus="this.style.borderColor='var(--primary-500, #2563eb)'; this.style.boxShadow='0 0 0 2px rgba(37,99,235,0.2)';" onblur="this.style.borderColor='var(--bg-gray-300, #d1d5db)'; this.style.boxShadow='none';">
                                 ${(() => {
-                                    const hasPassedPropuestaEnviada = this.hasPassedThroughStatus(proposal, 'propuesta_enviada');
                                     const isComercial = (window.cachedRole || '').toString().toLowerCase() === 'comercial';
-                                    const allowedComercial = ['propuesta_enviada', 'propuesta_en_edicion', 'rejeitada', 'proposta_adjudicada'];
+                                    const allowedComercial = ['propuesta_enviada', 'propuesta_en_edicion', 'follow_up', 'rejeitada', 'proposta_adjudicada'];
                                     
                                     let options = '';
                                     
                                     if (isComercial) {
-                                        // Perfil comercial: solo puede elegir estos 4 estados
+                                        // Perfil comercial: solo puede elegir estos 5 estados (Proposta Enviada siempre visible para poder volver a enviada tras editar; la fecha solo se guarda la primera vez)
                                         if (!allowedComercial.includes(estadoNormalizado)) {
                                             options += `<option value="${estadoNormalizado}" selected>${this.getStatusText(estadoNormalizado)}</option>`;
                                         }
-                                        if (!hasPassedPropuestaEnviada) {
-                                            options += estadoNormalizado === 'propuesta_enviada' ? 
-                                                `<option value="propuesta_enviada" selected>${this.getStatusText('propuesta_enviada')}</option>` : 
-                                                `<option value="propuesta_enviada">${this.getStatusText('propuesta_enviada')}</option>`;
-                                        } else if (estadoNormalizado === 'propuesta_enviada') {
-                                            options += `<option value="propuesta_enviada" selected disabled>${this.getStatusText('propuesta_enviada')}</option>`;
-                                        }
+                                        options += estadoNormalizado === 'propuesta_enviada' ? `<option value="propuesta_enviada" selected>${this.getStatusText('propuesta_enviada')}</option>` : `<option value="propuesta_enviada">${this.getStatusText('propuesta_enviada')}</option>`;
                                         options += estadoNormalizado === 'propuesta_en_edicion' ? `<option value="propuesta_en_edicion" selected>${this.getStatusText('propuesta_en_edicion')}</option>` : `<option value="propuesta_en_edicion">${this.getStatusText('propuesta_en_edicion')}</option>`;
+                                        options += estadoNormalizado === 'follow_up' ? `<option value="follow_up" selected>${this.getStatusText('follow_up')}</option>` : `<option value="follow_up">${this.getStatusText('follow_up')}</option>`;
                                         options += estadoNormalizado === 'rejeitada' ? `<option value="rejeitada" selected>${this.getStatusText('rejeitada')}</option>` : `<option value="rejeitada">${this.getStatusText('rejeitada')}</option>`;
                                         options += estadoNormalizado === 'proposta_adjudicada' ? `<option value="proposta_adjudicada" selected>${this.getStatusText('proposta_adjudicada')}</option>` : `<option value="proposta_adjudicada">${this.getStatusText('proposta_adjudicada')}</option>`;
                                         return options;
                                     }
                                     
-                                    // Administradores: todos los estados disponibles
+                                    // Administradores: todos los estados (Proposta Enviada siempre visible para volver a enviada tras editar; la fecha solo se guarda la primera vez)
                                     if (estadoNormalizado === 'propuesta_en_curso') {
                                         options += `<option value="propuesta_en_curso" selected disabled>${this.getStatusText('propuesta_en_curso')}</option>`;
                                     }
-                                    if (!hasPassedPropuestaEnviada) {
-                                        options += estadoNormalizado === 'propuesta_enviada' ? 
-                                            `<option value="propuesta_enviada" selected>${this.getStatusText('propuesta_enviada')}</option>` : 
-                                            `<option value="propuesta_enviada">${this.getStatusText('propuesta_enviada')}</option>`;
-                                    } else if (estadoNormalizado === 'propuesta_enviada') {
-                                        options += `<option value="propuesta_enviada" selected disabled>${this.getStatusText('propuesta_enviada')}</option>`;
-                                    }
+                                    options += estadoNormalizado === 'propuesta_enviada' ? `<option value="propuesta_enviada" selected>${this.getStatusText('propuesta_enviada')}</option>` : `<option value="propuesta_enviada">${this.getStatusText('propuesta_enviada')}</option>`;
                                     options += estadoNormalizado === 'propuesta_en_edicion' ? `<option value="propuesta_en_edicion" selected>${this.getStatusText('propuesta_en_edicion')}</option>` : `<option value="propuesta_en_edicion">${this.getStatusText('propuesta_en_edicion')}</option>`;
                                     options += estadoNormalizado === 'amostra_pedida' ? `<option value="amostra_pedida" selected>${this.getStatusText('amostra_pedida')}</option>` : `<option value="amostra_pedida">${this.getStatusText('amostra_pedida')}</option>`;
                                     options += estadoNormalizado === 'amostra_enviada' ? `<option value="amostra_enviada" selected>${this.getStatusText('amostra_enviada')}</option>` : `<option value="amostra_enviada">${this.getStatusText('amostra_enviada')}</option>`;
