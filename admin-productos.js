@@ -3389,7 +3389,7 @@ async function loadAllProducts() {
     try {
         const { data, error } = await supabaseClient
             .from('products')
-            .select('id, nombre, categoria, brand, foto')
+            .select('id, nombre, categoria, brand, foto, phc_ref, referencia_fornecedor, nombre_fornecedor, descripcion_es, descripcion_pt, tipo, color, caracteristicas, especificaciones, area_negocio, category_fields')
             .order('nombre', { ascending: true });
         
         if (error) throw error;
@@ -3409,11 +3409,23 @@ function renderProductsList(filter = '') {
     const productsList = document.getElementById('products-list');
     if (!productsList) return;
     
+    const normalizeSearch = (str) => {
+        if (!str) return '';
+        return String(str).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    };
+    const searchNorm = normalizeSearch(filter);
     const filtered = allProducts.filter(p => {
-        const search = filter.toLowerCase();
-        return (p.nombre && p.nombre.toLowerCase().includes(search)) ||
-               (p.brand && p.brand.toLowerCase().includes(search)) ||
-               (p.categoria && p.categoria.toLowerCase().includes(search));
+        if (!searchNorm) return true;
+        const fields = [
+            p.nombre, p.brand, p.categoria, p.phc_ref, p.referencia_fornecedor, p.nombre_fornecedor,
+            p.descripcion_es, p.descripcion_pt, p.tipo, p.color, p.caracteristicas, p.especificaciones, p.area_negocio,
+            p.id ? String(p.id) : ''
+        ];
+        if (fields.some(f => f && normalizeSearch(f).includes(searchNorm))) return true;
+        if (p.category_fields && typeof p.category_fields === 'object') {
+            if (Object.values(p.category_fields).some(v => v != null && normalizeSearch(String(v)).includes(searchNorm))) return true;
+        }
+        return false;
     });
     
     if (filtered.length === 0) {

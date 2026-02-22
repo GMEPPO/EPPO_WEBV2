@@ -1897,24 +1897,30 @@ class DynamicProductsPage {
                     product.modelo,
                     product.marca,
                     product.brand,
-                    product.id,
+                    product.id ? String(product.id) : '',
                     product.referencia,
+                    product.phc_ref,
+                    product.referencia_fornecedor,
+                    product.nombre_fornecedor,
                     product.descripcionEs || product.descripcion_es,
                     product.descripcionPt || product.descripcion_pt,
                     product.categoria,
-                    // Fornecedor
-                    product.nombre_fornecedor,
-                    // Categoría en español y portugués
+                    product.tipo,
+                    product.color,
+                    product.caracteristicas,
+                    product.especificaciones,
+                    product.area_negocio,
                     categoriaNombreEs,
-                    categoriaNombrePt,
-                    // Color
-                    product.color
+                    categoriaNombrePt
                 ];
-                
-                // Buscar en categoryFields también (incluye color y otros campos)
+                if (product.category_fields && typeof product.category_fields === 'object') {
+                    Object.values(product.category_fields).forEach(value => {
+                        if (value != null) searchFields.push(String(value));
+                    });
+                }
                 if (product.categoryFields && typeof product.categoryFields === 'object') {
                     Object.values(product.categoryFields).forEach(value => {
-                        if (value) searchFields.push(String(value));
+                        if (value != null) searchFields.push(String(value));
                     });
                 }
                 

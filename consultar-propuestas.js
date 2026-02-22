@@ -743,6 +743,7 @@ class ProposalsManager {
                 if (statusLower.includes('concluida') || statusLower.includes('concluída') || statusLower === 'encomenda_concluida') return 'encomenda_concluida';
                 if (statusLower.includes('rechazada') || statusLower.includes('rejeitada')) return 'rejeitada';
                 if (statusLower === 'follow_up' || statusLower.includes('follow up')) return 'follow_up';
+                if (statusLower.includes('adjudicada') || statusLower === 'proposta_adjudicada') return 'proposta_adjudicada';
                 return status; // Si no coincide, usar el valor original
             };
             
@@ -827,40 +828,56 @@ class ProposalsManager {
                             " onfocus="this.style.borderColor='var(--primary-500, #2563eb)'; this.style.boxShadow='0 0 0 2px rgba(37,99,235,0.2)';" onblur="this.style.borderColor='var(--bg-gray-300, #d1d5db)'; this.style.boxShadow='none';">
                                 ${(() => {
                                     const hasPassedPropuestaEnviada = this.hasPassedThroughStatus(proposal, 'propuesta_enviada');
+                                    const isComercial = window.cachedRole === 'comercial';
+                                    const allowedComercial = ['propuesta_enviada', 'propuesta_en_edicion', 'rejeitada', 'proposta_adjudicada'];
                                     
                                     let options = '';
                                     
-                                    // "propuesta_en_curso" es un estado automático que se asigna al crear la propuesta
-                                    // No debe aparecer en el dropdown, solo se muestra si está actualmente en ese estado
+                                    if (isComercial) {
+                                        // Perfil comercial: solo puede elegir estos 4 estados
+                                        if (!allowedComercial.includes(estadoNormalizado)) {
+                                            options += `<option value="${estadoNormalizado}" selected>${this.getStatusText(estadoNormalizado)}</option>`;
+                                        }
+                                        if (!hasPassedPropuestaEnviada) {
+                                            options += estadoNormalizado === 'propuesta_enviada' ? 
+                                                `<option value="propuesta_enviada" selected>${this.getStatusText('propuesta_enviada')}</option>` : 
+                                                `<option value="propuesta_enviada">${this.getStatusText('propuesta_enviada')}</option>`;
+                                        } else if (estadoNormalizado === 'propuesta_enviada') {
+                                            options += `<option value="propuesta_enviada" selected disabled>${this.getStatusText('propuesta_enviada')}</option>`;
+                                        }
+                                        options += estadoNormalizado === 'propuesta_en_edicion' ? `<option value="propuesta_en_edicion" selected>${this.getStatusText('propuesta_en_edicion')}</option>` : `<option value="propuesta_en_edicion">${this.getStatusText('propuesta_en_edicion')}</option>`;
+                                        options += estadoNormalizado === 'rejeitada' ? `<option value="rejeitada" selected>${this.getStatusText('rejeitada')}</option>` : `<option value="rejeitada">${this.getStatusText('rejeitada')}</option>`;
+                                        options += estadoNormalizado === 'proposta_adjudicada' ? `<option value="proposta_adjudicada" selected>${this.getStatusText('proposta_adjudicada')}</option>` : `<option value="proposta_adjudicada">${this.getStatusText('proposta_adjudicada')}</option>`;
+                                        return options;
+                                    }
+                                    
+                                    // Administradores: todos los estados disponibles
                                     if (estadoNormalizado === 'propuesta_en_curso') {
                                         options += `<option value="propuesta_en_curso" selected disabled>${this.getStatusText('propuesta_en_curso')}</option>`;
                                     }
-                                    
-                                    // Solo mostrar "propuesta_enviada" si no ha pasado por él antes
                                     if (!hasPassedPropuestaEnviada) {
                                         options += estadoNormalizado === 'propuesta_enviada' ? 
                                             `<option value="propuesta_enviada" selected>${this.getStatusText('propuesta_enviada')}</option>` : 
                                             `<option value="propuesta_enviada">${this.getStatusText('propuesta_enviada')}</option>`;
                                     } else if (estadoNormalizado === 'propuesta_enviada') {
-                                        // Si está actualmente en ese estado pero ya pasó por él, mostrarlo como seleccionado pero deshabilitado
                                         options += `<option value="propuesta_enviada" selected disabled>${this.getStatusText('propuesta_enviada')}</option>`;
                                     }
-                                    
+                                    options += estadoNormalizado === 'propuesta_en_edicion' ? `<option value="propuesta_en_edicion" selected>${this.getStatusText('propuesta_en_edicion')}</option>` : `<option value="propuesta_en_edicion">${this.getStatusText('propuesta_en_edicion')}</option>`;
+                                    options += estadoNormalizado === 'amostra_pedida' ? `<option value="amostra_pedida" selected>${this.getStatusText('amostra_pedida')}</option>` : `<option value="amostra_pedida">${this.getStatusText('amostra_pedida')}</option>`;
+                                    options += estadoNormalizado === 'amostra_enviada' ? `<option value="amostra_enviada" selected>${this.getStatusText('amostra_enviada')}</option>` : `<option value="amostra_enviada">${this.getStatusText('amostra_enviada')}</option>`;
+                                    options += estadoNormalizado === 'aguarda_dossier' ? `<option value="aguarda_dossier" selected>${this.getStatusText('aguarda_dossier')}</option>` : `<option value="aguarda_dossier">${this.getStatusText('aguarda_dossier')}</option>`;
+                                    options += estadoNormalizado === 'aguarda_aprovacao_dossier' ? `<option value="aguarda_aprovacao_dossier" selected>${this.getStatusText('aguarda_aprovacao_dossier')}</option>` : `<option value="aguarda_aprovacao_dossier">${this.getStatusText('aguarda_aprovacao_dossier')}</option>`;
+                                    options += estadoNormalizado === 'aguarda_creacion_cliente' ? `<option value="aguarda_creacion_cliente" selected>${this.getStatusText('aguarda_creacion_cliente')}</option>` : `<option value="aguarda_creacion_cliente">${this.getStatusText('aguarda_creacion_cliente')}</option>`;
+                                    options += estadoNormalizado === 'aguarda_creacion_codigo_phc' ? `<option value="aguarda_creacion_codigo_phc" selected>${this.getStatusText('aguarda_creacion_codigo_phc')}</option>` : `<option value="aguarda_creacion_codigo_phc">${this.getStatusText('aguarda_creacion_codigo_phc')}</option>`;
+                                    options += estadoNormalizado === 'aguarda_pagamento' ? `<option value="aguarda_pagamento" selected>${this.getStatusText('aguarda_pagamento')}</option>` : `<option value="aguarda_pagamento">${this.getStatusText('aguarda_pagamento')}</option>`;
+                                    options += estadoNormalizado === 'follow_up' ? `<option value="follow_up" selected>${this.getStatusText('follow_up')}</option>` : `<option value="follow_up">${this.getStatusText('follow_up')}</option>`;
+                                    options += estadoNormalizado === 'pedido_de_encomenda' ? `<option value="pedido_de_encomenda" selected>${this.getStatusText('pedido_de_encomenda')}</option>` : `<option value="pedido_de_encomenda">${this.getStatusText('pedido_de_encomenda')}</option>`;
+                                    options += estadoNormalizado === 'encomenda_en_curso' ? `<option value="encomenda_en_curso" selected>${this.getStatusText('encomenda_en_curso')}</option>` : `<option value="encomenda_en_curso">${this.getStatusText('encomenda_en_curso')}</option>`;
+                                    options += estadoNormalizado === 'encomenda_concluida' ? `<option value="encomenda_concluida" selected>${this.getStatusText('encomenda_concluida')}</option>` : `<option value="encomenda_concluida">${this.getStatusText('encomenda_concluida')}</option>`;
+                                    options += estadoNormalizado === 'rejeitada' ? `<option value="rejeitada" selected>${this.getStatusText('rejeitada')}</option>` : `<option value="rejeitada">${this.getStatusText('rejeitada')}</option>`;
+                                    options += estadoNormalizado === 'proposta_adjudicada' ? `<option value="proposta_adjudicada" selected>${this.getStatusText('proposta_adjudicada')}</option>` : `<option value="proposta_adjudicada">${this.getStatusText('proposta_adjudicada')}</option>`;
                                     return options;
                                 })()}
-                                ${estadoNormalizado === 'propuesta_en_edicion' ? `<option value="propuesta_en_edicion" selected>${this.getStatusText('propuesta_en_edicion')}</option>` : `<option value="propuesta_en_edicion">${this.getStatusText('propuesta_en_edicion')}</option>`}
-                                ${estadoNormalizado === 'amostra_pedida' ? `<option value="amostra_pedida" selected>${this.getStatusText('amostra_pedida')}</option>` : `<option value="amostra_pedida">${this.getStatusText('amostra_pedida')}</option>`}
-                                ${estadoNormalizado === 'amostra_enviada' ? `<option value="amostra_enviada" selected>${this.getStatusText('amostra_enviada')}</option>` : `<option value="amostra_enviada">${this.getStatusText('amostra_enviada')}</option>`}
-                                ${estadoNormalizado === 'aguarda_dossier' ? `<option value="aguarda_dossier" selected>${this.getStatusText('aguarda_dossier')}</option>` : `<option value="aguarda_dossier">${this.getStatusText('aguarda_dossier')}</option>`}
-                                ${estadoNormalizado === 'aguarda_aprovacao_dossier' ? `<option value="aguarda_aprovacao_dossier" selected>${this.getStatusText('aguarda_aprovacao_dossier')}</option>` : `<option value="aguarda_aprovacao_dossier">${this.getStatusText('aguarda_aprovacao_dossier')}</option>`}
-                                ${estadoNormalizado === 'aguarda_creacion_cliente' ? `<option value="aguarda_creacion_cliente" selected>${this.getStatusText('aguarda_creacion_cliente')}</option>` : `<option value="aguarda_creacion_cliente">${this.getStatusText('aguarda_creacion_cliente')}</option>`}
-                                ${estadoNormalizado === 'aguarda_creacion_codigo_phc' ? `<option value="aguarda_creacion_codigo_phc" selected>${this.getStatusText('aguarda_creacion_codigo_phc')}</option>` : `<option value="aguarda_creacion_codigo_phc">${this.getStatusText('aguarda_creacion_codigo_phc')}</option>`}
-                                ${estadoNormalizado === 'aguarda_pagamento' ? `<option value="aguarda_pagamento" selected>${this.getStatusText('aguarda_pagamento')}</option>` : `<option value="aguarda_pagamento">${this.getStatusText('aguarda_pagamento')}</option>`}
-                                ${estadoNormalizado === 'follow_up' ? `<option value="follow_up" selected>${this.getStatusText('follow_up')}</option>` : `<option value="follow_up">${this.getStatusText('follow_up')}</option>`}
-                                ${estadoNormalizado === 'pedido_de_encomenda' ? `<option value="pedido_de_encomenda" selected>${this.getStatusText('pedido_de_encomenda')}</option>` : `<option value="pedido_de_encomenda">${this.getStatusText('pedido_de_encomenda')}</option>`}
-                                ${estadoNormalizado === 'encomenda_en_curso' ? `<option value="encomenda_en_curso" selected>${this.getStatusText('encomenda_en_curso')}</option>` : `<option value="encomenda_en_curso">${this.getStatusText('encomenda_en_curso')}</option>`}
-                                ${estadoNormalizado === 'encomenda_concluida' ? `<option value="encomenda_concluida" selected>${this.getStatusText('encomenda_concluida')}</option>` : `<option value="encomenda_concluida">${this.getStatusText('encomenda_concluida')}</option>`}
-                                ${estadoNormalizado === 'rejeitada' ? `<option value="rejeitada" selected>${this.getStatusText('rejeitada')}</option>` : `<option value="rejeitada">${this.getStatusText('rejeitada')}</option>`}
                             </select>
                         ` : `
                             <span class="status-badge ${statusClass}">${statusText}</span>
@@ -1124,7 +1141,7 @@ class ProposalsManager {
         // Estados finales
         else if (statusLower.includes('rechazada') || statusLower.includes('rejeitada')) {
             return 'status-rejected';
-        } else if (statusLower.includes('aprobada') || statusLower.includes('aprovada')) {
+        } else if (statusLower.includes('aprobada') || statusLower.includes('aprovada') || statusLower.includes('adjudicada')) {
             return 'status-approved';
         } else if (statusLower === 'follow_up' || statusLower.includes('follow up')) {
             return 'status-pending';
@@ -1155,6 +1172,7 @@ class ProposalsManager {
                 'encomenda_concluida': 'Encomenda Concluída',
                 'rejeitada': 'Rechazada',
                 'follow_up': 'Follow up',
+                'proposta_adjudicada': 'Propuesta Adjudicada',
                 // Compatibilidad con estados antiguos
                 'propuesta enviada': 'Propuesta Enviada',
                 'muestra_entregada': 'Muestra Enviada' // Mantener compatibilidad
@@ -1176,6 +1194,7 @@ class ProposalsManager {
                 'encomenda_concluida': 'Encomenda Concluída',
                 'rejeitada': 'Rejeitada',
                 'follow_up': 'Follow up',
+                'proposta_adjudicada': 'Proposta Adjudicada',
                 // Compatibilidad con estados antiguos
                 'propuesta enviada': 'Proposta Enviada',
                 'muestra_entregada': 'Amostra Enviada' // Mantener compatibilidad
@@ -1198,6 +1217,7 @@ class ProposalsManager {
                 'encomenda_concluida': 'Order Completed',
                 'rejeitada': 'Rejected',
                 'follow_up': 'Follow up',
+                'proposta_adjudicada': 'Proposal Awarded',
                 // Compatibilidad con estados antiguos
                 'propuesta enviada': 'Proposal Sent',
                 'encomendado': 'Ordered'
@@ -1245,6 +1265,8 @@ class ProposalsManager {
             return map['rejeitada'] || 'Rechazada';
         } else if (statusLower === 'follow_up' || statusLower.includes('follow up')) {
             return map['follow_up'] || 'Follow up';
+        } else if (statusLower.includes('adjudicada')) {
+            return map['proposta_adjudicada'] || 'Propuesta Adjudicada';
         }
 
         return status || map['propuesta_enviada'] || 'Enviada';
@@ -2783,14 +2805,13 @@ class ProposalsManager {
                 }
             }
 
-            // Filtro por estado
+            // Filtro por estado (normalizar para que "Proposta Adjudicada" coincida con proposta_adjudicada)
             if (status) {
-                const proposalStatus = (proposal.estado_propuesta || '').toLowerCase();
+                const proposalStatusNorm = this.normalizeStatusValue(proposal.estado_propuesta) || '';
+                const proposalStatusLower = (proposal.estado_propuesta || '').toLowerCase();
                 const filterStatus = status.toLowerCase();
-                // Comparación exacta primero, luego por coincidencia parcial para compatibilidad
-                if (proposalStatus !== filterStatus && !proposalStatus.includes(filterStatus)) {
-                    return false;
-                }
+                const match = proposalStatusNorm === filterStatus || proposalStatusLower === filterStatus || proposalStatusLower.includes(filterStatus);
+                if (!match) return false;
             }
 
             return true;
@@ -2850,14 +2871,13 @@ class ProposalsManager {
                 }
             }
 
-            // Filtro por estado
+            // Filtro por estado (normalizar para que "Proposta Adjudicada" coincida con proposta_adjudicada)
             if (status) {
-                const proposalStatus = (proposal.estado_propuesta || '').toLowerCase();
+                const proposalStatusNorm = this.normalizeStatusValue(proposal.estado_propuesta) || '';
+                const proposalStatusLower = (proposal.estado_propuesta || '').toLowerCase();
                 const filterStatus = status.toLowerCase();
-                // Comparación exacta primero, luego por coincidencia parcial para compatibilidad
-                if (proposalStatus !== filterStatus && !proposalStatus.includes(filterStatus)) {
-                    return false;
-                }
+                const match = proposalStatusNorm === filterStatus || proposalStatusLower === filterStatus || proposalStatusLower.includes(filterStatus);
+                if (!match) return false;
             }
 
             return true;
@@ -3062,7 +3082,8 @@ class ProposalsManager {
                     pedido_de_encomenda: 'Pedido de Encomenda',
                     encomenda_en_curso: 'Encomenda em Curso',
                     encomenda_concluida: 'Encomenda Concluída',
-                    rejeitada: 'Rejeitada'
+                    rejeitada: 'Rejeitada',
+                    proposta_adjudicada: 'Proposta Adjudicada'
                 },
                 es: {
                     all: 'Todos los estados',
@@ -3080,7 +3101,8 @@ class ProposalsManager {
                     pedido_de_encomenda: 'Pedido de Encomenda',
                     encomenda_en_curso: 'Encomenda en Curso',
                     encomenda_concluida: 'Encomenda Concluída',
-                    rejeitada: 'Rechazada'
+                    rejeitada: 'Rechazada',
+                    proposta_adjudicada: 'Propuesta Adjudicada'
                 },
                 en: {
                     all: 'All statuses',
@@ -3098,7 +3120,8 @@ class ProposalsManager {
                     pedido_de_encomenda: 'Order Request',
                     encomenda_en_curso: 'Order in Progress',
                     encomenda_concluida: 'Order Completed',
-                    rejeitada: 'Rejected'
+                    rejeitada: 'Rejected',
+                    proposta_adjudicada: 'Proposal Awarded'
                 }
             };
 
@@ -3122,6 +3145,7 @@ class ProposalsManager {
                 <option value="encomenda_en_curso">${statusT.encomenda_en_curso}</option>
                 <option value="encomenda_concluida">${statusT.encomenda_concluida}</option>
                 <option value="rejeitada">${statusT.rejeitada}</option>
+                <option value="proposta_adjudicada">${statusT.proposta_adjudicada}</option>
             `;
         }
     }
@@ -3307,6 +3331,7 @@ class ProposalsManager {
         if (statusLower === 'muestra_pedida' || statusLower === 'amostra_pedida') return 'amostra_pedida';
         if (statusLower === 'muestra_entregada' || statusLower === 'amostra_enviada') return 'amostra_enviada';
         if (statusLower === 'follow_up' || statusLower.includes('follow up')) return 'follow_up';
+        if (statusLower.includes('adjudicada') || statusLower === 'proposta_adjudicada') return 'proposta_adjudicada';
         return status;
     }
 
@@ -4137,16 +4162,6 @@ class ProposalsManager {
                 return;
             }
             
-            if (isPropuestaEnviada && this.hasPassedThroughStatus(proposal, 'propuesta_enviada')) {
-                const message = this.currentLanguage === 'es' ? 
-                    'No se puede volver al estado "Propuesta Enviada" una vez que se ha salido de él' : 
-                    this.currentLanguage === 'pt' ?
-                    'Não é possível voltar ao estado "Proposta Enviada" uma vez que saiu dele' :
-                    'Cannot return to "Proposal Sent" status once it has been left';
-                this.showNotification(message, 'error');
-                return;
-            }
-
             // Obtener el nombre del usuario actual desde user_roles
             let currentUserName = 'Sistema';
             try {
@@ -4192,8 +4207,8 @@ class ProposalsManager {
                 ...additionalData
             };
 
-            // Si el estado cambia a "propuesta enviada", guardar la fecha de envío
-            if (isPropuestaEnviada) {
+            // Solo guardar la fecha de envío la primera vez que se pone "Propuesta Enviada"
+            if (isPropuestaEnviada && !proposal.fecha_envio_propuesta) {
                 updateData.fecha_envio_propuesta = fechaCambio;
             }
             // Al pasar a Follow up: quitar flag de webhook 15d para que al volver a estar sin follow-up se reenvíe
@@ -4213,6 +4228,12 @@ class ProposalsManager {
 
             if (error) {
                 throw error;
+            }
+
+            // Actualizar en memoria
+            if (proposal) {
+                proposal.estado_propuesta = newStatus;
+                if (updateData.fecha_envio_propuesta) proposal.fecha_envio_propuesta = updateData.fecha_envio_propuesta;
             }
 
             // Si el estado cambia a "Follow up", crear el primer registro de follow-up si no existe ninguno
@@ -4253,6 +4274,31 @@ class ProposalsManager {
     }
 
     /**
+     * Si la propuesta está en "Propuesta Enviada", pasarla automáticamente a "Propuesta en Edición"
+     * (al editar y guardar cualquier dato de la propuesta).
+     */
+    async moveToPropuestaEnEdicionIfEnviada(proposalId) {
+        const proposal = this.allProposals.find(p => p.id === proposalId);
+        if (!proposal || !this.supabase) return;
+        const estadoNorm = this.normalizeStatusValue(proposal.estado_propuesta);
+        if (estadoNorm !== 'propuesta_enviada') return;
+        try {
+            const { error } = await this.supabase
+                .from('presupuestos')
+                .update({
+                    estado_propuesta: 'propuesta_en_edicion',
+                    fecha_ultima_actualizacion: new Date().toISOString()
+                })
+                .eq('id', proposalId);
+            if (error) throw error;
+            proposal.estado_propuesta = 'propuesta_en_edicion';
+            if (window.gestaoEncomendasReload) window.gestaoEncomendasReload();
+        } catch (e) {
+            console.warn('moveToPropuestaEnEdicionIfEnviada:', e);
+        }
+    }
+
+    /**
      * Obtener descripción del cambio de estado
      */
     getStatusChangeDescription(estadoAnterior, nuevoEstado, additionalData) {
@@ -4271,6 +4317,7 @@ class ProposalsManager {
             'encomenda_concluida': { es: 'Encomenda Concluída', pt: 'Encomenda Concluída', en: 'Order Completed' },
             'rejeitada': { es: 'Rechazada', pt: 'Rejeitada', en: 'Rejected' },
             'follow_up': { es: 'Follow up', pt: 'Follow up', en: 'Follow up' },
+            'proposta_adjudicada': { es: 'Propuesta Adjudicada', pt: 'Proposta Adjudicada', en: 'Proposal Awarded' },
             // Compatibilidad con estados antiguos
             'propuesta enviada': { es: 'Propuesta Enviada', pt: 'Proposta Enviada', en: 'Proposal Sent' },
             'aguarda_aprovacao': { es: 'Aguarda Aprobación de Dossier', pt: 'Aguarda Aprovação de Dossier', en: 'Awaiting Dossier Approval' },

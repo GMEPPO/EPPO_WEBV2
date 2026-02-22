@@ -1184,7 +1184,12 @@ class CartManager {
                     variantes_referencias: variantesReferencias, // Variantes de referencias por color
                     box_size: product.box_size || null, // Incluir box_size
                     phc_ref: product.phc_ref || null, // Incluir phc_ref
-                    mercado: product.mercado || 'AMBOS' // Incluir mercado
+                    mercado: product.mercado || 'AMBOS', // Incluir mercado
+                    referencia_fornecedor: product.referencia_fornecedor || null,
+                    nombre_fornecedor: product.nombre_fornecedor || null,
+                    caracteristicas: product.caracteristicas || null,
+                    especificaciones: product.especificaciones || null,
+                    category_fields: product.category_fields || null
                 };
             });
 
@@ -4482,37 +4487,53 @@ function handleProductSearch(e) {
         return;
     }
     
-    // Filtrar productos
+    // Filtrar productos: buscar en todos los campos relevantes del schema products
     const filteredProducts = window.cartManager.allProducts.filter(product => {
         if (!product) return false;
         
-        // Obtener campos del producto (sin normalizar aún)
         const nombre = product.nombre || '';
         const nombreEs = product.nombre_es || product.nombreEs || '';
         const nombrePt = product.nombre_pt || product.nombrePt || '';
         const referencia = product.referencia || '';
-        const marca = product.marca || '';
+        const marca = product.marca || product.brand || '';
         const categoria = product.categoria || '';
         const id = product.id ? String(product.id) : '';
+        const phcRef = (product.phc_ref || '').toString().trim();
+        const refFornecedor = (product.referencia_fornecedor || '').toString().trim();
+        const nomeFornecedor = (product.nombre_fornecedor || '').toString().trim();
+        const descEs = (product.descripcionEs || product.descripcion_es || '').toString().trim();
+        const descPt = (product.descripcionPt || product.descripcion_pt || '').toString().trim();
+        const caracteristicas = (product.caracteristicas || '').toString().trim();
+        const especificaciones = (product.especificaciones || '').toString().trim();
+        const tipo = (product.tipo || '').toString().trim();
+        const color = (product.color || '').toString().trim();
+        const areaNegocio = (product.area_negocio || product.areaNegocio || '').toString().trim();
 
-        // 1. matchesBasicFields: Buscar en nombre, referencia, marca, id usando normalización
-        const matchesBasicFields = (() => {
-            const fields = [nombre, nombreEs, nombrePt, referencia, id, marca];
-            return fields.some(field => {
-                if (!field) return false;
-                const fieldNorm = normalizeString(field);
-                return fieldNorm.includes(searchTermNormalized);
+        // 1. matchesBasicFields: nombre, referencia, marca, id, phc_ref, ref fornecedor, nome fornecedor, descripciones, caracteristicas, especificaciones, tipo, color, area_negocio
+        const basicSearchFields = [
+            nombre, nombreEs, nombrePt, referencia, id, marca, phcRef, refFornecedor, nomeFornecedor,
+            descEs, descPt, caracteristicas, especificaciones, tipo, color, areaNegocio
+        ];
+        const matchesBasicFields = basicSearchFields.some(field => {
+            if (!field) return false;
+            const fieldNorm = normalizeString(field);
+            return fieldNorm.includes(searchTermNormalized);
+        });
+
+        // 1b. category_fields (jsonb): buscar en todos los valores
+        let matchesCategoryFields = false;
+        const catFields = product.category_fields;
+        if (catFields && typeof catFields === 'object' && !Array.isArray(catFields)) {
+            matchesCategoryFields = Object.values(catFields).some(val => {
+                if (val == null) return false;
+                return normalizeString(String(val)).includes(searchTermNormalized);
             });
-        })();
+        }
 
-        // 2. matchesDirectCategory: Buscar en categoría directa usando normalización
-        const matchesDirectCategory = (() => {
-            if (!categoria) return false;
-            const categoriaNorm = normalizeString(categoria);
-            return categoriaNorm.includes(searchTermNormalized);
-        })();
+        // 2. matchesDirectCategory: categoría directa
+        const matchesDirectCategory = categoria ? normalizeString(categoria).includes(searchTermNormalized) : false;
 
-        // 3. matchesCategory: Buscar por categoría desde allCategories usando lógica simplificada
+        // 3. matchesCategory: buscar por categoría desde allCategories
         let matchesCategory = false;
         if (
             searchTerm.length >= 2 &&
@@ -4570,8 +4591,7 @@ function handleProductSearch(e) {
             }
         }
 
-        // Retornar true si coincide en campos básicos, categoría directa, o categoría desde Supabase
-        return Boolean(matchesBasicFields || matchesDirectCategory || matchesCategory);
+        return Boolean(matchesBasicFields || matchesCategoryFields || matchesDirectCategory || matchesCategory);
     });
     
     // Mostrar resultados
@@ -11160,6 +11180,33 @@ async function sendProposalToSupabase() {
             console.log('✅ Artículos guardados correctamente:', articulosData?.length || 0, 'artículos');
         } else {
             console.warn('⚠️ No hay artículos para guardar');
+        }
+
+        // Si se editó una propuesta existente (se alteraron artículos), pasar de "Propuesta Enviada" a "Propuesta en Edición"
+        if (window.cartManager.editingProposalId && window.cartManager.supabase) {
+            try {
+                const { data: presupuesto, error: fetchErr } = await window.cartManager.supabase
+                    .from('presupuestos')
+                    .select('estado_propuesta')
+                    .eq('id', window.cartManager.editingProposalId)
+                    .single();
+                if (!fetchErr && presupuesto) {
+                    const est = (presupuesto.estado_propuesta || '').toLowerCase();
+                    const isEnviada = est === 'propuesta_enviada' || (est.includes('propuesta') && est.includes('enviada'));
+                    if (isEnviada) {
+                        await window.cartManager.supabase
+                            .from('presupuestos')
+                            .update({
+                                estado_propuesta: 'propuesta_en_edicion',
+                                fecha_ultima_actualizacion: new Date().toISOString()
+                            })
+                            .eq('id', window.cartManager.editingProposalId);
+                        console.log('✅ Estado pasado a Propuesta en Edición por edición del presupuesto');
+                    }
+                }
+            } catch (e) {
+                console.warn('moveToPropuestaEnEdicionIfEnviada (carrito):', e);
+            }
         }
         
         // Renombrar logotipos temporales con el nombre del cliente después de guardar
