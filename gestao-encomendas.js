@@ -279,26 +279,94 @@
         }
     }
 
+    /**
+     * Para "Encomendas em curso": una fila por (fornecedor, propuesta), ordenado por fornecedor.
+     * Así el Nº Proposta y el Responsável quedan asociados a cada línea por fornecedor.
+     */
+    function getEnCursoRowsByFornecedor() {
+        const enCurso = listData.filter(row => row.isEnCurso);
+        const rows = [];
+        enCurso.forEach(row => {
+            (row.fornecedores || []).forEach(fornecedor => {
+                const name = (fornecedor || '').trim();
+                if (name) {
+                    rows.push({
+                        fornecedor: name,
+                        codigo_propuesta: row.codigo_propuesta,
+                        responsavel: row.responsavel,
+                        presupuesto_id: row.presupuesto_id
+                    });
+                }
+            });
+            if (!row.fornecedores || row.fornecedores.length === 0) {
+                rows.push({
+                    fornecedor: '-',
+                    codigo_propuesta: row.codigo_propuesta,
+                    responsavel: row.responsavel,
+                    presupuesto_id: row.presupuesto_id
+                });
+            }
+        });
+        rows.sort((a, b) => {
+            const c = (a.fornecedor || '').localeCompare(b.fornecedor || '', undefined, { sensitivity: 'base' });
+            return c !== 0 ? c : (a.codigo_propuesta || '').localeCompare(b.codigo_propuesta || '');
+        });
+        return rows;
+    }
+
+    function updateTableHeaderForTab() {
+        const thNum = document.getElementById('ge-th-num');
+        const thResp = document.getElementById('ge-th-resp');
+        const thForn = document.getElementById('ge-th-forn');
+        if (!thNum || !thResp || !thForn) return;
+        if (currentTab === 'encurso') {
+            thNum.textContent = t('fornecedor');
+            thResp.textContent = t('numPropuesta');
+            thForn.textContent = t('responsable');
+        } else {
+            thNum.textContent = t('numPropuesta');
+            thResp.textContent = t('responsable');
+            thForn.textContent = t('fornecedores');
+        }
+    }
+
     function renderList() {
         const tbody = document.getElementById('ge-tbody');
         if (!tbody) return;
-        const filtered = currentTab === 'encurso'
-            ? listData.filter(row => row.isEnCurso)
-            : listData.filter(row => !row.isEnCurso);
-        tbody.innerHTML = '';
-        filtered.forEach(row => {
-            const tr = document.createElement('tr');
-            const tagsHtml = row.fornecedores.map(f => `<span class="ge-tag">${escapeHtml(f)}</span>`).join('');
-            tr.innerHTML = `
-                <td>${escapeHtml(row.codigo_propuesta)}</td>
-                <td>${escapeHtml(row.responsavel)}</td>
-                <td><div class="ge-tags">${tagsHtml || '<span class="ge-tag">-</span>'}</div></td>
-                <td><button type="button" class="ge-btn ge-btn-primary" data-presupuesto-id="${row.presupuesto_id}">${t('detalles')}</button></td>
-            `;
-            tr.querySelector('button').addEventListener('click', () => showDetails(row.presupuesto_id));
-            tbody.appendChild(tr);
-        });
-        setEmpty(filtered.length === 0);
+        updateTableHeaderForTab();
+
+        if (currentTab === 'encurso') {
+            const rows = getEnCursoRowsByFornecedor();
+            tbody.innerHTML = '';
+            rows.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${escapeHtml(row.fornecedor)}</td>
+                    <td>${escapeHtml(row.codigo_propuesta)}</td>
+                    <td>${escapeHtml(row.responsavel)}</td>
+                    <td><button type="button" class="ge-btn ge-btn-primary" data-presupuesto-id="${row.presupuesto_id}">${t('detalles')}</button></td>
+                `;
+                tr.querySelector('button').addEventListener('click', () => showDetails(row.presupuesto_id));
+                tbody.appendChild(tr);
+            });
+            setEmpty(rows.length === 0);
+        } else {
+            const filtered = listData.filter(row => !row.isEnCurso);
+            tbody.innerHTML = '';
+            filtered.forEach(row => {
+                const tr = document.createElement('tr');
+                const tagsHtml = row.fornecedores.map(f => `<span class="ge-tag">${escapeHtml(f)}</span>`).join('');
+                tr.innerHTML = `
+                    <td>${escapeHtml(row.codigo_propuesta)}</td>
+                    <td>${escapeHtml(row.responsavel)}</td>
+                    <td><div class="ge-tags">${tagsHtml || '<span class="ge-tag">-</span>'}</div></td>
+                    <td><button type="button" class="ge-btn ge-btn-primary" data-presupuesto-id="${row.presupuesto_id}">${t('detalles')}</button></td>
+                `;
+                tr.querySelector('button').addEventListener('click', () => showDetails(row.presupuesto_id));
+                tbody.appendChild(tr);
+            });
+            setEmpty(filtered.length === 0);
+        }
     }
 
     function getTipoPedidoLabel(tipo) {
@@ -883,12 +951,7 @@
         const backEl = document.getElementById('ge-back-text');
         if (loadEl) loadEl.textContent = t('loading');
         if (emptyEl) emptyEl.textContent = t('empty');
-        const thNum = document.getElementById('ge-th-num');
-        if (thNum) thNum.textContent = t('numPropuesta');
-        const thResp = document.getElementById('ge-th-resp');
-        if (thResp) thResp.textContent = t('responsable');
-        const thForn = document.getElementById('ge-th-forn');
-        if (thForn) thForn.textContent = t('fornecedores');
+        updateTableHeaderForTab();
         const thFotos = document.getElementById('ge-th-fotos');
         if (thFotos) thFotos.textContent = t('fotos');
         if (backEl) backEl.textContent = t('voltar');
