@@ -6,26 +6,27 @@
     const TEXTS = {
         pt: {
             loading: 'A carregar...',
-            empty: 'Nenhum pedido de encomenda.',
-            numPropuesta: 'Nº Propuesta',
-            responsable: 'Responsable',
+            empty: 'Nenhuma encomenda.',
+            numPropuesta: 'Nº Proposta',
+            responsable: 'Responsável',
             fornecedores: 'Fornecedores',
             detalles: 'Detalhes',
             voltar: 'Voltar',
-            productoRef: 'Producto / Referência',
-            cantidad: 'Cantidad',
-            precio: 'Precio',
+            productoRef: 'Produto / Referência',
+            cantidad: 'Quantidade',
+            precio: 'Preço',
             fornecedor: 'Fornecedor',
             numEncomenda: 'Nº Encomenda',
-            fechaEncomenda: 'Fecha Encomenda',
-            previsaoEntrega: 'Previsão Entrega',
+            fechaEncomenda: 'Data da encomenda',
+            previsaoEntrega: 'Previsão de entrega',
             desconto: 'Desconto %',
             guardar: 'Guardar',
             guardado: 'Guardado.',
             error: 'Erro ao guardar.',
             errorCarga: 'Erro ao carregar dados.',
-            pendientes: 'Pedidos pendientes',
-            enCurso: 'Pedidos en curso',
+            pendientes: 'Encomendas pendentes',
+            enCurso: 'Encomendas em curso',
+            nuevosProveedores: 'Contactos com novos fornecedores',
             refPhc: 'Ref. PHC',
             observaciones: 'Observações',
             faltaCriarCodigo: 'Falta criar código PHC',
@@ -37,7 +38,20 @@
             sim: 'Sim',
             nao: 'Não',
             semPhc: 'Sem PHC',
-            obrigatorioPhcSemCodigo: 'É obrigatório preencher a Ref. PHC para todos os produtos sem código PHC para guardar e deixar a encomenda em curso.'
+            obrigatorioPhcSemCodigo: 'É obrigatório preencher a Ref. PHC para todos os produtos sem código PHC para guardar e colocar a encomenda em curso.',
+            tipo: 'Tipo',
+            estado: 'Estado',
+            solicitudPrecios: 'Pedido de preços',
+            solicitudMuestras: 'Pedido de amostras',
+            solicitudReunion: 'Pedido de reunião',
+            pedidosNuevosProveedores: 'Contactos com novos fornecedores',
+            contactoFinalizado: 'Contacto finalizado',
+            marcarContactoFinalizado: 'Marcar como contacto finalizado',
+            nenhumRegisto: 'Nenhum registo.',
+            erroCarregar: 'Erro ao carregar.',
+            fotos: 'Fotos',
+            verFotos: 'Ver fotos',
+            fechar: 'Fechar'
         },
         es: {
             loading: 'Cargando...',
@@ -61,6 +75,7 @@
             errorCarga: 'Error al cargar datos.',
             pendientes: 'Pedidos pendientes',
             enCurso: 'Pedidos en curso',
+            nuevosProveedores: 'Pedidos nuevos proveedores',
             refPhc: 'Ref. PHC',
             observaciones: 'Observaciones',
             faltaCriarCodigo: 'Falta crear código PHC',
@@ -72,7 +87,20 @@
             sim: 'Sí',
             nao: 'No',
             semPhc: 'Sin PHC',
-            obrigatorioPhcSemCodigo: 'Es obligatorio rellenar la Ref. PHC para todos los productos sin código PHC para guardar y dejar la encomienda en curso.'
+            obrigatorioPhcSemCodigo: 'Es obligatorio rellenar la Ref. PHC para todos los productos sin código PHC para guardar y dejar la encomienda en curso.',
+            tipo: 'Tipo',
+            estado: 'Estado',
+            solicitudPrecios: 'Solicitud de precios',
+            solicitudMuestras: 'Solicitud de muestras',
+            solicitudReunion: 'Solicitud de reunión',
+            pedidosNuevosProveedores: 'Pedidos nuevos proveedores',
+            contactoFinalizado: 'Contacto finalizado',
+            marcarContactoFinalizado: 'Marcar como contacto finalizado',
+            nenhumRegisto: 'Ningún registro.',
+            erroCarregar: 'Error al cargar.',
+            fotos: 'Fotos',
+            verFotos: 'Ver fotos',
+            fechar: 'Cerrar'
         },
         en: {
             loading: 'Loading...',
@@ -96,6 +124,7 @@
             errorCarga: 'Error loading data.',
             pendientes: 'Pending orders',
             enCurso: 'Orders in progress',
+            nuevosProveedores: 'New supplier contacts',
             refPhc: 'PHC Ref.',
             observaciones: 'Observations',
             faltaCriarCodigo: 'PHC code must be created',
@@ -107,7 +136,20 @@
             sim: 'Yes',
             nao: 'No',
             semPhc: 'No PHC',
-            obrigatorioPhcSemCodigo: 'PHC Ref. is required for all products without PHC code to save and move the order to in progress.'
+            obrigatorioPhcSemCodigo: 'PHC Ref. is required for all products without PHC code to save and move the order to in progress.',
+            tipo: 'Type',
+            estado: 'Status',
+            solicitudPrecios: 'Price request',
+            solicitudMuestras: 'Sample request',
+            solicitudReunion: 'Meeting request',
+            pedidosNuevosProveedores: 'New supplier contacts',
+            contactoFinalizado: 'Contact completed',
+            marcarContactoFinalizado: 'Mark as contact completed',
+            nenhumRegisto: 'No records.',
+            erroCarregar: 'Error loading.',
+            fotos: 'Photos',
+            verFotos: 'View photos',
+            fechar: 'Close'
         }
     };
 
@@ -259,8 +301,70 @@
         setEmpty(filtered.length === 0);
     }
 
-    const TIPO_PEDIDO_LABELS = { solicitud_precios: 'Solicitud de precios', solicitud_muestras: 'Solicitud de muestras', solicitud_reunion: 'Solicitud de reunión' };
-    const ESTADO_NP_LABELS = { pedidos_nuevos_proveedores: 'Pedidos nuevos proveedores', contacto_finalizado: 'Contacto finalizado' };
+    function getTipoPedidoLabel(tipo) {
+        const map = { solicitud_precios: 'solicitudPrecios', solicitud_muestras: 'solicitudMuestras', solicitud_reunion: 'solicitudReunion' };
+        return t(map[tipo] || tipo);
+    }
+    function getEstadoNPLabel(estado) {
+        const map = { pedidos_nuevos_proveedores: 'pedidosNuevosProveedores', contacto_finalizado: 'contactoFinalizado' };
+        return t(map[estado] || estado);
+    }
+
+    function parseFotosUrls(val) {
+        if (!val) return [];
+        if (Array.isArray(val)) return val.filter(Boolean);
+        if (typeof val === 'string') {
+            try {
+                const parsed = JSON.parse(val);
+                return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+            } catch (_) {
+                return [];
+            }
+        }
+        return [];
+    }
+
+    function showFotosModal(urls) {
+        if (!urls || urls.length === 0) return;
+        let overlay = document.getElementById('ge-fotos-modal-overlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'ge-fotos-modal-overlay';
+            overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;';
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) closeFotosModal(); });
+            document.body.appendChild(overlay);
+        }
+        const wrap = document.createElement('div');
+        wrap.style.cssText = 'background:#1e293b;border-radius:12px;max-width:90vw;max-height:85vh;overflow:auto;padding:1.5rem;border:1px solid #334155;';
+        wrap.addEventListener('click', (e) => e.stopPropagation());
+        const title = document.createElement('div');
+        title.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;';
+        title.innerHTML = '<span style="font-weight:600;color:#f1f5f9;">' + escapeHtml(t('fotos')) + '</span><button type="button" class="ge-btn ge-btn-secondary" id="ge-fotos-modal-close"><i class="fas fa-times"></i> ' + escapeHtml(t('fechar')) + '</button>';
+        wrap.appendChild(title);
+        const grid = document.createElement('div');
+        grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;';
+        urls.forEach(url => {
+            const a = document.createElement('a');
+            a.href = url;
+            a.target = '_blank';
+            a.rel = 'noopener';
+            const img = document.createElement('img');
+            img.src = url;
+            img.alt = '';
+            img.style.cssText = 'width:100%;height:160px;object-fit:cover;border-radius:8px;border:1px solid #475569;';
+            a.appendChild(img);
+            grid.appendChild(a);
+        });
+        wrap.appendChild(grid);
+        overlay.innerHTML = '';
+        overlay.appendChild(wrap);
+        document.getElementById('ge-fotos-modal-close').addEventListener('click', closeFotosModal);
+        overlay.style.display = 'flex';
+    }
+    function closeFotosModal() {
+        const overlay = document.getElementById('ge-fotos-modal-overlay');
+        if (overlay) overlay.style.display = 'none';
+    }
 
     async function loadNuevosProveedores() {
         const loading = document.getElementById('ge-np-loading');
@@ -276,33 +380,47 @@
             if (loading) loading.style.display = 'none';
             if (error) throw error;
             if (!data || data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6">Nenhum registo.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7">' + escapeHtml(t('nenhumRegisto')) + '</td></tr>';
             } else {
                 tbody.innerHTML = data.map(r => {
-                    const estadoLabel = ESTADO_NP_LABELS[r.estado] || r.estado;
-                    const tipoLabel = TIPO_PEDIDO_LABELS[r.tipo_pedido] || r.tipo_pedido;
+                    const estadoLabel = getEstadoNPLabel(r.estado);
+                    const tipoLabel = getTipoPedidoLabel(r.tipo_pedido);
                     const canFinalize = r.estado === 'pedidos_nuevos_proveedores';
                     const btnHtml = canFinalize
-                        ? `<button type="button" class="ge-btn ge-btn-primary" data-np-id="${r.id}">Marcar como Contacto finalizado</button>`
+                        ? `<button type="button" class="ge-btn ge-btn-primary" data-np-id="${r.id}">${escapeHtml(t('marcarContactoFinalizado'))}</button>`
                         : '';
+                    const fotosUrls = parseFotosUrls(r.fotos_urls);
+                    const n = fotosUrls.length;
+                    const fotosCell = n === 0
+                        ? '<span style="color:#64748b;">-</span>'
+                        : `<button type="button" class="ge-btn ge-btn-secondary ge-btn-fotos" data-urls="${escapeAttr(JSON.stringify(fotosUrls))}" style="padding:4px 10px;font-size:0.8rem;"><i class="fas fa-images"></i> ${n} ${lang === 'en' ? 'photo' + (n !== 1 ? 's' : '') : 'fotos'}</button>`;
                     return `<tr>
                         <td>${escapeHtml(r.nombre_proveedor || '')}</td>
                         <td>${escapeHtml(tipoLabel)}</td>
                         <td>${escapeHtml(r.observaciones || '-')}</td>
                         <td>${escapeHtml(estadoLabel)}</td>
                         <td>${escapeHtml(r.responsable || '-')}</td>
+                        <td>${fotosCell}</td>
                         <td>${btnHtml}</td>
                     </tr>`;
                 }).join('');
                 tbody.querySelectorAll('button[data-np-id]').forEach(btn => {
                     btn.addEventListener('click', () => markContactoFinalizado(btn.getAttribute('data-np-id')));
                 });
+                tbody.querySelectorAll('.ge-btn-fotos').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        try {
+                            const urls = JSON.parse(btn.getAttribute('data-urls') || '[]');
+                            showFotosModal(urls);
+                        } catch (_) {}
+                    });
+                });
             }
             if (table) table.style.display = 'table';
         } catch (e) {
             console.error('loadNuevosProveedores:', e);
             if (loading) loading.style.display = 'none';
-            tbody.innerHTML = '<tr><td colspan="6">Erro ao carregar.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7">' + escapeHtml(t('erroCarregar')) + '</td></tr>';
             if (table) table.style.display = 'table';
         }
     }
@@ -771,11 +889,15 @@
         if (thResp) thResp.textContent = t('responsable');
         const thForn = document.getElementById('ge-th-forn');
         if (thForn) thForn.textContent = t('fornecedores');
+        const thFotos = document.getElementById('ge-th-fotos');
+        if (thFotos) thFotos.textContent = t('fotos');
         if (backEl) backEl.textContent = t('voltar');
         const tabPend = document.getElementById('ge-tab-pendientes-text');
         if (tabPend) tabPend.textContent = t('pendientes');
         const tabEncurso = document.getElementById('ge-tab-encurso-text');
         if (tabEncurso) tabEncurso.textContent = t('enCurso');
+        const tabNuevosProv = document.getElementById('ge-tab-nuevos-proveedores-text');
+        if (tabNuevosProv) tabNuevosProv.textContent = t('nuevosProveedores');
         document.querySelectorAll('.ge-save-fornecedor').forEach(btn => { btn.textContent = t('guardar'); });
         document.querySelectorAll('.ge-save-encurso').forEach(btn => { btn.textContent = t('guardar'); });
     }

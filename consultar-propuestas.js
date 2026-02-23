@@ -2879,6 +2879,9 @@ class ProposalsManager {
                 <div class="form-group"><label class="form-label">${t.observaciones}</label><textarea id="rd_observaciones" class="form-input" rows="3"></textarea></div>
             `;
         } else if (type === 'contacto_proveedores') {
+            this.registroDirectoPendingPhotos = [];
+            const fotosLabel = lang === 'es' ? 'Fotos (opcional)' : lang === 'en' ? 'Photos (optional)' : 'Fotos (opcional)';
+            const fotosHint = lang === 'es' ? 'Se mostrarán en Gestión de encomiendas.' : lang === 'en' ? 'They will be visible in Order management.' : 'Serão visíveis na Gestão de encomendas.';
             html = `
                 <div class="form-group"><label class="form-label">${t.nombreProveedor} <span class="required">*</span></label><input type="text" id="rd_nombre_proveedor" class="form-input" required></div>
                 <div class="form-group"><label class="form-label">${t.tipoPedido} <span class="required">*</span></label>
@@ -2890,9 +2893,49 @@ class ProposalsManager {
                     </select>
                 </div>
                 <div class="form-group"><label class="form-label">${t.observaciones}</label><textarea id="rd_observaciones" class="form-input" rows="3"></textarea></div>
+                <div class="form-group">
+                    <label class="form-label">${fotosLabel}</label>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 6px;">${fotosHint}</p>
+                    <input type="file" id="rd_fotos" class="form-input" accept="image/*" multiple>
+                    <div id="rd_fotos_preview" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;"></div>
+                </div>
             `;
         }
         container.innerHTML = html;
+        if (type === 'contacto_proveedores') {
+            const fileInput = document.getElementById('rd_fotos');
+            const previewDiv = document.getElementById('rd_fotos_preview');
+            if (fileInput && previewDiv) {
+                const renderPreviews = () => {
+                    previewDiv.innerHTML = '';
+                    (this.registroDirectoPendingPhotos || []).forEach((file, idx) => {
+                        const wrap = document.createElement('div');
+                        wrap.style.cssText = 'position: relative; width: 64px; height: 64px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-color);';
+                        const img = document.createElement('img');
+                        img.src = URL.createObjectURL(file);
+                        img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
+                        const remove = document.createElement('button');
+                        remove.type = 'button';
+                        remove.innerHTML = '<i class="fas fa-times"></i>';
+                        remove.style.cssText = 'position: absolute; top: 2px; right: 2px; width: 22px; height: 22px; border: none; border-radius: 50%; background: rgba(0,0,0,0.6); color: #fff; cursor: pointer; font-size: 10px; display: flex; align-items: center; justify-content: center;';
+                        remove.addEventListener('click', () => {
+                            this.registroDirectoPendingPhotos.splice(idx, 1);
+                            fileInput.value = '';
+                            renderPreviews();
+                        });
+                        wrap.appendChild(img);
+                        wrap.appendChild(remove);
+                        previewDiv.appendChild(wrap);
+                    });
+                };
+                fileInput.addEventListener('change', () => {
+                    const newFiles = Array.from(fileInput.files || []);
+                    this.registroDirectoPendingPhotos = (this.registroDirectoPendingPhotos || []).concat(newFiles);
+                    fileInput.value = '';
+                    renderPreviews();
+                });
+            }
+        }
     }
 
     getRegistroDirectoLabels(lang) {
@@ -2966,18 +3009,50 @@ class ProposalsManager {
                     this.showNotification(lang === 'es' ? 'Nombre del proveedor y tipo de pedido son obligatorios.' : 'Nome do fornecedor e tipo de pedido são obrigatórios.', 'error');
                     return;
                 }
+                let fotosUrls = [];
+                const pendingPhotos = this.registroDirectoPendingPhotos || [];
+                if (pendingPhotos.length > 0) {
+                    const subfolder = 'contacto-proveedores/' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
+                    let storageClient = this.supabase;
+                    try {
+                        if (window.SUPABASE_CONFIG && typeof supabase !== 'undefined' && supabase.createClient) {
+                            storageClient = supabase.createClient(window.SUPABASE_CONFIG.url, window.SUPABASE_CONFIG.anonKey, {
+                                auth: { persistSession: true, autoRefreshToken: true },
+                                global: { headers: {} }
+                            });
+                        }
+                    } catch (e) {
+                        storageClient = this.supabase;
+                    }
+                    for (const file of pendingPhotos) {
+                        const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+                        const baseName = (file.name && file.name.trim()) ? file.name.trim() : `foto_${Date.now()}.${ext}`;
+                        const fileName = await getUniqueStorageFilePathConsultar(storageClient, 'product-images', subfolder, baseName);
+                        const { error: uploadError } = await storageClient.storage
+                            .from('product-images')
+                            .upload(fileName, file, { cacheControl: '3600', upsert: false, contentType: file.type || 'image/jpeg' });
+                        if (uploadError) {
+                            console.warn('Error subiendo foto:', uploadError);
+                            continue;
+                        }
+                        const { data: urlData } = storageClient.storage.from('product-images').getPublicUrl(fileName);
+                        if (urlData && urlData.publicUrl) fotosUrls.push(urlData.publicUrl);
+                    }
+                }
                 const responsable = await this.getCurrentUserName();
                 const { error } = await this.supabase.from('contacto_nuevos_proveedores').insert({
                     nombre_proveedor: nombreProveedor,
                     tipo_pedido: tipoPedido,
                     observaciones: observaciones,
                     responsable: responsable || 'Usuario',
-                    estado: 'pedidos_nuevos_proveedores'
+                    estado: 'pedidos_nuevos_proveedores',
+                    fotos_urls: fotosUrls.length ? fotosUrls : []
                 });
                 if (error) throw error;
+                this.registroDirectoPendingPhotos = [];
                 this.showNotification(t.guardado, 'success');
                 this.closeRegistroDirectoModal();
-                window.location.href = 'gestao-encomendas.html';
+                this.loadContactoProveedoresSection();
                 return;
             }
             const nombreCliente = document.getElementById('rd_nombre_cliente')?.value?.trim();

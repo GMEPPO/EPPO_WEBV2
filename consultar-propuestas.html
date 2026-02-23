@@ -191,28 +191,126 @@
             background: linear-gradient(135deg, #047857 0%, #065f46 100%);
             box-shadow: 0 4px 12px rgba(5, 150, 105, 0.4);
         }
+        /* Modal Registro directo: overlay y animación */
+        #registroDirectoModal {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(4px);
+            transition: opacity 0.2s ease;
+        }
+        #registroDirectoModal .modal {
+            max-width: 520px;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+            animation: registroDirectoModalIn 0.25s ease-out;
+        }
+        @keyframes registroDirectoModalIn {
+            from {
+                opacity: 0;
+                transform: scale(0.96) translateY(-8px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+        #registroDirectoModal .modal-header {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            margin: 0;
+            padding: 1.25rem 1.5rem;
+            border-bottom: none;
+        }
+        #registroDirectoModal .modal-title {
+            color: #f1f5f9;
+            font-size: 1.25rem;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+        }
+        #registroDirectoModal .modal-close {
+            color: #94a3b8;
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #registroDirectoModal .modal-close:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: #f1f5f9;
+        }
+        #registroDirectoModal .modal-body {
+            background: var(--bg-white);
+            padding: 1.5rem 1.5rem 1.75rem !important;
+        }
+        [data-theme="dark"] #registroDirectoModal .modal-body {
+            background: #1e293b;
+        }
+        #registroDirectoStep1Subtitle {
+            color: var(--text-secondary) !important;
+            margin-bottom: 1.25rem !important;
+            font-size: 0.9375rem;
+            font-weight: 500;
+        }
+        [data-theme="dark"] #registroDirectoStep1Subtitle {
+            color: #94a3b8 !important;
+        }
+        #registroDirectoStep1 .registro-directo-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
         .registro-directo-type-btn {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 16px;
             width: 100%;
-            padding: 14px 16px;
+            padding: 16px 18px;
             text-align: left;
             background: var(--bg-white);
-            border: 1px solid var(--bg-gray-300);
-            border-radius: 8px;
+            border: 1px solid var(--bg-gray-200);
+            border-radius: 12px;
             font-size: 1rem;
+            font-weight: 500;
             cursor: pointer;
             color: var(--text-primary);
-            transition: background 0.2s, border-color 0.2s;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
         }
         .registro-directo-type-btn:hover {
-            background: var(--bg-gray-50);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(37, 99, 235, 0.12);
             border-color: var(--brand-blue);
+            background: var(--bg-gray-50);
         }
+        [data-theme="dark"] .registro-directo-type-btn {
+            background: #334155;
+            border-color: #475569;
+            color: #f1f5f9;
+        }
+        [data-theme="dark"] .registro-directo-type-btn:hover {
+            background: #475569;
+            border-color: #3b82f6;
+            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.2);
+        }
+        .registro-directo-type-btn .rd-icon-wrap {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: transform 0.2s ease;
+        }
+        .registro-directo-type-btn:hover .rd-icon-wrap {
+            transform: scale(1.05);
+        }
+        .registro-directo-type-btn[data-type="encomienda"] .rd-icon-wrap { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: #fff; }
+        .registro-directo-type-btn[data-type="pedido_muestra"] .rd-icon-wrap { background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: #fff; }
+        .registro-directo-type-btn[data-type="pedido_especial"] .rd-icon-wrap { background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%); color: #fff; }
+        .registro-directo-type-btn[data-type="contacto_proveedores"] .rd-icon-wrap { background: linear-gradient(135deg, #059669 0%, #047857 100%); color: #fff; }
         .registro-directo-type-btn i {
-            color: var(--brand-blue);
-            font-size: 1.1rem;
+            font-size: 1.15rem;
         }
 
         .proposals-table-container {
@@ -1268,21 +1366,21 @@
                 <!-- Paso 1: Seleccionar tipo -->
                 <div id="registroDirectoStep1">
                     <p style="color: var(--text-secondary); margin-bottom: 1rem;" id="registroDirectoStep1Subtitle">Seleccione el tipo de registro:</p>
-                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <div class="registro-directo-options">
                         <button type="button" class="registro-directo-type-btn" data-type="encomienda">
-                            <i class="fas fa-truck"></i>
+                            <span class="rd-icon-wrap"><i class="fas fa-truck"></i></span>
                             <span id="regTypeEncomienda">Encomienda</span>
                         </button>
                         <button type="button" class="registro-directo-type-btn" data-type="pedido_muestra">
-                            <i class="fas fa-box-open"></i>
+                            <span class="rd-icon-wrap"><i class="fas fa-box-open"></i></span>
                             <span id="regTypePedidoMuestra">Pedido de muestra</span>
                         </button>
                         <button type="button" class="registro-directo-type-btn" data-type="pedido_especial">
-                            <i class="fas fa-file-invoice"></i>
+                            <span class="rd-icon-wrap"><i class="fas fa-file-invoice"></i></span>
                             <span id="regTypePedidoEspecial">Pedido especial</span>
                         </button>
                         <button type="button" class="registro-directo-type-btn" data-type="contacto_proveedores">
-                            <i class="fas fa-handshake"></i>
+                            <span class="rd-icon-wrap"><i class="fas fa-handshake"></i></span>
                             <span id="regTypeContactoProveedores">Contacto con nuevos proveedores</span>
                         </button>
                     </div>

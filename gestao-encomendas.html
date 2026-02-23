@@ -61,23 +61,23 @@
                 </div>
                 <div class="ge-tabs" style="display: flex; gap: 0; margin-bottom: 1.5rem; border-bottom: 2px solid #334155;">
                     <button type="button" class="ge-tab ge-tab-active" data-tab="pendientes" id="ge-tab-pendientes">
-                        <i class="fas fa-clock"></i> <span id="ge-tab-pendientes-text">Pedidos pendientes</span>
+                        <i class="fas fa-clock"></i> <span id="ge-tab-pendientes-text">Encomendas pendentes</span>
                     </button>
                     <button type="button" class="ge-tab" data-tab="encurso" id="ge-tab-encurso">
-                        <i class="fas fa-truck"></i> <span id="ge-tab-encurso-text">Pedidos en curso</span>
+                        <i class="fas fa-truck"></i> <span id="ge-tab-encurso-text">Encomendas em curso</span>
                     </button>
                     <button type="button" class="ge-tab" data-tab="nuevos_proveedores" id="ge-tab-nuevos-proveedores">
-                        <i class="fas fa-handshake"></i> <span id="ge-tab-nuevos-proveedores-text">Pedidos nuevos proveedores</span>
+                        <i class="fas fa-handshake"></i> <span id="ge-tab-nuevos-proveedores-text">Contactos com novos fornecedores</span>
                     </button>
                 </div>
                 <div class="ge-table-wrap" id="ge-table-wrap-main">
                     <div id="ge-loading" class="ge-loading"><i class="fas fa-spinner fa-spin"></i> <span id="ge-loading-text">A carregar...</span></div>
-                    <div id="ge-empty" class="ge-empty" style="display: none;"><span id="ge-empty-text">Nenhum pedido de encomenda.</span></div>
+                    <div id="ge-empty" class="ge-empty" style="display: none;"><span id="ge-empty-text">Nenhuma encomenda.</span></div>
                     <table class="ge-table" id="ge-table" style="display: none;">
                         <thead>
                             <tr>
-                                <th id="ge-th-num">Nº Propuesta</th>
-                                <th id="ge-th-resp">Responsable</th>
+                                <th id="ge-th-num">Nº Proposta</th>
+                                <th id="ge-th-resp">Responsável</th>
                                 <th id="ge-th-forn">Fornecedores</th>
                                 <th></th>
                             </tr>
@@ -91,11 +91,12 @@
                     <table class="ge-table" id="ge-table-np" style="display: none;">
                         <thead>
                             <tr>
-                                <th>Proveedor</th>
+                                <th>Fornecedor</th>
                                 <th>Tipo</th>
-                                <th>Observaciones</th>
+                                <th>Observações</th>
                                 <th>Estado</th>
-                                <th>Responsable</th>
+                                <th>Responsável</th>
+                                <th id="ge-th-fotos">Fotos</th>
                                 <th></th>
                             </tr>
                         </thead>
