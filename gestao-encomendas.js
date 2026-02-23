@@ -157,6 +157,7 @@
     let lang = 'pt';
     let listData = []; // { presupuesto_id, codigo_propuesta, responsavel, fornecedores: string[], isEnCurso: boolean }
     let enComendaNumeroMap = {}; // key: presupuesto_id + '|' + fornecedor -> numero_encomenda (para vista en curso)
+    let contactosNpCount = 0; // total de registos em contacto_nuevos_proveedores (para badge do separador)
     let currentTab = 'pendientes'; // 'pendientes' | 'encurso' | 'nuevos_proveedores'
 
     function t(key) {
@@ -232,8 +233,16 @@
 
             const presupuestoIds = Object.keys(byPresupuesto);
             if (presupuestoIds.length === 0) {
+                listData = [];
+                try {
+                    const { count } = await client.from('contacto_nuevos_proveedores').select('*', { count: 'exact', head: true });
+                    contactosNpCount = count ?? 0;
+                } catch (_) {
+                    contactosNpCount = 0;
+                }
                 setLoading(false);
                 setEmpty(true);
+                updateTabCounts();
                 return;
             }
 
@@ -282,7 +291,14 @@
             });
 
             await syncEstadoEncursoOnLoad(client, listData);
+            try {
+                const { count } = await client.from('contacto_nuevos_proveedores').select('*', { count: 'exact', head: true });
+                contactosNpCount = count ?? 0;
+            } catch (_) {
+                contactosNpCount = 0;
+            }
             renderList();
+            updateTabCounts();
         } catch (e) {
             console.error('loadList:', e);
             showNotification(e.message || t('errorCarga'), 'error');
@@ -328,6 +344,17 @@
             return c !== 0 ? c : (a.codigo_propuesta || '').localeCompare(b.codigo_propuesta || '');
         });
         return rows;
+    }
+
+    function updateTabCounts() {
+        const pendientesCount = listData.filter(r => !r.isEnCurso).length;
+        const enCursoCount = getEnCursoRowsByFornecedor().length;
+        const elP = document.getElementById('ge-tab-pendientes-count');
+        const elE = document.getElementById('ge-tab-encurso-count');
+        const elN = document.getElementById('ge-tab-nuevos-proveedores-count');
+        if (elP) elP.textContent = String(pendientesCount);
+        if (elE) elE.textContent = String(enCursoCount);
+        if (elN) elN.textContent = String(contactosNpCount);
     }
 
     function updateTableHeaderForTab() {
@@ -470,6 +497,8 @@
             const { data, error } = await client.from('contacto_nuevos_proveedores').select('*').order('created_at', { ascending: false });
             if (loading) loading.style.display = 'none';
             if (error) throw error;
+            contactosNpCount = (data || []).length;
+            updateTabCounts();
             if (!data || data.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="7">' + escapeHtml(t('nenhumRegisto')) + '</td></tr>';
             } else {
