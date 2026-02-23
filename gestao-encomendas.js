@@ -156,6 +156,7 @@
     let supabase = null;
     let lang = 'pt';
     let listData = []; // { presupuesto_id, codigo_propuesta, responsavel, fornecedores: string[], isEnCurso: boolean }
+    let enComendaNumeroMap = {}; // key: presupuesto_id + '|' + fornecedor -> numero_encomenda (para vista en curso)
     let currentTab = 'pendientes'; // 'pendientes' | 'encurso' | 'nuevos_proveedores'
 
     function t(key) {
@@ -254,6 +255,18 @@
                 articuloNumeroMap[a.id] = (a.numero_encomenda || '').trim();
             });
 
+            enComendaNumeroMap = {};
+            (rows || []).forEach(r => {
+                const fn = (r.nome_fornecedor || '').trim();
+                const pid = r.presupuesto_id;
+                const aid = r.presupuesto_articulo_id;
+                if (pid && fn && aid && !(pid + '|' + fn in enComendaNumeroMap)) {
+                    const key = pid + '|' + fn;
+                    const num = (articuloNumeroMap[aid] || '').trim();
+                    enComendaNumeroMap[key] = num || '-';
+                }
+            });
+
             listData = (presupuestos || []).map(p => {
                 const info = byPresupuesto[p.id] || { fornecedores: [], articuloIds: new Set() };
                 const articuloIds = Array.from(info.articuloIds || []);
@@ -290,11 +303,13 @@
             (row.fornecedores || []).forEach(fornecedor => {
                 const name = (fornecedor || '').trim();
                 if (name) {
+                    const key = row.presupuesto_id + '|' + name;
                     rows.push({
                         fornecedor: name,
                         codigo_propuesta: row.codigo_propuesta,
                         responsavel: row.responsavel,
-                        presupuesto_id: row.presupuesto_id
+                        presupuesto_id: row.presupuesto_id,
+                        numero_encomenda: enComendaNumeroMap[key] || '-'
                     });
                 }
             });
@@ -303,7 +318,8 @@
                     fornecedor: '-',
                     codigo_propuesta: row.codigo_propuesta,
                     responsavel: row.responsavel,
-                    presupuesto_id: row.presupuesto_id
+                    presupuesto_id: row.presupuesto_id,
+                    numero_encomenda: enComendaNumeroMap[row.presupuesto_id + '|-'] || '-'
                 });
             }
         });
@@ -318,15 +334,21 @@
         const thNum = document.getElementById('ge-th-num');
         const thResp = document.getElementById('ge-th-resp');
         const thForn = document.getElementById('ge-th-forn');
+        const thNumEnc = document.getElementById('ge-th-numenc');
         if (!thNum || !thResp || !thForn) return;
         if (currentTab === 'encurso') {
             thNum.textContent = t('fornecedor');
             thResp.textContent = t('numPropuesta');
             thForn.textContent = t('responsable');
+            if (thNumEnc) {
+                thNumEnc.textContent = t('numEncomenda');
+                thNumEnc.style.display = '';
+            }
         } else {
             thNum.textContent = t('numPropuesta');
             thResp.textContent = t('responsable');
             thForn.textContent = t('fornecedores');
+            if (thNumEnc) thNumEnc.style.display = 'none';
         }
     }
 
@@ -344,6 +366,7 @@
                     <td>${escapeHtml(row.fornecedor)}</td>
                     <td>${escapeHtml(row.codigo_propuesta)}</td>
                     <td>${escapeHtml(row.responsavel)}</td>
+                    <td>${escapeHtml(row.numero_encomenda || '-')}</td>
                     <td><button type="button" class="ge-btn ge-btn-primary" data-presupuesto-id="${row.presupuesto_id}">${t('detalles')}</button></td>
                 `;
                 tr.querySelector('button').addEventListener('click', () => showDetails(row.presupuesto_id));
