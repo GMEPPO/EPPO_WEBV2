@@ -233,38 +233,36 @@
             padding: 12px 16px;
             font-size: 1rem;
         }
-        .categorias-extra-checkboxes {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px 20px;
-            padding: 12px 0;
-        }
-        .categorias-extra-checkboxes label {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 14px;
+        .field-hint { color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 8px; }
+        .field-hint-inline { display: block; margin-top: 6px; }
+        .categorias-extra-wrapper .categorias-extra-select {
+            display: block;
+            width: 100%;
+            min-height: 200px;
+            padding: 12px 14px;
+            border: 2px solid var(--bg-gray-300);
+            border-radius: 12px;
             background: var(--bg-white);
-            border: 1px solid var(--bg-gray-300);
-            border-radius: 8px;
-            cursor: pointer;
-            margin-bottom: 0;
-            font-weight: 500;
-            transition: all 0.2s;
+            color: var(--text-primary);
+            font-size: 0.9375rem;
+            line-height: 1.5;
+            transition: border-color 0.2s, box-shadow 0.2s;
         }
-        .categorias-extra-checkboxes label:hover {
+        .categorias-extra-wrapper .categorias-extra-select:hover {
             border-color: var(--primary-color, #1d3557);
-            background: var(--bg-gray-50);
         }
-        .categorias-extra-checkboxes input:checked + span,
-        .categorias-extra-checkboxes label:has(input:checked) {
+        .categorias-extra-wrapper .categorias-extra-select:focus {
+            outline: none;
             border-color: var(--primary-color, #1d3557);
-            background: rgba(29, 53, 87, 0.06);
+            box-shadow: 0 0 0 3px rgba(29, 53, 87, 0.12);
         }
-        .categorias-extra-checkboxes input {
-            width: 18px;
-            height: 18px;
-            cursor: pointer;
+        .categorias-extra-wrapper .categorias-extra-select option {
+            padding: 8px 10px;
+            border-radius: 6px;
+        }
+        .categorias-extra-wrapper .categorias-extra-select option:checked {
+            background: linear-gradient(135deg, rgba(29, 53, 87, 0.15), rgba(37, 99, 235, 0.1));
+            font-weight: 600;
         }
         .form-group.has-error input,
         .form-group.has-error select,
@@ -743,15 +741,13 @@
                             <option value="">Cargando categorías...</option>
                         </select>
                     </div>
-                    <div class="form-group full-width">
-                        <label for="categorias_extra">Categorías adicionales</label>
-                        <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 10px;">Incluir este producto en más categorías (opcional). El producto aparecerá en todas las que marques.</p>
-                        <div id="categorias_extra_checkboxes" class="categorias-extra-checkboxes">
-                            <span style="color: #6b7280;">Cargando categorías...</span>
-                        </div>
-                        <select id="categorias_extra" name="categorias_extra" multiple style="position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0;" aria-hidden="true">
-                            <option value="">Cargando...</option>
+                    <div class="form-group full-width categorias-extra-wrapper">
+                        <label for="categorias_extra" id="categorias_extra_label">Categorías adicionales</label>
+                        <p id="categorias_extra_help" class="field-hint">Incluir este producto en más categorías (opcional). El producto aparecerá en todas las que selecciones en la lista.</p>
+                        <select id="categorias_extra" name="categorias_extra" multiple class="categorias-extra-select" size="8" aria-describedby="categorias_extra_help">
+                            <option value="" disabled>Cargando categorías...</option>
                         </select>
+                        <small class="field-hint field-hint-inline">Ctrl+clic (Cmd+clic en Mac) para seleccionar varias.</small>
                     </div>
                     <div class="form-group">
                         <label for="mercado" class="required">Mercado <span style="color: #ef4444;">*</span></label>

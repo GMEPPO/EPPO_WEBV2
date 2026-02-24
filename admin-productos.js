@@ -124,6 +124,9 @@ const productFormTranslations = {
         supplierRef: 'Referência Fornecedor',
         businessArea: 'Área de Negócio',
         zonesLabel: 'Zonas onde funciona o produto',
+        extraCategoriesLabel: 'Categorias adicionais',
+        extraCategoriesHelp: 'Incluir este produto em mais categorias (opcional). O produto aparecerá em todas as que selecionar na lista.',
+        extraCategoriesHint: 'Ctrl+clique (Cmd+clique no Mac) para selecionar várias.',
         
         // Zonas
         zoneRoom: 'Quarto',
@@ -448,6 +451,12 @@ function updateProductFormTranslations() {
     updateLabel('nombreFornecedor', t.supplierName);
     updateLabel('referenciaFornecedor', t.supplierRef);
     updateLabel('areaNegocio', t.businessArea);
+    const extraCatLabel = document.getElementById('categorias_extra_label');
+    if (extraCatLabel) extraCatLabel.textContent = t.extraCategoriesLabel || 'Categorías adicionales';
+    const extraCatHelp = document.getElementById('categorias_extra_help');
+    if (extraCatHelp) extraCatHelp.textContent = t.extraCategoriesHelp || '';
+    const extraCatHint = document.querySelector('.categorias-extra-wrapper .field-hint-inline');
+    if (extraCatHint && t.extraCategoriesHint) extraCatHint.textContent = t.extraCategoriesHint;
     
     // Placeholders
     updatePlaceholder('marca', t.placeholderBrand);
@@ -1519,56 +1528,19 @@ async function loadCustomCategories() {
                 categoriasExtraSelect.removeChild(categoriasExtraSelect.options[0]);
             }
             
-            // Rellenar checkboxes de categorías adicionales y sincronizar con el select
-            const checkboxesContainer = document.getElementById('categorias_extra_checkboxes');
-            if (checkboxesContainer && categoriasExtraSelect) {
-                checkboxesContainer.innerHTML = '';
-                Array.from(categoriasExtraSelect.options).forEach(opt => {
-                    if (!opt.value) return;
-                    const label = document.createElement('label');
-                    label.className = 'categoria-extra-checkbox-item';
-                    const cb = document.createElement('input');
-                    cb.type = 'checkbox';
-                    cb.name = 'categorias_extra_cb';
-                    cb.value = opt.value;
-                    cb.dataset.categoryValue = opt.value;
-                    cb.addEventListener('change', () => {
-                        opt.selected = cb.checked;
-                    });
-                    const span = document.createElement('span');
-                    span.textContent = opt.textContent;
-                    label.appendChild(cb);
-                    label.appendChild(span);
-                    checkboxesContainer.appendChild(label);
-                });
-            }
-            
             console.log('✅ Categorías del home cargadas:', data.length);
         } else {
             select.innerHTML = '<option value="">No hay categorías disponibles</option>';
             const categoriasExtraSelect = document.getElementById('categorias_extra');
-            if (categoriasExtraSelect) categoriasExtraSelect.innerHTML = '<option value="">No hay categorías</option>';
-            const checkboxesContainer = document.getElementById('categorias_extra_checkboxes');
-            if (checkboxesContainer) checkboxesContainer.innerHTML = '<span style="color: #6b7280;">No hay categorías disponibles</span>';
+            if (categoriasExtraSelect) categoriasExtraSelect.innerHTML = '<option value="" disabled>No hay categorías disponibles</option>';
             console.warn('⚠️ No se encontraron categorías activas');
         }
     } catch (error) {
         console.error('Error cargando categorías:', error);
         select.innerHTML = '<option value="">Error al cargar categorías</option>';
-        const checkboxesContainer = document.getElementById('categorias_extra_checkboxes');
-        if (checkboxesContainer) checkboxesContainer.innerHTML = '<span style="color: #dc2626;">Error al cargar categorías</span>';
+        const categoriasExtraSelect = document.getElementById('categorias_extra');
+        if (categoriasExtraSelect) categoriasExtraSelect.innerHTML = '<option value="" disabled>Error al cargar categorías</option>';
     }
-}
-
-/** Sincronizar estado del select de categorías adicionales a los checkboxes (al cargar producto para editar/duplicar) */
-function syncCategoriasExtraSelectToCheckboxes() {
-    const select = document.getElementById('categorias_extra');
-    const container = document.getElementById('categorias_extra_checkboxes');
-    if (!select || !container) return;
-    const selectedValues = Array.from(select.selectedOptions).map(o => o.value);
-    container.querySelectorAll('input[type="checkbox"][data-category-value]').forEach(cb => {
-        cb.checked = selectedValues.includes(cb.dataset.categoryValue || cb.value);
-    });
 }
 
 // Función auxiliar para cargar subcategorías (usada solo en gestión de categorías del home)
@@ -4024,7 +3996,6 @@ async function fillFormWithProduct(product, isDuplicate = false) {
         Array.from(categoriasExtraField.options).forEach(opt => {
             opt.selected = categoriasArray.includes(opt.value) && opt.value !== mainCategoria;
         });
-        setTimeout(syncCategoriasExtraSelectToCheckboxes, 0);
     }
     const mercadoField = document.getElementById('mercado');
     if (mercadoField && product.mercado) {
