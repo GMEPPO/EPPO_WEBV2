@@ -81,14 +81,208 @@
             margin-right: 0.75rem;
             vertical-align: middle;
         }
+        .product-form-context-banner {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px 20px;
+            padding: 12px 18px;
+            margin-bottom: 24px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #1e3a5f 0%, #1d3557 100%);
+            color: #f1f5f9;
+            font-size: 0.9375rem;
+            box-shadow: 0 2px 8px rgba(29, 53, 87, 0.25);
+        }
+        .product-form-context-banner .context-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+        }
+        .product-form-context-banner .context-label i {
+            opacity: 0.9;
+        }
+        .product-form-context-banner .based-on {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 12px;
+            background: rgba(255,255,255,0.12);
+            border-radius: 8px;
+            font-size: 0.875rem;
+        }
+        .product-form-context-banner a.context-back-link {
+            color: #93c5fd;
+            text-decoration: none;
+            margin-left: auto;
+        }
+        .product-form-context-banner a.context-back-link:hover {
+            text-decoration: underline;
+        }
+        /* Stepper: barra de progreso y pasos */
+        .product-form-stepper {
+            margin-bottom: 28px;
+            padding: 20px 24px;
+            background: var(--bg-gray-50);
+            border-radius: 16px;
+            border: 1px solid var(--bg-gray-200);
+        }
+        .stepper-progress-bar {
+            height: 8px;
+            background: var(--bg-gray-200);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        .stepper-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-color, #1d3557), #2563eb);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        .stepper-steps {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .stepper-step {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            border-radius: 10px;
+            background: var(--bg-white);
+            border: 2px solid var(--bg-gray-200);
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            font-weight: 500;
+            flex: 1;
+            min-width: 0;
+            justify-content: center;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .stepper-step .stepper-num {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: var(--bg-gray-200);
+            color: var(--text-secondary);
+            font-weight: 700;
+        }
+        .stepper-step.active {
+            border-color: var(--primary-color, #1d3557);
+            color: var(--primary-color, #1d3557);
+            background: rgba(29, 53, 87, 0.06);
+        }
+        .stepper-step.active .stepper-num {
+            background: var(--primary-color, #1d3557);
+            color: white;
+        }
+        .stepper-step.completed {
+            border-color: #22c55e;
+            color: #15803d;
+        }
+        .stepper-step.completed .stepper-num {
+            background: #22c55e;
+            color: white;
+        }
+        .stepper-step .stepper-label { display: none; }
+        @media (min-width: 900px) {
+            .stepper-step .stepper-label { display: inline; }
+        }
+        .stepper-text {
+            margin: 14px 0 0 0;
+            font-size: 0.9375rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+        .product-form-step-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 24px 0;
+            padding: 16px 0;
+            border-top: 2px solid var(--bg-gray-200);
+        }
+        .product-form-step-nav .step-nav-spacer { flex: 1; }
+        .product-form-step-nav .btn { min-width: 140px; }
+        .form-section {
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        }
+        .form-section h2 {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        #mode-selector .mode-selector-card {
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid var(--bg-gray-200);
+        }
+        #mode-selector #product-search {
+            border-radius: 10px;
+            padding: 12px 16px;
+            font-size: 1rem;
+        }
+        .categorias-extra-checkboxes {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px 20px;
+            padding: 12px 0;
+        }
+        .categorias-extra-checkboxes label {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            background: var(--bg-white);
+            border: 1px solid var(--bg-gray-300);
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 0;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .categorias-extra-checkboxes label:hover {
+            border-color: var(--primary-color, #1d3557);
+            background: var(--bg-gray-50);
+        }
+        .categorias-extra-checkboxes input:checked + span,
+        .categorias-extra-checkboxes label:has(input:checked) {
+            border-color: var(--primary-color, #1d3557);
+            background: rgba(29, 53, 87, 0.06);
+        }
+        .categorias-extra-checkboxes input {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        .form-group.has-error input,
+        .form-group.has-error select,
+        .form-group.has-error textarea {
+            border-color: #ef4444;
+            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.15);
+        }
+        .field-error-msg {
+            font-size: 0.8125rem;
+            color: #ef4444;
+            margin-top: 4px;
+        }
         .required {
             font-weight: 600;
         }
         .required span {
             color: #ef4444;
             margin-left: 4px;
-        }
-            font-weight: 600;
         }
         .form-grid {
             display: grid;
@@ -499,19 +693,38 @@
             <div class="container">
                 <div id="alert-container"></div>
 
+                <!-- Banner de contexto: Creando / Editando / Duplicando + Basado en -->
+                <div id="product-form-context-banner" class="product-form-context-banner" style="display: none;"></div>
+
         <!-- Selector de modo (solo para editar o duplicar) -->
-        <div id="mode-selector" style="display: none; margin-bottom: 20px;">
-            <div style="background: var(--bg-white); padding: 20px; border-radius: 12px; box-shadow: var(--shadow-sm);">
-                <h3 id="selector-title" style="margin-bottom: 15px;">Seleccionar Producto</h3>
-                <input type="text" id="product-search" placeholder="Buscar producto..." style="width: 100%; padding: 10px; border: 1px solid var(--bg-gray-300); border-radius: 6px; margin-bottom: 15px;">
-                <div id="products-list" style="max-height: 400px; overflow-y: auto;">
+        <div id="mode-selector" style="display: none; margin-bottom: 24px;">
+            <div class="mode-selector-card" style="background: var(--bg-white); padding: 24px; border-radius: 16px;">
+                <h3 id="selector-title" style="margin: 0 0 16px 0; font-size: 1.25rem; color: var(--text-primary);">Seleccionar Producto</h3>
+                <input type="text" id="product-search" placeholder="Buscar por nombre, referencia, categoría..." style="width: 100%; margin-bottom: 16px;">
+                <div id="products-list" style="max-height: 420px; overflow-y: auto;">
                     <!-- Lista de productos se cargará aquí -->
                 </div>
             </div>
         </div>
 
         <form id="productForm">
-            <!-- Información Básica -->
+            <!-- Barra de progreso: Paso X de 5 -->
+            <div id="product-form-stepper" class="product-form-stepper">
+                <div class="stepper-progress-bar">
+                    <div class="stepper-progress-fill" id="stepperProgressFill" style="width: 20%;"></div>
+                </div>
+                <div class="stepper-steps" id="stepperSteps">
+                    <div class="stepper-step active" data-step="1" title="Información básica"><span class="stepper-num">1</span><span class="stepper-label">Básico</span></div>
+                    <div class="stepper-step" data-step="2" title="Descripción y multimedia"><span class="stepper-num">2</span><span class="stepper-label">Descripción y multimedia</span></div>
+                    <div class="stepper-step" data-step="3" title="Campos de categoría"><span class="stepper-num">3</span><span class="stepper-label">Campos categoría</span></div>
+                    <div class="stepper-step" data-step="4" title="Referencias y colores"><span class="stepper-num">4</span><span class="stepper-label">Referencias y colores</span></div>
+                    <div class="stepper-step" data-step="5" title="Precios y variantes"><span class="stepper-num">5</span><span class="stepper-label">Precios y variantes</span></div>
+                </div>
+                <p class="stepper-text" id="stepperText">Paso 1 de 5 — Información básica</p>
+            </div>
+
+            <!-- Paso 1: Información Básica -->
+            <div class="product-form-step" id="productFormStep1" data-step="1">
             <div class="form-section">
                 <h2>Información Básica</h2>
                 <div class="form-grid">
@@ -530,14 +743,15 @@
                             <option value="">Cargando categorías...</option>
                         </select>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group full-width">
                         <label for="categorias_extra">Categorías adicionales</label>
-                        <select id="categorias_extra" name="categorias_extra" multiple size="4" style="min-height: 80px;">
+                        <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 10px;">Incluir este producto en más categorías (opcional). El producto aparecerá en todas las que marques.</p>
+                        <div id="categorias_extra_checkboxes" class="categorias-extra-checkboxes">
+                            <span style="color: #6b7280;">Cargando categorías...</span>
+                        </div>
+                        <select id="categorias_extra" name="categorias_extra" multiple style="position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0;" aria-hidden="true">
                             <option value="">Cargando...</option>
                         </select>
-                        <small style="color: #6b7280; margin-top: 5px; display: block;">
-                            Mantén Ctrl (o Cmd) para seleccionar varias. El producto aparecerá en todas las categorías elegidas.
-                        </small>
                     </div>
                     <div class="form-group">
                         <label for="mercado" class="required">Mercado <span style="color: #ef4444;">*</span></label>
@@ -586,32 +800,27 @@
                     </div>
                 </div>
             </div>
+            </div><!-- fin Paso 1 -->
 
-            <!-- Descripciones -->
+            <!-- Paso 2: Descripción y multimedia -->
+            <div class="product-form-step" id="productFormStep2" data-step="2" style="display: none;">
+            <!-- Descripciones (visibilidad según mercado: PT solo PT, ES solo ES, AMBOS los dos) -->
             <div class="form-section">
                 <h2>Descripciones</h2>
-                <div class="form-grid">
+                <div class="form-grid" id="descripcionesContainer">
                     <div class="form-group full-width" id="descripcionEsContainer">
-                        <label for="descripcionEs" class="required">Descripción (Español) <span style="color: #ef4444;">*</span></label>
+                        <label for="descripcionEs" class="required" id="descripcionEsLabel">Descripción (Español) <span style="color: #ef4444;">*</span></label>
                         <textarea id="descripcionEs" name="descripcionEs" placeholder="Describe el producto en español" required></textarea>
                     </div>
                     <div class="form-group full-width" id="descripcionPtContainer" style="display: none; width: 100%;">
-                        <label for="descripcionPt" class="required">Descrição (Português) <span style="color: #ef4444;">*</span></label>
+                        <label for="descripcionPt" class="required" id="descripcionPtLabel">Descrição (Português) <span style="color: #ef4444;">*</span></label>
                         <textarea id="descripcionPt" name="descripcionPt" placeholder="Descreva o produto em português" required style="width: 100%; min-height: 100px;"></textarea>
                     </div>
                 </div>
             </div>
 
-            <!-- Campos Específicos de Categoría (Filtros) -->
-            <div class="form-section" id="categoryFieldsSection" style="display: none;">
-                <h2 id="categoryFieldsTitle">Campos de la Categoría</h2>
-                <div id="categoryFields" class="category-fields">
-                    <p style="color: #6b7280; grid-column: 1 / -1;">Cargando campos de la categoría...</p>
-                </div>
-            </div>
-
             <!-- Multimedia -->
-            <div class="form-section">
+            <div class="form-section" id="multimediaSectionInStep2">
                 <h2>Multimedia</h2>
                 <div class="form-grid">
                     <div class="form-group full-width">
@@ -649,7 +858,21 @@
                     </div>
                 </div>
             </div>
+            </div><!-- fin Paso 2 -->
 
+            <!-- Paso 3: Campos de la categoría -->
+            <div class="product-form-step" id="productFormStep3" data-step="3" style="display: none;">
+            <!-- Campos Específicos de Categoría (Filtros) -->
+            <div class="form-section" id="categoryFieldsSection" style="display: none;">
+                <h2 id="categoryFieldsTitle">Campos de la Categoría</h2>
+                <div id="categoryFields" class="category-fields">
+                    <p style="color: #6b7280; grid-column: 1 / -1;">Cargando campos de la categoría...</p>
+                </div>
+            </div>
+            </div><!-- fin Paso 3 -->
+
+            <!-- Paso 4: Referencias y colores (especificaciones + proveedores + referencias/colores) -->
+            <div class="product-form-step" id="productFormStep4" data-step="4" style="display: none;">
             <!-- Especificaciones del Producto -->
             <div class="form-section">
                 <h2>Especificaciones del Producto</h2>
@@ -759,7 +982,10 @@
                     Agrega variantes de referencias para diferentes colores o versiones del producto (opcional)
                 </small>
             </div>
+            </div><!-- fin Paso 4 -->
 
+            <!-- Paso 5: Precios y variantes -->
+            <div class="product-form-step" id="productFormStep5" data-step="5" style="display: none;">
             <!-- Precios y Variantes -->
             <div class="form-section">
                 <h2>Precios y Variantes</h2>
@@ -779,6 +1005,18 @@
                 </div>
                 <button type="button" class="btn btn-add" onclick="addVariant()" style="margin-top: 20px;">
                     <i class="fas fa-plus"></i> Agregar Variante Personalizada
+                </button>
+            </div>
+            </div><!-- fin Paso 5 -->
+
+            <!-- Navegación entre pasos (Anterior / Siguiente) -->
+            <div id="product-form-step-nav" class="product-form-step-nav">
+                <button type="button" id="stepPrevBtn" class="btn btn-secondary" style="display: none;">
+                    <i class="fas fa-arrow-left"></i> <span id="stepPrevText">Anterior</span>
+                </button>
+                <span class="step-nav-spacer"></span>
+                <button type="button" id="stepNextBtn" class="btn btn-primary">
+                    <span id="stepNextText">Siguiente</span> <i class="fas fa-arrow-right"></i>
                 </button>
             </div>
 

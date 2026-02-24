@@ -738,46 +738,69 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
     
-    // Configurar visibilidad de descripción PT según el mercado seleccionado
-    function toggleDescripcionPt() {
+    // Configurar visibilidad de descripciones según mercado: PT solo PT, ES solo ES, AMBOS los dos
+    function toggleDescripcionByMercado() {
         const mercadoField = document.getElementById('mercado');
+        const descripcionEsContainer = document.getElementById('descripcionEsContainer');
         const descripcionPtContainer = document.getElementById('descripcionPtContainer');
+        const descripcionEsField = document.getElementById('descripcionEs');
         const descripcionPtField = document.getElementById('descripcionPt');
-        
-        if (!mercadoField || !descripcionPtContainer || !descripcionPtField) return;
-        
+        const descripcionEsLabel = document.getElementById('descripcionEsLabel');
+        const descripcionPtLabel = document.getElementById('descripcionPtLabel');
+        if (!mercadoField || !descripcionPtContainer || !descripcionPtField || !descripcionEsContainer || !descripcionEsField) return;
         const mercado = mercadoField.value;
-        
-        if (mercado === 'PT' || mercado === 'AMBOS') {
-            // Mostrar campo de descripción PT y hacerlo obligatorio
+        const lang = localStorage.getItem('language') || 'pt';
+        const soloDesc = lang === 'es' ? 'Descripción' : lang === 'pt' ? 'Descrição' : 'Description';
+        if (mercado === 'PT') {
+            descripcionEsContainer.style.display = 'none';
+            descripcionEsField.removeAttribute('required');
             descripcionPtContainer.style.display = 'block';
             descripcionPtContainer.style.width = '100%';
-            descripcionPtContainer.style.gridColumn = '1 / -1'; // Asegurar que ocupe todo el ancho
+            descripcionPtContainer.style.gridColumn = '1 / -1';
             descripcionPtField.setAttribute('required', 'required');
-            // Asegurar que el textarea tenga el mismo tamaño que el ES
-            const descripcionEsField = document.getElementById('descripcionEs');
-            if (descripcionEsField) {
-                descripcionPtField.style.width = '100%';
-                descripcionPtField.style.minHeight = descripcionEsField.style.minHeight || '100px';
-            }
+            if (descripcionPtLabel) descripcionPtLabel.innerHTML = soloDesc + ' <span style="color: #ef4444;">*</span>';
+            if (descripcionEsLabel) descripcionEsLabel.innerHTML = 'Descripción (Español)';
+            descripcionEsField.value = '';
         } else if (mercado === 'ES') {
-            // Ocultar campo de descripción PT y quitar obligatoriedad
             descripcionPtContainer.style.display = 'none';
             descripcionPtField.removeAttribute('required');
-            descripcionPtField.value = ''; // Limpiar valor cuando se oculta
+            descripcionPtField.value = '';
+            descripcionEsContainer.style.display = 'block';
+            descripcionEsContainer.style.width = '100%';
+            descripcionEsField.setAttribute('required', 'required');
+            if (descripcionEsLabel) descripcionEsLabel.innerHTML = soloDesc + ' <span style="color: #ef4444;">*</span>';
+            if (descripcionPtLabel) descripcionPtLabel.innerHTML = 'Descrição (Português)';
+        } else if (mercado === 'AMBOS') {
+            descripcionEsContainer.style.display = 'block';
+            descripcionEsContainer.style.width = '100%';
+            descripcionEsField.setAttribute('required', 'required');
+            descripcionPtContainer.style.display = 'block';
+            descripcionPtContainer.style.width = '100%';
+            descripcionPtContainer.style.gridColumn = '1 / -1';
+            descripcionPtField.setAttribute('required', 'required');
+            if (descripcionEsLabel) descripcionEsLabel.innerHTML = (lang === 'es' ? 'Descripción (Español)' : 'Descripción (Español)') + ' <span style="color: #ef4444;">*</span>';
+            if (descripcionPtLabel) descripcionPtLabel.innerHTML = (lang === 'pt' ? 'Descrição (Português)' : 'Descrição (Português)') + ' <span style="color: #ef4444;">*</span>';
         } else {
-            // Si no hay mercado seleccionado, ocultar por defecto
+            descripcionEsContainer.style.display = 'block';
             descripcionPtContainer.style.display = 'none';
             descripcionPtField.removeAttribute('required');
         }
+        if (descripcionPtField && descripcionEsField) {
+            descripcionPtField.style.width = '100%';
+            descripcionPtField.style.minHeight = descripcionEsField.style.minHeight || '100px';
+        }
     }
     
-    // Agregar event listener al campo mercado
     const mercadoField = document.getElementById('mercado');
     if (mercadoField) {
-        mercadoField.addEventListener('change', toggleDescripcionPt);
-        // Ejecutar una vez al cargar para establecer el estado inicial
-        toggleDescripcionPt();
+        mercadoField.addEventListener('change', toggleDescripcionByMercado);
+        toggleDescripcionByMercado();
+    }
+    
+    const modeloField = document.getElementById('modelo');
+    if (modeloField) {
+        modeloField.addEventListener('input', updateProductFormContextBanner);
+        modeloField.addEventListener('change', updateProductFormContextBanner);
     }
     
     // Configurar interfaz según el modo INMEDIATAMENTE
@@ -881,6 +904,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderProductsList();
     }
     setupCategoryChange();
+    setupProductFormSteps();
     renderVariants();
 });
 
@@ -1348,11 +1372,23 @@ async function updateVariantesReferenciasForBrand() {
 function setupCategoryChange() {
     const categoriaSelect = document.getElementById('categoria');
     const categoryFieldsSection = document.getElementById('categoryFieldsSection');
+    const categoryFields = document.getElementById('categoryFields');
     
     if (!categoriaSelect) return;
     
+    function hasFilledCategoryFields() {
+        if (!categoryFieldsSection || categoryFieldsSection.style.display === 'none' || !categoryFields) return false;
+        const inputs = categoryFields.querySelectorAll('input:not([type="hidden"]), select, textarea');
+        for (let i = 0; i < inputs.length; i++) {
+            const v = inputs[i].value;
+            if (v != null && String(v).trim() !== '') return true;
+        }
+        return false;
+    }
+    
     // Ejecutar al cargar si ya hay una categoría seleccionada
     if (categoriaSelect.value) {
+        categoriaSelect.dataset.prevValue = categoriaSelect.value;
         const categoria = categoriaSelect.value;
         if (categoryFieldsSection) {
             categoryFieldsSection.style.display = 'block';
@@ -1361,23 +1397,32 @@ function setupCategoryChange() {
     }
     
     categoriaSelect.addEventListener('change', async () => {
-        const categoria = categoriaSelect.value;
+        const newCategoria = categoriaSelect.value;
+        const prevCategoria = categoriaSelect.dataset.prevValue || '';
+        categoriaSelect.dataset.prevValue = newCategoria;
         
+        if (prevCategoria && hasFilledCategoryFields()) {
+            const lang = localStorage.getItem('language') || 'pt';
+            const msg = lang === 'es' ? 'Al cambiar la categoría, los campos específicos pueden cambiar o borrarse. ¿Continuar?' : lang === 'pt' ? 'Ao alterar a categoria, os campos específicos podem mudar ou ser apagados. Continuar?' : 'Changing category may change or clear specific fields. Continue?';
+            if (!confirm(msg)) {
+                categoriaSelect.value = prevCategoria;
+                categoriaSelect.dataset.prevValue = prevCategoria;
+                return;
+            }
+        }
+        
+        const categoria = newCategoria;
         if (categoria) {
-            // Mostrar la sección de campos dinámicos
             if (categoryFieldsSection) {
                 categoryFieldsSection.style.display = 'block';
             }
             await renderCategoryFields(categoria);
         } else {
-            // Ocultar la sección si no hay categoría seleccionada
             if (categoryFieldsSection) {
                 categoryFieldsSection.style.display = 'none';
             }
-            // Limpiar campos específicos anteriores al cambiar de categoría
-            const container = document.getElementById('categoryFields');
-            if (container) {
-                container.innerHTML = '<p style="color: #6b7280; grid-column: 1 / -1;">Selecciona una categoría para ver los campos disponibles</p>';
+            if (categoryFields) {
+                categoryFields.innerHTML = '<p style="color: #6b7280; grid-column: 1 / -1;">Selecciona una categoría para ver los campos disponibles</p>';
             }
         }
     });
@@ -1454,17 +1499,56 @@ async function loadCustomCategories() {
                 categoriasExtraSelect.removeChild(categoriasExtraSelect.options[0]);
             }
             
+            // Rellenar checkboxes de categorías adicionales y sincronizar con el select
+            const checkboxesContainer = document.getElementById('categorias_extra_checkboxes');
+            if (checkboxesContainer && categoriasExtraSelect) {
+                checkboxesContainer.innerHTML = '';
+                Array.from(categoriasExtraSelect.options).forEach(opt => {
+                    if (!opt.value) return;
+                    const label = document.createElement('label');
+                    label.className = 'categoria-extra-checkbox-item';
+                    const cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.name = 'categorias_extra_cb';
+                    cb.value = opt.value;
+                    cb.dataset.categoryValue = opt.value;
+                    cb.addEventListener('change', () => {
+                        opt.selected = cb.checked;
+                    });
+                    const span = document.createElement('span');
+                    span.textContent = opt.textContent;
+                    label.appendChild(cb);
+                    label.appendChild(span);
+                    checkboxesContainer.appendChild(label);
+                });
+            }
+            
             console.log('✅ Categorías del home cargadas:', data.length);
         } else {
             select.innerHTML = '<option value="">No hay categorías disponibles</option>';
             const categoriasExtraSelect = document.getElementById('categorias_extra');
             if (categoriasExtraSelect) categoriasExtraSelect.innerHTML = '<option value="">No hay categorías</option>';
+            const checkboxesContainer = document.getElementById('categorias_extra_checkboxes');
+            if (checkboxesContainer) checkboxesContainer.innerHTML = '<span style="color: #6b7280;">No hay categorías disponibles</span>';
             console.warn('⚠️ No se encontraron categorías activas');
         }
     } catch (error) {
         console.error('Error cargando categorías:', error);
         select.innerHTML = '<option value="">Error al cargar categorías</option>';
+        const checkboxesContainer = document.getElementById('categorias_extra_checkboxes');
+        if (checkboxesContainer) checkboxesContainer.innerHTML = '<span style="color: #dc2626;">Error al cargar categorías</span>';
     }
+}
+
+/** Sincronizar estado del select de categorías adicionales a los checkboxes (al cargar producto para editar/duplicar) */
+function syncCategoriasExtraSelectToCheckboxes() {
+    const select = document.getElementById('categorias_extra');
+    const container = document.getElementById('categorias_extra_checkboxes');
+    if (!select || !container) return;
+    const selectedValues = Array.from(select.selectedOptions).map(o => o.value);
+    container.querySelectorAll('input[type="checkbox"][data-category-value]').forEach(cb => {
+        cb.checked = selectedValues.includes(cb.dataset.categoryValue || cb.value);
+    });
 }
 
 // Función auxiliar para cargar subcategorías (usada solo en gestión de categorías del home)
@@ -2159,6 +2243,7 @@ function resetForm(skipConfirm = false) {
     }
     // Limpiar zonas
     document.querySelectorAll('input[name="zonas"]').forEach(cb => cb.checked = false);
+    goToProductFormStep(1);
 }
 
 /**
@@ -3263,6 +3348,124 @@ document.getElementById('productForm').addEventListener('submit', async (e) => {
 // ==================== CONFIGURACIÓN DE MODO ====================
 
 /**
+ * Actualizar banner de contexto: Creando / Editando / Duplicando + Basado en
+ */
+function updateProductFormContextBanner() {
+    const banner = document.getElementById('product-form-context-banner');
+    if (!banner) return;
+    const lang = localStorage.getItem('language') || 'pt';
+    const form = document.getElementById('productForm');
+    if (!form || form.style.display === 'none') {
+        banner.style.display = 'none';
+        return;
+    }
+    const t = {
+        pt: { creating: 'A criar novo produto', editing: 'A editar', duplicating: 'A duplicar produto', basedOn: 'Baseado em', backToList: 'Voltar ao listado', viewCatalog: 'Ver no catálogo' },
+        es: { creating: 'Creando producto nuevo', editing: 'Editando', duplicating: 'Duplicando producto', basedOn: 'Basado en', backToList: 'Volver al listado', viewCatalog: 'Ver en catálogo' },
+        en: { creating: 'Creating new product', editing: 'Editing', duplicating: 'Duplicating product', basedOn: 'Based on', backToList: 'Back to list', viewCatalog: 'View in catalog' }
+    };
+    const L = t[lang] || t.pt;
+    let html = '';
+    if (currentMode === 'new') {
+        html = `<span class="context-label"><i class="fas fa-plus-circle"></i> ${L.creating}</span>`;
+    } else if (currentMode === 'edit') {
+        const name = (document.getElementById('modelo') && document.getElementById('modelo').value) || window.editingProductName || '';
+        html = `<span class="context-label"><i class="fas fa-edit"></i> ${L.editing}: ${escapeHtml(name) || '—'}</span>`;
+        html += ` <a href="admin-productos.html?mode=edit" class="context-back-link">${L.backToList}</a>`;
+    } else if (currentMode === 'duplicate') {
+        html = `<span class="context-label"><i class="fas fa-copy"></i> ${L.duplicating}</span>`;
+        if (window.duplicateSourceProductName) {
+            html += ` <span class="based-on"><i class="fas fa-link"></i> ${L.basedOn}: ${escapeHtml(window.duplicateSourceProductName)}</span>`;
+        }
+    }
+    banner.innerHTML = html;
+    banner.style.display = html ? 'flex' : 'none';
+}
+function escapeHtml(s) {
+    if (s == null) return '';
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+}
+
+// ==================== FORMULARIO POR PASOS (barra de progreso) ====================
+const PRODUCT_FORM_TOTAL_STEPS = 5;
+let productFormCurrentStep = 1;
+
+const STEP_LABELS = {
+    pt: ['Informação básica', 'Descrição e multimédia', 'Campos da categoria', 'Referências e cores', 'Preços e variantes'],
+    es: ['Información básica', 'Descripción y multimedia', 'Campos de categoría', 'Referencias y colores', 'Precios y variantes'],
+    en: ['Basic info', 'Description and media', 'Category fields', 'References and colours', 'Prices and variants']
+};
+
+function goToProductFormStep(step) {
+    if (step < 1 || step > PRODUCT_FORM_TOTAL_STEPS) return;
+    productFormCurrentStep = step;
+    const form = document.getElementById('productForm');
+    if (!form) return;
+
+    document.querySelectorAll('.product-form-step').forEach(el => {
+        el.style.display = parseInt(el.dataset.step, 10) === step ? 'block' : 'none';
+    });
+
+    const fill = document.getElementById('stepperProgressFill');
+    if (fill) fill.style.width = (step / PRODUCT_FORM_TOTAL_STEPS) * 100 + '%';
+
+    document.querySelectorAll('.stepper-step').forEach(el => {
+        const n = parseInt(el.dataset.step, 10);
+        el.classList.remove('active', 'completed');
+        if (n === step) el.classList.add('active');
+        else if (n < step) el.classList.add('completed');
+    });
+
+    const lang = localStorage.getItem('language') || 'pt';
+    const L = STEP_LABELS[lang] || STEP_LABELS.pt;
+    const stepperText = document.getElementById('stepperText');
+    if (stepperText) stepperText.textContent = (lang === 'es' ? 'Paso ' : lang === 'pt' ? 'Passo ' : 'Step ') + step + (lang === 'es' ? ' de ' : lang === 'pt' ? ' de ' : ' of ') + PRODUCT_FORM_TOTAL_STEPS + ' — ' + (L[step - 1] || '');
+
+    const prevBtn = document.getElementById('stepPrevBtn');
+    const nextBtn = document.getElementById('stepNextBtn');
+    const nextText = document.getElementById('stepNextText');
+    const prevText = document.getElementById('stepPrevText');
+    if (prevBtn) prevBtn.style.display = step === 1 ? 'none' : 'inline-flex';
+    if (nextBtn && nextText) {
+        if (step === PRODUCT_FORM_TOTAL_STEPS) {
+            nextText.textContent = lang === 'es' ? 'Guardar producto' : lang === 'pt' ? 'Guardar produto' : 'Save product';
+        } else {
+            nextText.textContent = lang === 'es' ? 'Siguiente' : lang === 'pt' ? 'Seguinte' : 'Next';
+        }
+    }
+    if (prevText) prevText.textContent = lang === 'es' ? 'Anterior' : lang === 'pt' ? 'Anterior' : 'Previous';
+
+    if (step === 3) {
+        const categoryFieldsSection = document.getElementById('categoryFieldsSection');
+        if (categoryFieldsSection) categoryFieldsSection.style.display = 'block';
+    }
+}
+
+function setupProductFormSteps() {
+    const prevBtn = document.getElementById('stepPrevBtn');
+    const nextBtn = document.getElementById('stepNextBtn');
+    if (prevBtn) prevBtn.addEventListener('click', () => { goToProductFormStep(productFormCurrentStep - 1); });
+    if (nextBtn) {
+        nextBtn.addEventListener('click', () => {
+            if (productFormCurrentStep === PRODUCT_FORM_TOTAL_STEPS) {
+                document.getElementById('productForm').requestSubmit();
+            } else {
+                goToProductFormStep(productFormCurrentStep + 1);
+            }
+        });
+    }
+    document.querySelectorAll('.stepper-step').forEach(el => {
+        el.addEventListener('click', () => {
+            const step = parseInt(el.dataset.step, 10);
+            if (step >= 1 && step <= PRODUCT_FORM_TOTAL_STEPS) goToProductFormStep(step);
+        });
+    });
+    goToProductFormStep(1);
+}
+
+/**
  * Actualizar texto del botón de guardar según el modo (edición o creación)
  */
 function updateSaveButtonText() {
@@ -3381,6 +3584,7 @@ function setupModeInterface() {
             productForm.style.height = 'auto';
             productForm.style.overflow = 'visible';
             console.log('✅ Formulario de producto mostrado para modo:', currentMode);
+            updateProductFormContextBanner();
             
             // Inicializar variantes si no existen
             if (!variants.base || !variants.base.tiers || variants.base.tiers.length === 0) {
@@ -3571,6 +3775,9 @@ window.loadProductForEdit = async function(productId) {
             }
         }
         
+        // Guardar nombre para el banner de contexto
+        window.editingProductName = data.nombre || data.modelo || '';
+
         // Llenar formulario con datos del producto
         await fillFormWithProduct(data);
         
@@ -3590,8 +3797,10 @@ window.loadProductForEdit = async function(productId) {
         window.editingProductId = productId;
         console.log('✅ window.editingProductId establecido para edición:', window.editingProductId);
         
-        // Actualizar texto del botón de guardar
+        // Actualizar texto del botón de guardar y banner de contexto; volver al paso 1 del stepper
         updateSaveButtonText();
+        updateProductFormContextBanner();
+        goToProductFormStep(1);
         
         // Mostrar botón de eliminar
         const deleteBtn = document.getElementById('deleteProductBtn');
@@ -3651,6 +3860,9 @@ window.loadProductForDuplicate = async function(productId) {
             }
         }
         
+        // Guardar nombre del producto base para el banner "Basado en"
+        window.duplicateSourceProductName = data.nombre || data.modelo || '';
+
         // Llenar formulario con datos del producto (pero sin ID)
         await fillFormWithProduct(data, true);
         
@@ -3669,8 +3881,10 @@ window.loadProductForDuplicate = async function(productId) {
         // No guardar ID (será un nuevo producto)
         window.editingProductId = null;
         
-        // Actualizar texto del botón de guardar
+        // Actualizar texto del botón de guardar y banner de contexto; volver al paso 1 del stepper
         updateSaveButtonText();
+        updateProductFormContextBanner();
+        goToProductFormStep(1);
         
         // Ocultar botón de eliminar
         const deleteBtn = document.getElementById('deleteProductBtn');
@@ -3720,6 +3934,7 @@ async function fillFormWithProduct(product, isDuplicate = false) {
         Array.from(categoriasExtraField.options).forEach(opt => {
             opt.selected = categoriasArray.includes(opt.value) && opt.value !== mainCategoria;
         });
+        setTimeout(syncCategoriasExtraSelectToCheckboxes, 0);
     }
     const mercadoField = document.getElementById('mercado');
     if (mercadoField && product.mercado) {

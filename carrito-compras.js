@@ -8256,6 +8256,21 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             .trim();
     }
 
+    /** Quitar Peso y Qtd/caixa de las observaciones para no imprimirlos en la propuesta PDF */
+    function stripPesoAndQtdCaixaFromObservations(observations) {
+        if (!observations || typeof observations !== 'string') return '';
+        return observations
+            .replace(/\s*Peso:\s*[^\n|]*/gi, '')
+            .replace(/\s*Qtd\/caixa:\s*[^\n|]*/gi, '')
+            .replace(/\s*Quantidade por caixa:\s*[^\n|]*/gi, '')
+            .replace(/\s*Cant\. por caja:\s*[^\n|]*/gi, '')
+            .replace(/\s*Qty per box:\s*[^\n|]*/gi, '')
+            .replace(/\s*\|\s*\|\s*/g, ' | ')
+            .replace(/^\s*\|\s*|\s*\|\s*$/g, '')
+            .replace(/\n{2,}/g, '\n')
+            .trim();
+    }
+
     /**
      * Dibujar descripción con partes en negrita (variante y observaciones)
      */
@@ -8670,6 +8685,8 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                 observations = currentItem.observations;
             }
         }
+        // No imprimir Peso ni cantidad por caja en la propuesta PDF (artículos manuales)
+        observations = stripPesoAndQtdCaixaFromObservations(observations);
 
         // Si no hay descripción, usar guión
         if (!description) {
@@ -11112,13 +11129,7 @@ async function sendProposalToSupabase() {
                 const cantidad = item.quantity || 1;
                 const precio = Number(item.price) || 0; // Asegurar que sea número
                 let observaciones = item.observations || item.observations_text || '';
-                // No guardar la descripción del módulo en observaciones (solo peso/caja si aplica)
-                if (item.isEmptyModule && (item.peso || item.box_size != null)) {
-                    const parts = [];
-                    if (item.peso) parts.push(`Peso: ${item.peso}`);
-                    if (item.box_size != null && item.box_size !== '') parts.push(`Qtd/caixa: ${item.box_size}`);
-                    if (parts.length) observaciones = (observaciones ? observaciones + '\n' : '') + parts.join(' | ');
-                }
+                // No incluir Peso ni Qtd/caixa en observaciones: no deben aparecer en la propuesta impresa (PDF)
                 const plazoEntrega = item.plazoEntrega || item.plazo_entrega || null;
 
                 console.log(`📦 Guardando artículo: ${nombreArticulo}, Cantidad: ${cantidad}, Precio: ${precio}`);
