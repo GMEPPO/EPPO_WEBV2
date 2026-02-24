@@ -1278,6 +1278,7 @@
 
             <!-- Filtros -->
             <div class="filters-section">
+                <input type="text" id="searchGlobalInput" class="filter-input" placeholder="Buscar en propuestas (cliente, comercial, Nº PO, estado, etc.)..." style="grid-column: 1 / -1; max-width: 100%;" title="Busca en todos los datos de los detalles de las propuestas">
                 <input type="text" id="searchClientInput" class="filter-input" placeholder="Buscar por cliente...">
                 <input type="text" id="searchCommercialInput" class="filter-input" placeholder="Buscar por comercial...">
                 <input type="date" id="filterDateFrom" class="filter-input">
@@ -1496,6 +1497,9 @@
         .pedido-encomenda-select-row .pedido-select-info { flex: 1; min-width: 140px; overflow: hidden; }
         .pedido-encomenda-select-row .pedido-select-info .pedido-select-name { font-weight: 600; color: var(--text-primary, #111827); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
         .pedido-encomenda-select-row .pedido-select-info .pedido-select-meta { font-size: 0.8rem; color: var(--text-secondary, #6b7280); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+        .pedido-encomenda-dropzone { border: 2px dashed var(--primary, #3b82f6); border-radius: 8px; padding: 10px 12px; min-height: 44px; background: rgba(59, 130, 246, 0.06); transition: border-color 0.15s, background 0.15s; }
+        .pedido-encomenda-dropzone.drag-over { border-color: var(--primary, #3b82f6); background: rgba(59, 130, 246, 0.15); }
+        .pedido-encomenda-dropzone-hint { display: block; font-size: 0.75rem; color: var(--text-secondary, #6b7280); margin-top: 6px; }
     </style>
     <div class="modal-overlay" id="changeStatusPedidoEncomendaModal">
         <div class="modal" style="max-width: 900px;">

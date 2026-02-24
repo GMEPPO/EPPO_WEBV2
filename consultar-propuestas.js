@@ -1748,6 +1748,10 @@ class ProposalsManager {
                             <div style="font-size: 0.75rem; color: var(--text-secondary, #6b7280); margin-bottom: 4px;">Nº Guía de Preparação</div>
                             <div style="font-weight: 600; color: var(--text-primary, #111827);">${proposal.numero_guia_preparacao || '-'}</div>
                         </div>
+                        <div>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary, #6b7280); margin-bottom: 4px;">Nº PO</div>
+                            <div style="font-weight: 600; color: var(--text-primary, #111827);">${proposal.numero_po || '-'}</div>
+                        </div>
                     </div>
                 </div>
                 
@@ -1820,6 +1824,10 @@ class ProposalsManager {
                         <div class="form-group">
                             <label style="display: block; font-size: 0.875rem; font-weight: 600; color: var(--text-primary, #111827); margin-bottom: 6px;">Nº Guía de Preparação</label>
                             <input type="text" id="numero-guia-preparacao-${proposal.id}" value="${proposal.numero_guia_preparacao || ''}" style="width: 100%; padding: 8px; border: 1px solid var(--bg-gray-300, #d1d5db); border-radius: 6px; font-size: 0.875rem;">
+                        </div>
+                        <div class="form-group">
+                            <label style="display: block; font-size: 0.875rem; font-weight: 600; color: var(--text-primary, #111827); margin-bottom: 6px;">Nº PO</label>
+                            <input type="text" id="numero-po-${proposal.id}" value="${proposal.numero_po || ''}" style="width: 100%; padding: 8px; border: 1px solid var(--bg-gray-300, #d1d5db); border-radius: 6px; font-size: 0.875rem;">
                         </div>
                     </div>
                     <div style="display: flex; gap: 8px; margin-top: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--bg-gray-200, #e5e7eb); justify-content: flex-end;">
@@ -2737,11 +2745,15 @@ class ProposalsManager {
         });
         
         // Filtros en tiempo real
+        const searchGlobal = document.getElementById('searchGlobalInput');
         const searchClient = document.getElementById('searchClientInput');
         const searchCommercial = document.getElementById('searchCommercialInput');
         const filterDateFrom = document.getElementById('filterDateFrom');
         const filterDateTo = document.getElementById('filterDateTo');
 
+        if (searchGlobal) {
+            searchGlobal.addEventListener('input', () => this.applyFilters());
+        }
         if (searchClient) {
             searchClient.addEventListener('input', () => this.applyFilters());
         }
@@ -3307,6 +3319,7 @@ class ProposalsManager {
     }
 
     applyFilters() {
+        const searchGlobal = document.getElementById('searchGlobalInput')?.value.trim().toLowerCase() || '';
         const searchClient = document.getElementById('searchClientInput')?.value.toLowerCase() || '';
         const searchCommercial = document.getElementById('searchCommercialInput')?.value.toLowerCase() || '';
         const dateFrom = document.getElementById('filterDateFrom')?.value || '';
@@ -3314,6 +3327,31 @@ class ProposalsManager {
         const selectedStatuses = this.getSelectedStatusFilters();
 
         this.filteredProposals = this.allProposals.filter(proposal => {
+            // Búsqueda global en todos los datos de los detalles de la propuesta
+            if (searchGlobal) {
+                const safe = (v) => (v != null && v !== undefined ? String(v).toLowerCase() : '');
+                const articulosText = (proposal.articulos || []).map(a =>
+                    [a.nombre_articulo, a.referencia_articulo, a.observaciones].filter(Boolean).join(' ')
+                ).join(' ');
+                const searchableText = [
+                    proposal.nombre_cliente,
+                    proposal.nombre_comercial,
+                    proposal.codigo_propuesta,
+                    proposal.estado_propuesta,
+                    proposal.numero_cliente,
+                    proposal.tipo_cliente,
+                    proposal.pais,
+                    proposal.responsavel,
+                    proposal.area_negocio,
+                    proposal.factura_proforma,
+                    proposal.numero_guia_preparacao,
+                    proposal.numero_po,
+                    proposal.valor_adjudicacao,
+                    articulosText
+                ].map(safe).join(' ');
+                if (!searchableText.includes(searchGlobal)) return false;
+            }
+
             // Filtro por cliente
             if (searchClient && !proposal.nombre_cliente?.toLowerCase().includes(searchClient)) {
                 return false;
@@ -3355,6 +3393,8 @@ class ProposalsManager {
     }
 
     clearFilters() {
+        const searchGlobalEl = document.getElementById('searchGlobalInput');
+        if (searchGlobalEl) searchGlobalEl.value = '';
         document.getElementById('searchClientInput').value = '';
         document.getElementById('searchCommercialInput').value = '';
         document.getElementById('filterDateFrom').value = '';
@@ -3378,6 +3418,7 @@ class ProposalsManager {
         const translations = {
             pt: {
                 title: 'Consultar Propostas',
+                searchGlobal: 'Buscar em propostas (cliente, comercial, Nº PO, estado, etc.)...',
                 searchClient: 'Buscar por cliente...',
                 searchCommercial: 'Buscar por comercial...',
                 allStatuses: 'Todos os estados',
@@ -3413,6 +3454,7 @@ class ProposalsManager {
             },
             es: {
                 title: 'Consultar Propuestas',
+                searchGlobal: 'Buscar en propuestas (cliente, comercial, Nº PO, estado, etc.)...',
                 searchClient: 'Buscar por cliente...',
                 searchCommercial: 'Buscar por comercial...',
                 allStatuses: 'Todos los estados',
@@ -3448,6 +3490,7 @@ class ProposalsManager {
             },
             en: {
                 title: 'View Proposals',
+                searchGlobal: 'Search in proposals (client, commercial, PO #, status, etc.)...',
                 searchClient: 'Search by client...',
                 searchCommercial: 'Search by commercial...',
                 allStatuses: 'All statuses',
@@ -3488,6 +3531,7 @@ class ProposalsManager {
         // Actualizar textos
         const elements = {
             'proposals-page-title': t.title,
+            'searchGlobalInput': { placeholder: t.searchGlobal },
             'searchClientInput': { placeholder: t.searchClient },
             'searchCommercialInput': { placeholder: t.searchCommercial },
             'apply-filters-text': t.applyFilters,
@@ -4203,9 +4247,9 @@ class ProposalsManager {
                             <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.temCliche}</label><select id="ge-tem-cliche-${articuloId}" class="form-input" style="width:100%;padding:6px;"><option value="false">${L.temClicheNao}</option><option value="true">${L.temClicheSim}</option></select></div>
                             <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.precoCliche}</label><input type="number" id="ge-preco-cliche-${articuloId}" class="form-input" min="0" step="0.01" style="width:100%;padding:6px;" placeholder=""></div>
                         </div>
-                        <div style="margin-top: 10px;"><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.anexosLogotipoArte}</label><div style="font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 4px;">${L.anexosHint}</div><input type="file" id="ge-anexos-${articuloId}" class="form-input" accept="image/*,.pdf,.doc,.docx" multiple style="width:100%;padding:6px;"></div>
+                        <div style="margin-top: 10px;"><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.anexosLogotipoArte}</label><div style="font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 4px;">${L.anexosHint}</div><div class="pedido-encomenda-dropzone" data-max-files="4"><input type="file" id="ge-anexos-${articuloId}" class="form-input" accept="image/*,.pdf,.doc,.docx" multiple style="width:100%;padding:6px;"><span class="pedido-encomenda-dropzone-hint">${lang === 'es' ? 'O arrastre ficheros aquí' : lang === 'en' ? 'Or drag files here' : 'Ou arraste ficheiros aqui'}</span></div></div>
                         <div style="margin-top: 10px;"><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.urlOpcional}</label><input type="url" id="ge-personalizado-url-${articuloId}" class="form-input" style="width:100%;padding:6px;" placeholder="https://"></div>
-                        <div style="margin-top: 10px;"><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.historicoEmailsOutlook}</label><div style="font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 4px;">${L.historicoEmailsHint}</div><input type="file" id="ge-historico-emails-${articuloId}" class="form-input" accept=".msg,.eml,application/vnd.ms-outlook,application/octet-stream,*/*" style="width:100%;padding:6px;"></div>
+                        <div style="margin-top: 10px;"><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.historicoEmailsOutlook}</label><div style="font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 4px;">${L.historicoEmailsHint}</div><div class="pedido-encomenda-dropzone" data-max-files="1"><input type="file" id="ge-historico-emails-${articuloId}" class="form-input" accept=".msg,.eml,application/vnd.ms-outlook,application/octet-stream,*/*" style="width:100%;padding:6px;"><span class="pedido-encomenda-dropzone-hint">${lang === 'es' ? 'O arrastre o ficheiro aquí' : lang === 'en' ? 'Or drag file here' : 'Ou arraste o ficheiro aqui'}</span></div></div>
                     </div>
                 </div>
             ` : '';
@@ -4252,6 +4296,10 @@ class ProposalsManager {
                     if (detalhesEl) detalhesEl.style.display = personalizadoSel && personalizadoSel.value === 'true' ? 'block' : 'none';
                 };
                 if (personalizadoSel) personalizadoSel.addEventListener('change', togglePersonalizadoDetalhes);
+                const anexosInput = document.getElementById(`ge-anexos-${articuloId}`);
+                const historicoInput = document.getElementById(`ge-historico-emails-${articuloId}`);
+                if (anexosInput) this._setupPedidoEncomendaDropzone(anexosInput, 4);
+                if (historicoInput) this._setupPedidoEncomendaDropzone(historicoInput, 1);
             }
         });
 
@@ -4321,9 +4369,9 @@ class ProposalsManager {
                             <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.temCliche}</label><select id="ge-${extId}-tem-cliche" class="form-input" style="width:100%;padding:6px;"><option value="false">${L.temClicheNao}</option><option value="true">${L.temClicheSim}</option></select></div>
                             <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.precoCliche}</label><input type="number" id="ge-${extId}-preco-cliche" class="form-input" min="0" step="0.01" style="width:100%;padding:6px;" placeholder=""></div>
                         </div>
-                        <div style="margin-top: 10px;"><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.anexosLogotipoArte}</label><div style="font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 4px;">${L.anexosHint}</div><input type="file" id="ge-${extId}-anexos" class="form-input" accept="image/*,.pdf,.doc,.docx" multiple style="width:100%;padding:6px;"></div>
+                        <div style="margin-top: 10px;"><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.anexosLogotipoArte}</label><div style="font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 4px;">${L.anexosHint}</div><div class="pedido-encomenda-dropzone" data-max-files="4"><input type="file" id="ge-${extId}-anexos" class="form-input" accept="image/*,.pdf,.doc,.docx" multiple style="width:100%;padding:6px;"><span class="pedido-encomenda-dropzone-hint">${lang === 'es' ? 'O arrastre ficheiros aquí' : lang === 'en' ? 'Or drag files here' : 'Ou arraste ficheiros aqui'}</span></div></div>
                         <div style="margin-top: 10px;"><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.urlOpcional}</label><input type="url" id="ge-${extId}-personalizado-url" class="form-input" style="width:100%;padding:6px;" placeholder="https://"></div>
-                        <div style="margin-top: 10px;"><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.historicoEmailsOutlook}</label><div style="font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 4px;">${L.historicoEmailsHint}</div><input type="file" id="ge-${extId}-historico-emails" class="form-input" accept=".msg,.eml,application/vnd.ms-outlook,application/octet-stream,*/*" style="width:100%;padding:6px;"></div>
+                        <div style="margin-top: 10px;"><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.historicoEmailsOutlook}</label><div style="font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 4px;">${L.historicoEmailsHint}</div><div class="pedido-encomenda-dropzone" data-max-files="1"><input type="file" id="ge-${extId}-historico-emails" class="form-input" accept=".msg,.eml,application/vnd.ms-outlook,application/octet-stream,*/*" style="width:100%;padding:6px;"><span class="pedido-encomenda-dropzone-hint">${lang === 'es' ? 'O arrastre o ficheiro aquí' : lang === 'en' ? 'Or drag file here' : 'Ou arraste o ficheiro aqui'}</span></div></div>
                     </div>
                 </div>
             </div>
@@ -4334,7 +4382,36 @@ class ProposalsManager {
         if (personalizadoSel && detalhesEl) {
             personalizadoSel.addEventListener('change', () => { detalhesEl.style.display = personalizadoSel.value === 'true' ? 'block' : 'none'; });
         }
+        const anexosInputExt = document.getElementById(`ge-${extId}-anexos`);
+        const historicoInputExt = document.getElementById(`ge-${extId}-historico-emails`);
+        if (anexosInputExt) this._setupPedidoEncomendaDropzone(anexosInputExt, 4);
+        if (historicoInputExt) this._setupPedidoEncomendaDropzone(historicoInputExt, 1);
         row.querySelector('.pedido-encomenda-remove-externo')?.addEventListener('click', () => row.remove());
+    }
+
+    _setupPedidoEncomendaDropzone(fileInput, maxFiles) {
+        if (!fileInput || !fileInput.type || fileInput.type !== 'file') return;
+        const dropzone = fileInput.closest('.pedido-encomenda-dropzone');
+        if (!dropzone) return;
+        const max = Math.max(1, parseInt(dropzone.getAttribute('data-max-files'), 10) || maxFiles);
+
+        const prevent = (e) => { e.preventDefault(); e.stopPropagation(); };
+        dropzone.addEventListener('dragover', (e) => { prevent(e); dropzone.classList.add('drag-over'); });
+        dropzone.addEventListener('dragleave', (e) => { prevent(e); dropzone.classList.remove('drag-over'); });
+        dropzone.addEventListener('drop', (e) => {
+            prevent(e);
+            dropzone.classList.remove('drag-over');
+            const files = e.dataTransfer && e.dataTransfer.files;
+            if (!files || files.length === 0) return;
+            const existing = fileInput.files ? Array.from(fileInput.files) : [];
+            const toAdd = Array.from(files);
+            const combined = existing.concat(toAdd).slice(0, max);
+            if (combined.length === 0) return;
+            const dt = new DataTransfer();
+            combined.forEach(f => dt.items.add(f));
+            fileInput.files = dt.files;
+            fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+        });
     }
 
     closePedidoEncomendaModal() {
@@ -4604,6 +4681,11 @@ class ProposalsManager {
             }
             rows.push(extRowData);
         }
+
+        // Tipo: "encomenda a fornecedor" o "encomenda a fornecedor e criação de codigos" si falta código PHC en algún artículo
+        const algumSemPhc = rows.some(r => (r.phc_ref || '').toString().trim() === '');
+        const tipoPedido = algumSemPhc ? 'encomenda a fornecedor e criação de codigos' : 'encomenda a fornecedor';
+        rows.forEach(r => { r.tipo = tipoPedido; });
 
         try {
             await this.supabase.from('gestao_compras').delete().eq('presupuesto_id', proposalId);
@@ -5993,6 +6075,7 @@ class ProposalsManager {
                 const valorAdjudicacaoInput = document.getElementById(`valor-adjudicacao-${proposalId}`);
                 const fechaAdjudicacaoInput = document.getElementById(`fecha-adjudicacao-${proposalId}`);
                 const numeroGuiaPreparacaoInput = document.getElementById(`numero-guia-preparacao-${proposalId}`);
+                const numeroPoInput = document.getElementById(`numero-po-${proposalId}`);
                 const dataInicioProcurementInput = document.getElementById(`data-inicio-procurement-${proposalId}`);
                 const dataPedidoCotacaoInput = document.getElementById(`data-pedido-cotacao-${proposalId}`);
                 if (numeroClienteInput) numeroClienteInput.value = proposal.numero_cliente || '';
@@ -6006,6 +6089,7 @@ class ProposalsManager {
                 if (valorAdjudicacaoInput) valorAdjudicacaoInput.value = proposal.valor_adjudicacao || '';
                 if (fechaAdjudicacaoInput) fechaAdjudicacaoInput.value = proposal.fecha_adjudicacao ? proposal.fecha_adjudicacao.split('T')[0] : '';
                 if (numeroGuiaPreparacaoInput) numeroGuiaPreparacaoInput.value = proposal.numero_guia_preparacao || '';
+                if (numeroPoInput) numeroPoInput.value = proposal.numero_po || '';
             }
             
             displayDiv.style.display = 'block';
@@ -6216,6 +6300,7 @@ class ProposalsManager {
             const valorAdjudicacao = document.getElementById(`valor-adjudicacao-${proposalId}`)?.value ? parseFloat(document.getElementById(`valor-adjudicacao-${proposalId}`).value) : null;
             const fechaAdjudicacao = document.getElementById(`fecha-adjudicacao-${proposalId}`)?.value || null;
             const numeroGuiaPreparacao = document.getElementById(`numero-guia-preparacao-${proposalId}`)?.value.trim() || null;
+            const numeroPo = document.getElementById(`numero-po-${proposalId}`)?.value.trim() || null;
             const dataInicioProcurement = document.getElementById(`data-inicio-procurement-${proposalId}`)?.value || null;
             const updateData = {
                 numero_cliente: numeroCliente,
@@ -6228,7 +6313,8 @@ class ProposalsManager {
                 fecha_factura_proforma: fechaFacturaProforma,
                 valor_adjudicacao: valorAdjudicacao,
                 fecha_adjudicacao: fechaAdjudicacao,
-                numero_guia_preparacao: numeroGuiaPreparacao
+                numero_guia_preparacao: numeroGuiaPreparacao,
+                numero_po: numeroPo
             };
 
             const { error } = await this.supabase
