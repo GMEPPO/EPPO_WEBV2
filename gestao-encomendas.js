@@ -51,7 +51,17 @@
             erroCarregar: 'Erro ao carregar.',
             fotos: 'Fotos',
             verFotos: 'Ver fotos',
-            fechar: 'Fechar'
+            fechar: 'Fechar',
+            tipoEncomienda: 'Encomenda',
+            tipoPedidoAmostra: 'Solicitar amostras',
+            tipoPedidoEspecial: 'Pedido especial',
+            tipoCriacaoCodigos: 'Criação de códigos',
+            tipoReclamacao: 'Reclamação',
+            tipoPedidoPrecosNovos: 'Pedido de preços (novos fornecedores)',
+            tipoSolicitarAmostrasFornec: 'Solicitar amostras (fornecedores)',
+            tipoPropostaNormal: 'Proposta',
+            contactoFornecedor: 'Contacto fornecedor',
+            marcarFinalizado: 'Marcar como finalizado'
         },
         es: {
             loading: 'Cargando...',
@@ -100,7 +110,17 @@
             erroCarregar: 'Error al cargar.',
             fotos: 'Fotos',
             verFotos: 'Ver fotos',
-            fechar: 'Cerrar'
+            fechar: 'Cerrar',
+            tipoEncomienda: 'Encomienda',
+            tipoPedidoAmostra: 'Solicitar muestras',
+            tipoPedidoEspecial: 'Pedido especial',
+            tipoCriacaoCodigos: 'Creación de códigos',
+            tipoReclamacao: 'Reclamación',
+            tipoPedidoPrecosNovos: 'Pedido de precios (nuevos proveedores)',
+            tipoSolicitarAmostrasFornec: 'Solicitar muestras (proveedores)',
+            tipoPropostaNormal: 'Propuesta',
+            contactoFornecedor: 'Contacto proveedor',
+            marcarFinalizado: 'Marcar como finalizado'
         },
         en: {
             loading: 'Loading...',
@@ -149,18 +169,39 @@
             erroCarregar: 'Error loading.',
             fotos: 'Photos',
             verFotos: 'View photos',
-            fechar: 'Close'
+            fechar: 'Close',
+            tipoEncomienda: 'Order',
+            tipoPedidoAmostra: 'Request samples',
+            tipoPedidoEspecial: 'Special order',
+            tipoCriacaoCodigos: 'Code creation',
+            tipoReclamacao: 'Claim',
+            tipoPedidoPrecosNovos: 'Price request (new suppliers)',
+            tipoSolicitarAmostrasFornec: 'Request samples (suppliers)',
+            tipoPropostaNormal: 'Proposal',
+            contactoFornecedor: 'Supplier contact',
+            marcarFinalizado: 'Mark as completed'
         }
     };
 
     let supabase = null;
     let lang = 'pt';
-    let listData = []; // { presupuesto_id, codigo_propuesta, responsavel, fornecedores: string[], isEnCurso: boolean }
+    let listData = []; // { source: 'presupuesto'|'contacto_fornecedores', presupuesto_id?, contacto_id?, codigo_propuesta, responsavel, fornecedores: string[], tipoLabel, isEnCurso: boolean }
     let enComendaNumeroMap = {}; // key: presupuesto_id + '|' + fornecedor -> numero_encomenda (para vista en curso)
     let currentTab = 'pendientes'; // 'pendientes' | 'encurso'
 
     function t(key) {
         return (TEXTS[lang] || TEXTS.pt)[key] || key;
+    }
+
+    function getTipoLabelPresupuesto(tipoRegistro) {
+        if (!tipoRegistro) return t('tipoPropostaNormal');
+        const map = { encomienda: 'tipoEncomienda', pedido_muestra: 'tipoPedidoAmostra', pedido_especial: 'tipoPedidoEspecial' };
+        return t(map[tipoRegistro] || 'tipoPropostaNormal');
+    }
+
+    function getTipoLabelContacto(tipoPedido) {
+        const map = { solicitud_precios: 'tipoPedidoPrecosNovos', reclamacao: 'tipoReclamacao', solicitud_muestras: 'tipoSolicitarAmostrasFornec' };
+        return t(map[tipoPedido] || 'contactoFornecedor');
     }
 
     function setLoading(show) {
@@ -233,15 +274,11 @@
             const presupuestoIds = Object.keys(byPresupuesto);
             if (presupuestoIds.length === 0) {
                 listData = [];
-                setLoading(false);
-                setEmpty(true);
-                updateTabCounts();
-                return;
-            }
+            } else {
 
             const { data: presupuestos, error: errPres } = await client
                 .from('presupuestos')
-                .select('id, codigo_propuesta, responsavel, estado_propuesta')
+                .select('id, codigo_propuesta, responsavel, estado_propuesta, tipo_registro_directo')
                 .in('id', presupuestoIds);
 
             if (errPres) throw errPres;
@@ -274,16 +311,39 @@
                 const articuloIds = Array.from(info.articuloIds || []);
                 const isEnCurso = articuloIds.length > 0 && articuloIds.every(aid => (articuloNumeroMap[aid] || '').trim() !== '');
                 return {
+                    source: 'presupuesto',
                     presupuesto_id: p.id,
                     codigo_propuesta: p.codigo_propuesta || '-',
                     responsavel: p.responsavel || '-',
                     fornecedores: info.fornecedores,
+                    tipoLabel: getTipoLabelPresupuesto(p.tipo_registro_directo),
                     isEnCurso: !!isEnCurso,
                     estado_propuesta: p.estado_propuesta || ''
                 };
             });
 
             await syncEstadoEncursoOnLoad(client, listData);
+            }
+
+            const { data: contactosCf, error: errCf } = await client
+                .from('contacto_nuevos_proveedores')
+                .select('id, nombre_proveedor, tipo_pedido, observaciones, responsable')
+                .eq('estado', 'pedidos_nuevos_proveedores')
+                .order('created_at', { ascending: false });
+            if (!errCf && contactosCf && contactosCf.length > 0) {
+                contactosCf.forEach(c => {
+                    listData.push({
+                        source: 'contacto_fornecedores',
+                        contacto_id: c.id,
+                        codigo_propuesta: t('contactoFornecedor') + ' – ' + (c.nombre_proveedor || '-'),
+                        responsavel: c.responsable || '-',
+                        fornecedores: [(c.nombre_proveedor || '').trim()].filter(Boolean),
+                        tipoLabel: getTipoLabelContacto(c.tipo_pedido),
+                        isEnCurso: false
+                    });
+                });
+            }
+
             renderList();
             updateTabCounts();
         } catch (e) {
@@ -300,7 +360,7 @@
      * Así el Nº Proposta y el Responsável quedan asociados a cada línea por fornecedor.
      */
     function getEnCursoRowsByFornecedor() {
-        const enCurso = listData.filter(row => row.isEnCurso);
+        const enCurso = listData.filter(row => row.source === 'presupuesto' && row.isEnCurso);
         const rows = [];
         enCurso.forEach(row => {
             (row.fornecedores || []).forEach(fornecedor => {
@@ -312,7 +372,8 @@
                         codigo_propuesta: row.codigo_propuesta,
                         responsavel: row.responsavel,
                         presupuesto_id: row.presupuesto_id,
-                        numero_encomenda: enComendaNumeroMap[key] || '-'
+                        numero_encomenda: enComendaNumeroMap[key] || '-',
+                        tipoLabel: row.tipoLabel || t('tipoPropostaNormal')
                     });
                 }
             });
@@ -322,7 +383,8 @@
                     codigo_propuesta: row.codigo_propuesta,
                     responsavel: row.responsavel,
                     presupuesto_id: row.presupuesto_id,
-                    numero_encomenda: enComendaNumeroMap[row.presupuesto_id + '|-'] || '-'
+                    numero_encomenda: enComendaNumeroMap[row.presupuesto_id + '|-'] || '-',
+                    tipoLabel: row.tipoLabel || t('tipoPropostaNormal')
                 });
             }
         });
@@ -343,10 +405,12 @@
     }
 
     function updateTableHeaderForTab() {
+        const thTipo = document.getElementById('ge-th-tipo');
         const thNum = document.getElementById('ge-th-num');
         const thResp = document.getElementById('ge-th-resp');
         const thForn = document.getElementById('ge-th-forn');
         const thNumEnc = document.getElementById('ge-th-numenc');
+        if (thTipo) thTipo.textContent = t('tipo');
         if (!thNum || !thResp || !thForn) return;
         if (currentTab === 'encurso') {
             thNum.textContent = t('fornecedor');
@@ -375,6 +439,7 @@
             rows.forEach(row => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
+                    <td>${escapeHtml(row.tipoLabel || '')}</td>
                     <td>${escapeHtml(row.fornecedor)}</td>
                     <td>${escapeHtml(row.codigo_propuesta)}</td>
                     <td>${escapeHtml(row.responsavel)}</td>
@@ -390,14 +455,19 @@
             tbody.innerHTML = '';
             filtered.forEach(row => {
                 const tr = document.createElement('tr');
-                const tagsHtml = row.fornecedores.map(f => `<span class="ge-tag">${escapeHtml(f)}</span>`).join('');
+                const tagsHtml = (row.fornecedores || []).map(f => `<span class="ge-tag">${escapeHtml(f)}</span>`).join('');
+                const isContacto = row.source === 'contacto_fornecedores';
+                const btnData = isContacto ? `data-contacto-id="${row.contacto_id}"` : `data-presupuesto-id="${row.presupuesto_id}"`;
                 tr.innerHTML = `
+                    <td>${escapeHtml(row.tipoLabel || '')}</td>
                     <td>${escapeHtml(row.codigo_propuesta)}</td>
                     <td>${escapeHtml(row.responsavel)}</td>
                     <td><div class="ge-tags">${tagsHtml || '<span class="ge-tag">-</span>'}</div></td>
-                    <td><button type="button" class="ge-btn ge-btn-primary" data-presupuesto-id="${row.presupuesto_id}">${t('detalles')}</button></td>
+                    <td><button type="button" class="ge-btn ge-btn-primary" ${btnData}>${t('detalles')}</button></td>
                 `;
-                tr.querySelector('button').addEventListener('click', () => showDetails(row.presupuesto_id));
+                const btn = tr.querySelector('button');
+                if (isContacto) btn.addEventListener('click', () => showDetailsContactoFornecedores(row.contacto_id));
+                else btn.addEventListener('click', () => showDetails(row.presupuesto_id));
                 tbody.appendChild(tr);
             });
             setEmpty(filtered.length === 0);
@@ -467,6 +537,79 @@
             return;
         }
         showDetailsPendientes(presupuestoId);
+    }
+
+    async function showDetailsContactoFornecedores(contactoId) {
+        const client = await getClient();
+        if (!client) return;
+
+        const listView = document.getElementById('ge-list-view');
+        const detailsView = document.getElementById('ge-details-view');
+        if (listView) listView.classList.add('hidden');
+        if (detailsView) detailsView.classList.add('active');
+
+        const row = listData.find(p => p.contacto_id === contactoId);
+        const titleEl = document.getElementById('ge-detail-title');
+        if (titleEl) titleEl.textContent = (row ? row.codigo_propuesta : t('contactoFornecedor')) + ' – ' + t('detalles');
+
+        const blocksEl = document.getElementById('ge-detail-blocks');
+        if (!blocksEl) return;
+        blocksEl.innerHTML = '<div class="ge-loading">' + t('loading') + '</div>';
+
+        try {
+            const { data: c, error } = await client.from('contacto_nuevos_proveedores').select('*').eq('id', contactoId).single();
+            if (error || !c) throw error || new Error('Registo não encontrado');
+
+            const fotosUrls = parseFotosUrls(c.fotos_urls);
+            let fotosHtml = '';
+            if (fotosUrls.length > 0) {
+                fotosUrls.forEach(url => {
+                    const isPdf = (url || '').toLowerCase().includes('.pdf') || (url || '').toLowerCase().indexOf('pdf') !== -1;
+                    if (isPdf) {
+                        fotosHtml += '<a href="' + escapeAttr(url) + '" target="_blank" rel="noopener" class="ge-btn ge-btn-secondary" style="margin-right:8px;margin-bottom:8px;"><i class="fas fa-file-pdf"></i> PDF</a>';
+                    } else {
+                        fotosHtml += '<a href="' + escapeAttr(url) + '" target="_blank" rel="noopener" style="display:inline-block;margin-right:8px;margin-bottom:8px;"><img src="' + escapeAttr(url) + '" alt="" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:1px solid #475569;"></a>';
+                    }
+                });
+            } else {
+                fotosHtml = '<span style="color:#94a3b8;">-</span>';
+            }
+
+            blocksEl.innerHTML = `
+                <div class="ge-fornecedor-block">
+                    <div class="ge-fornecedor-title">${t('contactoFornecedor')}</div>
+                    <div style="display:grid;gap:1rem;margin-bottom:1rem;">
+                        <div><label style="font-size:0.8rem;color:#94a3b8;">${t('fornecedor')}</label><div style="font-weight:600;color:#f1f5f9;">${escapeHtml(c.nombre_proveedor || '-')}</div></div>
+                        <div><label style="font-size:0.8rem;color:#94a3b8;">${t('tipo')}</label><div style="font-weight:600;color:#f1f5f9;">${escapeHtml(getTipoLabelContacto(c.tipo_pedido))}</div></div>
+                        <div><label style="font-size:0.8rem;color:#94a3b8;">${t('observaciones')}</label><div style="color:#e2e8f0;white-space:pre-wrap;">${escapeHtml(c.observaciones || '-')}</div></div>
+                        <div><label style="font-size:0.8rem;color:#94a3b8;">${t('fotos')}</label><div style="margin-top:4px;">${fotosHtml}</div></div>
+                    </div>
+                    <button type="button" class="ge-btn ge-btn-primary" id="ge-cf-marcar-finalizado">${t('marcarFinalizado')}</button>
+                </div>
+            `;
+            document.getElementById('ge-cf-marcar-finalizado').addEventListener('click', () => markContactoFinalizado(contactoId));
+        } catch (e) {
+            console.error('showDetailsContactoFornecedores:', e);
+            blocksEl.innerHTML = '<div style="color:#f87171;">' + escapeHtml(e.message || t('erroCarregar')) + '</div>';
+        }
+    }
+
+    async function markContactoFinalizado(contactoId) {
+        if (!contactoId) return;
+        const client = await getClient();
+        if (!client) return;
+        try {
+            const { error } = await client.from('contacto_nuevos_proveedores').update({ estado: 'contacto_finalizado' }).eq('id', contactoId);
+            if (error) throw error;
+            showNotification(t('guardado'), 'success');
+            const listView = document.getElementById('ge-list-view');
+            const detailsView = document.getElementById('ge-details-view');
+            if (listView) listView.classList.remove('hidden');
+            if (detailsView) detailsView.classList.remove('active');
+            await loadList();
+        } catch (e) {
+            showNotification(e.message || t('error'), 'error');
+        }
     }
 
     async function showDetailsPendientes(presupuestoId) {

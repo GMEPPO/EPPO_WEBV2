@@ -4157,9 +4157,9 @@ class ProposalsManager {
 
         const lang = this.currentLanguage || 'pt';
         const t = {
-            pt: { subtitle: 'Preencha todos os campos obrigatórios: quantidade, preço de custo e percentagem de desconto (0% mínimo). Sem PHC: Referência (fornecedor), Designação, Peso, etc. Se não indicar Referência PHC, quem gerir o pedido terá de criar o código.', photo: 'Foto', phc: 'Nº PHC', fornecedor: 'Fornecedor', qty: 'Quantidade a encomendar', ref: 'Referência (fornecedor)', refPhcOpcional: 'Referência PHC (opcional)', refPhcOpcionalHint: 'Se preencher, quem gere o pedido usa este código. Se deixar vazio, terá de criar o código a partir dos outros dados.', designacao: 'Designação', peso: 'Peso', qtyCaixa: 'Quantidade por caixa', personalizado: 'Personalizado', personalizadoSim: 'Sim', personalizadoNao: 'Não', observacoes: 'Observações (personalizado)', dossierSection: 'Dossier / Logotipo', associateDossier: 'Incluir dossier da proposta neste artigo', hasLogo: 'Este artigo tem logotipo', precoCusto: 'Preço de custo', percDesconto: 'Percentagem de desconto (%)', addArtigoExterno: 'Adicionar artigo externo', artigoExterno: 'Artigo externo', remover: 'Remover', artigosExternos: 'Artigos externos (fora da proposta)' },
-            es: { subtitle: 'Rellene todos los campos obligatorios: cantidad, precio de costo y porcentaje de descuento (mín. 0%). Sin PHC: Referencia (fornecedor), Designación, Peso, etc. Si no indica Referencia PHC, quien gestione el pedido deberá crear el código.', photo: 'Foto', phc: 'Nº PHC', fornecedor: 'Fornecedor', qty: 'Cantidad a encomendar', ref: 'Referencia (fornecedor)', refPhcOpcional: 'Referencia PHC (opcional)', refPhcOpcionalHint: 'Si rellena, quien gestione el pedido usará este código. Si lo deja vacío, deberá crear el código a partir del resto de datos.', designacao: 'Designación', peso: 'Peso', qtyCaixa: 'Cantidad por caja', personalizado: 'Personalizado', personalizadoSim: 'Sí', personalizadoNao: 'No', observacoes: 'Observaciones (personalizado)', dossierSection: 'Dossier / Logotipo', associateDossier: 'Incluir dossier de la propuesta en este artículo', hasLogo: 'Este artículo tiene logotipo', precoCusto: 'Precio de costo', percDesconto: 'Porcentaje de descuento (%)', addArtigoExterno: 'Añadir artículo externo', artigoExterno: 'Artículo externo', remover: 'Quitar', artigosExternos: 'Artículos externos (fuera de la propuesta)' },
-            en: { subtitle: 'Fill all required fields: quantity, cost price and discount percentage (min 0%). No PHC: Reference (supplier), Designation, Weight, etc. If you leave PHC reference empty, the person managing the order will need to create the code.', photo: 'Photo', phc: 'PHC No.', fornecedor: 'Supplier', qty: 'Qty to order', ref: 'Reference (supplier)', refPhcOpcional: 'PHC reference (optional)', refPhcOpcionalHint: 'If filled, the person managing the order will use this code. If left empty, they must create the code from the other data.', designacao: 'Designation', peso: 'Weight', qtyCaixa: 'Qty per box', personalizado: 'Custom', personalizadoSim: 'Yes', personalizadoNao: 'No', observacoes: 'Notes (custom)', dossierSection: 'Dossier / Logo', associateDossier: 'Include proposal dossier with this item', hasLogo: 'This item has a logo', precoCusto: 'Cost price', percDesconto: 'Discount (%)', addArtigoExterno: 'Add external article', artigoExterno: 'External article', remover: 'Remove', artigosExternos: 'External articles (not in proposal)' }
+            pt: { subtitle: 'Preencha todos os campos obrigatórios: quantidade, preço de custo e percentagem de desconto (0% mínimo). Sem PHC: Referência (fornecedor), Designação, Peso, etc. Se não indicar Referência PHC, quem gerir o pedido terá de criar o código.', photo: 'Foto', phc: 'Nº PHC', fornecedor: 'Fornecedor', qty: 'Quantidade a encomendar', ref: 'Referência (fornecedor)', refPhcOpcional: 'Referência PHC (opcional)', refPhcOpcionalHint: 'Se preencher, quem gere o pedido usa este código. Se deixar vazio, terá de criar o código a partir dos outros dados.', designacao: 'Designação', peso: 'Peso', qtyCaixa: 'Quantidade por caixa', personalizado: 'Personalizado', personalizadoSim: 'Sim', personalizadoNao: 'Não', observacoes: 'Observações (personalizado)', dossierSection: 'Dossier / Logotipo', associateDossier: 'Incluir dossier da proposta neste artigo', hasLogo: 'Este artigo tem logotipo', precoCusto: 'Preço de custo', percDesconto: 'Percentagem de desconto (%)', addArtigoExterno: 'Adicionar artigo externo', artigoExterno: 'Artigo externo', remover: 'Remover', artigosExternos: 'Artigos externos (fora da proposta)', valorTransportes: 'Valor de transportes (opcional)', temCliche: 'Tem cliché?', temClicheSim: 'Sim', temClicheNao: 'Não', precoCliche: 'Preço cliché', anexosLogotipoArte: 'Logotipo / Arte final / Dossier (máx. 4 anexos)', anexosHint: 'Imagem, PDF ou outro ficheiro. Máximo 4.', urlOpcional: 'URL (opcional)', historicoEmailsOutlook: 'Histórico de emails Outlook com o fornecedor', historicoEmailsHint: 'Anexe .msg, .eml ou exportação de emails' },
+            es: { subtitle: 'Rellene todos los campos obligatorios: cantidad, precio de costo y porcentaje de descuento (mín. 0%). Sin PHC: Referencia (fornecedor), Designación, Peso, etc. Si no indica Referencia PHC, quien gestione el pedido deberá crear el código.', photo: 'Foto', phc: 'Nº PHC', fornecedor: 'Fornecedor', qty: 'Cantidad a encomendar', ref: 'Referencia (fornecedor)', refPhcOpcional: 'Referencia PHC (opcional)', refPhcOpcionalHint: 'Si rellena, quien gestione el pedido usará este código. Si lo deja vacío, deberá crear el código a partir del resto de datos.', designacao: 'Designación', peso: 'Peso', qtyCaixa: 'Cantidad por caja', personalizado: 'Personalizado', personalizadoSim: 'Sí', personalizadoNao: 'No', observacoes: 'Observaciones (personalizado)', dossierSection: 'Dossier / Logotipo', associateDossier: 'Incluir dossier de la propuesta en este artículo', hasLogo: 'Este artículo tiene logotipo', precoCusto: 'Precio de costo', percDesconto: 'Porcentaje de descuento (%)', addArtigoExterno: 'Añadir artículo externo', artigoExterno: 'Artículo externo', remover: 'Quitar', artigosExternos: 'Artículos externos (fuera de la propuesta)', valorTransportes: 'Valor de transportes (opcional)', temCliche: '¿Tiene clisé?', temClicheSim: 'Sí', temClicheNao: 'No', precoCliche: 'Precio clisé', anexosLogotipoArte: 'Logotipo / Arte final / Dossier (máx. 4 anexos)', anexosHint: 'Imagen, PDF u otro archivo. Máximo 4.', urlOpcional: 'URL (opcional)', historicoEmailsOutlook: 'Histórico de emails Outlook con el proveedor', historicoEmailsHint: 'Adjunte .msg, .eml o exportación de emails' },
+            en: { subtitle: 'Fill all required fields: quantity, cost price and discount percentage (min 0%). No PHC: Reference (supplier), Designation, Weight, etc. If you leave PHC reference empty, the person managing the order will need to create the code.', photo: 'Photo', phc: 'PHC No.', fornecedor: 'Supplier', qty: 'Qty to order', ref: 'Reference (supplier)', refPhcOpcional: 'PHC reference (optional)', refPhcOpcionalHint: 'If filled, the person managing the order will use this code. If left empty, they must create the code from the other data.', designacao: 'Designation', peso: 'Weight', qtyCaixa: 'Qty per box', personalizado: 'Custom', personalizadoSim: 'Yes', personalizadoNao: 'No', observacoes: 'Notes (custom)', dossierSection: 'Dossier / Logo', associateDossier: 'Include proposal dossier with this item', hasLogo: 'This item has a logo', precoCusto: 'Cost price', percDesconto: 'Discount (%)', addArtigoExterno: 'Add external article', artigoExterno: 'External article', remover: 'Remove', artigosExternos: 'External articles (not in proposal)', valorTransportes: 'Transport value (optional)', temCliche: 'Has cliché?', temClicheSim: 'Yes', temClicheNao: 'No', precoCliche: 'Cliché price', anexosLogotipoArte: 'Logo / Final art / Dossier (max 4 attachments)', anexosHint: 'Image, PDF or other file. Max 4.', urlOpcional: 'URL (optional)', historicoEmailsOutlook: 'Outlook email history with supplier', historicoEmailsHint: 'Attach .msg, .eml or email export' }
         };
         const L = t[lang] || t.pt;
         if (subtitleEl) subtitleEl.textContent = L.subtitle;
@@ -4197,6 +4197,16 @@ class ProposalsManager {
                     <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.qtyCaixa} <span style="color: var(--danger-500,#c00);">*</span></label><input type="number" id="ge-qtycaixa-${articuloId}" class="form-input" style="width:100%;padding:6px;" min="0" placeholder="" required></div>
                     <div style="grid-column: 1 / -1;"><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.personalizado}</label><select id="ge-personalizado-${articuloId}" class="form-input" style="width:100%;padding:6px;"><option value="false">${L.personalizadoNao}</option><option value="true">${L.personalizadoSim}</option></select></div>
                     <div style="grid-column: 1 / -1;"><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.observacoes}</label><textarea id="ge-obs-${articuloId}" class="form-input" style="width:100%;padding:6px;min-height:60px;" placeholder=""></textarea></div>
+                    <div id="ge-personalizado-detalhes-${articuloId}" style="grid-column: 1 / -1; display: none; margin-top: 8px; padding: 12px; background: var(--bg-white,#fff); border-radius: 8px; border: 1px solid var(--primary, #3b82f6);">
+                        <div style="font-size: 0.8rem; font-weight: 600; color: var(--primary); margin-bottom: 10px;">${L.anexosLogotipoArte}</div>
+                        <div style="display: grid; gap: 10px; grid-template-columns: 1fr 1fr;">
+                            <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.temCliche}</label><select id="ge-tem-cliche-${articuloId}" class="form-input" style="width:100%;padding:6px;"><option value="false">${L.temClicheNao}</option><option value="true">${L.temClicheSim}</option></select></div>
+                            <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.precoCliche}</label><input type="number" id="ge-preco-cliche-${articuloId}" class="form-input" min="0" step="0.01" style="width:100%;padding:6px;" placeholder=""></div>
+                        </div>
+                        <div style="margin-top: 10px;"><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.anexosLogotipoArte}</label><div style="font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 4px;">${L.anexosHint}</div><input type="file" id="ge-anexos-${articuloId}" class="form-input" accept="image/*,.pdf,.doc,.docx" multiple style="width:100%;padding:6px;"></div>
+                        <div style="margin-top: 10px;"><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.urlOpcional}</label><input type="url" id="ge-personalizado-url-${articuloId}" class="form-input" style="width:100%;padding:6px;" placeholder="https://"></div>
+                        <div style="margin-top: 10px;"><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.historicoEmailsOutlook}</label><div style="font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 4px;">${L.historicoEmailsHint}</div><input type="file" id="ge-historico-emails-${articuloId}" class="form-input" accept=".msg,.eml,application/vnd.ms-outlook,application/octet-stream,*/*" style="width:100%;padding:6px;"></div>
+                    </div>
                 </div>
             ` : '';
 
@@ -4227,6 +4237,7 @@ class ProposalsManager {
                             <div><label style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary, #f1f5f9); display: block; margin-bottom: 4px;">${L.qty} <span style="color: var(--danger-500,#ef4444);">*</span></label><input type="number" id="ge-qty-${articuloId}" class="form-input" min="1" value="${articulo.cantidad || 1}" style="width: 110px; padding: 10px 12px; font-size: 1rem; font-weight: 500; border: 2px solid var(--primary, #3b82f6); border-radius: 8px; background: var(--bg-white, #ffffff); color: var(--text-primary, #111827);" required></div>
                             <div><label style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary, #f1f5f9); display: block; margin-bottom: 4px;">${L.precoCusto} <span style="color: var(--danger-500,#ef4444);">*</span></label><input type="number" id="ge-preco-${articuloId}" class="form-input" min="0" step="0.01" value="" style="width: 140px; padding: 10px 12px; font-size: 1rem; font-weight: 500; border: 2px solid var(--primary, #3b82f6); border-radius: 8px; background: var(--bg-white, #ffffff); color: var(--text-primary, #111827);" placeholder="0.00" required></div>
                             <div><label style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary, #f1f5f9); display: block; margin-bottom: 4px;">${L.percDesconto} <span style="color: var(--danger-500,#ef4444);">*</span></label><input type="number" id="ge-desconto-${articuloId}" class="form-input" min="0" max="100" step="0.01" value="0" style="width: 100px; padding: 10px 12px; font-size: 1rem; font-weight: 500; border: 2px solid var(--primary, #3b82f6); border-radius: 8px; background: var(--bg-white, #ffffff); color: var(--text-primary, #111827);" required></div>
+                            <div><label style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 4px;">${L.valorTransportes}</label><input type="number" id="ge-transportes-${articuloId}" class="form-input" min="0" step="0.01" value="" style="width: 120px; padding: 10px 12px; font-size: 1rem; border: 2px solid var(--primary, #3b82f6); border-radius: 8px; background: var(--bg-white, #ffffff); color: var(--text-primary, #111827);" placeholder=""></div>
                         </div>
                     </div>
                     ${extraFields}
@@ -4234,6 +4245,14 @@ class ProposalsManager {
                 </div>
             `;
             listEl.appendChild(row);
+            if (!hasPhc) {
+                const personalizadoSel = document.getElementById(`ge-personalizado-${articuloId}`);
+                const detalhesEl = document.getElementById(`ge-personalizado-detalhes-${articuloId}`);
+                const togglePersonalizadoDetalhes = () => {
+                    if (detalhesEl) detalhesEl.style.display = personalizadoSel && personalizadoSel.value === 'true' ? 'block' : 'none';
+                };
+                if (personalizadoSel) personalizadoSel.addEventListener('change', togglePersonalizadoDetalhes);
+            }
         });
 
         const externosWrap = document.createElement('div');
@@ -4258,9 +4277,9 @@ class ProposalsManager {
         if (!listExt) return;
         const lang = this.currentLanguage || 'pt';
         const t = {
-            pt: { ref: 'Referência (fornecedor)', refPhcOpcional: 'Referência PHC (opcional)', refPhcOpcionalHint: 'Se preencher, quem gere o pedido usa este código. Se deixar vazio, terá de criar o código.', designacao: 'Designação', peso: 'Peso', qtyCaixa: 'Quantidade por caixa', personalizado: 'Personalizado', personalizadoSim: 'Sim', personalizadoNao: 'Não', observacoes: 'Observações', fornecedor: 'Fornecedor', qty: 'Quantidade a encomendar', precoCusto: 'Preço de custo', percDesconto: 'Percentagem de desconto (%)', artigoExterno: 'Artigo externo', remover: 'Remover', mainFieldsLabel: 'Quantidade, preço e desconto' },
-            es: { ref: 'Referencia (fornecedor)', refPhcOpcional: 'Referencia PHC (opcional)', refPhcOpcionalHint: 'Si rellena, quien gestione el pedido usará este código.', designacao: 'Designación', peso: 'Peso', qtyCaixa: 'Cantidad por caja', personalizado: 'Personalizado', personalizadoSim: 'Sí', personalizadoNao: 'No', observacoes: 'Observaciones', fornecedor: 'Fornecedor', qty: 'Cantidad a encomendar', precoCusto: 'Precio de costo', percDesconto: 'Porcentaje de descuento (%)', artigoExterno: 'Artículo externo', remover: 'Quitar', mainFieldsLabel: 'Cantidad, precio y descuento' },
-            en: { ref: 'Reference (supplier)', refPhcOpcional: 'PHC reference (optional)', refPhcOpcionalHint: 'If filled, the person managing the order will use this code.', designacao: 'Designation', peso: 'Weight', qtyCaixa: 'Qty per box', personalizado: 'Custom', personalizadoSim: 'Yes', personalizadoNao: 'No', observacoes: 'Observations', fornecedor: 'Supplier', qty: 'Qty to order', precoCusto: 'Cost price', percDesconto: 'Discount (%)', artigoExterno: 'External article', remover: 'Remove', mainFieldsLabel: 'Quantity, price & discount' }
+            pt: { ref: 'Referência (fornecedor)', refPhcOpcional: 'Referência PHC (opcional)', refPhcOpcionalHint: 'Se preencher, quem gere o pedido usa este código. Se deixar vazio, terá de criar o código.', designacao: 'Designação', peso: 'Peso', qtyCaixa: 'Quantidade por caixa', personalizado: 'Personalizado', personalizadoSim: 'Sim', personalizadoNao: 'Não', observacoes: 'Observações', fornecedor: 'Fornecedor', qty: 'Quantidade a encomendar', precoCusto: 'Preço de custo', percDesconto: 'Percentagem de desconto (%)', artigoExterno: 'Artigo externo', remover: 'Remover', mainFieldsLabel: 'Quantidade, preço e desconto', valorTransportes: 'Valor de transportes (opcional)', temCliche: 'Tem cliché?', temClicheSim: 'Sim', temClicheNao: 'Não', precoCliche: 'Preço cliché', anexosLogotipoArte: 'Logotipo / Arte final / Dossier (máx. 4 anexos)', anexosHint: 'Imagem, PDF ou outro ficheiro. Máximo 4.', urlOpcional: 'URL (opcional)', historicoEmailsOutlook: 'Histórico de emails Outlook com o fornecedor', historicoEmailsHint: 'Anexe .msg, .eml ou exportação de emails' },
+            es: { ref: 'Referencia (fornecedor)', refPhcOpcional: 'Referencia PHC (opcional)', refPhcOpcionalHint: 'Si rellena, quien gestione el pedido usará este código.', designacao: 'Designación', peso: 'Peso', qtyCaixa: 'Cantidad por caja', personalizado: 'Personalizado', personalizadoSim: 'Sí', personalizadoNao: 'No', observacoes: 'Observaciones', fornecedor: 'Fornecedor', qty: 'Cantidad a encomendar', precoCusto: 'Precio de costo', percDesconto: 'Porcentaje de descuento (%)', artigoExterno: 'Artículo externo', remover: 'Quitar', mainFieldsLabel: 'Cantidad, precio y descuento', valorTransportes: 'Valor de transportes (opcional)', temCliche: '¿Tiene clisé?', temClicheSim: 'Sí', temClicheNao: 'No', precoCliche: 'Precio clisé', anexosLogotipoArte: 'Logotipo / Arte final / Dossier (máx. 4 anexos)', anexosHint: 'Imagen, PDF u otro archivo. Máximo 4.', urlOpcional: 'URL (opcional)', historicoEmailsOutlook: 'Histórico de emails Outlook con el proveedor', historicoEmailsHint: 'Adjunte .msg, .eml o exportación de emails' },
+            en: { ref: 'Reference (supplier)', refPhcOpcional: 'PHC reference (optional)', refPhcOpcionalHint: 'If filled, the person managing the order will use this code.', designacao: 'Designation', peso: 'Weight', qtyCaixa: 'Qty per box', personalizado: 'Custom', personalizadoSim: 'Yes', personalizadoNao: 'No', observacoes: 'Observations', fornecedor: 'Supplier', qty: 'Qty to order', precoCusto: 'Cost price', percDesconto: 'Discount (%)', artigoExterno: 'External article', remover: 'Remove', mainFieldsLabel: 'Quantity, price & discount', valorTransportes: 'Transport value (optional)', temCliche: 'Has cliché?', temClicheSim: 'Yes', temClicheNao: 'No', precoCliche: 'Cliché price', anexosLogotipoArte: 'Logo / Final art / Dossier (max 4 attachments)', anexosHint: 'Image, PDF or other file. Max 4.', urlOpcional: 'URL (optional)', historicoEmailsOutlook: 'Outlook email history with supplier', historicoEmailsHint: 'Attach .msg, .eml or email export' }
         };
         const L = t[lang] || t.pt;
         const index = listExt.querySelectorAll('.pedido-encomenda-row-externo').length;
@@ -4284,6 +4303,7 @@ class ProposalsManager {
                         <div><label style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary, #f1f5f9); display: block; margin-bottom: 4px;">${L.qty} <span style="color: var(--danger-500,#ef4444);">*</span></label><input type="number" id="ge-${extId}-qty" class="form-input" min="1" value="1" style="width: 110px; padding: 10px 12px; font-size: 1rem; border: 2px solid var(--primary, #3b82f6); border-radius: 8px; background: var(--bg-white, #ffffff); color: var(--text-primary, #111827);" required></div>
                         <div><label style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary, #f1f5f9); display: block; margin-bottom: 4px;">${L.precoCusto} <span style="color: var(--danger-500,#ef4444);">*</span></label><input type="number" id="ge-${extId}-preco" class="form-input" min="0" step="0.01" value="" style="width: 140px; padding: 10px 12px; font-size: 1rem; border: 2px solid var(--primary, #3b82f6); border-radius: 8px; background: var(--bg-white, #ffffff); color: var(--text-primary, #111827);" placeholder="0.00" required></div>
                         <div><label style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary, #f1f5f9); display: block; margin-bottom: 4px;">${L.percDesconto} <span style="color: var(--danger-500,#ef4444);">*</span></label><input type="number" id="ge-${extId}-desconto" class="form-input" min="0" max="100" step="0.01" value="0" style="width: 100px; padding: 10px 12px; font-size: 1rem; border: 2px solid var(--primary, #3b82f6); border-radius: 8px; background: var(--bg-white, #ffffff); color: var(--text-primary, #111827);" required></div>
+                        <div><label style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 4px;">${L.valorTransportes}</label><input type="number" id="ge-${extId}-transportes" class="form-input" min="0" step="0.01" value="" style="width: 120px; padding: 10px 12px; font-size: 1rem; border: 2px solid var(--primary, #3b82f6); border-radius: 8px; background: var(--bg-white, #ffffff); color: var(--text-primary, #111827);" placeholder=""></div>
                     </div>
                 </div>
                 <div class="pedido-encomenda-extra" style="margin-top: 10px; padding: 10px; background: var(--bg-gray-100); border-radius: 8px; display: grid; gap: 8px; grid-template-columns: 1fr 1fr;">
@@ -4295,10 +4315,25 @@ class ProposalsManager {
                     <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.qtyCaixa} <span style="color: var(--danger-500,#c00);">*</span></label><input type="number" id="ge-${extId}-qtycaixa" class="form-input" style="width:100%;padding:6px;" min="0" placeholder="" required></div>
                     <div style="grid-column: 1 / -1;"><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.personalizado}</label><select id="ge-${extId}-personalizado" class="form-input" style="width:100%;padding:6px;"><option value="false">${L.personalizadoNao}</option><option value="true">${L.personalizadoSim}</option></select></div>
                     <div style="grid-column: 1 / -1;"><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.observacoes}</label><textarea id="ge-${extId}-obs" class="form-input" style="width:100%;padding:6px;min-height:60px;"></textarea></div>
+                    <div id="ge-personalizado-detalhes-${extId}" style="grid-column: 1 / -1; display: none; margin-top: 8px; padding: 12px; background: var(--bg-white,#fff); border-radius: 8px; border: 1px solid var(--primary, #3b82f6);">
+                        <div style="font-size: 0.8rem; font-weight: 600; color: var(--primary); margin-bottom: 10px;">${L.anexosLogotipoArte}</div>
+                        <div style="display: grid; gap: 10px; grid-template-columns: 1fr 1fr;">
+                            <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.temCliche}</label><select id="ge-${extId}-tem-cliche" class="form-input" style="width:100%;padding:6px;"><option value="false">${L.temClicheNao}</option><option value="true">${L.temClicheSim}</option></select></div>
+                            <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.precoCliche}</label><input type="number" id="ge-${extId}-preco-cliche" class="form-input" min="0" step="0.01" style="width:100%;padding:6px;" placeholder=""></div>
+                        </div>
+                        <div style="margin-top: 10px;"><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.anexosLogotipoArte}</label><div style="font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 4px;">${L.anexosHint}</div><input type="file" id="ge-${extId}-anexos" class="form-input" accept="image/*,.pdf,.doc,.docx" multiple style="width:100%;padding:6px;"></div>
+                        <div style="margin-top: 10px;"><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.urlOpcional}</label><input type="url" id="ge-${extId}-personalizado-url" class="form-input" style="width:100%;padding:6px;" placeholder="https://"></div>
+                        <div style="margin-top: 10px;"><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.historicoEmailsOutlook}</label><div style="font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 4px;">${L.historicoEmailsHint}</div><input type="file" id="ge-${extId}-historico-emails" class="form-input" accept=".msg,.eml,application/vnd.ms-outlook,application/octet-stream,*/*" style="width:100%;padding:6px;"></div>
+                    </div>
                 </div>
             </div>
         `;
         listExt.appendChild(row);
+        const personalizadoSel = document.getElementById(`ge-${extId}-personalizado`);
+        const detalhesEl = document.getElementById(`ge-personalizado-detalhes-${extId}`);
+        if (personalizadoSel && detalhesEl) {
+            personalizadoSel.addEventListener('change', () => { detalhesEl.style.display = personalizadoSel.value === 'true' ? 'block' : 'none'; });
+        }
         row.querySelector('.pedido-encomenda-remove-externo')?.addEventListener('click', () => row.remove());
     }
 
@@ -4379,11 +4414,12 @@ class ProposalsManager {
             // Obtener Referência PHC del formulario (solo para productos sin PHC)
             // IMPORTANTE: Este valor se guarda SOLO en gestao_compras.phc_ref, NO se actualiza el producto en products.phc_ref
             const phcRefFromForm = !hasPhc ? (() => { const el = document.getElementById(`ge-phc-ref-${articuloId}`); return el ? el.value.trim() || null : null; })() : null;
+            const transportesEl = document.getElementById(`ge-transportes-${articuloId}`);
+            const valorTransportes = transportesEl && transportesEl.value.trim() !== '' ? parseFloat(transportesEl.value.replace(',', '.')) : null;
+
             const row = {
                 presupuesto_id: proposalId,
                 presupuesto_articulo_id: articulo.id || null,
-                // phc_ref: Si el producto tiene PHC, usar ese. Si no tiene y se rellenó en el formulario, usar ese valor.
-                // Este valor solo se guarda en gestao_compras, NO modifica products.phc_ref
                 phc_ref: (product && product.phc_ref) ? String(product.phc_ref) : (phcRefFromForm || null),
                 nome_fornecedor: (product && product.nombre_fornecedor) ? String(product.nombre_fornecedor) : null,
                 foto_url: (product && product.foto) ? product.foto : null,
@@ -4393,7 +4429,8 @@ class ProposalsManager {
                 logo_url: (articulo.logo_url && String(articulo.logo_url).trim() !== '') ? String(articulo.logo_url).trim() : null,
                 precio_custo: precoCusto,
                 porcentaje_descuento: porcentajeDesconto,
-                fecha_precio: now
+                fecha_precio: now,
+                valor_transportes: isNaN(valorTransportes) || valorTransportes < 0 ? null : valorTransportes
             };
 
             if (!hasPhc) {
@@ -4417,6 +4454,50 @@ class ProposalsManager {
                 row.quantidade_por_caixa = qtyCaixa;
                 row.personalizado = personalizadoEl ? personalizadoEl.value === 'true' : false;
                 row.personalizado_observacoes = obsEl ? obsEl.value.trim() || null : null;
+
+                if (row.personalizado) {
+                    const temClicheEl = document.getElementById(`ge-tem-cliche-${articuloId}`);
+                    const precoClicheEl = document.getElementById(`ge-preco-cliche-${articuloId}`);
+                    const urlEl = document.getElementById(`ge-personalizado-url-${articuloId}`);
+                    row.tem_cliche = temClicheEl ? temClicheEl.value === 'true' : false;
+                    const precoClicheRaw = precoClicheEl ? precoClicheEl.value.trim() : '';
+                    row.preco_cliche = precoClicheRaw === '' ? null : (parseFloat(precoClicheRaw.replace(',', '.')) || null);
+                    row.personalizado_url = urlEl ? urlEl.value.trim() || null : null;
+                    row.personalizado_anexos_urls = [];
+                    row.historico_emails_url = null;
+
+                    const anexosInput = document.getElementById(`ge-anexos-${articuloId}`);
+                    const historicoInput = document.getElementById(`ge-historico-emails-${articuloId}`);
+                    const subfolder = `gestao-compras/${proposalId}/${articuloId}`;
+                    if (anexosInput?.files?.length) {
+                        const files = Array.from(anexosInput.files).slice(0, 4);
+                        for (const file of files) {
+                            try {
+                                const ext = (file.name.split('.').pop() || 'file').toLowerCase().replace(/[^a-z0-9]/g, '') || 'file';
+                                const baseName = (file.name && file.name.trim()) ? file.name.trim() : `anexo_${Date.now()}.${ext}`;
+                                const fileName = await getUniqueStorageFilePathConsultar(this.supabase, 'product-images', subfolder, baseName);
+                                const { error: upErr } = await this.supabase.storage.from('product-images').upload(fileName, file, { cacheControl: '3600', upsert: false, contentType: file.type || 'application/octet-stream' });
+                                if (!upErr) {
+                                    const { data: urlData } = this.supabase.storage.from('product-images').getPublicUrl(fileName);
+                                    if (urlData?.publicUrl) row.personalizado_anexos_urls.push(urlData.publicUrl);
+                                }
+                            } catch (e) { console.warn('Upload anexo:', e); }
+                        }
+                    }
+                    if (historicoInput?.files?.length) {
+                        try {
+                            const file = historicoInput.files[0];
+                            const ext = (file.name.split('.').pop() || 'file').toLowerCase().replace(/[^a-z0-9]/g, '') || 'file';
+                            const baseName = (file.name && file.name.trim()) ? file.name.trim() : `historico_${Date.now()}.${ext}`;
+                            const fileName = await getUniqueStorageFilePathConsultar(this.supabase, 'product-images', subfolder, baseName);
+                            const { error: upErr } = await this.supabase.storage.from('product-images').upload(fileName, file, { cacheControl: '3600', upsert: false, contentType: file.type || 'application/octet-stream' });
+                            if (!upErr) {
+                                const { data: urlData } = this.supabase.storage.from('product-images').getPublicUrl(fileName);
+                                if (urlData?.publicUrl) row.historico_emails_url = urlData.publicUrl;
+                            }
+                        } catch (e) { console.warn('Upload histórico:', e); }
+                    }
+                }
             }
 
             rows.push(row);
@@ -4461,10 +4542,9 @@ class ProposalsManager {
                 return;
             }
 
-            rows.push({
+            const extRowData = {
                 presupuesto_id: proposalId,
                 presupuesto_articulo_id: null,
-                // phc_ref: Solo se guarda en gestao_compras, NO se crea ni actualiza ningún producto en products
                 phc_ref: phcRef,
                 nome_fornecedor: nomeFornecedor,
                 foto_url: null,
@@ -4480,8 +4560,49 @@ class ProposalsManager {
                 logo_url: null,
                 precio_custo: precoCusto,
                 porcentaje_descuento: porcentajeDescuento,
-                fecha_precio: now
-            });
+                fecha_precio: now,
+                valor_transportes: (() => { const v = getNum('transportes', NaN); return (!isNaN(v) && v >= 0) ? v : null; })()
+            };
+            if (personalizado) {
+                extRowData.tem_cliche = document.getElementById(`ge-${extId}-tem-cliche`)?.value === 'true';
+                const precoClicheRaw = document.getElementById(`ge-${extId}-preco-cliche`)?.value?.trim() || '';
+                extRowData.preco_cliche = precoClicheRaw === '' ? null : (parseFloat(precoClicheRaw.replace(',', '.')) || null);
+                extRowData.personalizado_url = document.getElementById(`ge-${extId}-personalizado-url`)?.value?.trim() || null;
+                extRowData.personalizado_anexos_urls = [];
+                extRowData.historico_emails_url = null;
+                const anexosInput = document.getElementById(`ge-${extId}-anexos`);
+                const historicoInput = document.getElementById(`ge-${extId}-historico-emails`);
+                const subfolder = `gestao-compras/${proposalId}/${extId}`;
+                if (anexosInput?.files?.length) {
+                    const files = Array.from(anexosInput.files).slice(0, 4);
+                    for (const file of files) {
+                        try {
+                            const ext = (file.name.split('.').pop() || 'file').toLowerCase().replace(/[^a-z0-9]/g, '') || 'file';
+                            const baseName = (file.name && file.name.trim()) ? file.name.trim() : `anexo_${Date.now()}.${ext}`;
+                            const fileName = await getUniqueStorageFilePathConsultar(this.supabase, 'product-images', subfolder, baseName);
+                            const { error: upErr } = await this.supabase.storage.from('product-images').upload(fileName, file, { cacheControl: '3600', upsert: false, contentType: file.type || 'application/octet-stream' });
+                            if (!upErr) {
+                                const { data: urlData } = this.supabase.storage.from('product-images').getPublicUrl(fileName);
+                                if (urlData?.publicUrl) extRowData.personalizado_anexos_urls.push(urlData.publicUrl);
+                            }
+                        } catch (e) { console.warn('Upload anexo externo:', e); }
+                    }
+                }
+                if (historicoInput?.files?.length) {
+                    try {
+                        const file = historicoInput.files[0];
+                        const ext = (file.name.split('.').pop() || 'file').toLowerCase().replace(/[^a-z0-9]/g, '') || 'file';
+                        const baseName = (file.name && file.name.trim()) ? file.name.trim() : `historico_${Date.now()}.${ext}`;
+                        const fileName = await getUniqueStorageFilePathConsultar(this.supabase, 'product-images', subfolder, baseName);
+                        const { error: upErr } = await this.supabase.storage.from('product-images').upload(fileName, file, { cacheControl: '3600', upsert: false, contentType: file.type || 'application/octet-stream' });
+                        if (!upErr) {
+                            const { data: urlData } = this.supabase.storage.from('product-images').getPublicUrl(fileName);
+                            if (urlData?.publicUrl) extRowData.historico_emails_url = urlData.publicUrl;
+                        }
+                    } catch (e) { console.warn('Upload histórico externo:', e); }
+                }
+            }
+            rows.push(extRowData);
         }
 
         try {
