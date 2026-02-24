@@ -308,10 +308,24 @@
         .registro-directo-type-btn[data-type="encomienda"] .rd-icon-wrap { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: #fff; }
         .registro-directo-type-btn[data-type="pedido_muestra"] .rd-icon-wrap { background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: #fff; }
         .registro-directo-type-btn[data-type="pedido_especial"] .rd-icon-wrap { background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%); color: #fff; }
-        .registro-directo-type-btn[data-type="contacto_proveedores"] .rd-icon-wrap { background: linear-gradient(135deg, #059669 0%, #047857 100%); color: #fff; }
+        .registro-directo-type-btn[data-type="contacto_fornecedores"] .rd-icon-wrap { background: linear-gradient(135deg, #059669 0%, #047857 100%); color: #fff; }
         .registro-directo-type-btn i {
             font-size: 1.15rem;
         }
+        .rd-cliente-wrap { position: relative; }
+        .rd-cliente-suggestions {
+            position: absolute; left: 0; right: 0; top: 100%; margin: 0; padding: 0; list-style: none;
+            background: var(--bg-white, #fff); border: 1px solid var(--border-color, #e5e7eb);
+            border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-height: 220px; overflow-y: auto;
+            z-index: 100;
+        }
+        .rd-cliente-suggestions li {
+            padding: 10px 12px; cursor: pointer; font-size: 0.9rem; border-bottom: 1px solid var(--bg-gray-100, #f3f4f6);
+        }
+        .rd-cliente-suggestions li:last-child { border-bottom: none; }
+        .rd-cliente-suggestions li:hover { background: var(--brand-blue-light, #eff6ff); }
+        .rd-cliente-suggestions li small { color: var(--text-secondary, #6b7280); margin-left: 8px; }
+        .rd-hint { font-size: 0.8rem; color: var(--text-secondary, #6b7280); margin-bottom: 6px; margin-top: 0; }
 
         .proposals-table-container {
             background: var(--bg-white);
@@ -1313,23 +1327,6 @@
                     </tbody>
                 </table>
             </div>
-            <!-- Contactos con nuevos proveedores (solo administradores) -->
-            <div id="contactoProveedoresSection" style="display: none; margin-top: 2rem; padding: 1rem; background: var(--bg-gray-100, #f3f4f6); border-radius: 8px;">
-                <h2 style="font-size: 1.1rem; margin-bottom: 0.75rem;" id="contactoProveedoresTitle">Contactos con nuevos proveedores</h2>
-                <div id="contactoProveedoresLoading" style="padding: 1rem;">A carregar...</div>
-                <table id="contactoProveedoresTable" class="proposals-table" style="display: none; margin-top: 0.5rem;">
-                    <thead>
-                        <tr>
-                            <th>Proveedor</th>
-                            <th>Tipo</th>
-                            <th>Observaciones</th>
-                            <th>Estado</th>
-                            <th>Responsable</th>
-                        </tr>
-                    </thead>
-                    <tbody id="contactoProveedoresBody"></tbody>
-                </table>
-            </div>
         </div>
     </main>
 
@@ -1379,9 +1376,9 @@
                             <span class="rd-icon-wrap"><i class="fas fa-file-invoice"></i></span>
                             <span id="regTypePedidoEspecial">Pedido especial</span>
                         </button>
-                        <button type="button" class="registro-directo-type-btn" data-type="contacto_proveedores">
+                        <button type="button" class="registro-directo-type-btn" data-type="contacto_fornecedores">
                             <span class="rd-icon-wrap"><i class="fas fa-handshake"></i></span>
-                            <span id="regTypeContactoProveedores">Contacto con nuevos proveedores</span>
+                            <span id="regTypeContactoFornecedores">Contacto fornecedores</span>
                         </button>
                     </div>
                 </div>

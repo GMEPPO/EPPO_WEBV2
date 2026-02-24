@@ -157,8 +157,7 @@
     let lang = 'pt';
     let listData = []; // { presupuesto_id, codigo_propuesta, responsavel, fornecedores: string[], isEnCurso: boolean }
     let enComendaNumeroMap = {}; // key: presupuesto_id + '|' + fornecedor -> numero_encomenda (para vista en curso)
-    let contactosNpCount = 0; // total de registos em contacto_nuevos_proveedores (para badge do separador)
-    let currentTab = 'pendientes'; // 'pendientes' | 'encurso' | 'nuevos_proveedores'
+    let currentTab = 'pendientes'; // 'pendientes' | 'encurso'
 
     function t(key) {
         return (TEXTS[lang] || TEXTS.pt)[key] || key;
@@ -234,12 +233,6 @@
             const presupuestoIds = Object.keys(byPresupuesto);
             if (presupuestoIds.length === 0) {
                 listData = [];
-                try {
-                    const { count } = await client.from('contacto_nuevos_proveedores').select('*', { count: 'exact', head: true });
-                    contactosNpCount = count ?? 0;
-                } catch (_) {
-                    contactosNpCount = 0;
-                }
                 setLoading(false);
                 setEmpty(true);
                 updateTabCounts();
@@ -291,12 +284,6 @@
             });
 
             await syncEstadoEncursoOnLoad(client, listData);
-            try {
-                const { count } = await client.from('contacto_nuevos_proveedores').select('*', { count: 'exact', head: true });
-                contactosNpCount = count ?? 0;
-            } catch (_) {
-                contactosNpCount = 0;
-            }
             renderList();
             updateTabCounts();
         } catch (e) {
@@ -351,10 +338,8 @@
         const enCursoCount = getEnCursoRowsByFornecedor().length;
         const elP = document.getElementById('ge-tab-pendientes-count');
         const elE = document.getElementById('ge-tab-encurso-count');
-        const elN = document.getElementById('ge-tab-nuevos-proveedores-count');
         if (elP) elP.textContent = String(pendientesCount);
         if (elE) elE.textContent = String(enCursoCount);
-        if (elN) elN.textContent = String(contactosNpCount);
     }
 
     function updateTableHeaderForTab() {
@@ -419,15 +404,6 @@
         }
     }
 
-    function getTipoPedidoLabel(tipo) {
-        const map = { solicitud_precios: 'solicitudPrecios', solicitud_muestras: 'solicitudMuestras', solicitud_reunion: 'solicitudReunion' };
-        return t(map[tipo] || tipo);
-    }
-    function getEstadoNPLabel(estado) {
-        const map = { pedidos_nuevos_proveedores: 'pedidosNuevosProveedores', contacto_finalizado: 'contactoFinalizado' };
-        return t(map[estado] || estado);
-    }
-
     function parseFotosUrls(val) {
         if (!val) return [];
         if (Array.isArray(val)) return val.filter(Boolean);
@@ -482,81 +458,6 @@
     function closeFotosModal() {
         const overlay = document.getElementById('ge-fotos-modal-overlay');
         if (overlay) overlay.style.display = 'none';
-    }
-
-    async function loadNuevosProveedores() {
-        const loading = document.getElementById('ge-np-loading');
-        const table = document.getElementById('ge-table-np');
-        const tbody = document.getElementById('ge-tbody-np');
-        if (!tbody) return;
-        if (loading) loading.style.display = 'block';
-        if (table) table.style.display = 'none';
-        try {
-            const client = await getClient();
-            if (!client) throw new Error('No client');
-            const { data, error } = await client.from('contacto_nuevos_proveedores').select('*').order('created_at', { ascending: false });
-            if (loading) loading.style.display = 'none';
-            if (error) throw error;
-            contactosNpCount = (data || []).length;
-            updateTabCounts();
-            if (!data || data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7">' + escapeHtml(t('nenhumRegisto')) + '</td></tr>';
-            } else {
-                tbody.innerHTML = data.map(r => {
-                    const estadoLabel = getEstadoNPLabel(r.estado);
-                    const tipoLabel = getTipoPedidoLabel(r.tipo_pedido);
-                    const canFinalize = r.estado === 'pedidos_nuevos_proveedores';
-                    const btnHtml = canFinalize
-                        ? `<button type="button" class="ge-btn ge-btn-primary" data-np-id="${r.id}">${escapeHtml(t('marcarContactoFinalizado'))}</button>`
-                        : '';
-                    const fotosUrls = parseFotosUrls(r.fotos_urls);
-                    const n = fotosUrls.length;
-                    const fotosCell = n === 0
-                        ? '<span style="color:#64748b;">-</span>'
-                        : `<button type="button" class="ge-btn ge-btn-secondary ge-btn-fotos" data-urls="${escapeAttr(JSON.stringify(fotosUrls))}" style="padding:4px 10px;font-size:0.8rem;"><i class="fas fa-images"></i> ${n} ${lang === 'en' ? 'photo' + (n !== 1 ? 's' : '') : 'fotos'}</button>`;
-                    return `<tr>
-                        <td>${escapeHtml(r.nombre_proveedor || '')}</td>
-                        <td>${escapeHtml(tipoLabel)}</td>
-                        <td>${escapeHtml(r.observaciones || '-')}</td>
-                        <td>${escapeHtml(estadoLabel)}</td>
-                        <td>${escapeHtml(r.responsable || '-')}</td>
-                        <td>${fotosCell}</td>
-                        <td>${btnHtml}</td>
-                    </tr>`;
-                }).join('');
-                tbody.querySelectorAll('button[data-np-id]').forEach(btn => {
-                    btn.addEventListener('click', () => markContactoFinalizado(btn.getAttribute('data-np-id')));
-                });
-                tbody.querySelectorAll('.ge-btn-fotos').forEach(btn => {
-                    btn.addEventListener('click', () => {
-                        try {
-                            const urls = JSON.parse(btn.getAttribute('data-urls') || '[]');
-                            showFotosModal(urls);
-                        } catch (_) {}
-                    });
-                });
-            }
-            if (table) table.style.display = 'table';
-        } catch (e) {
-            console.error('loadNuevosProveedores:', e);
-            if (loading) loading.style.display = 'none';
-            tbody.innerHTML = '<tr><td colspan="7">' + escapeHtml(t('erroCarregar')) + '</td></tr>';
-            if (table) table.style.display = 'table';
-        }
-    }
-
-    async function markContactoFinalizado(id) {
-        if (!id) return;
-        try {
-            const client = await getClient();
-            if (!client) throw new Error('No client');
-            const { error } = await client.from('contacto_nuevos_proveedores').update({ estado: 'contacto_finalizado' }).eq('id', id);
-            if (error) throw error;
-            showNotification(t('guardado'), 'success');
-            loadNuevosProveedores();
-        } catch (e) {
-            showNotification(e.message || t('error'), 'error');
-        }
     }
 
     async function showDetails(presupuestoId) {
@@ -1011,8 +912,6 @@
         if (tabPend) tabPend.textContent = t('pendientes');
         const tabEncurso = document.getElementById('ge-tab-encurso-text');
         if (tabEncurso) tabEncurso.textContent = t('enCurso');
-        const tabNuevosProv = document.getElementById('ge-tab-nuevos-proveedores-text');
-        if (tabNuevosProv) tabNuevosProv.textContent = t('nuevosProveedores');
         document.querySelectorAll('.ge-save-fornecedor').forEach(btn => { btn.textContent = t('guardar'); });
         document.querySelectorAll('.ge-save-encurso').forEach(btn => { btn.textContent = t('guardar'); });
     }
@@ -1029,16 +928,8 @@
                 document.querySelectorAll('.ge-tab').forEach(t => t.classList.remove('ge-tab-active'));
                 tab.classList.add('ge-tab-active');
                 const wrapMain = document.getElementById('ge-table-wrap-main');
-                const wrapNp = document.getElementById('ge-wrap-nuevos-proveedores');
-                if (tabVal === 'nuevos_proveedores') {
-                    if (wrapMain) wrapMain.style.display = 'none';
-                    if (wrapNp) wrapNp.style.display = 'block';
-                    loadNuevosProveedores();
-                } else {
-                    if (wrapMain) wrapMain.style.display = 'block';
-                    if (wrapNp) wrapNp.style.display = 'none';
-                    renderList();
-                }
+                if (wrapMain) wrapMain.style.display = 'block';
+                renderList();
             });
         });
 

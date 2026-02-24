@@ -2784,48 +2784,6 @@ class ProposalsManager {
         if (!btn) return;
         const isAdmin = (window.cachedRole || '').toString().toLowerCase() === 'admin';
         btn.style.display = isAdmin ? 'flex' : 'none';
-        const section = document.getElementById('contactoProveedoresSection');
-        if (section) section.style.display = isAdmin ? 'block' : 'none';
-        if (isAdmin) this.loadContactoProveedoresSection();
-    }
-
-    async loadContactoProveedoresSection() {
-        const section = document.getElementById('contactoProveedoresSection');
-        const loading = document.getElementById('contactoProveedoresLoading');
-        const table = document.getElementById('contactoProveedoresTable');
-        const tbody = document.getElementById('contactoProveedoresBody');
-        if (!section || !tbody) return;
-        if (loading) loading.style.display = 'block';
-        if (table) table.style.display = 'none';
-        try {
-            const { data, error } = await this.supabase.from('contacto_nuevos_proveedores').select('*').order('created_at', { ascending: false });
-            if (loading) loading.style.display = 'none';
-            if (error) {
-                tbody.innerHTML = '<tr><td colspan="5">Erro ao carregar.</td></tr>';
-                if (table) table.style.display = 'table';
-                return;
-            }
-            const tipoLabels = { solicitud_precios: 'Solicitud de precios', solicitud_muestras: 'Solicitud de muestras', solicitud_reunion: 'Solicitud de reunión' };
-            const estadoLabels = { pedidos_nuevos_proveedores: 'Pedidos nuevos proveedores', contacto_finalizado: 'Contacto finalizado' };
-            if (!data || data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5">Nenhum registo.</td></tr>';
-            } else {
-                tbody.innerHTML = data.map(r => `
-                    <tr>
-                        <td>${(r.nombre_proveedor || '').replace(/</g, '&lt;')}</td>
-                        <td>${tipoLabels[r.tipo_pedido] || r.tipo_pedido}</td>
-                        <td>${(r.observaciones || '-').replace(/</g, '&lt;')}</td>
-                        <td>${estadoLabels[r.estado] || r.estado}</td>
-                        <td>${(r.responsable || '-').replace(/</g, '&lt;')}</td>
-                    </tr>
-                `).join('');
-            }
-            if (table) table.style.display = 'table';
-        } catch (e) {
-            if (loading) loading.style.display = 'none';
-            tbody.innerHTML = '<tr><td colspan="5">Erro.</td></tr>';
-            if (table) table.style.display = 'table';
-        }
     }
 
     openRegistroDirectoModal() {
@@ -2844,7 +2802,35 @@ class ProposalsManager {
         document.getElementById('registroDirectoStep2').style.display = 'none';
     }
 
-    registroDirectoSelectType(type) {
+    async loadRegistroDirectoPresupuestosData() {
+        if (!this.supabase) return;
+        try {
+            const { data, error } = await this.supabase.from('presupuestos').select('nombre_comercial, nombre_cliente, numero_cliente');
+            if (error) throw error;
+            const list = data || [];
+            const setCom = new Set();
+            const seenCli = {};
+            const clientes = [];
+            list.forEach(p => {
+                const n = (p.nombre_comercial || '').trim();
+                if (n) setCom.add(n);
+                const nombre = (p.nombre_cliente || '').trim();
+                if (!nombre) return;
+                const key = nombre.toLowerCase();
+                if (seenCli[key]) return;
+                seenCli[key] = true;
+                clientes.push({ nombre_cliente: nombre, numero_cliente: (p.numero_cliente || '').toString().trim() || '0' });
+            });
+            this.registroDirectoComerciales = Array.from(setCom).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+            this.registroDirectoClientesUnicos = clientes.sort((a, b) => a.nombre_cliente.localeCompare(b.nombre_cliente, undefined, { sensitivity: 'base' }));
+        } catch (e) {
+            console.warn('loadRegistroDirectoPresupuestosData:', e);
+            this.registroDirectoComerciales = [];
+            this.registroDirectoClientesUnicos = [];
+        }
+    }
+
+    async registroDirectoSelectType(type) {
         this.registroDirectoCurrentType = type;
         document.getElementById('registroDirectoStep1').style.display = 'none';
         document.getElementById('registroDirectoStep2').style.display = 'block';
@@ -2852,11 +2838,18 @@ class ProposalsManager {
         if (!container) return;
         const lang = this.currentLanguage || 'pt';
         const t = this.getRegistroDirectoLabels(lang);
+        if (type === 'encomienda' || type === 'pedido_muestra' || type === 'pedido_especial') {
+            await this.loadRegistroDirectoPresupuestosData();
+        }
+        if (type === 'contacto_fornecedores') {
+            await this.loadFornecedoresFromProducts();
+        }
         let html = '';
+        const seleccione = t.seleccione || 'Seleccione...';
         if (type === 'encomienda') {
             html = `
-                <div class="form-group"><label class="form-label">${t.comercial} <span class="required">*</span></label><input type="text" id="rd_comercial" class="form-input" placeholder="${t.comercial}"></div>
-                <div class="form-group"><label class="form-label">${t.nombreCliente} <span class="required">*</span></label><input type="text" id="rd_nombre_cliente" class="form-input" required placeholder="${t.nombreCliente}"></div>
+                <div class="form-group"><label class="form-label">${t.comercial} <span class="required">*</span></label><select id="rd_comercial" class="form-input" required><option value="">${seleccione}</option></select></div>
+                <div class="form-group"><label class="form-label">${t.nombreCliente} <span class="required">*</span></label><div class="rd-cliente-wrap"><input type="text" id="rd_nombre_cliente" class="form-input" required placeholder="${t.nombreCliente}" autocomplete="off"><ul id="rd_cliente_suggestions" class="rd-cliente-suggestions" style="display:none;"></ul></div></div>
                 <div class="form-group"><label class="form-label">${t.numeroCliente}</label><input type="text" id="rd_numero_cliente" class="form-input" placeholder="${t.numeroCliente}"></div>
                 <div class="form-group"><label class="form-label">${t.numeroEncomenda}</label><input type="text" id="rd_numero_encomenda" class="form-input" placeholder="${t.numeroEncomenda}"></div>
                 <div class="form-group"><label class="form-label">${t.fechaPedido}</label><input type="date" id="rd_fecha_pedido" class="form-input"></div>
@@ -2864,78 +2857,288 @@ class ProposalsManager {
             `;
         } else if (type === 'pedido_muestra') {
             html = `
-                <div class="form-group"><label class="form-label">${t.comercial} <span class="required">*</span></label><input type="text" id="rd_comercial" class="form-input" required></div>
-                <div class="form-group"><label class="form-label">${t.nombreCliente} <span class="required">*</span></label><input type="text" id="rd_nombre_cliente" class="form-input" required></div>
+                <div class="form-group"><label class="form-label">${t.comercial} <span class="required">*</span></label><select id="rd_comercial" class="form-input" required><option value="">${seleccione}</option></select></div>
+                <div class="form-group"><label class="form-label">${t.nombreCliente} <span class="required">*</span></label><div class="rd-cliente-wrap"><input type="text" id="rd_nombre_cliente" class="form-input" required placeholder="${t.nombreCliente}" autocomplete="off"><ul id="rd_cliente_suggestions" class="rd-cliente-suggestions" style="display:none;"></ul></div></div>
                 <div class="form-group"><label class="form-label">${t.numeroCliente}</label><input type="text" id="rd_numero_cliente" class="form-input"></div>
                 <div class="form-group"><label class="form-label">${t.fechaPedido}</label><input type="date" id="rd_fecha_pedido" class="form-input"></div>
                 <div class="form-group"><label class="form-label">${t.observaciones}</label><textarea id="rd_observaciones" class="form-input" rows="3"></textarea></div>
             `;
         } else if (type === 'pedido_especial') {
             html = `
-                <div class="form-group"><label class="form-label">${t.comercial} <span class="required">*</span></label><input type="text" id="rd_comercial" class="form-input" required></div>
-                <div class="form-group"><label class="form-label">${t.nombreCliente} <span class="required">*</span></label><input type="text" id="rd_nombre_cliente" class="form-input" required></div>
+                <div class="form-group"><label class="form-label">${t.comercial} <span class="required">*</span></label><select id="rd_comercial" class="form-input" required><option value="">${seleccione}</option></select></div>
+                <div class="form-group"><label class="form-label">${t.nombreCliente} <span class="required">*</span></label><div class="rd-cliente-wrap"><input type="text" id="rd_nombre_cliente" class="form-input" required placeholder="${t.nombreCliente}" autocomplete="off"><ul id="rd_cliente_suggestions" class="rd-cliente-suggestions" style="display:none;"></ul></div></div>
                 <div class="form-group"><label class="form-label">${t.numeroCliente}</label><input type="text" id="rd_numero_cliente" class="form-input"></div>
                 <div class="form-group"><label class="form-label">${t.fechaInicioProcurement}</label><input type="date" id="rd_fecha_inicio" class="form-input"></div>
                 <div class="form-group"><label class="form-label">${t.observaciones}</label><textarea id="rd_observaciones" class="form-input" rows="3"></textarea></div>
             `;
-        } else if (type === 'contacto_proveedores') {
-            this.registroDirectoPendingPhotos = [];
-            const fotosLabel = lang === 'es' ? 'Fotos (opcional)' : lang === 'en' ? 'Photos (optional)' : 'Fotos (opcional)';
-            const fotosHint = lang === 'es' ? 'Se mostrarán en Gestión de encomiendas.' : lang === 'en' ? 'They will be visible in Order management.' : 'Serão visíveis na Gestão de encomendas.';
+        } else if (type === 'contacto_fornecedores') {
+            const tcf = this.getContactoFornecedoresLabels(lang);
             html = `
-                <div class="form-group"><label class="form-label">${t.nombreProveedor} <span class="required">*</span></label><input type="text" id="rd_nombre_proveedor" class="form-input" required></div>
-                <div class="form-group"><label class="form-label">${t.tipoPedido} <span class="required">*</span></label>
-                    <select id="rd_tipo_pedido" class="form-input" required>
-                        <option value="">${t.seleccione}</option>
-                        <option value="solicitud_precios">${t.solicitudPrecios}</option>
-                        <option value="solicitud_muestras">${t.solicitudMuestras}</option>
-                        <option value="solicitud_reunion">${t.solicitudReunion}</option>
-                    </select>
-                </div>
-                <div class="form-group"><label class="form-label">${t.observaciones}</label><textarea id="rd_observaciones" class="form-input" rows="3"></textarea></div>
-                <div class="form-group">
-                    <label class="form-label">${fotosLabel}</label>
-                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 6px;">${fotosHint}</p>
-                    <input type="file" id="rd_fotos" class="form-input" accept="image/*" multiple>
-                    <div id="rd_fotos_preview" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;"></div>
-                </div>
+                <div class="form-group"><label class="form-label">${tcf.nomeFornecedor} <span class="required">*</span></label><div class="rd-cliente-wrap"><input type="text" id="rd_nombre_proveedor" class="form-input" placeholder="procurar" value="procurar" autocomplete="off"><ul id="rd_fornecedor_suggestions" class="rd-cliente-suggestions" style="display:none;"></ul></div></div>
+                <div class="form-group"><label class="form-label">${tcf.tipoPedido} <span class="required">*</span></label><select id="rd_tipo_pedido_cf" class="form-input" required><option value="">${tcf.seleccione}</option><option value="solicitud_precios">${tcf.solicitacaoPrecos}</option><option value="reclamacao">${tcf.reclamacao}</option><option value="solicitud_muestras">${tcf.solicitacaoAmostra}</option></select></div>
+                <div class="form-group"><label class="form-label">${t.observaciones}</label><textarea id="rd_observaciones" class="form-input" rows="3" placeholder="${t.observaciones}"></textarea></div>
+                <div class="form-group"><label class="form-label">${tcf.fotosOuDocumentos}</label><p class="rd-hint">${tcf.fotosOuDocumentosHint}</p><input type="file" id="rd_fotos_cf" class="form-input" accept="image/*,.pdf" multiple><div id="rd_fotos_preview_cf" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;"></div></div>
             `;
         }
         container.innerHTML = html;
-        if (type === 'contacto_proveedores') {
-            const fileInput = document.getElementById('rd_fotos');
-            const previewDiv = document.getElementById('rd_fotos_preview');
-            if (fileInput && previewDiv) {
-                const renderPreviews = () => {
-                    previewDiv.innerHTML = '';
-                    (this.registroDirectoPendingPhotos || []).forEach((file, idx) => {
-                        const wrap = document.createElement('div');
-                        wrap.style.cssText = 'position: relative; width: 64px; height: 64px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-color);';
-                        const img = document.createElement('img');
-                        img.src = URL.createObjectURL(file);
-                        img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
-                        const remove = document.createElement('button');
-                        remove.type = 'button';
-                        remove.innerHTML = '<i class="fas fa-times"></i>';
-                        remove.style.cssText = 'position: absolute; top: 2px; right: 2px; width: 22px; height: 22px; border: none; border-radius: 50%; background: rgba(0,0,0,0.6); color: #fff; cursor: pointer; font-size: 10px; display: flex; align-items: center; justify-content: center;';
-                        remove.addEventListener('click', () => {
-                            this.registroDirectoPendingPhotos.splice(idx, 1);
-                            fileInput.value = '';
-                            renderPreviews();
-                        });
-                        wrap.appendChild(img);
-                        wrap.appendChild(remove);
-                        previewDiv.appendChild(wrap);
-                    });
-                };
-                fileInput.addEventListener('change', () => {
-                    const newFiles = Array.from(fileInput.files || []);
-                    this.registroDirectoPendingPhotos = (this.registroDirectoPendingPhotos || []).concat(newFiles);
-                    fileInput.value = '';
-                    renderPreviews();
-                });
-            }
+        if (type === 'encomienda' || type === 'pedido_muestra' || type === 'pedido_especial') {
+            this.setupRegistroDirectoComercialSelect();
+            this.setupRegistroDirectoClientAutocomplete();
+        } else if (type === 'contacto_fornecedores') {
+            this.setupContactoFornecedoresFornecedorAutocomplete();
+            this.setupContactoFornecedoresReclamacaoAviso();
+            this.setupContactoFornecedoresFilePreview();
         }
+    }
+
+    async loadFornecedoresFromProducts() {
+        if (!this.supabase) return;
+        try {
+            const { data, error } = await this.supabase.from('products').select('nombre_fornecedor');
+            if (error) throw error;
+            const set = new Set();
+            (data || []).forEach(p => {
+                const n = (p.nombre_fornecedor || '').trim();
+                if (n) set.add(n);
+            });
+            this.registroDirectoFornecedoresUnicos = Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+        } catch (e) {
+            console.warn('loadFornecedoresFromProducts:', e);
+            this.registroDirectoFornecedoresUnicos = [];
+        }
+    }
+
+    getRegistroDirectoComerciales() {
+        if (this.registroDirectoComerciales && this.registroDirectoComerciales.length) return this.registroDirectoComerciales;
+        if (!this.allProposals || !this.allProposals.length) return [];
+        const set = new Set();
+        this.allProposals.forEach(p => {
+            const n = (p.nombre_comercial || '').trim();
+            if (n) set.add(n);
+        });
+        return Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+    }
+
+    getRegistroDirectoClientesUnicos() {
+        if (this.registroDirectoClientesUnicos && this.registroDirectoClientesUnicos.length) return this.registroDirectoClientesUnicos;
+        if (!this.allProposals || !this.allProposals.length) return [];
+        const seen = {};
+        const out = [];
+        this.allProposals.forEach(p => {
+            const nombre = (p.nombre_cliente || '').trim();
+            if (!nombre) return;
+            const key = nombre.toLowerCase();
+            if (seen[key]) return;
+            seen[key] = true;
+            out.push({ nombre_cliente: nombre, numero_cliente: (p.numero_cliente || '').toString().trim() || '0' });
+        });
+        return out.sort((a, b) => a.nombre_cliente.localeCompare(b.nombre_cliente, undefined, { sensitivity: 'base' }));
+    }
+
+    getContactoFornecedoresLabels(lang) {
+        const labels = {
+            pt: {
+                nomeFornecedor: 'Nome do fornecedor',
+                tipoPedido: 'Tipo de pedido',
+                seleccione: 'Selecione...',
+                solicitacaoPrecos: 'Solicitação de preços',
+                reclamacao: 'Reclamação',
+                solicitacaoAmostra: 'Solicitação de amostra',
+                fotosOuDocumentos: 'Fotos / Documentos (opcional)',
+                fotosOuDocumentosHint: 'Fotos ou documentos PDF. Serão visíveis na Gestão de encomendas.',
+                avisoReclamacao: 'Para este fornecedor é necessário preencher uma ficha para as reclamações.'
+            },
+            es: {
+                nomeFornecedor: 'Nombre del proveedor',
+                tipoPedido: 'Tipo de pedido',
+                seleccione: 'Seleccione...',
+                solicitacaoPrecos: 'Solicitud de precios',
+                reclamacao: 'Reclamación',
+                solicitacaoAmostra: 'Solicitud de muestra',
+                fotosOuDocumentos: 'Fotos / Documentos (opcional)',
+                fotosOuDocumentosHint: 'Fotos o documentos PDF. Serán visibles en Gestión de encomiendas.',
+                avisoReclamacao: 'Para este proveedor es necesario rellenar una ficha para las reclamaciones.'
+            },
+            en: {
+                nomeFornecedor: 'Supplier name',
+                tipoPedido: 'Order type',
+                seleccione: 'Select...',
+                solicitacaoPrecos: 'Price request',
+                reclamacao: 'Claim / Complaint',
+                solicitacaoAmostra: 'Sample request',
+                fotosOuDocumentos: 'Photos / Documents (optional)',
+                fotosOuDocumentosHint: 'Photos or PDF documents. Visible in Order management.',
+                avisoReclamacao: 'For this supplier it is necessary to fill in a form for claims.'
+            }
+        };
+        return labels[lang] || labels.pt;
+    }
+
+    setupContactoFornecedoresFornecedorAutocomplete() {
+        const input = document.getElementById('rd_nombre_proveedor');
+        const suggestionsEl = document.getElementById('rd_fornecedor_suggestions');
+        if (!input || !suggestionsEl) return;
+        const fornecedores = this.registroDirectoFornecedoresUnicos || [];
+        let debounceTimer;
+        const showSuggestions = (list) => {
+            suggestionsEl.innerHTML = '';
+            if (!list.length) { suggestionsEl.style.display = 'none'; return; }
+            list.forEach(nome => {
+                const li = document.createElement('li');
+                li.textContent = nome;
+                li.dataset.nome = nome;
+                suggestionsEl.appendChild(li);
+            });
+            suggestionsEl.style.display = 'block';
+        };
+        const hideSuggestions = () => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => { suggestionsEl.style.display = 'none'; }, 150);
+        };
+        input.addEventListener('input', () => {
+            const q = (input.value || '').trim().toLowerCase();
+            if (!q) { showSuggestions(fornecedores.slice(0, 20)); return; }
+            const filtered = fornecedores.filter(f => f.toLowerCase().includes(q)).slice(0, 15);
+            showSuggestions(filtered);
+        });
+        input.addEventListener('focus', () => {
+            const q = (input.value || '').trim().toLowerCase();
+            const list = q ? fornecedores.filter(f => f.toLowerCase().includes(q)).slice(0, 15) : fornecedores.slice(0, 20);
+            showSuggestions(list);
+        });
+        input.addEventListener('blur', hideSuggestions);
+        suggestionsEl.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            const li = e.target.closest('li');
+            if (!li) return;
+            input.value = li.dataset.nome || '';
+            suggestionsEl.style.display = 'none';
+        });
+    }
+
+    setupContactoFornecedoresReclamacaoAviso() {
+        const tipoSelect = document.getElementById('rd_tipo_pedido_cf');
+        const nomeInput = document.getElementById('rd_nombre_proveedor');
+        if (!tipoSelect || !nomeInput) return;
+        const checkAviso = () => {
+            const tipo = tipoSelect.value;
+            const nome = (nomeInput.value || '').trim().toUpperCase();
+            if (tipo !== 'reclamacao') return;
+            const firedUp = nome.includes('FIRED UP CORPORATION');
+            const northmace = nome.includes('NORTHMACE');
+            if (firedUp || northmace) {
+                const lang = this.currentLanguage || 'pt';
+                const t = this.getContactoFornecedoresLabels(lang);
+                this.showNotification(t.avisoReclamacao, 'warning');
+            }
+        };
+        tipoSelect.addEventListener('change', checkAviso);
+        nomeInput.addEventListener('blur', checkAviso);
+    }
+
+    setupContactoFornecedoresFilePreview() {
+        const fileInput = document.getElementById('rd_fotos_cf');
+        const previewDiv = document.getElementById('rd_fotos_preview_cf');
+        if (!fileInput || !previewDiv) return;
+        this.registroDirectoPendingFilesCf = [];
+        const render = () => {
+            previewDiv.innerHTML = '';
+            (this.registroDirectoPendingFilesCf || []).forEach((file, idx) => {
+                const wrap = document.createElement('div');
+                wrap.style.cssText = 'position:relative;width:64px;height:64px;border-radius:8px;overflow:hidden;border:1px solid var(--border-color,#e5e7eb);display:flex;align-items:center;justify-content:center;font-size:0.7rem;color:#64748b;';
+                if (file.type && file.type.startsWith('image/')) {
+                    const img = document.createElement('img');
+                    img.src = URL.createObjectURL(file);
+                    img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+                    wrap.appendChild(img);
+                } else {
+                    wrap.textContent = 'PDF';
+                }
+                const remove = document.createElement('button');
+                remove.type = 'button';
+                remove.innerHTML = '<i class="fas fa-times"></i>';
+                remove.style.cssText = 'position:absolute;top:2px;right:2px;width:22px;height:22px;border:none;border-radius:50%;background:rgba(0,0,0,0.6);color:#fff;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center;';
+                remove.addEventListener('click', () => {
+                    this.registroDirectoPendingFilesCf.splice(idx, 1);
+                    fileInput.value = '';
+                    render();
+                });
+                wrap.appendChild(remove);
+                previewDiv.appendChild(wrap);
+            });
+        };
+        fileInput.addEventListener('change', () => {
+            const newFiles = Array.from(fileInput.files || []);
+            this.registroDirectoPendingFilesCf = (this.registroDirectoPendingFilesCf || []).concat(newFiles);
+            fileInput.value = '';
+            render();
+        });
+    }
+
+    setupRegistroDirectoComercialSelect() {
+        const sel = document.getElementById('rd_comercial');
+        if (!sel || sel.tagName !== 'SELECT') return;
+        const comerciales = this.getRegistroDirectoComerciales();
+        comerciales.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c;
+            opt.textContent = c;
+            sel.appendChild(opt);
+        });
+    }
+
+    setupRegistroDirectoClientAutocomplete() {
+        const input = document.getElementById('rd_nombre_cliente');
+        const suggestionsEl = document.getElementById('rd_cliente_suggestions');
+        const numeroInput = document.getElementById('rd_numero_cliente');
+        if (!input || !suggestionsEl) return;
+        const clientes = this.getRegistroDirectoClientesUnicos();
+        let debounceTimer;
+        const showSuggestions = (list) => {
+            suggestionsEl.innerHTML = '';
+            if (!list.length) { suggestionsEl.style.display = 'none'; return; }
+            list.forEach(c => {
+                const li = document.createElement('li');
+                li.textContent = c.nombre_cliente;
+                if (c.numero_cliente && c.numero_cliente !== '0') {
+                    const small = document.createElement('small');
+                    small.textContent = ' · ' + c.numero_cliente;
+                    li.appendChild(small);
+                }
+                li.dataset.nombre = c.nombre_cliente;
+                li.dataset.numero = c.numero_cliente || '';
+                suggestionsEl.appendChild(li);
+            });
+            suggestionsEl.style.display = 'block';
+        };
+        const hideSuggestions = () => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => { suggestionsEl.style.display = 'none'; }, 150);
+        };
+        input.addEventListener('input', () => {
+            const q = (input.value || '').trim().toLowerCase();
+            if (!q) { showSuggestions([]); return; }
+            const filtered = clientes.filter(c => c.nombre_cliente.toLowerCase().includes(q)).slice(0, 15);
+            showSuggestions(filtered);
+        });
+        input.addEventListener('focus', () => {
+            const q = (input.value || '').trim().toLowerCase();
+            if (q) {
+                const filtered = clientes.filter(c => c.nombre_cliente.toLowerCase().includes(q)).slice(0, 15);
+                showSuggestions(filtered);
+            }
+        });
+        input.addEventListener('blur', hideSuggestions);
+        suggestionsEl.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            const li = e.target.closest('li');
+            if (!li) return;
+            const nombre = li.dataset.nombre;
+            const numero = li.dataset.numero || '';
+            input.value = nombre;
+            if (numeroInput) numeroInput.value = numero;
+            suggestionsEl.style.display = 'none';
+        });
     }
 
     getRegistroDirectoLabels(lang) {
@@ -3001,58 +3204,50 @@ class ProposalsManager {
         const lang = this.currentLanguage || 'pt';
         const t = this.getRegistroDirectoLabels(lang);
         try {
-            if (type === 'contacto_proveedores') {
-                const nombreProveedor = document.getElementById('rd_nombre_proveedor')?.value?.trim();
-                const tipoPedido = document.getElementById('rd_tipo_pedido')?.value;
-                const observaciones = document.getElementById('rd_observaciones')?.value?.trim() || null;
-                if (!nombreProveedor || !tipoPedido) {
-                    this.showNotification(lang === 'es' ? 'Nombre del proveedor y tipo de pedido son obligatorios.' : 'Nome do fornecedor e tipo de pedido são obrigatórios.', 'error');
+            if (type === 'contacto_fornecedores') {
+                const nomeProveedorRaw = document.getElementById('rd_nombre_proveedor')?.value?.trim();
+                const nombreProveedor = nomeProveedorRaw || 'procurar';
+                const tipoPedido = document.getElementById('rd_tipo_pedido_cf')?.value;
+                if (!tipoPedido) {
+                    this.showNotification(lang === 'es' ? 'El tipo de pedido es obligatorio.' : 'O tipo de pedido é obrigatório.', 'error');
                     return;
                 }
-                let fotosUrls = [];
-                const pendingPhotos = this.registroDirectoPendingPhotos || [];
-                if (pendingPhotos.length > 0) {
-                    const subfolder = 'contacto-proveedores/' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
+                const observaciones = document.getElementById('rd_observaciones')?.value?.trim() || null;
+                const responsable = await this.getCurrentUserName();
+                let urls = [];
+                const pending = this.registroDirectoPendingFilesCf || [];
+                if (pending.length > 0) {
+                    const subfolder = 'contacto-fornecedores/' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
                     let storageClient = this.supabase;
                     try {
                         if (window.SUPABASE_CONFIG && typeof supabase !== 'undefined' && supabase.createClient) {
-                            storageClient = supabase.createClient(window.SUPABASE_CONFIG.url, window.SUPABASE_CONFIG.anonKey, {
-                                auth: { persistSession: true, autoRefreshToken: true },
-                                global: { headers: {} }
-                            });
+                            storageClient = supabase.createClient(window.SUPABASE_CONFIG.url, window.SUPABASE_CONFIG.anonKey, { auth: { persistSession: true, autoRefreshToken: true }, global: { headers: {} } });
                         }
-                    } catch (e) {
-                        storageClient = this.supabase;
-                    }
-                    for (const file of pendingPhotos) {
+                    } catch (e) { storageClient = this.supabase; }
+                    for (const file of pending) {
                         const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
-                        const baseName = (file.name && file.name.trim()) ? file.name.trim() : `foto_${Date.now()}.${ext}`;
+                        const isPdf = (file.type || '').toLowerCase() === 'application/pdf';
+                        const baseName = (file.name && file.name.trim()) ? file.name.trim() : (isPdf ? `doc_${Date.now()}.pdf` : `foto_${Date.now()}.${ext}`);
                         const fileName = await getUniqueStorageFilePathConsultar(storageClient, 'product-images', subfolder, baseName);
-                        const { error: uploadError } = await storageClient.storage
-                            .from('product-images')
-                            .upload(fileName, file, { cacheControl: '3600', upsert: false, contentType: file.type || 'image/jpeg' });
-                        if (uploadError) {
-                            console.warn('Error subiendo foto:', uploadError);
-                            continue;
-                        }
+                        const contentType = isPdf ? 'application/pdf' : (file.type || 'image/jpeg');
+                        const { error: uploadError } = await storageClient.storage.from('product-images').upload(fileName, file, { cacheControl: '3600', upsert: false, contentType });
+                        if (uploadError) { console.warn('Error subiendo archivo:', uploadError); continue; }
                         const { data: urlData } = storageClient.storage.from('product-images').getPublicUrl(fileName);
-                        if (urlData && urlData.publicUrl) fotosUrls.push(urlData.publicUrl);
+                        if (urlData && urlData.publicUrl) urls.push(urlData.publicUrl);
                     }
                 }
-                const responsable = await this.getCurrentUserName();
                 const { error } = await this.supabase.from('contacto_nuevos_proveedores').insert({
                     nombre_proveedor: nombreProveedor,
                     tipo_pedido: tipoPedido,
                     observaciones: observaciones,
                     responsable: responsable || 'Usuario',
                     estado: 'pedidos_nuevos_proveedores',
-                    fotos_urls: fotosUrls.length ? fotosUrls : []
+                    fotos_urls: urls.length ? urls : []
                 });
                 if (error) throw error;
-                this.registroDirectoPendingPhotos = [];
+                this.registroDirectoPendingFilesCf = [];
                 this.showNotification(t.guardado, 'success');
                 this.closeRegistroDirectoModal();
-                this.loadContactoProveedoresSection();
                 return;
             }
             const nombreCliente = document.getElementById('rd_nombre_cliente')?.value?.trim();
@@ -3079,7 +3274,6 @@ class ProposalsManager {
                 nombre_comercial: comercial,
                 numero_cliente: numeroCliente || '0',
                 fecha_inicial: fechaPedido,
-                fecha_propuesta: fechaPedido,
                 estado_propuesta: estadoInicial,
                 codigo_propuesta: codigo,
                 tipo_registro_directo: type === 'pedido_especial' ? 'pedido_especial' : type,
