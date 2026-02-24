@@ -506,23 +506,20 @@
 
     function updateTableHeaderForTab() {
         const thTipo = document.getElementById('ge-th-tipo');
-        const thNum = document.getElementById('ge-th-num');
         const thResp = document.getElementById('ge-th-resp');
         const thForn = document.getElementById('ge-th-forn');
         const thNumEnc = document.getElementById('ge-th-numenc');
         if (thTipo) thTipo.textContent = t('tipo');
-        if (!thNum || !thResp || !thForn) return;
+        if (!thResp || !thForn) return;
         if (thNumEnc) thNumEnc.style.display = 'none';
         if (currentTab === 'encurso') {
-            thNum.textContent = t('fornecedor');
-            thResp.textContent = t('numPropuesta');
+            thResp.textContent = t('fornecedor');
             thForn.textContent = t('responsable');
             if (thNumEnc) {
                 thNumEnc.textContent = t('numEncomenda');
                 thNumEnc.style.display = '';
             }
         } else {
-            thNum.textContent = t('numPropuesta');
             thResp.textContent = t('responsable');
             thForn.textContent = t('fornecedores');
         }
@@ -541,7 +538,6 @@
                 tr.innerHTML = `
                     <td>${escapeHtml(row.tipoLabel || '')}</td>
                     <td>${escapeHtml(row.fornecedor)}</td>
-                    <td>${escapeHtml(row.codigo_propuesta)}</td>
                     <td>${escapeHtml(row.responsavel)}</td>
                     <td>${escapeHtml(row.numero_encomenda || '-')}</td>
                     <td><button type="button" class="ge-btn ge-btn-primary" data-presupuesto-id="${row.presupuesto_id}">${t('detalles')}</button></td>
@@ -559,7 +555,6 @@
                 const btnData = isContacto ? `data-contacto-id="${row.contacto_id}"` : `data-presupuesto-id="${row.presupuesto_id}"`;
                 tr.innerHTML = `
                     <td>${escapeHtml(row.tipoLabel || '')}</td>
-                    <td>${escapeHtml(row.codigo_propuesta)}</td>
                     <td>${escapeHtml(row.responsavel)}</td>
                     <td><div class="ge-tags">${tagsHtml || '<span class="ge-tag">-</span>'}</div></td>
                     <td><button type="button" class="ge-btn ge-btn-primary" ${btnData}>${t('detalles')}</button></td>
@@ -580,7 +575,6 @@
                 const btnData = isContacto ? `data-contacto-id="${row.contacto_id}"` : `data-presupuesto-id="${row.presupuesto_id}"`;
                 tr.innerHTML = `
                     <td>${escapeHtml(row.tipoLabel || '')}</td>
-                    <td>${escapeHtml(row.codigo_propuesta)}</td>
                     <td>${escapeHtml(row.responsavel)}</td>
                     <td><div class="ge-tags">${tagsHtml || '<span class="ge-tag">-</span>'}</div></td>
                     <td><button type="button" class="ge-btn ge-btn-primary" ${btnData}>${t('detalles')}</button></td>
