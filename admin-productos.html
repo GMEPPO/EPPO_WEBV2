@@ -726,7 +726,7 @@
             <!-- Paso 1: Información Básica -->
             <div class="product-form-step" id="productFormStep1" data-step="1">
             <div class="form-section">
-                <h2>Información Básica</h2>
+                <h2 data-i18n="basicInfo">Información Básica</h2>
                 <div class="form-grid">
                     <div class="form-group full-width">
                         <label for="modelo" class="required">Nombre del Producto <span style="color: #ef4444;">*</span></label>
@@ -806,22 +806,22 @@
             <div class="product-form-step" id="productFormStep2" data-step="2" style="display: none;">
             <!-- Descripciones (visibilidad según mercado: PT solo PT, ES solo ES, AMBOS los dos) -->
             <div class="form-section">
-                <h2>Descripciones</h2>
+                <h2 data-i18n="descriptions">Descripciones</h2>
                 <div class="form-grid" id="descripcionesContainer">
                     <div class="form-group full-width" id="descripcionEsContainer">
                         <label for="descripcionEs" class="required" id="descripcionEsLabel">Descripción (Español) <span style="color: #ef4444;">*</span></label>
-                        <textarea id="descripcionEs" name="descripcionEs" placeholder="Describe el producto en español" required></textarea>
+                        <textarea id="descripcionEs" name="descripcionEs" autocomplete="off" placeholder="Describe el producto en español" required style="width: 100%; min-height: 120px;"></textarea>
                     </div>
                     <div class="form-group full-width" id="descripcionPtContainer" style="display: none; width: 100%;">
                         <label for="descripcionPt" class="required" id="descripcionPtLabel">Descrição (Português) <span style="color: #ef4444;">*</span></label>
-                        <textarea id="descripcionPt" name="descripcionPt" placeholder="Descreva o produto em português" required style="width: 100%; min-height: 100px;"></textarea>
+                        <textarea id="descripcionPt" name="descripcionPt" autocomplete="off" placeholder="Descreva o produto em português" required style="width: 100%; min-height: 120px;"></textarea>
                     </div>
                 </div>
             </div>
 
             <!-- Multimedia -->
             <div class="form-section" id="multimediaSectionInStep2">
-                <h2>Multimedia</h2>
+                <h2 data-i18n="multimedia">Multimedia</h2>
                 <div class="form-grid">
                     <div class="form-group full-width">
                         <label for="foto" class="required">Imagen Principal <span style="color: #ef4444;">*</span></label>
@@ -864,7 +864,7 @@
             <div class="product-form-step" id="productFormStep3" data-step="3" style="display: none;">
             <!-- Campos Específicos de Categoría (Filtros) -->
             <div class="form-section" id="categoryFieldsSection" style="display: none;">
-                <h2 id="categoryFieldsTitle">Campos de la Categoría</h2>
+                <h2 id="categoryFieldsTitle" data-i18n="categoryFields">Campos de la Categoría</h2>
                 <div id="categoryFields" class="category-fields">
                     <p style="color: #6b7280; grid-column: 1 / -1;">Cargando campos de la categoría...</p>
                 </div>
@@ -875,7 +875,7 @@
             <div class="product-form-step" id="productFormStep4" data-step="4" style="display: none;">
             <!-- Especificaciones del Producto -->
             <div class="form-section">
-                <h2>Especificaciones del Producto</h2>
+                <h2 data-i18n="specifications">Especificaciones del Producto</h2>
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="plazoEntrega" class="required">Plazo de Entrega <span style="color: #ef4444;">*</span></label>
@@ -924,7 +924,7 @@
 
             <!-- Referencias y Proveedores -->
             <div class="form-section">
-                <h2>Referencias y Proveedores</h2>
+                <h2 data-i18n="referencesSuppliers">Referencias y Proveedores</h2>
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="phcRef">Referencia PHC</label>
@@ -971,7 +971,7 @@
 
             <!-- Referencias y Colores -->
             <div class="form-section">
-                <h2>Referencias y Colores</h2>
+                <h2 data-i18n="referencesColors">Referencias y Colores</h2>
                 <div id="variantesReferenciasContainer">
                     <!-- Se llenará dinámicamente -->
                 </div>
@@ -988,7 +988,7 @@
             <div class="product-form-step" id="productFormStep5" data-step="5" style="display: none;">
             <!-- Precios y Variantes -->
             <div class="form-section">
-                <h2>Precios y Variantes</h2>
+                <h2 data-i18n="variantsPrices">Precios y Variantes</h2>
                 <div id="variantsContainer">
                     <!-- Variante Base (sin variante) -->
                     <div class="variant-section" data-variant-id="base">

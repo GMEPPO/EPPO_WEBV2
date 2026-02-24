@@ -150,6 +150,14 @@ const productFormTranslations = {
         placeholderReference: 'Ex: REF-001-BLK',
         placeholderColor: 'Ex: Preto',
         placeholderVariantDesc: 'Ex: Variante em cor preta',
+        placeholderMinQty: 'Quantidade mín',
+        placeholderMaxQty: 'Quantidade máx',
+        placeholderPriceEur: 'Preço €',
+        variantNamePlaceholder: 'Nome da variante (ex: Logo em 1 gomo)',
+        deliveryLeadTimeLabelVariant: 'Prazo de Entrega (se há stock e só falta personalizar):',
+        deliveryLeadTimePlaceholderVariant: 'Ex: 5-7 dias, 1 semana',
+        deliveryLeadTimeHelpVariant: 'Prazo quando há stock e só falta estampar/personalizar o produto.',
+        removeVariant: 'Eliminar Variante',
         
         // Selects
         selectMarket: 'Selecione um mercado...',
@@ -184,6 +192,8 @@ const productFormTranslations = {
         // Variantes y precios
         basePrice: 'Preço Base (Sem variante)',
         addPriceTier: 'Adicionar Escalão de Preço',
+        duplicateTiersFromBase: 'Duplicar escalões e preços da variante base',
+        duplicateTiersFromFirst: 'Duplicar escalões e preços da 1.ª variante personalizada',
         addCustomVariant: 'Adicionar Variante Personalizada',
         addReferenceVariant: 'Adicionar Variante de Referência',
         
@@ -277,6 +287,14 @@ const productFormTranslations = {
         placeholderReference: 'Ej: REF-001-BLK',
         placeholderColor: 'Ej: Negro',
         placeholderVariantDesc: 'Ej: Variante en color negro',
+        placeholderMinQty: 'Cantidad mín',
+        placeholderMaxQty: 'Cantidad máx',
+        placeholderPriceEur: 'Precio €',
+        variantNamePlaceholder: 'Nombre de la variante (ej: Logo en 1 gomo)',
+        deliveryLeadTimeLabelVariant: 'Plazo de Entrega (si hay stock y solo falta personalizar):',
+        deliveryLeadTimePlaceholderVariant: 'Ej: 5-7 días, 1 semana',
+        deliveryLeadTimeHelpVariant: 'Plazo cuando hay stock y solo falta estampar/personalizar el producto.',
+        removeVariant: 'Eliminar Variante',
         
         // Selects
         selectMarket: 'Selecciona un mercado...',
@@ -311,6 +329,8 @@ const productFormTranslations = {
         // Variantes y precios
         basePrice: 'Precio Base (Sin variante)',
         addPriceTier: 'Agregar Escalón de Precio',
+        duplicateTiersFromBase: 'Duplicar escalones y precios de la variante base',
+        duplicateTiersFromFirst: 'Duplicar escalones y precios de la 1.ª variante personalizada',
         addCustomVariant: 'Agregar Variante Personalizada',
         addReferenceVariant: 'Agregar Variante de Referencia',
         
@@ -366,37 +386,22 @@ function updateProductFormTranslations() {
         pageSubtitle.textContent = currentMode === 'edit' ? t.pageSubtitleEdit : t.pageSubtitle;
     }
     
-    // Actualizar títulos de secciones
-    const sections = document.querySelectorAll('.form-section h2');
+    // Actualizar títulos de secciones por data-i18n (prioritario) y por texto como respaldo
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (key && t[key] != null) el.textContent = t[key];
+    });
+    const sections = document.querySelectorAll('.form-section h2:not([data-i18n])');
     sections.forEach(section => {
         const text = section.textContent.trim();
-        if (text.includes('Información Básica') || text.includes('Informação Básica')) {
-            section.textContent = t.basicInfo;
-        } else if (text.includes('Descripciones') || text.includes('Descrições')) {
-            section.textContent = t.descriptions;
-        } else if (text.includes('Campos de la Categoría') || text.includes('Campos da Categoria')) {
-            section.textContent = t.categoryFields;
-        } else if (text.includes('Multimedia') || text.includes('Multimédia')) {
-            section.textContent = t.multimedia;
-        } else if (text.includes('Especificaciones del Producto') || text.includes('Especificações do Produto')) {
-            section.textContent = t.specifications;
-        } else if (text.includes('Plazo de Entrega') || text.includes('Prazo de Entrega')) {
-            section.textContent = t.deliveryTime;
-        } else if (text.includes('Referencia y Embalaje') || text.includes('Referência e Embalagem')) {
-            section.textContent = t.referencePackaging;
-        } else if (text.includes('Referencias y Proveedores') || text.includes('Referências e Fornecedores')) {
-            section.textContent = t.referencesSuppliers || 'Referências e Fornecedores';
-        } else if (text.includes('Referencias y Colores') || text.includes('Referências e Cores')) {
-            section.textContent = t.referencesColors || 'Referências e Cores';
-        } else if (text.includes('Fornecedor') || text.includes('Fornecedor')) {
-            section.textContent = t.supplierBusiness;
-        } else if (text.includes('Variantes de Referencias') || text.includes('Variantes de Referências')) {
-            section.textContent = t.referenceVariants;
-        } else if (text.includes('Zonas del Producto') || text.includes('Zonas do Produto')) {
-            section.textContent = t.productZones;
-        } else if (text.includes('Variantes y Precios') || text.includes('Variantes e Preços') || text.includes('Precios y Variantes') || text.includes('Preços e Variantes')) {
-            section.textContent = t.variantsPrices;
-        }
+        if (text.includes('Información Básica') || text.includes('Informação Básica')) section.textContent = t.basicInfo;
+        else if (text.includes('Descripciones') || text.includes('Descrições')) section.textContent = t.descriptions;
+        else if (text.includes('Campos de la Categoría') || text.includes('Campos da Categoria')) section.textContent = t.categoryFields;
+        else if (text.includes('Multimedia') || text.includes('Multimédia')) section.textContent = t.multimedia;
+        else if (text.includes('Especificaciones del Producto') || text.includes('Especificações do Produto')) section.textContent = t.specifications;
+        else if (text.includes('Referencias y Proveedores') || text.includes('Referências e Fornecedores')) section.textContent = t.referencesSuppliers;
+        else if (text.includes('Referencias y Colores') || text.includes('Referências e Cores')) section.textContent = t.referencesColors;
+        else if (text.includes('Precios y Variantes') || text.includes('Preços e Variantes')) section.textContent = t.variantsPrices;
     });
     
     // Actualizar textos del botón y modal de colores VACAVALIENTE
@@ -535,8 +540,14 @@ function updateProductFormTranslations() {
     // Actualizar textos de ayuda (small)
     updateHelpTexts(t);
     
-    // Actualizar textos de variantes
+    // Actualizar textos de variantes y re-renderizar sección de precios/variantes en el idioma actual
     updateVariantsTexts(t);
+    if (typeof renderVariants === 'function') renderVariants();
+    
+    // Actualizar barra de progreso (pasos y texto) al idioma actual
+    if (typeof goToProductFormStep === 'function' && typeof productFormCurrentStep !== 'undefined') {
+        goToProductFormStep(productFormCurrentStep);
+    }
     
     // Actualizar checkbox de mostrar en catálogo
     const showInCatalogLabel = document.querySelector('label[for="visibleEnCatalogo"] span');
@@ -566,9 +577,11 @@ function updateLabel(fieldId, text) {
     const label = document.querySelector(`label[for="${fieldId}"]`);
     if (label) {
         const required = label.classList.contains('required');
-        label.textContent = text;
         if (required) {
+            label.innerHTML = text + ' <span style="color: #ef4444;">*</span>';
             label.classList.add('required');
+        } else {
+            label.textContent = text;
         }
     }
 }
@@ -679,6 +692,13 @@ function updateVariantsTexts(t) {
     if (addVariantBtn) {
         addVariantBtn.innerHTML = `<i class="fas fa-plus"></i> ${t.addCustomVariant}`;
     }
+    
+    document.querySelectorAll('.btn-duplicate-tiers').forEach(btn => {
+        btn.innerHTML = `<i class="fas fa-copy"></i> ${t.duplicateTiersFromBase || 'Duplicar escalones y precios desde base'}`;
+    });
+    document.querySelectorAll('.btn-duplicate-tiers-first').forEach(btn => {
+        btn.innerHTML = `<i class="fas fa-copy"></i> ${t.duplicateTiersFromFirst || 'Duplicar desde 1.ª variante personalizada'}`;
+    });
     
     const addRefVariantBtn = document.querySelector('button[onclick="addVarianteReferencia()"]');
     if (addRefVariantBtn) {
@@ -2039,6 +2059,8 @@ function renderVariants() {
         console.warn('⚠️ No se encontró variantsContainer');
         return;
     }
+    const lang = localStorage.getItem('language') || 'pt';
+    const t = productFormTranslations[lang] || productFormTranslations.pt;
     
     console.log('🔄 Renderizando variantes...');
     
@@ -2048,54 +2070,69 @@ function renderVariants() {
     html += `
         <div class="variant-section" data-variant-id="base">
             <div class="variant-header">
-                <h3>Precio Base (Sin variante)</h3>
+                <h3>${t.basePrice}</h3>
             </div>
             <div id="basePriceTiers" class="price-tiers-container">
                 ${renderPriceTiersForVariant('base')}
             </div>
             <button type="button" class="btn btn-add" onclick="addPriceTier('base')">
-                <i class="fas fa-plus"></i> Agregar Escalón de Precio
+                <i class="fas fa-plus"></i> ${t.addPriceTier}
             </button>
         </div>
     `;
     
     // Renderizar variantes personalizadas
+    const customVariantIds = Object.keys(variants).filter(id => id !== 'base');
+    const firstCustomVariantId = customVariantIds[0] || null;
     Object.keys(variants).forEach(variantId => {
         if (variantId === 'base') return;
         
         const variant = variants[variantId];
         if (!variant) return;
+        const showFromFirst = firstCustomVariantId && variantId !== firstCustomVariantId;
+        const variantNamePh = (t.variantNamePlaceholder || 'Nombre de la variante (ej: Logo en 1 gomo)').replace(/"/g, '&quot;');
+        const deliveryLabel = (t.deliveryLeadTimeLabelVariant || 'Plazo de Entrega (si hay stock y solo falta personalizar):').replace(/"/g, '&quot;');
+        const deliveryPh = (t.deliveryLeadTimePlaceholderVariant || 'Ej: 5-7 días').replace(/"/g, '&quot;');
+        const deliveryHelp = (t.deliveryLeadTimeHelpVariant || 'Plazo cuando hay stock...').replace(/"/g, '&quot;');
         
         html += `
             <div class="variant-section" data-variant-id="${variantId}">
                 <div class="variant-header">
-                    <input type="text" placeholder="Nombre de la variante (ej: Logo en 1 gomo)" 
-                           value="${variant.name || ''}" 
+                    <input type="text" placeholder="${variantNamePh}" 
+                           value="${(variant.name || '').replace(/"/g, '&quot;')}" 
                            onchange="variants['${variantId}'].name = this.value"
                            style="flex: 1; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-weight: 600;">
                     <button type="button" class="btn btn-danger" onclick="removeVariant('${variantId}')" style="margin-left: 10px;">
-                        <i class="fas fa-trash"></i> Eliminar Variante
+                        <i class="fas fa-trash"></i> ${t.removeVariant}
                     </button>
                 </div>
                 <div style="margin: 15px 0;">
                     <label style="display: block; margin-bottom: 5px; font-weight: 600; color: var(--text-primary, #111827);">
-                        Plazo de Entrega (si hay stock y solo falta personalizar):
+                        ${deliveryLabel}
                     </label>
                     <input type="text" 
-                           placeholder="Ej: 5-7 días, 1 semana" 
-                           value="${variant.plazo_entrega_personalizado || ''}" 
+                           placeholder="${deliveryPh}" 
+                           value="${(variant.plazo_entrega_personalizado || '').replace(/"/g, '&quot;')}" 
                            onchange="variants['${variantId}'].plazo_entrega_personalizado = this.value"
                            style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px;">
                     <small style="display: block; margin-top: 5px; color: #6b7280; font-size: 0.875rem;">
-                        Plazo cuando hay stock y solo falta estampar/personalizar el producto
+                        ${deliveryHelp}
                     </small>
                 </div>
                 <div id="${variantId}PriceTiers" class="price-tiers-container">
                     ${renderPriceTiersForVariant(variantId)}
                 </div>
                 <button type="button" class="btn btn-add" onclick="addPriceTier('${variantId}')">
-                    <i class="fas fa-plus"></i> Agregar Escalón de Precio
+                    <i class="fas fa-plus"></i> ${t.addPriceTier}
                 </button>
+                <button type="button" class="btn btn-secondary btn-duplicate-tiers" onclick="duplicateTiersFromBase('${variantId}')" style="margin-left: 10px;">
+                    <i class="fas fa-copy"></i> ${t.duplicateTiersFromBase}
+                </button>
+                ${showFromFirst ? `
+                <button type="button" class="btn btn-secondary btn-duplicate-tiers-first" onclick="duplicateTiersFromFirstVariant('${variantId}')" style="margin-left: 10px;">
+                    <i class="fas fa-copy"></i> ${t.duplicateTiersFromFirst}
+                </button>
+                ` : ''}
             </div>
         `;
     });
@@ -2106,14 +2143,19 @@ function renderVariants() {
 function renderPriceTiersForVariant(variantId) {
     const variant = variants[variantId];
     if (!variant || !variant.tiers) return '';
+    const lang = localStorage.getItem('language') || 'pt';
+    const t = productFormTranslations[lang] || productFormTranslations.pt;
+    const phMin = t.placeholderMinQty || 'Cantidad mín';
+    const phMax = t.placeholderMaxQty || 'Cantidad máx';
+    const phPrice = t.placeholderPriceEur || 'Precio €';
     const tiers = variant.tiers || [];
     return tiers.map((tier, index) => `
         <div class="price-tier">
-            <input type="number" placeholder="Cantidad mín" value="${tier.minQty || ''}" min="0"
+            <input type="number" placeholder="${phMin}" value="${tier.minQty || ''}" min="0"
                    onchange="variants['${variantId}'].tiers[${index}].minQty = this.value">
-            <input type="number" placeholder="Cantidad máx" value="${tier.maxQty || ''}" min="0"
+            <input type="number" placeholder="${phMax}" value="${tier.maxQty || ''}" min="0"
                    onchange="variants['${variantId}'].tiers[${index}].maxQty = this.value">
-            <input type="number" step="0.001" placeholder="Precio €" value="${tier.price || ''}" required
+            <input type="number" step="0.001" placeholder="${phPrice}" value="${tier.price || ''}" required
                    onchange="variants['${variantId}'].tiers[${index}].price = this.value">
             ${tiers.length > 1 ? `
                 <button type="button" class="btn btn-danger" onclick="removePriceTier('${variantId}', ${index})">
@@ -2140,6 +2182,46 @@ function removePriceTier(variantId, index) {
         variants[variantId].tiers.splice(index, 1);
         renderVariants();
     }
+}
+
+/** Duplicar escalones y precios de la variante base a la variante indicada */
+function duplicateTiersFromBase(variantId) {
+    if (variantId === 'base') return;
+    const base = variants.base;
+    if (!base || !base.tiers || base.tiers.length === 0) {
+        const lang = localStorage.getItem('language') || 'pt';
+        const msg = lang === 'es' ? 'La variante base no tiene escalones.' : lang === 'pt' ? 'A variante base não tem escalões.' : 'Base variant has no tiers.';
+        alert(msg);
+        return;
+    }
+    const copy = base.tiers.map(t => ({ minQty: t.minQty || '', maxQty: t.maxQty || '', price: t.price != null && t.price !== '' ? t.price : '' }));
+    if (!variants[variantId]) variants[variantId] = { name: '', tiers: [], plazo_entrega_personalizado: '' };
+    variants[variantId].tiers = copy;
+    renderVariants();
+}
+
+/** Duplicar escalones y precios de la primera variante personalizada (segundo bloque) a la variante indicada */
+function duplicateTiersFromFirstVariant(targetVariantId) {
+    if (targetVariantId === 'base') return;
+    const customIds = Object.keys(variants).filter(id => id !== 'base');
+    const firstId = customIds[0];
+    if (!firstId || firstId === targetVariantId) {
+        const lang = localStorage.getItem('language') || 'pt';
+        const msg = lang === 'es' ? 'No hay otra variante personalizada desde la que copiar, o estás en la primera.' : lang === 'pt' ? 'Não há outra variante personalizada para copiar, ou está na primeira.' : 'No other custom variant to copy from.';
+        alert(msg);
+        return;
+    }
+    const source = variants[firstId];
+    if (!source || !source.tiers || source.tiers.length === 0) {
+        const lang = localStorage.getItem('language') || 'pt';
+        const msg = lang === 'es' ? 'La primera variante personalizada no tiene escalones.' : lang === 'pt' ? 'A primeira variante personalizada não tem escalões.' : 'First custom variant has no tiers.';
+        alert(msg);
+        return;
+    }
+    const copy = source.tiers.map(t => ({ minQty: t.minQty || '', maxQty: t.maxQty || '', price: t.price != null && t.price !== '' ? t.price : '' }));
+    if (!variants[targetVariantId]) variants[targetVariantId] = { name: '', tiers: [], plazo_entrega_personalizado: '' };
+    variants[targetVariantId].tiers = copy;
+    renderVariants();
 }
 
 function addVariant() {
@@ -3422,6 +3504,12 @@ function goToProductFormStep(step) {
     const L = STEP_LABELS[lang] || STEP_LABELS.pt;
     const stepperText = document.getElementById('stepperText');
     if (stepperText) stepperText.textContent = (lang === 'es' ? 'Paso ' : lang === 'pt' ? 'Passo ' : 'Step ') + step + (lang === 'es' ? ' de ' : lang === 'pt' ? ' de ' : ' of ') + PRODUCT_FORM_TOTAL_STEPS + ' — ' + (L[step - 1] || '');
+    document.querySelectorAll('.stepper-step').forEach(el => {
+        const n = parseInt(el.dataset.step, 10);
+        const labelSpan = el.querySelector('.stepper-label');
+        if (labelSpan && L[n - 1] != null) labelSpan.textContent = L[n - 1];
+        if (el.title != null) el.title = L[n - 1] || '';
+    });
 
     const prevBtn = document.getElementById('stepPrevBtn');
     const nextBtn = document.getElementById('stepNextBtn');
@@ -3797,10 +3885,11 @@ window.loadProductForEdit = async function(productId) {
         window.editingProductId = productId;
         console.log('✅ window.editingProductId establecido para edición:', window.editingProductId);
         
-        // Actualizar texto del botón de guardar y banner de contexto; volver al paso 1 del stepper
+        // Actualizar texto del botón de guardar, banner, stepper y traducciones del formulario
         updateSaveButtonText();
         updateProductFormContextBanner();
         goToProductFormStep(1);
+        if (typeof updateProductFormTranslations === 'function') updateProductFormTranslations();
         
         // Mostrar botón de eliminar
         const deleteBtn = document.getElementById('deleteProductBtn');
@@ -3881,10 +3970,11 @@ window.loadProductForDuplicate = async function(productId) {
         // No guardar ID (será un nuevo producto)
         window.editingProductId = null;
         
-        // Actualizar texto del botón de guardar y banner de contexto; volver al paso 1 del stepper
+        // Actualizar texto del botón de guardar, banner, stepper y traducciones del formulario
         updateSaveButtonText();
         updateProductFormContextBanner();
         goToProductFormStep(1);
+        if (typeof updateProductFormTranslations === 'function') updateProductFormTranslations();
         
         // Ocultar botón de eliminar
         const deleteBtn = document.getElementById('deleteProductBtn');
