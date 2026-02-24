@@ -61,7 +61,14 @@
             tipoSolicitarAmostrasFornec: 'Solicitar amostras (fornecedores)',
             tipoPropostaNormal: 'Proposta',
             contactoFornecedor: 'Contacto fornecedor',
-            marcarFinalizado: 'Marcar como finalizado'
+            marcarFinalizado: 'Marcar como finalizado',
+            anexosDocumentos: 'Anexos e documentos',
+            historicoEmails: 'Histórico de emails',
+            verDescargar: 'Ver / Descargar',
+            nenhumAnexo: 'Nenhum anexo.',
+            historico: 'Histórico',
+            encomendasConcluidas: 'Encomendas concluídas',
+            contactosFinalizados: 'Contactos finalizados'
         },
         es: {
             loading: 'Cargando...',
@@ -120,7 +127,14 @@
             tipoSolicitarAmostrasFornec: 'Solicitar muestras (proveedores)',
             tipoPropostaNormal: 'Propuesta',
             contactoFornecedor: 'Contacto proveedor',
-            marcarFinalizado: 'Marcar como finalizado'
+            marcarFinalizado: 'Marcar como finalizado',
+            anexosDocumentos: 'Anexos y documentos',
+            historicoEmails: 'Histórico de emails',
+            verDescargar: 'Ver / Descargar',
+            nenhumAnexo: 'Ningún anexo.',
+            historico: 'Histórico',
+            encomendasConcluidas: 'Encomendas concluídas',
+            contactosFinalizados: 'Contactos finalizados'
         },
         en: {
             loading: 'Loading...',
@@ -179,15 +193,23 @@
             tipoSolicitarAmostrasFornec: 'Request samples (suppliers)',
             tipoPropostaNormal: 'Proposal',
             contactoFornecedor: 'Supplier contact',
-            marcarFinalizado: 'Mark as completed'
+            marcarFinalizado: 'Mark as completed',
+            anexosDocumentos: 'Attachments and documents',
+            historicoEmails: 'Email history',
+            verDescargar: 'View / Download',
+            nenhumAnexo: 'No attachments.',
+            historico: 'History',
+            encomendasConcluidas: 'Completed orders',
+            contactosFinalizados: 'Closed contacts'
         }
     };
 
     let supabase = null;
     let lang = 'pt';
     let listData = []; // { source: 'presupuesto'|'contacto_fornecedores', presupuesto_id?, contacto_id?, codigo_propuesta, responsavel, fornecedores: string[], tipoLabel, isEnCurso: boolean }
+    let historicoListData = []; // { source: 'presupuesto'|'contacto_fornecedores', presupuesto_id?, contacto_id?, codigo_propuesta, responsavel, fornecedores: string[], tipoLabel, dataConclusao? }
     let enComendaNumeroMap = {}; // key: presupuesto_id + '|' + fornecedor -> numero_encomenda (para vista en curso)
-    let currentTab = 'pendientes'; // 'pendientes' | 'encurso'
+    let currentTab = 'pendientes'; // 'pendientes' | 'encurso' | 'historico'
 
     function t(key) {
         return (TEXTS[lang] || TEXTS.pt)[key] || key;
@@ -254,11 +276,12 @@
         try {
             const { data: rows, error } = await client
                 .from('gestao_compras')
-                .select('presupuesto_id, nome_fornecedor, presupuesto_articulo_id');
+                .select('presupuesto_id, nome_fornecedor, presupuesto_articulo_id, tipo');
 
             if (error) throw error;
 
             const byPresupuesto = {};
+            const tipoByPresupuesto = {};
             (rows || []).forEach(r => {
                 const id = r.presupuesto_id;
                 if (!byPresupuesto[id]) {
@@ -269,6 +292,9 @@
                     byPresupuesto[id].fornecedores.push(fn);
                 }
                 if (r.presupuesto_articulo_id) byPresupuesto[id].articuloIds.add(r.presupuesto_articulo_id);
+                if (id && r.tipo && typeof r.tipo === 'string' && r.tipo.trim() !== '' && !tipoByPresupuesto[id]) {
+                    tipoByPresupuesto[id] = r.tipo.trim();
+                }
             });
 
             const presupuestoIds = Object.keys(byPresupuesto);
@@ -310,13 +336,17 @@
                 const info = byPresupuesto[p.id] || { fornecedores: [], articuloIds: new Set() };
                 const articuloIds = Array.from(info.articuloIds || []);
                 const isEnCurso = articuloIds.length > 0 && articuloIds.every(aid => (articuloNumeroMap[aid] || '').trim() !== '');
+                const tipoFromGestao = tipoByPresupuesto[p.id];
+                const tipoLabel = (tipoFromGestao && (tipoFromGestao || '').trim() !== '')
+                    ? tipoFromGestao.trim()
+                    : getTipoLabelPresupuesto(p.tipo_registro_directo);
                 return {
                     source: 'presupuesto',
                     presupuesto_id: p.id,
                     codigo_propuesta: p.codigo_propuesta || '-',
                     responsavel: p.responsavel || '-',
                     fornecedores: info.fornecedores,
-                    tipoLabel: getTipoLabelPresupuesto(p.tipo_registro_directo),
+                    tipoLabel: tipoLabel,
                     isEnCurso: !!isEnCurso,
                     estado_propuesta: p.estado_propuesta || ''
                 };
@@ -348,6 +378,74 @@
             updateTabCounts();
         } catch (e) {
             console.error('loadList:', e);
+            showNotification(e.message || t('errorCarga'), 'error');
+            setEmpty(true);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function loadHistorico() {
+        const client = await getClient();
+        if (!client) return;
+        setLoading(true);
+        try {
+            historicoListData = [];
+            const { data: presupuestosConcluidos, error: errPres } = await client
+                .from('presupuestos')
+                .select('id, codigo_propuesta, responsavel, estado_propuesta')
+                .or('estado_propuesta.ilike.%concluida%,estado_propuesta.ilike.%concluída%')
+                .order('updated_at', { ascending: false });
+            if (!errPres && presupuestosConcluidos && presupuestosConcluidos.length > 0) {
+                const ids = presupuestosConcluidos.map(p => p.id);
+                const { data: gcRows } = await client.from('gestao_compras').select('presupuesto_id, nome_fornecedor, tipo').in('presupuesto_id', ids);
+                const tipoByPresupuesto = {};
+                const fornecedoresByPresupuesto = {};
+                (gcRows || []).forEach(r => {
+                    if (r.presupuesto_id && r.tipo && (r.tipo || '').trim() !== '' && !tipoByPresupuesto[r.presupuesto_id]) tipoByPresupuesto[r.presupuesto_id] = r.tipo.trim();
+                    if (r.presupuesto_id && r.nome_fornecedor) {
+                        if (!fornecedoresByPresupuesto[r.presupuesto_id]) fornecedoresByPresupuesto[r.presupuesto_id] = [];
+                        const fn = (r.nome_fornecedor || '').trim();
+                        if (fn && !fornecedoresByPresupuesto[r.presupuesto_id].includes(fn)) fornecedoresByPresupuesto[r.presupuesto_id].push(fn);
+                    }
+                });
+                presupuestosConcluidos.forEach(p => {
+                    historicoListData.push({
+                        source: 'presupuesto',
+                        presupuesto_id: p.id,
+                        codigo_propuesta: p.codigo_propuesta || '-',
+                        responsavel: p.responsavel || '-',
+                        fornecedores: fornecedoresByPresupuesto[p.id] || [],
+                        tipoLabel: tipoByPresupuesto[p.id] || (lang === 'es' ? 'Encomenda Concluída' : lang === 'en' ? 'Order Completed' : 'Encomenda Concluída')
+                    });
+                });
+            }
+            const { data: contactosFinalizados, error: errCf } = await client
+                .from('contacto_nuevos_proveedores')
+                .select('id, nombre_proveedor, tipo_pedido, responsable')
+                .eq('estado', 'contacto_finalizado')
+                .order('updated_at', { ascending: false });
+            if (!errCf && contactosFinalizados && contactosFinalizados.length > 0) {
+                contactosFinalizados.forEach(c => {
+                    historicoListData.push({
+                        source: 'contacto_fornecedores',
+                        contacto_id: c.id,
+                        codigo_propuesta: t('contactoFornecedor') + ' – ' + (c.nombre_proveedor || '-'),
+                        responsavel: c.responsable || '-',
+                        fornecedores: [(c.nombre_proveedor || '').trim()].filter(Boolean),
+                        tipoLabel: getTipoLabelContacto(c.tipo_pedido)
+                    });
+                });
+            }
+            historicoListData.sort((a, b) => {
+                const ac = (a.codigo_propuesta || '').toLowerCase();
+                const bc = (b.codigo_propuesta || '').toLowerCase();
+                return bc.localeCompare(ac);
+            });
+            renderList();
+            updateTabCounts();
+        } catch (e) {
+            console.error('loadHistorico:', e);
             showNotification(e.message || t('errorCarga'), 'error');
             setEmpty(true);
         } finally {
@@ -400,8 +498,10 @@
         const enCursoCount = getEnCursoRowsByFornecedor().length;
         const elP = document.getElementById('ge-tab-pendientes-count');
         const elE = document.getElementById('ge-tab-encurso-count');
+        const elH = document.getElementById('ge-tab-historico-count');
         if (elP) elP.textContent = String(pendientesCount);
         if (elE) elE.textContent = String(enCursoCount);
+        if (elH) elH.textContent = String(historicoListData.length);
     }
 
     function updateTableHeaderForTab() {
@@ -412,6 +512,7 @@
         const thNumEnc = document.getElementById('ge-th-numenc');
         if (thTipo) thTipo.textContent = t('tipo');
         if (!thNum || !thResp || !thForn) return;
+        if (thNumEnc) thNumEnc.style.display = 'none';
         if (currentTab === 'encurso') {
             thNum.textContent = t('fornecedor');
             thResp.textContent = t('numPropuesta');
@@ -424,7 +525,6 @@
             thNum.textContent = t('numPropuesta');
             thResp.textContent = t('responsable');
             thForn.textContent = t('fornecedores');
-            if (thNumEnc) thNumEnc.style.display = 'none';
         }
     }
 
@@ -450,6 +550,26 @@
                 tbody.appendChild(tr);
             });
             setEmpty(rows.length === 0);
+        } else if (currentTab === 'historico') {
+            tbody.innerHTML = '';
+            historicoListData.forEach(row => {
+                const tr = document.createElement('tr');
+                const tagsHtml = (row.fornecedores || []).map(f => `<span class="ge-tag">${escapeHtml(f)}</span>`).join('');
+                const isContacto = row.source === 'contacto_fornecedores';
+                const btnData = isContacto ? `data-contacto-id="${row.contacto_id}"` : `data-presupuesto-id="${row.presupuesto_id}"`;
+                tr.innerHTML = `
+                    <td>${escapeHtml(row.tipoLabel || '')}</td>
+                    <td>${escapeHtml(row.codigo_propuesta)}</td>
+                    <td>${escapeHtml(row.responsavel)}</td>
+                    <td><div class="ge-tags">${tagsHtml || '<span class="ge-tag">-</span>'}</div></td>
+                    <td><button type="button" class="ge-btn ge-btn-primary" ${btnData}>${t('detalles')}</button></td>
+                `;
+                const btn = tr.querySelector('button');
+                if (isContacto) btn.addEventListener('click', () => showDetailsContactoFornecedores(row.contacto_id));
+                else btn.addEventListener('click', () => showDetailsHistoricoPresupuesto(row.presupuesto_id));
+                tbody.appendChild(tr);
+            });
+            setEmpty(historicoListData.length === 0);
         } else {
             const filtered = listData.filter(row => !row.isEnCurso);
             tbody.innerHTML = '';
@@ -612,6 +732,10 @@
         }
     }
 
+    async function showDetailsHistoricoPresupuesto(presupuestoId) {
+        await showDetailsPendientes(presupuestoId);
+    }
+
     async function showDetailsPendientes(presupuestoId) {
         const client = await getClient();
         if (!client) return;
@@ -621,7 +745,13 @@
         if (listView) listView.classList.add('hidden');
         if (detailsView) detailsView.classList.add('active');
 
-        const proposal = listData.find(p => p.presupuesto_id === presupuestoId);
+        let proposal = listData.find(p => p.presupuesto_id === presupuestoId);
+        if (!proposal && presupuestoId) {
+            const { data: presupuestoRow } = await client.from('presupuestos').select('id, codigo_propuesta, responsavel').eq('id', presupuestoId).single();
+            if (presupuestoRow) {
+                proposal = { presupuesto_id: presupuestoRow.id, codigo_propuesta: presupuestoRow.codigo_propuesta || '-', responsavel: presupuestoRow.responsavel || '-' };
+            }
+        }
         const titleEl = document.getElementById('ge-detail-title');
         if (titleEl) titleEl.textContent = (proposal ? proposal.codigo_propuesta : presupuestoId) + ' – ' + t('detalles');
 
@@ -655,7 +785,42 @@
                 byFornecedor[fn].push(gc);
             });
 
-            blocksEl.innerHTML = '';
+            const anexosUrls = [];
+            const historicoUrls = [];
+            (gcRows || []).forEach(gc => {
+                const urls = parseFotosUrls(gc.personalizado_anexos_urls);
+                urls.forEach(u => anexosUrls.push(u));
+                if (gc.historico_emails_url && (gc.historico_emails_url || '').trim() !== '') {
+                    historicoUrls.push(gc.historico_emails_url.trim());
+                }
+            });
+            const anexosUnicos = [...new Set(anexosUrls)];
+            const historicoUnicos = [...new Set(historicoUrls)];
+
+            function linkDoc(url, label) {
+                const safe = escapeAttr(url);
+                return '<a href="' + safe + '" target="_blank" rel="noopener noreferrer" class="ge-btn ge-btn-secondary" style="margin-right:8px;margin-bottom:8px;"><i class="fas fa-external-link-alt"></i> ' + escapeHtml(label || t('verDescargar')) + '</a>';
+            }
+
+            const codigoPropuesta = (proposal && proposal.codigo_propuesta) ? proposal.codigo_propuesta : (presupuestoId ? String(presupuestoId).substring(0, 8) : '-');
+            const responsavelVal = (proposal && proposal.responsavel) ? proposal.responsavel : '-';
+            let numeroPropostaBlock = '<div class="ge-fornecedor-block" style="margin-bottom:1rem;"><div style="display:grid;grid-template-columns:auto 1fr;gap:1rem;align-items:center;"><div><span style="font-size:0.8rem;color:#94a3b8;">' + t('numPropuesta') + '</span><div style="font-weight:600;color:#f1f5f9;font-size:1.1rem;">' + escapeHtml(codigoPropuesta) + '</div></div><div><span style="font-size:0.8rem;color:#94a3b8;">' + t('responsable') + '</span><div style="font-weight:600;color:#f1f5f9;">' + escapeHtml(responsavelVal) + '</div></div></div></div>';
+
+            let anexosHtml = '';
+            if (anexosUnicos.length > 0 || historicoUnicos.length > 0) {
+                anexosHtml = '<div class="ge-fornecedor-block" style="margin-bottom:1.5rem;">';
+                anexosHtml += '<div class="ge-fornecedor-title"><i class="fas fa-paperclip"></i> ' + t('anexosDocumentos') + '</div>';
+                anexosHtml += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">';
+                anexosUnicos.forEach((url, i) => {
+                    anexosHtml += linkDoc(url, t('verDescargar') + ' ' + (i + 1));
+                });
+                historicoUnicos.forEach((url, i) => {
+                    anexosHtml += linkDoc(url, t('historicoEmails') + (historicoUnicos.length > 1 ? ' ' + (i + 1) : ''));
+                });
+                anexosHtml += '</div></div>';
+            }
+
+            blocksEl.innerHTML = numeroPropostaBlock + anexosHtml;
             Object.keys(byFornecedor).sort().forEach(fornecedorName => {
                 const rows = byFornecedor[fornecedorName];
                 const articuloIds = rows.map(r => r.presupuesto_articulo_id).filter(Boolean);
@@ -906,7 +1071,34 @@
                 byFornecedor[fn].push(gc);
             });
 
-            blocksEl.innerHTML = '';
+            const anexosUrlsEc = [];
+            const historicoUrlsEc = [];
+            (gcRows || []).forEach(gc => {
+                const urls = parseFotosUrls(gc.personalizado_anexos_urls);
+                urls.forEach(u => anexosUrlsEc.push(u));
+                if (gc.historico_emails_url && (gc.historico_emails_url || '').trim() !== '') {
+                    historicoUrlsEc.push(gc.historico_emails_url.trim());
+                }
+            });
+            const anexosUnicosEc = [...new Set(anexosUrlsEc)];
+            const historicoUnicosEc = [...new Set(historicoUrlsEc)];
+            let anexosHtmlEc = '';
+            if (anexosUnicosEc.length > 0 || historicoUnicosEc.length > 0) {
+                anexosHtmlEc = '<div class="ge-fornecedor-block" style="margin-bottom:1.5rem;"><div class="ge-fornecedor-title"><i class="fas fa-paperclip"></i> ' + t('anexosDocumentos') + '</div><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">';
+                anexosUnicosEc.forEach((url, i) => {
+                    anexosHtmlEc += '<a href="' + escapeAttr(url) + '" target="_blank" rel="noopener noreferrer" class="ge-btn ge-btn-secondary" style="margin-right:8px;margin-bottom:8px;"><i class="fas fa-external-link-alt"></i> ' + escapeHtml(t('verDescargar') + ' ' + (i + 1)) + '</a>';
+                });
+                historicoUnicosEc.forEach((url, i) => {
+                    anexosHtmlEc += '<a href="' + escapeAttr(url) + '" target="_blank" rel="noopener noreferrer" class="ge-btn ge-btn-secondary" style="margin-right:8px;margin-bottom:8px;"><i class="fas fa-external-link-alt"></i> ' + escapeHtml(t('historicoEmails') + (historicoUnicosEc.length > 1 ? ' ' + (i + 1) : '')) + '</a>';
+                });
+                anexosHtmlEc += '</div></div>';
+            }
+
+            const codigoPropuestaEc = (proposal && proposal.codigo_propuesta) ? proposal.codigo_propuesta : (presupuestoId ? String(presupuestoId).substring(0, 8) : '-');
+            const responsavelEc = (proposal && proposal.responsavel) ? proposal.responsavel : '-';
+            const numeroPropostaBlockEc = '<div class="ge-fornecedor-block" style="margin-bottom:1rem;"><div style="display:grid;grid-template-columns:auto 1fr;gap:1rem;align-items:center;"><div><span style="font-size:0.8rem;color:#94a3b8;">' + t('numPropuesta') + '</span><div style="font-weight:600;color:#f1f5f9;font-size:1.1rem;">' + escapeHtml(codigoPropuestaEc) + '</div></div><div><span style="font-size:0.8rem;color:#94a3b8;">' + t('responsable') + '</span><div style="font-weight:600;color:#f1f5f9;">' + escapeHtml(responsavelEc) + '</div></div></div></div>';
+
+            blocksEl.innerHTML = numeroPropostaBlockEc + anexosHtmlEc;
             Object.keys(byFornecedor).sort().forEach(fornecedorName => {
                 const rows = byFornecedor[fornecedorName];
                 const block = document.createElement('div');
@@ -1055,6 +1247,8 @@
         if (tabPend) tabPend.textContent = t('pendientes');
         const tabEncurso = document.getElementById('ge-tab-encurso-text');
         if (tabEncurso) tabEncurso.textContent = t('enCurso');
+        const tabHistorico = document.getElementById('ge-tab-historico-text');
+        if (tabHistorico) tabHistorico.textContent = t('historico');
         document.querySelectorAll('.ge-save-fornecedor').forEach(btn => { btn.textContent = t('guardar'); });
         document.querySelectorAll('.ge-save-encurso').forEach(btn => { btn.textContent = t('guardar'); });
     }
@@ -1072,6 +1266,10 @@
                 tab.classList.add('ge-tab-active');
                 const wrapMain = document.getElementById('ge-table-wrap-main');
                 if (wrapMain) wrapMain.style.display = 'block';
+                if (tabVal === 'historico') {
+                    loadHistorico();
+                    return;
+                }
                 renderList();
             });
         });
