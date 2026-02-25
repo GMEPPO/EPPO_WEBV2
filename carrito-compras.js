@@ -11193,6 +11193,45 @@ async function sendProposalToSupabase() {
             console.warn('⚠️ No hay artículos para guardar');
         }
 
+        // Webhook n8n: cuando la propuesta incluye producto especial o producto añadido manualmente (solo perfiles comerciales; quien editó = usuario actual)
+        const specialOrManualItems = (cart || []).filter(it => it.type === 'special' || it.isEmptyModule === true);
+        if (specialOrManualItems.length > 0 && presupuesto) {
+            try {
+                const role = window.cachedRole || await window.getUserRole?.();
+                if ((role || '').toString().toLowerCase() === 'comercial') {
+                    const quienEdito = await window.cartManager.getCurrentUserName();
+                    const productosEspeciales = specialOrManualItems.map(it => ({
+                        nombre: (it.name || '').trim() || 'Produto especial',
+                        descripcion: it.description || null,
+                        precio: it.price != null ? Number(it.price) : null,
+                        cantidad: it.quantity != null ? Number(it.quantity) : 1,
+                        observaciones: (it.observations || it.observations_text || '').trim() || null,
+                        plazo_entrega: (it.plazoEntrega || it.plazo_entrega || '').trim() || null,
+                        imagen_url: it.image || null
+                    }));
+                    const origin = typeof window !== 'undefined' && window.location && window.location.origin;
+                    const webhookUrl = origin && origin !== 'null' && !origin.startsWith('file') ? (origin + '/api/follow-up-webhook.json') : null;
+                    if (webhookUrl) {
+                        const ed = window.cartManager && window.cartManager.editingProposalData;
+                        const codigoProp = (presupuesto && presupuesto.codigo_propuesta) || (ed && ed.codigo_propuesta) || '';
+                        const body = {
+                            tipo_alerta: 'propuesta_producto_especial',
+                            evento: 'propuesta_producto_especial',
+                            responsavel: quienEdito || '',
+                            responsable_propuesta: (presupuesto && presupuesto.responsavel) || (ed && ed.responsavel) || '',
+                            numero_propuesta: codigoProp,
+                            codigo_propuesta: codigoProp,
+                            nombre_cliente: clientName || (ed && ed.nombre_cliente) || '',
+                            numero_cliente: clientNumber || (ed && ed.numero_cliente) || '',
+                            presupuesto_id: (presupuesto && presupuesto.id) || null,
+                            productos_especiales: productosEspeciales
+                        };
+                        fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).catch(() => {});
+                    }
+                }
+            } catch (e) { console.warn('Webhook producto especial:', e); }
+        }
+
         // Si se editó una propuesta existente (se alteraron artículos), pasar de "Propuesta Enviada" a "Propuesta en Edición"
         if (window.cartManager.editingProposalId && window.cartManager.supabase) {
             try {

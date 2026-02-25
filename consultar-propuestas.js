@@ -1016,6 +1016,7 @@ class ProposalsManager {
      * Usa proxy (Vercel API route) para evitar CORS al llamar a n8n desde el navegador.
      */
     async sendFollowUpAlertWebhookIfNeeded(proposal, alert, sendToTestForThisBatch = false) {
+        return; // Desactivado: ya no se envían alertas follow-up al webhook
         const payload = {
             numero_propuesta: proposal.codigo_propuesta || (proposal.id ? proposal.id.substring(0, 8).toUpperCase() : ''),
             nombre_cliente: proposal.nombre_cliente || '',
@@ -3744,6 +3745,8 @@ class ProposalsManager {
             this.openEncomendaConcluidaModal(proposal);
         } else if (normalizedStatus === 'rejeitada') {
             this.openRejeitadaModal(proposal);
+        } else if (normalizedStatus === 'proposta_adjudicada') {
+            this.openPropostaAdjudicadaModal(proposal);
         } else {
             // Para otros estados, cambiar directamente
             await this.updateProposalStatus(proposalId, normalizedStatus);
@@ -6030,6 +6033,32 @@ class ProposalsManager {
                 displayDiv.style.display = 'block';
             }
 
+            // Webhook n8n: observaciones/comentarios guardados en detalles (solo para perfiles comerciales; quien editó = usuario actual)
+            try {
+                const role = window.cachedRole || await window.getUserRole?.();
+                if ((role || '').toString().toLowerCase() === 'comercial') {
+                    const proposal = this.allProposals.find(p => p.id === proposalId);
+                    const origin = typeof window !== 'undefined' && window.location && window.location.origin;
+                    const webhookUrl = origin && origin !== 'null' && !origin.startsWith('file') ? (origin + '/api/follow-up-webhook.json') : null;
+                    if (webhookUrl && proposal) {
+                        const quienEdito = await this.getCurrentUserName();
+                        const body = {
+                            tipo_alerta: 'observaciones_propuesta',
+                            evento: 'observaciones_propuesta',
+                            responsavel: quienEdito || nuevoRegistro.usuario || 'Sistema',
+                            responsable_propuesta: proposal.responsavel || '',
+                            numero_propuesta: proposal.codigo_propuesta || '',
+                            codigo_propuesta: proposal.codigo_propuesta || '',
+                            nombre_cliente: proposal.nombre_cliente || '',
+                            numero_cliente: proposal.numero_cliente || '',
+                            contenido_observaciones: newComments || '',
+                            presupuesto_id: proposalId
+                        };
+                        fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).catch(() => {});
+                    }
+                }
+            } catch (e) { console.warn('Webhook observaciones:', e); }
+
             // Mostrar mensaje de éxito
             this.showSuccessMessage(t.success);
 
@@ -7117,6 +7146,85 @@ class ProposalsManager {
         const modal = document.getElementById('changeStatusRejeitadaModal');
         if (modal) {
             modal.classList.remove('active');
+        }
+    }
+
+    openPropostaAdjudicadaModal(proposal) {
+        const modal = document.getElementById('changeStatusPropostaAdjudicadaModal');
+        if (!modal) return;
+        const textarea = document.getElementById('proposta-adjudicada-comentario');
+        if (textarea) textarea.value = '';
+        modal.setAttribute('data-proposal-id', proposal.id);
+        modal.classList.add('active');
+        this.updatePropostaAdjudicadaTranslations();
+    }
+
+    closePropostaAdjudicadaModal() {
+        const modal = document.getElementById('changeStatusPropostaAdjudicadaModal');
+        if (modal) modal.classList.remove('active');
+    }
+
+    updatePropostaAdjudicadaTranslations() {
+        const lang = this.currentLanguage;
+        const t = {
+            pt: { title: 'Proposta Adjudicada', description: 'Adicione um comentário sobre a adjudicação desta proposta (será guardado e enviado ao sistema).', label: 'Comentário:', cancel: 'Cancelar', save: 'Guardar' },
+            es: { title: 'Proposta Adjudicada', description: 'Añada un comentario sobre la adjudicación de esta propuesta (se guardará y se enviará al sistema).', label: 'Comentario:', cancel: 'Cancelar', save: 'Guardar' },
+            en: { title: 'Proposal Awarded', description: 'Add a comment about the award of this proposal (it will be saved and sent to the system).', label: 'Comment:', cancel: 'Cancel', save: 'Save' }
+        };
+        const L = t[lang] || t.pt;
+        const titleEl = document.getElementById('proposta-adjudicada-modal-title');
+        const descEl = document.getElementById('proposta-adjudicada-description');
+        const labelEl = document.getElementById('proposta-adjudicada-comentario-label');
+        const cancelEl = document.getElementById('proposta-adjudicada-cancel-btn');
+        const saveEl = document.getElementById('proposta-adjudicada-save-text');
+        if (titleEl) titleEl.textContent = L.title;
+        if (descEl) descEl.textContent = L.description;
+        if (labelEl) labelEl.textContent = L.label;
+        if (cancelEl) cancelEl.textContent = L.cancel;
+        if (saveEl) saveEl.textContent = L.save;
+    }
+
+    async savePropostaAdjudicadaStatus() {
+        const modal = document.getElementById('changeStatusPropostaAdjudicadaModal');
+        const proposalId = modal?.getAttribute('data-proposal-id');
+        if (!proposalId) return;
+        const proposal = this.allProposals.find(p => p.id === proposalId);
+        if (!proposal) return;
+        const comentarioTexto = (document.getElementById('proposta-adjudicada-comentario')?.value || '').trim();
+        if (!this.supabase) await this.initializeSupabase();
+        try {
+            let currentUserName = 'Sistema';
+            try { currentUserName = await this.getCurrentUserName() || 'Sistema'; } catch (_) {}
+            const fechaStr = new Date().toLocaleString(this.currentLanguage === 'pt' ? 'pt-PT' : this.currentLanguage === 'es' ? 'es-ES' : 'en-GB');
+            const bloqueAdjudicada = `\n\n[Proposta Adjudicada - ${fechaStr} - ${currentUserName}]: ${comentarioTexto || '(sem comentário)'}`;
+            const comentariosActuales = (proposal.comentarios || '').trim();
+            const nuevosComentarios = comentariosActuales + bloqueAdjudicada;
+            await this.updateProposalStatus(proposalId, 'proposta_adjudicada', { comentarios: nuevosComentarios || null });
+            const role = window.cachedRole || await window.getUserRole?.();
+            if ((role || '').toString().toLowerCase() === 'comercial') {
+                const origin = typeof window !== 'undefined' && window.location && window.location.origin;
+                const webhookUrl = origin && origin !== 'null' && !origin.startsWith('file') ? (origin + '/api/follow-up-webhook.json') : null;
+                if (webhookUrl) {
+                    const body = {
+                        tipo_alerta: 'proposta_adjudicada',
+                        evento: 'proposta_adjudicada',
+                        responsavel: currentUserName,
+                        responsable_propuesta: proposal.responsavel || '',
+                        numero_propuesta: proposal.codigo_propuesta || '',
+                        codigo_propuesta: proposal.codigo_propuesta || '',
+                        nombre_cliente: proposal.nombre_cliente || '',
+                        numero_cliente: proposal.numero_cliente || '',
+                        presupuesto_id: proposalId,
+                        comentario_adjudicada: comentarioTexto || ''
+                    };
+                    fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).catch(() => {});
+                }
+            }
+            this.closePropostaAdjudicadaModal();
+            this.resetStatusSelects(proposalId);
+        } catch (error) {
+            console.error('Error al guardar Proposta Adjudicada:', error);
+            this.showNotification(this.currentLanguage === 'es' ? 'Error al guardar.' : this.currentLanguage === 'pt' ? 'Erro ao guardar.' : 'Error saving.', 'error');
         }
     }
 
@@ -9044,6 +9152,18 @@ function saveEncomendadoStatus() {
 function saveRejeitadaStatus() {
     if (window.proposalsManager) {
         window.proposalsManager.saveRejeitadaStatus();
+    }
+}
+
+function closePropostaAdjudicadaModal() {
+    if (window.proposalsManager) {
+        window.proposalsManager.closePropostaAdjudicadaModal();
+    }
+}
+
+function savePropostaAdjudicadaStatus() {
+    if (window.proposalsManager) {
+        window.proposalsManager.savePropostaAdjudicadaStatus();
     }
 }
 
