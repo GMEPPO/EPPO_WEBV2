@@ -1,807 +1,841 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="pt-PT">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EPPO by Groupe GM - Categorías de Productos</title>
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
-    
-    <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="menu-hamburguesa.css">
-    <link rel="stylesheet" href="chat-widget.css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <script src="load-config.js"></script>
-    <script src="supabase-config-universal.js"></script>
-    <script src="translation-system.js"></script>
-    <script src="auth.js"></script>
-    <script src="debug-auth.js"></script>
-    <script src="stock-warning.js"></script>
-    <style>
-        /* Hero Section para Categorías - más compacto */
-        .comparison-hero {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 50px 0;
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        
-        .comparison-hero h1 {
-            font-size: 2.8rem;
-            font-weight: 700;
-            margin-bottom: 12px;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        }
-        
-        .comparison-hero p {
-            font-size: 1.1rem;
-            opacity: 0.9;
-            margin-bottom: 0;
-        }
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="description" content="Chat para consulta do Dicionário de Dados" />
+  <title>Dicionário de Dados - Chat</title>
+  
+  <!-- React y ReactDOM desde CDN -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  
+  <!-- Babel Standalone para compilar JSX -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <!-- Axios para peticiones HTTP -->
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-        /* Mejorar las tarjetas de categorías - formato cuadrado y compacto */
-        .category-card {
-            position: relative;
-            overflow: hidden;
-            border-radius: 16px;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            box-shadow: 0 4px 12px rgba(13,42,60,.15);
-            aspect-ratio: 1 / 1; /* Formato cuadrado */
-            display: block;
-        }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+        'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+        sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      background: #0a0a0a;
+      min-height: 100vh;
+      color: #e0e0e0;
+    }
 
-        .category-card:hover {
-            transform: translateY(-6px) scale(1.02);
-            box-shadow: 0 12px 28px rgba(13,42,60,.22);
-        }
+    #root {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
 
-        .category-card img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            display: block;
-            transition: transform 0.4s ease;
-        }
+    .chat-container {
+      width: 100%;
+      max-width: 900px;
+      height: 90vh;
+      background: #1a1a1a;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+      border: 1px solid #333;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
 
-        .category-card:hover img {
-            transform: scale(1.08);
-        }
+    .chat-header {
+      background: linear-gradient(135deg, #2d1b4e 0%, #1a0d2e 100%);
+      color: #e0e0e0;
+      padding: 20px 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+      border-bottom: 1px solid #333;
+    }
 
-        .category-card .overlay {
-            position: absolute;
-            inset: 0;
-            display: flex;
-            align-items: flex-end;
-            padding: 16px;
-            color: #fff;
-            background: linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,.7) 100%);
-        }
+    .chat-header h1 {
+      font-size: 24px;
+      font-weight: 600;
+      margin: 0;
+    }
 
-        .category-card .title {
-            font-family: "Playfair Display", serif;
-            font-size: 1.5rem;
-            font-weight: 600;
-            text-shadow: 0 2px 6px rgba(0,0,0,0.6);
-            letter-spacing: 0.02em;
-        }
+    .clear-button {
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.3s ease;
+    }
 
-        /* Grid de categorías - máximo 4 por fila */
-        .categories-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-            gap: 28px;
-            margin-top: 30px;
-            max-width: 1200px;
-            margin-left: auto;
-            margin-right: auto;
-            padding: 0 20px;
-        }
+    .clear-button:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: translateY(-1px);
+    }
 
-        /* Limitar a 4 columnas máximo en pantallas grandes */
-        @media (min-width: 1100px) {
-            .categories-grid {
-                grid-template-columns: repeat(4, 1fr);
-            }
-        }
+    .message-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      background: #121212;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
 
-        /* 3 columnas en tablets grandes */
-        @media (max-width: 1099px) and (min-width: 769px) {
-            .categories-grid {
-                grid-template-columns: repeat(3, 1fr);
-            }
-        }
+    .message-list::-webkit-scrollbar {
+      width: 8px;
+    }
 
-        @media (max-width: 768px) {
-            .comparison-hero h1 {
-                font-size: 2.5rem;
-            }
-            
-            .categories-grid {
-                grid-template-columns: repeat(3, 1fr);
-                gap: 12px;
-                max-width: 100%;
-            }
-            
-            .category-card .title {
-                font-size: 0.95rem;
-            }
-        }
-        
-        @media (max-width: 500px) {
-            .categories-grid {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 10px;
-            }
-            
-            .category-card .title {
-                font-size: 0.9rem;
-            }
-            
-            .category-card .overlay {
-                padding: 12px;
-            }
-        }
-    </style>
+    .message-list::-webkit-scrollbar-track {
+      background: #1a1a1a;
+      border-radius: 10px;
+    }
+
+    .message-list::-webkit-scrollbar-thumb {
+      background: #444;
+      border-radius: 10px;
+    }
+
+    .message-list::-webkit-scrollbar-thumb:hover {
+      background: #555;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #888;
+    }
+
+    .empty-icon {
+      font-size: 64px;
+      margin-bottom: 20px;
+    }
+
+    .empty-state h2 {
+      font-size: 24px;
+      margin-bottom: 10px;
+      color: #e0e0e0;
+    }
+
+    .empty-state p {
+      font-size: 16px;
+      line-height: 1.6;
+      margin: 8px 0;
+      color: #aaa;
+    }
+
+    .hint {
+      color: #666;
+      font-size: 14px;
+      font-style: italic;
+    }
+
+    .loading-message {
+      display: flex;
+      justify-content: flex-start;
+      padding: 15px 0;
+    }
+
+    .typing-indicator {
+      display: flex;
+      gap: 5px;
+      padding: 12px 18px;
+      background: #2a2a2a;
+      border-radius: 18px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+      border: 1px solid #333;
+    }
+
+    .typing-indicator span {
+      height: 8px;
+      width: 8px;
+      background: #8b5cf6;
+      border-radius: 50%;
+      display: inline-block;
+      animation: typing 1.4s infinite ease-in-out;
+    }
+
+    .typing-indicator span:nth-child(1) {
+      animation-delay: -0.32s;
+    }
+
+    .typing-indicator span:nth-child(2) {
+      animation-delay: -0.16s;
+    }
+
+    @keyframes typing {
+      0%, 80%, 100% {
+        transform: scale(0.8);
+        opacity: 0.5;
+      }
+      40% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    .message {
+      display: flex;
+      margin-bottom: 10px;
+      animation: fadeIn 0.3s ease-in;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .message-user {
+      justify-content: flex-end;
+    }
+
+    .message-assistant {
+      justify-content: flex-start;
+    }
+
+    .message-content {
+      max-width: 70%;
+      padding: 12px 16px;
+      border-radius: 18px;
+      word-wrap: break-word;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+
+    .message-user .message-content {
+      background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
+      color: #ffffff;
+      border-bottom-right-radius: 4px;
+      border: 1px solid #6d28d9;
+    }
+
+    .message-assistant .message-content {
+      background: #2a2a2a;
+      color: #e0e0e0;
+      border-bottom-left-radius: 4px;
+      border: 1px solid #333;
+    }
+
+    .message-text {
+      line-height: 1.5;
+      white-space: pre-wrap;
+      margin-bottom: 8px;
+    }
+
+    .message-links {
+      margin-top: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .message-documents {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .message-user .message-documents {
+      border-top-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .message-assistant .message-documents {
+      border-top-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .message-documents strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .message-link-button {
+      display: inline-block;
+      color: #ffffff;
+      text-decoration: none;
+      padding: 10px 20px;
+      margin: 0;
+      background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
+      border-radius: 8px;
+      transition: all 0.3s ease;
+      border: 1px solid #6d28d9;
+      font-weight: 500;
+      font-size: 14px;
+      cursor: pointer;
+      box-shadow: 0 2px 5px rgba(124, 58, 237, 0.3);
+    }
+
+    .message-link-button:hover {
+      background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 10px rgba(124, 58, 237, 0.4);
+      border-color: #7c3aed;
+    }
+
+    .message-link-button:active {
+      transform: translateY(0);
+    }
+
+    .message-user .message-link-button {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.2);
+      border-color: rgba(255, 255, 255, 0.3);
+      box-shadow: 0 2px 5px rgba(255, 255, 255, 0.2);
+    }
+
+    .message-user .message-link-button:hover {
+      background: rgba(255, 255, 255, 0.3);
+      border-color: rgba(255, 255, 255, 0.4);
+      box-shadow: 0 4px 10px rgba(255, 255, 255, 0.3);
+    }
+
+    .message-document {
+      display: block;
+      padding: 6px 10px;
+      margin: 4px 0;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      font-size: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .message-user .message-document {
+      background: rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .message-assistant .message-document {
+      color: #d0d0d0;
+    }
+
+    .message-time {
+      font-size: 11px;
+      opacity: 0.7;
+      margin-top: 6px;
+      text-align: right;
+    }
+
+    .message-assistant .message-time {
+      text-align: left;
+    }
+
+    .message-input-container {
+      padding: 20px;
+      background: #1a1a1a;
+      border-top: 1px solid #333;
+    }
+
+    .message-input-form {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .message-input {
+      flex: 1;
+      padding: 12px 18px;
+      border: 2px solid #333;
+      border-radius: 25px;
+      font-size: 16px;
+      outline: none;
+      transition: all 0.3s ease;
+      font-family: inherit;
+      background: #2a2a2a;
+      color: #e0e0e0;
+    }
+
+    .message-input::placeholder {
+      color: #666;
+    }
+
+    .message-input:focus {
+      border-color: #7c3aed;
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
+      background: #2f2f2f;
+    }
+
+    .message-input:disabled {
+      background: #1f1f1f;
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    .send-button {
+      width: 48px;
+      height: 48px;
+      border: none;
+      background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
+      color: white;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 10px rgba(124, 58, 237, 0.4);
+      border: 1px solid #6d28d9;
+    }
+
+    .send-button:hover:not(:disabled) {
+      transform: scale(1.05);
+      box-shadow: 0 6px 15px rgba(124, 58, 237, 0.5);
+      background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+    }
+
+    .send-button:active:not(:disabled) {
+      transform: scale(0.95);
+    }
+
+    .send-button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .send-icon {
+      font-size: 20px;
+      transform: rotate(-90deg);
+    }
+
+    @media (max-width: 768px) {
+      .chat-container {
+        height: 100vh;
+        border-radius: 0;
+      }
+
+      .chat-header {
+        padding: 15px 20px;
+      }
+
+      .chat-header h1 {
+        font-size: 20px;
+      }
+
+      .message-content {
+        max-width: 85%;
+      }
+
+      .message-input-container {
+        padding: 15px;
+      }
+
+      .message-input {
+        font-size: 14px;
+        padding: 10px 15px;
+      }
+
+      .send-button {
+        width: 44px;
+        height: 44px;
+      }
+    }
+  </style>
 </head>
 <body>
-    <!-- Header -->
-    <header class="header">
-        <div class="header-content">
-            <div class="logo">
-                <span>EPPO by <span class="groupe-gm">Groupe GM</span></span>
-            </div>
-            <nav class="nav">
-                <a href="index.html" class="nav-link">Home</a>
-                <a href="productos-dinamico.html" class="nav-link">Products</a>
-                <a href="carrito-compras.html" class="nav-link" id="nav-cart-link">Presupuesto</a>
-                <a href="consultar-propuestas.html" class="nav-link" id="nav-proposals-link">Histórico</a>
-                
-                <!-- Menú hamburguesa -->
-                <div class="menu-dropdown">
-                    <button class="menu-toggle" id="menuToggle" onclick="toggleMenu()" aria-label="Toggle menu">
-                        <i class="fas fa-bars"></i>
-                    </button>
-                    <div class="dropdown-menu" id="dropdownMenu">
-                        <a href="comparar-productos.html" class="dropdown-link">
-                            <i class="fas fa-balance-scale"></i>
-                            <span>Comparar</span>
-                        </a>
-                        <a href="selector-productos.html" class="dropdown-link" id="nav-create-product-link">
-                            <i class="fas fa-edit"></i>
-                            <span id="create-product-text">Creador/Editor</span>
-                        </a>
-                    </div>
-                </div>
-                
-                <div class="language-selector">
-                    <button class="flag-btn active" data-lang="pt" title="Português" onclick="changeLanguage('pt')">
-                        <img src="https://flagcdn.com/w20/pt.png" alt="Portugal">
-                    </button>
-                    <button class="flag-btn" data-lang="es" title="Español" onclick="changeLanguage('es')">
-                        <img src="https://flagcdn.com/w20/es.png" alt="España">
-                    </button>
-                    <button class="flag-btn" data-lang="en" title="English" onclick="changeLanguage('en')">
-                        <img src="https://flagcdn.com/w20/gb.png" alt="Reino Unido">
-                    </button>
-                </div>
-                <button class="theme-toggle" id="theme-toggle" title="Cambiar tema">
-                    <i class="fas fa-sun sun-icon"></i>
-                    <i class="fas fa-moon moon-icon"></i>
-                </button>
-            </nav>
-        </div>
-    </header>
+  <noscript>É necessário ativar o JavaScript para utilizar esta aplicação.</noscript>
+    <div id="root">
+      <div style="color: white; padding: 20px; text-align: center;">
+        A carregar...
+      </div>
+    </div>
 
-    <!-- Hero Section -->
-    <section class="comparison-hero">
-        <div class="container">
-            <h1>Categorias</h1>
-            <p>Descubre nuestra amplia gama de productos para hoteles</p>
-        </div>
-    </section>
+  <script type="text/babel" data-presets="react">
+    const { useState, useRef, useEffect } = React;
 
-    <!-- Main Content -->
-    <main class="main-content">
-        <section class="container" style="padding:32px 0">
-            <div class="categories-grid" id="categoriesGrid">
-                <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
-                    <i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 10px;"></i>
-                    <p>Cargando categorías...</p>
-                </div>
-            </div>
-        </section>
-    </main>
+    // Detectar si estamos en producción (Vercel) o desarrollo local
+    const isProduction = window.location.hostname !== 'localhost' && 
+                        window.location.hostname !== '127.0.0.1' &&
+                        window.location.protocol !== 'file:';
+    
+    // URL del API: usar proxy de Vercel en producción, servidor local en desarrollo
+    const API_URL = isProduction 
+      ? window.location.origin + '/api/chat'  // Usar API route de Vercel (evita CORS)
+      : (window.location.origin === 'null' || window.location.origin === 'file://'
+          ? 'http://localhost:8000/api/chat'  // Servidor local si se abre desde archivo
+          : window.location.origin + '/api/chat');  // Mismo origen si se sirve desde servidor
 
-    <script>
-        // Función para manejar el cambio de tema
-        function toggleTheme() {
-            const html = document.documentElement;
-            const currentTheme = html.getAttribute('data-theme');
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            
-            html.setAttribute('data-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
-            
-            // Actualizar el título del botón
-            const toggleButton = document.getElementById('theme-toggle');
-            toggleButton.setAttribute('title', newTheme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro');
-        }
-
-        // Función para inicializar el tema
-        function initTheme() {
-            const savedTheme = localStorage.getItem('theme');
-            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            const theme = savedTheme || (prefersDark ? 'dark' : 'light');
-            
-            document.documentElement.setAttribute('data-theme', theme);
-            
-            const toggleButton = document.getElementById('theme-toggle');
-            toggleButton.setAttribute('title', theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro');
-        }
-
-        // Event listeners
-        document.addEventListener('DOMContentLoaded', function() {
-            initTheme();
-            
-            const toggleButton = document.getElementById('theme-toggle');
-            if (toggleButton) {
-                toggleButton.addEventListener('click', toggleTheme);
-            }
+    // Componente Message
+    const Message = ({ message }) => {
+      const isUser = message.sender === 'user';
+      const formatTime = (date) => {
+        return new Date(date).toLocaleTimeString('pt-PT', {
+          hour: '2-digit',
+          minute: '2-digit'
         });
+      };
 
-        // Escuchar cambios en las preferencias del sistema
-        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
-            if (!localStorage.getItem('theme')) {
-                const theme = e.matches ? 'dark' : 'light';
-                document.documentElement.setAttribute('data-theme', theme);
-            }
-        });
-
-        // Función para cambiar idioma
-        // NO sobrescribir la función global changeLanguage
-        // En su lugar, escuchar el evento languageChanged para actualizar elementos específicos
-        window.addEventListener('languageChanged', function(event) {
-            const lang = event.detail.language;
-            updatePageContent(lang);
-            updateNavigationButtons(lang);
+      // Función para procesar el texto y extraer enlaces
+      const processText = (text) => {
+        if (!text) return { cleanText: '', links: [] };
+        
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
+        const foundLinks = text.match(urlRegex) || [];
+        
+        // Remover enlaces del texto pero preservar TODOS los saltos de línea y espacios
+        let cleanText = text;
+        foundLinks.forEach(link => {
+          // Reemplazar solo el enlace, mantener todo lo demás (saltos de línea, espacios, etc.)
+          cleanText = cleanText.replace(link, '');
         });
         
-        // Función local solo para inicialización (no sobrescribe la global)
-        function initPageLanguage() {
-            const savedLanguage = localStorage.getItem('language') || 'pt';
-            updatePageContent(savedLanguage);
-            updateNavigationButtons(savedLanguage);
-        }
-
-        // Función para actualizar el contenido de la página según el idioma
-        function updatePageContent(lang) {
-            const translations = {
-                pt: {
-                    title: 'Categorias',
-                    subtitle: 'Descubra nossa ampla gama de produtos para hotéis',
-                    secadores: 'Secadores',
-                    planchado: 'Passar a ferro',
-                    portamaletas: 'Porta-malas'
-                },
-                es: {
-                    title: 'Categorías',
-                    subtitle: 'Descubre nuestra amplia gama de productos para hoteles',
-                    secadores: 'Secadores',
-                    planchado: 'Planchado',
-                    portamaletas: 'Portamaletas'
-                },
-                en: {
-                    title: 'Categories',
-                    subtitle: 'Discover our wide range of products for hotels',
-                    secadores: 'Hair Dryers',
-                    planchado: 'Ironing',
-                    portamaletas: 'Luggage Racks'
-                }
-            };
-
-            const t = translations[lang] || translations.pt;
-            
-            // Actualizar título y subtítulo
-            const titleElement = document.querySelector('.comparison-hero h1');
-            const subtitleElement = document.querySelector('.comparison-hero p');
-            
-            if (titleElement) titleElement.textContent = t.title;
-            if (subtitleElement) subtitleElement.textContent = t.subtitle;
-            
-            // Actualizar títulos de categorías
-            const categoryTitles = document.querySelectorAll('.category-card .title');
-            if (categoryTitles.length >= 3) {
-                categoryTitles[0].textContent = t.secadores;
-                categoryTitles[1].textContent = t.planchado;
-                categoryTitles[2].textContent = t.portamaletas;
-            }
-            
-            // Actualizar botones de navegación
-            updateNavigationButtons(lang);
-        }
+        // NO limpiar espacios ni saltos de línea - preservar el formato original
+        // Solo eliminar espacios múltiples al inicio y final del texto completo
+        cleanText = cleanText.trim();
         
-        // Función para actualizar botones de navegación
-        function updateNavigationButtons(lang) {
-            const navTranslations = {
-                pt: {
-                    budget: 'Orçamento',
-                    history: 'Histórico',
-                    createProduct: 'Criador/Editor',
-                    home: 'Home',
-                    products: 'Products'
-                },
-                es: {
-                    budget: 'Presupuesto',
-                    history: 'Histórico',
-                    createProduct: 'Creador/Editor',
-                    home: 'Home',
-                    products: 'Products'
-                },
-                en: {
-                    budget: 'Budget',
-                    history: 'History',
-                    createProduct: 'Creator/Editor',
-                    home: 'Home',
-                    products: 'Products'
-                }
-            };
-            
-            const t = navTranslations[lang] || navTranslations.pt;
-            
-            // Actualizar enlaces de navegación
-            const cartLink = document.getElementById('nav-cart-link');
-            const proposalsLink = document.getElementById('nav-proposals-link');
-            const createProductLink = document.getElementById('create-product-text');
-            const homeLink = document.querySelector('a[href="index.html"].nav-link');
-            const productsLink = document.querySelector('a[href="productos-dinamico.html"].nav-link');
-            
-            if (cartLink) cartLink.textContent = t.budget;
-            if (proposalsLink) {
-                // Ahora es un link directo, no tiene span dentro
-                proposalsLink.textContent = t.history;
-            }
-            if (createProductLink) createProductLink.textContent = t.createProduct;
-            if (homeLink) homeLink.textContent = t.home;
-            if (productsLink) productsLink.textContent = t.products;
+        return { cleanText, links: foundLinks };
+      };
+
+      const renderLinks = (links) => {
+        if (!links || links.length === 0) return null;
+        
+        return (
+          <div className="message-links">
+            {links.map((link, index) => (
+              <a
+                key={index}
+                href={link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="message-link-button"
+              >
+                🔗 Abrir Ligação
+              </a>
+            ))}
+          </div>
+        );
+      };
+
+      const renderDocuments = (documents) => {
+        if (!documents || documents.length === 0) return null;
+        
+        return (
+          <div className="message-documents">
+            <strong>Documentos:</strong>
+            {documents.map((doc, index) => (
+              <div key={index} className="message-document">
+                📄 {doc}
+              </div>
+            ))}
+          </div>
+        );
+      };
+
+      // Procesar el texto para extraer enlaces
+      const textData = processText(message.text);
+      const allLinks = [...(message.links || []), ...textData.links];
+      const uniqueLinks = [...new Set(allLinks)]; // Eliminar duplicados
+
+      return (
+        <div className={`message ${isUser ? 'message-user' : 'message-assistant'}`}>
+          <div className="message-content">
+            {textData.cleanText && (
+              <div className="message-text">{textData.cleanText}</div>
+            )}
+            {renderLinks(uniqueLinks)}
+            {renderDocuments(message.documents)}
+            <div className="message-time">{formatTime(message.timestamp)}</div>
+          </div>
+        </div>
+      );
+    };
+
+    // Componente MessageList
+    const MessageList = ({ messages, isLoading, messagesEndRef }) => {
+      return (
+        <div className="message-list">
+          {messages.length === 0 && (
+            <div className="empty-state">
+              <div className="empty-icon">📊</div>
+              <h2>Olá! Bem-vindo ao Dicionário de Dados</h2>
+              <p>Pode fazer perguntas para obter a descrição de termos específicos, solicitar a listagem completa de termos ou pedir o registo de novos termos.</p>
+            </div>
+          )}
+          {messages.map((message) => (
+            <Message key={message.id} message={message} />
+          ))}
+          {isLoading && (
+            <div className="loading-message">
+              <div className="typing-indicator">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+      );
+    };
+
+    // Componente MessageInput
+    const MessageInput = ({ onSendMessage, disabled }) => {
+      const [message, setMessage] = useState('');
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        if (message.trim() && !disabled) {
+          onSendMessage(message);
+          setMessage('');
         }
+      };
 
-        // Variables globales
-        let supabaseClient = null;
-        let homeCategories = [];
-
-        // Inicializar Supabase - usar siempre el cliente compartido
-        async function initSupabase() {
-            try {
-                if (supabaseClient) {
-                    return supabaseClient;
-                }
-
-                // Asegurar que universalSupabase esté disponible
-                if (!window.universalSupabase) {
-                    console.warn('universalSupabase no disponible, esperando...');
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                }
-
-                if (window.universalSupabase) {
-                    supabaseClient = await window.universalSupabase.getClient();
-                    if (supabaseClient) {
-                        console.log('✅ Supabase inicializado correctamente');
-                return supabaseClient;
-                    }
-                }
-                
-                console.error('❌ No se pudo inicializar Supabase');
-                return null;
-            } catch (error) {
-                console.error('❌ Error al inicializar Supabase:', error);
-                return null;
-            }
+      const handleKeyPress = (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          handleSubmit(e);
         }
+      };
 
-        // Cargar categorías del home desde Supabase
-        async function loadHomeCategories() {
-            const grid = document.getElementById('categoriesGrid');
-            if (!grid) {
-                console.error('❌ No se encontró el elemento categoriesGrid');
-                return;
-            }
+      return (
+        <div className="message-input-container">
+          <form onSubmit={handleSubmit} className="message-input-form">
+            <input
+              type="text"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Escreva a sua pergunta sobre o dicionário de dados..."
+              className="message-input"
+              disabled={disabled}
+            />
+            <button
+              type="submit"
+              disabled={disabled || !message.trim()}
+              className="send-button"
+            >
+              <span className="send-icon">➤</span>
+            </button>
+          </form>
+        </div>
+      );
+    };
 
-            // Mostrar indicador de carga
-            grid.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-secondary);"><i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 10px;"></i><p>Cargando categorías...</p></div>';
+    // Componente ChatContainer
+    const ChatContainer = () => {
+      const [messages, setMessages] = useState([]);
+      const [isLoading, setIsLoading] = useState(false);
+      const [sessionId] = useState(() => `session-${Date.now()}`);
+      const messagesEndRef = useRef(null);
 
-            console.log('🔄 Inicializando Supabase...');
-            const client = await initSupabase();
-            if (!client) {
-                console.error('❌ No se pudo obtener el cliente de Supabase');
-                grid.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-danger);"><p>Error al conectar con la base de datos. Por favor, recarga la página.</p></div>';
-                return;
-            }
-
-            try {
-                console.log('🔄 Cargando categorías desde Supabase...');
-                console.log('📋 Tabla: categorias_geral');
-                console.log('📋 Filtros: tipo=home, is_active=true');
-                
-                // Cargar solo categorías activas (sin ordenar por número, se ordenarán alfabéticamente)
-                const { data, error } = await client
-                    .from('categorias_geral')
-                    .select('*')
-                    .eq('tipo', 'home')
-                    .eq('is_active', true);
-
-                console.log('📊 Respuesta de Supabase recibida');
-                console.log('📊 Data:', data);
-                console.log('📊 Error:', error);
-
-                if (error) {
-                    console.error('❌ Error de Supabase:', error);
-                    console.error('❌ Código de error:', error.code);
-                    console.error('❌ Mensaje:', error.message);
-                    console.error('❌ Detalles:', error.details);
-                    console.error('❌ Hint:', error.hint);
-                    
-                    // Si es error de permisos RLS, mostrar mensaje específico
-                    if (error.code === '42501' || error.message?.includes('permission denied') || error.message?.includes('row-level security')) {
-                        grid.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-danger);"><p>❌ Error de permisos en la base de datos</p><p style="margin-top: 10px; font-size: 0.9rem;">Necesitas configurar las políticas RLS en Supabase para permitir lectura de categorias_geral a usuarios autenticados.</p><p style="margin-top: 10px; font-size: 0.85rem; color: var(--text-secondary);">Consulta SOLUCION-CATEGORIAS.md para más información.</p></div>';
-                        return;
-                    }
-                    
-                    throw error;
-                }
-
-                homeCategories = data || [];
-                console.log(`✅ Categorías cargadas: ${homeCategories.length}`);
-
-                // Categorías cargadas
-                if (homeCategories.length > 0) {
-                homeCategories.forEach(cat => {
-                    console.log(`  - ${cat.nombre_es}: foto = "${cat.foto}"`);
-                });
-                }
-
-                if (homeCategories.length === 0) {
-                    console.warn('⚠️ No hay categorías disponibles en la base de datos');
-                    grid.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-secondary);"><p>No hay categorías disponibles. Contacta al administrador.</p></div>';
-                    return;
-                }
-
-                // Renderizar categorías
-                console.log('🔄 Renderizando categorías...');
-                renderHomeCategories();
-                console.log('✅ Categorías renderizadas correctamente');
-            } catch (error) {
-                console.error('❌ Error cargando categorías del home:', error);
-                grid.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-danger);"><p>Error al cargar las categorías: ' + (error.message || 'Error desconocido') + '</p><p style="margin-top: 10px; font-size: 0.9rem;">Por favor, recarga la página.</p></div>';
-            }
+      const scrollToBottom = () => {
+        if (messagesEndRef.current) {
+          messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
         }
+      };
 
-        // Renderizar categorías en el grid
-        function renderHomeCategories() {
-            const grid = document.getElementById('categoriesGrid');
-            if (!grid) return;
+      useEffect(() => {
+        scrollToBottom();
+      }, [messages]);
 
-            const currentLang = localStorage.getItem('language') || 'pt';
+      const sendMessage = async (text) => {
+        if (!text.trim() || isLoading) return;
 
-            // Ordenar categorías alfabéticamente según el idioma seleccionado
-            const sortedCategories = [...homeCategories].sort((a, b) => {
-                // Obtener nombre según idioma para comparación
-                const nombreA = currentLang === 'es' ? (a.nombre_es || '') : 
-                               currentLang === 'pt' ? (a.nombre_pt || '') : 
-                               (a.nombre_es || '');
-                const nombreB = currentLang === 'es' ? (b.nombre_es || '') : 
-                               currentLang === 'pt' ? (b.nombre_pt || '') : 
-                               (b.nombre_es || '');
-                
-                // Comparar alfabéticamente (case-insensitive)
-                return nombreA.localeCompare(nombreB, currentLang === 'pt' ? 'pt' : currentLang === 'es' ? 'es' : 'en', { 
-                    sensitivity: 'base',
-                    ignorePunctuation: true 
-                });
-            });
+        const userMessage = {
+          id: Date.now(),
+          text: text,
+          sender: 'user',
+          timestamp: new Date()
+        };
 
-            let html = '';
-            sortedCategories.forEach(category => {
-                // Obtener nombre según idioma
-                const nombre = currentLang === 'es' ? category.nombre_es : 
-                              currentLang === 'pt' ? category.nombre_pt : 
-                              category.nombre_es; // Fallback a español
+        setMessages(prev => [...prev, userMessage]);
+        setIsLoading(true);
 
-                // URL de destino con parámetro de categoría para filtrar automáticamente
-                const categorySlug = category.nombre_es.toLowerCase()
-                    .normalize('NFD')
-                    .replace(/[\u0300-\u036f]/g, '')
-                    .replace(/\s+/g, '-')
-                    .replace(/[^a-z0-9-]/g, '');
-                const href = `productos-dinamico.html?category=${categorySlug}`;
+        try {
+          // Enviar mensaje a través del servidor local (evita CORS)
+          const payload = {
+            message: text,
+            sessionId: sessionId,
+            timestamp: new Date().toISOString()
+          };
 
-                // Debug: mostrar en consola qué foto se está usando
-                console.log('Categoría:', category.nombre_es, 'Foto en BD:', category.foto);
+          // Usar API URL (ya incluye /chat)
+          const response = await axios.post(API_URL, payload, {
+            timeout: 300000, // 5 minutos de timeout (300 segundos)
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
 
-                // Validar que la foto existe y no está vacía
-                const fotoUrl = category.foto && category.foto.trim() ? category.foto.trim() : null;
+          // Procesar respuesta de n8n
+          let responseText = '';
+          let links = [];
+          let documents = [];
 
-                html += `
-                    <a class="category-card" href="${href}" data-category-id="${category.id}" data-category-name="${category.nombre_es}" data-foto-url="${fotoUrl || ''}">
-                        ${fotoUrl ? 
-                            `<img src="${fotoUrl}" alt="${nombre}" 
-                                onerror="console.error('❌ Error cargando imagen para categoría ${category.nombre_es}:', '${fotoUrl}'); this.style.display='none';" 
-                                onload="console.log('✅ Imagen cargada correctamente para ${category.nombre_es}:', '${fotoUrl}');"
-                                loading="lazy"
-                                data-foto-original="${fotoUrl}">` :
-                            `<div style="width: 100%; height: 100%; background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%); display: flex; align-items: center; justify-content: center; color: #9ca3af;">
-                                <i class="fas fa-image" style="font-size: 2.5rem;"></i>
-                            </div>`
-                        }
-                        <div class="overlay">
-                            <div class="title">${nombre}</div>
-                        </div>
-                    </a>
-                `;
-            });
-
-            grid.innerHTML = html || '<div style="text-align: center; padding: 40px; color: var(--text-secondary);"><p>No hay categorías disponibles</p></div>';
+          if (typeof response.data === 'string') {
+            responseText = response.data;
+          } else if (response.data) {
+            responseText = response.data.message || 
+                          response.data.response || 
+                          response.data.text ||
+                          response.data.body ||
+                          JSON.stringify(response.data);
             
-            // Agregar event listeners para depuración al hacer clic en las categorías
-            document.querySelectorAll('.category-card').forEach(card => {
-                card.addEventListener('click', function(e) {
-                    const categoryId = this.getAttribute('data-category-id');
-                    const categoryName = this.getAttribute('data-category-name');
-                    const fotoUrl = this.getAttribute('data-foto-url');
-                    const img = this.querySelector('img');
-                    const imgSrc = img ? img.src : 'No hay imagen';
-                    const imgDataOriginal = img ? img.getAttribute('data-foto-original') : 'No hay imagen';
-                    
-                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-                    console.log('🖼️ INFORMACIÓN DE LA CATEGORÍA CLICKEADA:');
-                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-                    console.log('📝 Nombre:', categoryName);
-                    console.log('🆔 ID:', categoryId);
-                    console.log('💾 Foto en Base de Datos (data-foto-url):', fotoUrl);
-                    console.log('🖼️ Foto Original (data-foto-original):', imgDataOriginal);
-                    console.log('🌐 URL Actual de la Imagen (img.src):', imgSrc);
-                    console.log('🔍 ¿Coinciden?', fotoUrl === imgSrc || imgDataOriginal === imgSrc ? '✅ SÍ' : '❌ NO');
-                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-                });
-            });
+            links = response.data.links || extractLinks(responseText);
+            documents = response.data.documents || extractDocumentReferences(responseText);
+          } else {
+            responseText = 'Resposta recebida';
+          }
+
+          if (links.length === 0) {
+            links = extractLinks(responseText);
+          }
+          if (documents.length === 0) {
+            documents = extractDocumentReferences(responseText);
+          }
+
+          const assistantMessage = {
+            id: Date.now() + 1,
+            text: responseText,
+            sender: 'assistant',
+            timestamp: new Date(),
+            links: links,
+            documents: documents
+          };
+
+          setMessages(prev => [...prev, assistantMessage]);
+          setIsLoading(false);
+        } catch (error) {
+          console.error('Error al enviar mensaje:', error);
+          let errorText = 'Desculpe, ocorreu um erro ao processar a sua mensagem.';
+          
+          if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
+            errorText = '⚠️ O servidor local não está em execução.\n\n' +
+                       'Por favor:\n' +
+                       '1. Faça duplo clique em "servidor_simple.bat"\n' +
+                       '2. Ou execute: python servidor_simple.py\n' +
+                       '3. Depois recarregue esta página';
+          } else if (error.code === 'ECONNABORTED' || error.message?.includes('timeout') || error.message?.includes('Timeout')) {
+            errorText = '⏱️ Tempo de espera esgotado.\n\nO n8n não respondeu em 5 minutos.\n\nPossíveis causas:\n1. O workflow está processando uma tarefa muito demorada\n2. O n8n está sobrecarregado\n3. Problemas de rede\n\nPor favor, tente novamente em alguns instantes.';
+          } else if (error.response) {
+            errorText = `Erro ${error.response.status}: ${error.response.statusText}`;
+          } else if (error.message) {
+            errorText = `Erro: ${error.message}`;
+          }
+
+          const errorMessage = {
+            id: Date.now() + 1,
+            text: errorText,
+            sender: 'assistant',
+            timestamp: new Date(),
+            isError: true
+          };
+          setMessages(prev => [...prev, errorMessage]);
+          setIsLoading(false);
         }
+      };
 
-        // Actualizar categorías cuando cambia el idioma
-        function updatePageContent(lang) {
-            const translations = {
-                pt: {
-                    title: 'Categorias',
-                    subtitle: 'Descubra nossa ampla gama de produtos para hotéis'
-                },
-                es: {
-                    title: 'Categorías',
-                    subtitle: 'Descubre nuestra amplia gama de productos para hoteles'
-                },
-                en: {
-                    title: 'Categories',
-                    subtitle: 'Discover our wide range of products for hotels'
-                }
-            };
+      // Función para extraer enlaces del texto
+      const extractLinks = (text) => {
+        if (!text) return [];
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
+        return text.match(urlRegex) || [];
+      };
 
-            const t = translations[lang] || translations.pt;
-            
-            // Actualizar título y subtítulo
-            const titleElement = document.querySelector('.comparison-hero h1');
-            const subtitleElement = document.querySelector('.comparison-hero p');
-            
-            if (titleElement) titleElement.textContent = t.title;
-            if (subtitleElement) subtitleElement.textContent = t.subtitle;
-            
-            // Re-renderizar categorías con el nuevo idioma
-            if (homeCategories.length > 0) {
-                renderHomeCategories();
-            }
-            
-            // Actualizar botones de navegación
-            updateNavigationButtons(lang);
+      // Función para extraer referencias a documentos
+      const extractDocumentReferences = (text) => {
+        if (!text) return [];
+        const docRegex = /(?:documento|archivo|file|descargar|download)[\s:]+([^\s]+\.(pdf|doc|docx|txt|zip|rar))/gi;
+        const matches = [];
+        let match;
+        while ((match = docRegex.exec(text)) !== null) {
+          matches.push(match[1]);
         }
+        return matches;
+      };
 
-        /**
-         * Función para actualizar el contador del carrito en el botón de navegación
-         * Versión standalone que no requiere carrito-compras.js
-         */
-        function updateCartBadgeStandalone() {
-            try {
-                // Leer el carrito desde localStorage
-                const savedCart = localStorage.getItem('eppo_cart');
-                let cartCount = 0;
-                
-                if (savedCart) {
-                    try {
-                        const cart = JSON.parse(savedCart);
-                        cartCount = cart ? cart.length : 0;
-                    } catch (e) {
-                        cartCount = 0;
-                    }
-                }
-                
-                // Buscar el botón en todas las páginas
-                const cartLink = document.getElementById('nav-cart-link');
-                
-                if (cartLink) {
-                    // Remover badge existente si existe
-                    const existingBadge = cartLink.querySelector('.cart-badge');
-                    if (existingBadge) {
-                        existingBadge.remove();
-                    }
-                    
-                    // Agregar badge solo si hay items en el carrito
-                    if (cartCount > 0) {
-                        const badge = document.createElement('span');
-                        badge.className = 'cart-badge';
-                        // Agregar clase para números de dos dígitos
-                        if (cartCount > 9) {
-                            badge.classList.add('double-digit');
-                        }
-                        badge.textContent = cartCount;
-                        cartLink.appendChild(badge);
-                    }
-                }
-            } catch (error) {
-                console.error('Error actualizando badge del carrito:', error);
-            }
+      const clearChat = () => {
+        setMessages([]);
+      };
+
+      return (
+        <div className="chat-container">
+          <div className="chat-header">
+            <h1>📊 Dicionário de Dados</h1>
+            <button onClick={clearChat} className="clear-button">
+              Limpar Conversa
+            </button>
+          </div>
+          <MessageList 
+            messages={messages} 
+            isLoading={isLoading}
+            messagesEndRef={messagesEndRef}
+          />
+          <MessageInput onSendMessage={sendMessage} disabled={isLoading} />
+        </div>
+      );
+    };
+
+    // Componente App
+    const App = () => {
+      return (
+        <div className="App">
+          <ChatContainer />
+        </div>
+      );
+    };
+
+    // Renderizar cuando todo esté listo (solo una vez)
+    let rootInstance = null;
+    let isRendered = false;
+
+    function initApp() {
+      if (isRendered) return; // Evitar múltiples renderizados
+      
+      const rootElement = document.getElementById('root');
+      if (rootElement && window.React && window.ReactDOM) {
+        try {
+          if (!rootInstance) {
+            rootInstance = ReactDOM.createRoot(rootElement);
+            isRendered = true;
+          }
+          rootInstance.render(React.createElement(App));
+        } catch (error) {
+          console.error('Erro ao renderizar:', error);
+          if (rootElement) {
+            rootElement.innerHTML = '<div style="color: white; padding: 20px;">Erro: ' + error.message + '</div>';
+          }
         }
+      } else {
+        console.error('React não está disponível');
+        if (rootElement) {
+          rootElement.innerHTML = '<div style="color: white; padding: 20px;">Erro: React não foi carregado. Verifique a consola.</div>';
+        }
+      }
+    }
 
-        // Inicializar idioma y cargar categorías al cargar la página
-        document.addEventListener('DOMContentLoaded', async function() {
-            console.log('🚀 DOMContentLoaded - Iniciando carga de index.html');
-            
-            // Si por rewrite se sirvió index para /reset-password, ir a la página dedicada (sin layout)
-            const pathname = (window.location.pathname || '').toLowerCase();
-            if (pathname.includes('reset-password')) {
-                window.location.replace(window.location.origin + '/reset-password.html' + (window.location.search || '') + (window.location.hash || ''));
-                return;
-            }
-            
-            // Actualizar contador del carrito al cargar la página
-            // Intentar usar la función global si está disponible, sino usar la standalone
-            if (typeof window.updateCartBadge === 'function') {
-                window.updateCartBadge();
-            } else {
-                updateCartBadgeStandalone();
-            }
-            
-            // También actualizar después de un pequeño delay para asegurar que el DOM esté completamente cargado
-            setTimeout(() => {
-                if (typeof window.updateCartBadge === 'function') {
-                    window.updateCartBadge();
-                } else {
-                    updateCartBadgeStandalone();
-                }
-            }, 500);
-            
-            // Actualizar el contador cuando la ventana recibe foco (cuando el usuario vuelve a esta página)
-            window.addEventListener('focus', function() {
-                if (typeof window.updateCartBadge === 'function') {
-                    window.updateCartBadge();
-                } else {
-                    updateCartBadgeStandalone();
-                }
-            });
-            
-            // Escuchar cambios en localStorage (para cuando se actualiza el carrito desde otra pestaña)
-            window.addEventListener('storage', function(e) {
-                if (e.key === 'eppo_cart') {
-                    if (typeof window.updateCartBadge === 'function') {
-                        window.updateCartBadge();
-                    } else {
-                        updateCartBadgeStandalone();
-                    }
-                }
-            });
-            
-            // Verificar si ya estamos en proceso de redirección (evitar bucles)
-            const redirectFlag = sessionStorage.getItem('auth_redirecting');
-            if (redirectFlag === 'true') {
-                console.log('⚠️ Redirección en curso, esperando...');
-                sessionStorage.removeItem('auth_redirecting');
-                // Esperar un momento antes de verificar de nuevo
-                await new Promise(resolve => setTimeout(resolve, 1000));
-            }
-            
-            // Verificar autenticación primero (pero no bloquear si hay problemas)
-            console.log('🔐 Verificando autenticación...');
-            let isAuth = false;
-            
-            // Si estamos usando file://, mostrar mensaje claro
-            if (window.location.protocol === 'file:') {
-                console.error('❌ PROBLEMA: Estás usando file:// protocol');
-                console.error('❌ Supabase NO puede autenticar usuarios con file://');
-                console.error('');
-                console.error('💡 SOLUCIÓN: Usa un servidor HTTP local');
-                console.error('   1. Abre PowerShell o CMD en esta carpeta');
-                console.error('   2. Ejecuta: python -m http.server 8000');
-                console.error('   3. Abre en el navegador: http://localhost:8000');
-                console.error('');
-                console.warn('⚠️ Continuando sin autenticación (funcionalidad limitada)');
-            }
-            
-            // Esperar un momento para que authManager se inicialice completamente
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            // Verificar autenticación de forma optimizada
-            try {
-                if (window.authManager && typeof window.authManager.isAuthenticated === 'function') {
-                    // La función isAuthenticated ya tiene su propio timeout interno
-                    isAuth = await window.authManager.isAuthenticated();
-                } else {
-                    console.warn('⚠️ authManager no disponible');
-                    isAuth = false;
-                }
-                
-                if (window.location.protocol === 'file:') {
-                    console.log('🔐 Estado: No autenticado (esperado con file://)');
-                } else {
-                    console.log('🔐 Estado de autenticación:', isAuth ? '✅ Autenticado' : '⚠️ No autenticado');
-                }
-                
-                // Solo redirigir si NO estamos usando file:// y NO está autenticado
-                // Y solo si no hay una bandera de redirección activa
-                if (!isAuth && window.location.protocol !== 'file:') {
-                    // No redirigir si estamos en login o en reset-password (flujo de recuperación sin sesión)
-                    const currentPath = window.location.pathname || window.location.href;
-                    if (!currentPath.includes('login.html') && !currentPath.includes('reset-password')) {
-                        // Verificar que no hayamos redirigido recientemente
-                        const lastRedirect = sessionStorage.getItem('last_auth_redirect');
-                        const now = Date.now();
-                        if (!lastRedirect || (now - parseInt(lastRedirect)) > 2000) {
-                            console.log('❌ Usuario no autenticado, redirigiendo a login...');
-                            sessionStorage.setItem('auth_redirecting', 'true');
-                            sessionStorage.setItem('last_auth_redirect', now.toString());
-                            window.location.href = 'login.html';
-                            return;
-                        } else {
-                            console.warn('⚠️ Redirección reciente detectada, evitando bucle');
-                        }
-                    }
-                }
-            } catch (error) {
-                if (window.location.protocol !== 'file:') {
-                    console.error('⚠️ Error verificando autenticación (continuando):', error);
-                }
-                // Continuar aunque haya error en autenticación
-            }
-            
-            console.log('✅ Continuando con la carga de la página...');
-
-            // El rol se consultará directamente desde Supabase cuando sea necesario
-            // (en toggleMenu() cuando el usuario intente abrir el menú)
-            // No necesitamos cargar el rol aquí
-            if (isAuth) {
-                console.log('✅ [index.html] Usuario autenticado, el rol se consultará cuando sea necesario');
-            }
-
-            // Configurar idioma (no bloquea)
-            // La función global changeLanguage se inicializa automáticamente desde translation-system.js
-            // Solo inicializar elementos específicos de esta página
-            initPageLanguage();
-            
-            // Inicializar Supabase y cargar categorías del home
-            // IMPORTANTE: Esto se ejecuta INMEDIATAMENTE, sin esperar a rolesManager
-            console.log('🔄 Iniciando carga de categorías (sin bloqueo por roles)...');
-            try {
-            await initSupabase();
-            await loadHomeCategories();
-            } catch (error) {
-                console.error('❌ Error inicializando Supabase o cargando categorías:', error);
-                console.error('❌ Stack trace:', error.stack);
-                const grid = document.getElementById('categoriesGrid');
-                if (grid) {
-                    grid.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-danger);"><p>Error al cargar las categorías. Por favor, recarga la página.</p><p style="margin-top: 10px; font-size: 0.9rem;">Error: ' + (error.message || 'Desconocido') + '</p></div>';
-                }
-            }
-        });
-    </script>
-    <script src="menu-hamburguesa.js"></script>
-    <script src="theme-common.js"></script>
-    <script src="chat-widget.js"></script>
+    // Intentar renderizar cuando el DOM esté listo (solo una vez)
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(initApp, 100);
+      });
+    } else {
+      // Si ya está cargado, esperar un poco para que Babel compile
+      setTimeout(initApp, 100);
+    }
+  </script>
 </body>
 </html>
+
