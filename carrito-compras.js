@@ -11200,14 +11200,15 @@ async function sendProposalToSupabase() {
                 const role = window.cachedRole || await window.getUserRole?.();
                 if ((role || '').toString().toLowerCase() === 'comercial') {
                     const quienEdito = await window.cartManager.getCurrentUserName();
-                    const productosEspeciales = specialOrManualItems.map(it => ({
-                        nombre: (it.name || '').trim() || 'Produto especial',
-                        descripcion: it.description || null,
-                        precio: it.price != null ? Number(it.price) : null,
-                        cantidad: it.quantity != null ? Number(it.quantity) : 1,
-                        observaciones: (it.observations || it.observations_text || '').trim() || null,
-                        plazo_entrega: (it.plazoEntrega || it.plazo_entrega || '').trim() || null,
-                        imagen_url: it.image || null
+                    // Dados dos produtos especiais em português de Portugal para o webhook
+                    const artigosEspeciais = specialOrManualItems.map(it => ({
+                        nome: (it.name || '').trim() || 'Produto especial',
+                        descricao: it.description || null,
+                        preco: it.price != null ? Number(it.price) : null,
+                        quantidade: it.quantity != null ? Number(it.quantity) : 1,
+                        observacoes: (it.observations || it.observations_text || '').trim() || null,
+                        prazo_entrega: (it.plazoEntrega || it.plazo_entrega || '').trim() || null,
+                        imagem_url: it.image || null
                     }));
                     const origin = typeof window !== 'undefined' && window.location && window.location.origin;
                     const webhookUrl = origin && origin !== 'null' && !origin.startsWith('file') ? (origin + '/api/follow-up-webhook.json') : null;
@@ -11224,7 +11225,7 @@ async function sendProposalToSupabase() {
                             nombre_cliente: clientName || (ed && ed.nombre_cliente) || '',
                             numero_cliente: clientNumber || (ed && ed.numero_cliente) || '',
                             presupuesto_id: (presupuesto && presupuesto.id) || null,
-                            productos_especiales: productosEspeciales
+                            artigos_especiais: artigosEspeciais
                         };
                         fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).catch(() => {});
                     }
