@@ -1784,10 +1784,10 @@ class ProposalsManager {
                             <label style="display: block; font-size: 0.875rem; font-weight: 600; color: var(--text-primary, #111827); margin-bottom: 6px;">Responsável</label>
                             <select id="responsavel-${proposal.id}" style="width: 100%; padding: 8px; border: 1px solid var(--bg-gray-300, #d1d5db); border-radius: 6px; font-size: 0.875rem;">
                                 <option value="">Selecionar...</option>
-                                <option value="Sonia" ${proposal.responsavel === 'Sonia' ? 'selected' : ''}>Sonia</option>
-                                <option value="Ana" ${proposal.responsavel === 'Ana' ? 'selected' : ''}>Ana</option>
-                                <option value="Eduardo" ${proposal.responsavel === 'Eduardo' ? 'selected' : ''}>Eduardo</option>
-                                <option value="Miguel" ${proposal.responsavel === 'Miguel' ? 'selected' : ''}>Miguel</option>
+                                <option value="Ana Fernandes" ${(proposal.responsavel === 'Ana Fernandes' || proposal.responsavel === 'Ana') ? 'selected' : ''}>Ana Fernandes</option>
+                                <option value="Eduardo Marin" ${(proposal.responsavel === 'Eduardo Marin' || proposal.responsavel === 'Eduardo') ? 'selected' : ''}>Eduardo Marin</option>
+                                <option value="Miguel Viera" ${(proposal.responsavel === 'Miguel Viera' || proposal.responsavel === 'Miguel') ? 'selected' : ''}>Miguel Viera</option>
+                                <option value="Sonia Alves" ${(proposal.responsavel === 'Sonia Alves' || proposal.responsavel === 'Sonia') ? 'selected' : ''}>Sonia Alves</option>
                             </select>
                         </div>
                         <div class="form-group">
