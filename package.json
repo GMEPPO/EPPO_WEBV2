@@ -1,27 +1,19 @@
 {
-  "name": "web-interna",
+  "name": "chat-web-ia",
   "version": "1.0.0",
-  "description": "Sistema de gestión de propuestas y productos",
-  "main": "index.html",
+  "description": "Aplicación web de chat con asistente de IA",
+  "main": "server/index.js",
   "scripts": {
-    "dev": "npx http-server -p 8000",
-    "start": "npx http-server -p 8000"
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "cd server && node index.js",
+    "client": "cd client && npm start",
+    "install-all": "npm install && cd server && npm install && cd ../client && npm install"
   },
-  "keywords": [
-    "propuestas",
-    "productos",
-    "supabase"
-  ],
+  "keywords": ["chat", "ai", "assistant"],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "devDependencies": {
-    "http-server": "^14.1.1"
+    "concurrently": "^8.2.2"
   }
 }
-
-
-
-
-
-
 
