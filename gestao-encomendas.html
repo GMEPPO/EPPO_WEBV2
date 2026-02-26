@@ -124,6 +124,10 @@
                         <i class="fas fa-history"></i> <span id="ge-tab-historico-text">Histórico</span><span class="ge-tab-count" id="ge-tab-historico-count"></span>
                     </button>
                 </div>
+                <div class="ge-search-wrap" id="ge-search-wrap" style="margin-bottom: 1rem; position: relative; max-width: 400px;">
+                    <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-secondary, #94a3b8); pointer-events: none; z-index: 1;"></i>
+                    <input type="text" id="ge-search-input" class="ge-search-input" placeholder="Buscar por proposta, responsável, fornecedor, tipo..." autocomplete="off" style="width: 100%; padding: 8px 12px 8px 36px; border-radius: 8px; border: 1px solid var(--border-color, #334155); background: var(--bg-secondary, #1e293b); color: var(--text-primary, #f1f5f9); font-size: 0.9rem; box-sizing: border-box;">
+                </div>
                 <div class="ge-table-wrap" id="ge-table-wrap-main">
                     <div id="ge-loading" class="ge-loading"><i class="fas fa-spinner fa-spin"></i> <span id="ge-loading-text">A carregar...</span></div>
                     <div id="ge-empty" class="ge-empty" style="display: none;"><span id="ge-empty-text">Nenhuma encomenda.</span></div>

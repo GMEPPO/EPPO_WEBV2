@@ -989,7 +989,17 @@ class ProposalsManager {
             return { isAlert: false, is15dOverdue: false, isFutureFuOverdue: false, isAguardaDossierAlert: false, isAguardaPagamentoAlert: false };
         }
 
-        const isAguardaDossierAlert = isAguardaAprovacaoDossier;
+        // Para "Aguarda aprovação de dossier", alerta (fondo rojo) solo si llevan 15+ días sin alterar el estado
+        let isAguardaDossierAlert = false;
+        if (isAguardaAprovacaoDossier) {
+            const fechaRef = proposal.fecha_ultima_actualizacion || proposal.fecha_inicial || proposal.fecha_envio_propuesta || proposal.fecha_propuesta;
+            if (fechaRef) {
+                const dRef = new Date(fechaRef);
+                dRef.setHours(0, 0, 0, 0);
+                const daysSinceUpdate = Math.floor((today - dRef) / (24 * 60 * 60 * 1000));
+                isAguardaDossierAlert = daysSinceUpdate >= 15;
+            }
+        }
         const isAguardaPagamentoAlert = isAguardaPagamento;
 
         const fechaEnvio = proposal.fecha_envio_propuesta || proposal.fecha_propuesta || proposal.fecha_inicial;
@@ -4227,9 +4237,9 @@ class ProposalsManager {
 
         const lang = this.currentLanguage || 'pt';
         const t = {
-            pt: { subtitle: 'Preencha todos os campos obrigatórios: quantidade, preço de custo e percentagem de desconto (0% mínimo). Sem PHC: Referência (fornecedor), Designação, Peso, etc. Se não indicar Referência PHC, quem gerir o pedido terá de criar o código.', photo: 'Foto', phc: 'Nº PHC', fornecedor: 'Fornecedor', qty: 'Quantidade a encomendar', ref: 'Referência (fornecedor)', refPhcOpcional: 'Referência PHC (opcional)', refPhcOpcionalHint: 'Se preencher, quem gere o pedido usa este código. Se deixar vazio, terá de criar o código a partir dos outros dados.', designacao: 'Designação', peso: 'Peso', qtyCaixa: 'Quantidade por caixa', personalizado: 'Personalizado', personalizadoSim: 'Sim', personalizadoNao: 'Não', observacoes: 'Observações (personalizado)', dossierSection: 'Dossier / Logotipo', associateDossier: 'Incluir dossier da proposta neste artigo', hasLogo: 'Este artigo tem logotipo', precoCusto: 'Preço de custo', percDesconto: 'Percentagem de desconto (%)', addArtigoExterno: 'Adicionar artigo externo', artigoExterno: 'Artigo externo', remover: 'Remover', artigosExternos: 'Artigos externos (fora da proposta)', valorTransportes: 'Valor de transportes (opcional)', temCliche: 'Tem cliché?', temClicheSim: 'Sim', temClicheNao: 'Não', precoCliche: 'Preço cliché', anexosLogotipoArte: 'Logotipo / Arte final / Dossier (máx. 4 anexos)', anexosHint: 'Imagem, PDF ou outro ficheiro. Máximo 4.', urlOpcional: 'URL (opcional)', historicoEmailsOutlook: 'Histórico de emails Outlook com o fornecedor', historicoEmailsHint: 'Anexe .msg, .eml ou exportação de emails', docsDaProposta: 'Documentos já na proposta', selecionarParaAssociar: 'Selecionar para associar a este produto' },
-            es: { subtitle: 'Rellene todos los campos obligatorios: cantidad, precio de costo y porcentaje de descuento (mín. 0%). Sin PHC: Referencia (fornecedor), Designación, Peso, etc. Si no indica Referencia PHC, quien gestione el pedido deberá crear el código.', photo: 'Foto', phc: 'Nº PHC', fornecedor: 'Fornecedor', qty: 'Cantidad a encomendar', ref: 'Referencia (fornecedor)', refPhcOpcional: 'Referencia PHC (opcional)', refPhcOpcionalHint: 'Si rellena, quien gestione el pedido usará este código. Si lo deja vacío, deberá crear el código a partir del resto de datos.', designacao: 'Designación', peso: 'Peso', qtyCaixa: 'Cantidad por caja', personalizado: 'Personalizado', personalizadoSim: 'Sí', personalizadoNao: 'No', observacoes: 'Observaciones (personalizado)', dossierSection: 'Dossier / Logotipo', associateDossier: 'Incluir dossier de la propuesta en este artículo', hasLogo: 'Este artículo tiene logotipo', precoCusto: 'Precio de costo', percDesconto: 'Porcentaje de descuento (%)', addArtigoExterno: 'Añadir artículo externo', artigoExterno: 'Artículo externo', remover: 'Quitar', artigosExternos: 'Artículos externos (fuera de la propuesta)', valorTransportes: 'Valor de transportes (opcional)', temCliche: '¿Tiene clisé?', temClicheSim: 'Sí', temClicheNao: 'No', precoCliche: 'Precio clisé', anexosLogotipoArte: 'Logotipo / Arte final / Dossier (máx. 4 anexos)', anexosHint: 'Imagen, PDF u otro archivo. Máximo 4.', urlOpcional: 'URL (opcional)', historicoEmailsOutlook: 'Histórico de emails Outlook con el proveedor', historicoEmailsHint: 'Adjunte .msg, .eml o exportación de emails', docsDaProposta: 'Documentos ya en la propuesta', selecionarParaAssociar: 'Seleccionar para asociar a este producto' },
-            en: { subtitle: 'Fill all required fields: quantity, cost price and discount percentage (min 0%). No PHC: Reference (supplier), Designation, Weight, etc. If you leave PHC reference empty, the person managing the order will need to create the code.', photo: 'Photo', phc: 'PHC No.', fornecedor: 'Supplier', qty: 'Qty to order', ref: 'Reference (supplier)', refPhcOpcional: 'PHC reference (optional)', refPhcOpcionalHint: 'If filled, the person managing the order will use this code. If left empty, they must create the code from the other data.', designacao: 'Designation', peso: 'Weight', qtyCaixa: 'Qty per box', personalizado: 'Custom', personalizadoSim: 'Yes', personalizadoNao: 'No', observacoes: 'Notes (custom)', dossierSection: 'Dossier / Logo', associateDossier: 'Include proposal dossier with this item', hasLogo: 'This item has a logo', precoCusto: 'Cost price', percDesconto: 'Discount (%)', addArtigoExterno: 'Add external article', artigoExterno: 'External article', remover: 'Remove', artigosExternos: 'External articles (not in proposal)', valorTransportes: 'Transport value (optional)', temCliche: 'Has cliché?', temClicheSim: 'Yes', temClicheNao: 'No', precoCliche: 'Cliché price', anexosLogotipoArte: 'Logo / Final art / Dossier (max 4 attachments)', anexosHint: 'Image, PDF or other file. Max 4.', urlOpcional: 'URL (optional)', historicoEmailsOutlook: 'Outlook email history with supplier', historicoEmailsHint: 'Attach .msg, .eml or email export', docsDaProposta: 'Documents already in proposal', selecionarParaAssociar: 'Select to associate with this product' }
+            pt: { subtitle: 'Preencha todos os campos obrigatórios: quantidade, preço de custo e percentagem de desconto (0% mínimo). Sem PHC: Referência (fornecedor), Designação, Peso, etc. Se não indicar Referência PHC, quem gerir o pedido terá de criar o código.', photo: 'Foto', phc: 'Nº PHC', fornecedor: 'Fornecedor', qty: 'Quantidade a encomendar', ref: 'Referência (fornecedor)', refPhcOpcional: 'Referência PHC (opcional)', refPhcOpcionalHint: 'Se preencher, quem gere o pedido usa este código. Se deixar vazio, terá de criar o código a partir dos outros dados.', designacao: 'Designação', peso: 'Peso', qtyCaixa: 'Quantidade por caixa', personalizado: 'Personalizado', personalizadoSim: 'Sim', personalizadoNao: 'Não', observacoes: 'Observações (personalizado)', dossierSection: 'Dossier / Logotipo', associateDossier: 'Incluir dossier da proposta neste artigo', hasLogo: 'Este artigo tem logotipo', precoCusto: 'Preço de custo', percDesconto: 'Percentagem de desconto (%)', addArtigoExterno: 'Adicionar artigo externo', artigoExterno: 'Artigo externo', remover: 'Remover', artigosExternos: 'Artigos externos (fora da proposta)', valorTransportes: 'Valor de transportes (opcional)', temCliche: 'Tem cliché?', temClicheSim: 'Sim', temClicheNao: 'Não', precoCliche: 'Preço cliché', anexosLogotipoArte: 'Logotipo / Arte final / Dossier (máx. 4 anexos)', anexosHint: 'Imagem, PDF ou outro ficheiro. Máximo 4.', urlOpcional: 'URL (opcional)', historicoEmailsOutlook: 'Histórico de emails Outlook com o fornecedor', historicoEmailsHint: 'Anexe .msg, .eml ou exportação de emails', docsDaProposta: 'Documentos já na proposta', selecionarParaAssociar: 'Selecionar para associar a este produto', ver: 'Ver' },
+            es: { subtitle: 'Rellene todos los campos obligatorios: cantidad, precio de costo y porcentaje de descuento (mín. 0%). Sin PHC: Referencia (fornecedor), Designación, Peso, etc. Si no indica Referencia PHC, quien gestione el pedido deberá crear el código.', photo: 'Foto', phc: 'Nº PHC', fornecedor: 'Fornecedor', qty: 'Cantidad a encomendar', ref: 'Referencia (fornecedor)', refPhcOpcional: 'Referencia PHC (opcional)', refPhcOpcionalHint: 'Si rellena, quien gestione el pedido usará este código. Si lo deja vacío, deberá crear el código a partir del resto de datos.', designacao: 'Designación', peso: 'Peso', qtyCaixa: 'Cantidad por caja', personalizado: 'Personalizado', personalizadoSim: 'Sí', personalizadoNao: 'No', observacoes: 'Observaciones (personalizado)', dossierSection: 'Dossier / Logotipo', associateDossier: 'Incluir dossier de la propuesta en este artículo', hasLogo: 'Este artículo tiene logotipo', precoCusto: 'Precio de costo', percDesconto: 'Porcentaje de descuento (%)', addArtigoExterno: 'Añadir artículo externo', artigoExterno: 'Artículo externo', remover: 'Quitar', artigosExternos: 'Artículos externos (fuera de la propuesta)', valorTransportes: 'Valor de transportes (opcional)', temCliche: '¿Tiene clisé?', temClicheSim: 'Sí', temClicheNao: 'No', precoCliche: 'Precio clisé', anexosLogotipoArte: 'Logotipo / Arte final / Dossier (máx. 4 anexos)', anexosHint: 'Imagen, PDF u otro archivo. Máximo 4.', urlOpcional: 'URL (opcional)', historicoEmailsOutlook: 'Histórico de emails Outlook con el proveedor', historicoEmailsHint: 'Adjunte .msg, .eml o exportación de emails', docsDaProposta: 'Documentos ya en la propuesta', selecionarParaAssociar: 'Seleccionar para asociar a este producto', ver: 'Ver' },
+            en: { subtitle: 'Fill all required fields: quantity, cost price and discount percentage (min 0%). No PHC: Reference (supplier), Designation, Weight, etc. If you leave PHC reference empty, the person managing the order will need to create the code.', photo: 'Photo', phc: 'PHC No.', fornecedor: 'Supplier', qty: 'Qty to order', ref: 'Reference (supplier)', refPhcOpcional: 'PHC reference (optional)', refPhcOpcionalHint: 'If filled, the person managing the order will use this code. If left empty, they must create the code from the other data.', designacao: 'Designation', peso: 'Weight', qtyCaixa: 'Qty per box', personalizado: 'Custom', personalizadoSim: 'Yes', personalizadoNao: 'No', observacoes: 'Notes (custom)', dossierSection: 'Dossier / Logo', associateDossier: 'Include proposal dossier with this item', hasLogo: 'This item has a logo', precoCusto: 'Cost price', percDesconto: 'Discount (%)', addArtigoExterno: 'Add external article', artigoExterno: 'External article', remover: 'Remove', artigosExternos: 'External articles (not in proposal)', valorTransportes: 'Transport value (optional)', temCliche: 'Has cliché?', temClicheSim: 'Yes', temClicheNao: 'No', precoCliche: 'Cliché price', anexosLogotipoArte: 'Logo / Final art / Dossier (max 4 attachments)', anexosHint: 'Image, PDF or other file. Max 4.', urlOpcional: 'URL (optional)', historicoEmailsOutlook: 'Outlook email history with supplier', historicoEmailsHint: 'Attach .msg, .eml or email export', docsDaProposta: 'Documents already in proposal', selecionarParaAssociar: 'Select to associate with this product', ver: 'View' }
         };
         const L = t[lang] || t.pt;
         if (subtitleEl) subtitleEl.textContent = L.subtitle;
@@ -4293,7 +4303,7 @@ class ProposalsManager {
                     <div style="grid-column: 1 / -1;"><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.observacoes}</label><textarea id="ge-obs-${articuloId}" class="form-input" style="width:100%;padding:6px;min-height:60px;" placeholder=""></textarea></div>
                     <div id="ge-personalizado-detalhes-${articuloId}" style="grid-column: 1 / -1; display: none; margin-top: 8px; padding: 12px; background: var(--bg-white,#fff); border-radius: 8px; border: 1px solid var(--primary, #3b82f6);">
                         <div style="font-size: 0.8rem; font-weight: 600; color: var(--primary); margin-bottom: 10px;">${L.anexosLogotipoArte}</div>
-                        ${uniquePropostaDocs.length > 0 ? '<div style="margin-bottom:12px;"><div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:6px;">' + (L.docsDaProposta || 'Documentos já na proposta') + ' <span style="font-weight:normal;">(' + (L.selecionarParaAssociar || 'selecionar para associar') + ')</span></div><div style="display:flex;flex-direction:column;gap:8px;">' + uniquePropostaDocs.map((url, i) => { const safeUrl = (url || '').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); const name = (url || '').split('/').pop() || ('Doc ' + (i + 1)); const safeName = (name || '').replace(/</g, '&lt;').replace(/>/g, '&gt;'); return '<label style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--bg-gray-100,#f1f5f9);border-radius:8px;cursor:pointer;border:1px solid var(--bg-gray-200);"><input type="checkbox" class="ge-proposta-doc-cb" id="ge-proposta-doc-' + articuloId + '-' + i + '" data-doc-url="' + safeUrl + '">' + buildPropostaDocPreview(url) + '<span style="font-size:0.8rem;color:var(--text-primary);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + safeName + '</span></label>'; }).join('') + '</div></div>' : ''}
+                        ${uniquePropostaDocs.length > 0 ? '<div style="margin-bottom:12px;"><div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:6px;">' + (L.docsDaProposta || 'Documentos já na proposta') + ' <span style="font-weight:normal;">(' + (L.selecionarParaAssociar || 'selecionar para associar') + ')</span></div><div style="display:flex;flex-direction:column;gap:8px;">' + uniquePropostaDocs.map((url, i) => { const safeUrl = (url || '').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); const name = (url || '').split('/').pop() || ('Doc ' + (i + 1)); const safeName = (name || '').replace(/</g, '&lt;').replace(/>/g, '&gt;'); return '<label style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--bg-gray-100,#f1f5f9);border-radius:8px;cursor:pointer;border:1px solid var(--bg-gray-200);"><input type="checkbox" class="ge-proposta-doc-cb" id="ge-proposta-doc-' + articuloId + '-' + i + '" data-doc-url="' + safeUrl + '">' + buildPropostaDocPreview(url) + '<span style="font-size:0.8rem;color:var(--text-primary);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + safeName + '</span><a href="' + safeUrl + '" target="_blank" rel="noopener noreferrer" style="font-size:0.75rem;color:var(--primary,#3b82f6);white-space:nowrap;text-decoration:underline;" onclick="event.stopPropagation();">' + (L.ver || 'Ver') + '</a></label>'; }).join('') + '</div></div>' : ''}
                         <div style="display: grid; gap: 10px; grid-template-columns: 1fr 1fr;">
                             <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.temCliche}</label><select id="ge-tem-cliche-${articuloId}" class="form-input" style="width:100%;padding:6px;"><option value="false">${L.temClicheNao}</option><option value="true">${L.temClicheSim}</option></select></div>
                             <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.precoCliche}</label><input type="number" id="ge-preco-cliche-${articuloId}" class="form-input" min="0" step="0.01" style="width:100%;padding:6px;" placeholder=""></div>
@@ -4305,13 +4315,11 @@ class ProposalsManager {
                 </div>
             ` : '';
 
-            const hasDossier = proposal.presupuesto_dossier_id && ((proposal.dossier_documentos && proposal.dossier_documentos.length) || 0) > 0;
             const hasLogo = articulo.logo_url && String(articulo.logo_url).trim() !== '';
-            const dossierLogoBlock = (hasDossier || hasLogo) ? `
+            const dossierLogoBlock = hasLogo ? `
                 <div class="pedido-encomenda-dossier-logo" style="margin-top: 10px; padding: 10px; background: var(--bg-gray-100); border-radius: 8px; border-left: 3px solid var(--primary, #3b82f6);">
                     <div style="font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px;">${L.dossierSection}</div>
-                    ${hasDossier ? `<label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.85rem;"><input type="checkbox" id="ge-dossier-${articuloId}" class="form-input"> ${L.associateDossier}</label>` : ''}
-                    ${hasLogo ? `<div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 6px;"><i class="fas fa-image"></i> ${L.hasLogo}</div>` : ''}
+                    <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 6px;"><i class="fas fa-image"></i> ${L.hasLogo}</div>
                 </div>
             ` : '';
 
@@ -4520,24 +4528,12 @@ class ProposalsManager {
             const descontoRaw = descontoEl ? descontoEl.value.trim() : '';
             const porcentajeDesconto = descontoRaw === '' ? NaN : parseFloat(descontoRaw.replace(',', '.'));
 
-            if (quantidade < 1) {
-                this.showNotification(lang === 'es' ? 'Cantidad a encomendar debe ser al menos 1.' : lang === 'pt' ? 'Quantidade a encomendar deve ser pelo menos 1.' : 'Quantity to order must be at least 1.', 'error');
-                return;
-            }
-            if (isNaN(precoCusto) || precoCusto < 0) {
-                this.showNotification(msgFill, 'error');
-                return;
-            }
-            if (isNaN(porcentajeDesconto) || porcentajeDesconto < 0 || porcentajeDesconto > 100) {
-                this.showNotification(msgFill, 'error');
-                return;
-            }
+            if (quantidade < 1) continue;
+            if (isNaN(precoCusto) || precoCusto < 0) continue;
+            if (isNaN(porcentajeDesconto) || porcentajeDesconto < 0 || porcentajeDesconto > 100) continue;
 
             const product = this.allProducts?.find(p => String(p.id) === String(articulo.referencia_articulo)) || this.allProducts?.find(p => String(p.phc_ref) === String(articulo.referencia_articulo));
             const hasPhc = product && (product.phc_ref || '').toString().trim() !== '';
-
-            const dossierCheckEl = document.getElementById(`ge-dossier-${articuloId}`);
-            const associateDossier = dossierCheckEl ? dossierCheckEl.checked : false;
 
             // Obtener Referência PHC del formulario (solo para productos sin PHC)
             // IMPORTANTE: Este valor se guarda SOLO en gestao_compras.phc_ref, NO se actualiza el producto en products.phc_ref
@@ -4553,7 +4549,7 @@ class ProposalsManager {
                 foto_url: (product && product.foto) ? product.foto : null,
                 quantidade_encomendar: quantidade,
                 nome_articulo: articulo.nombre_articulo || null,
-                presupuesto_dossier_id: (proposal.presupuesto_dossier_id && associateDossier) ? proposal.presupuesto_dossier_id : null,
+                presupuesto_dossier_id: null,
                 logo_url: (articulo.logo_url && String(articulo.logo_url).trim() !== '') ? String(articulo.logo_url).trim() : null,
                 precio_custo: precoCusto,
                 porcentaje_descuento: porcentajeDesconto,
@@ -4572,10 +4568,7 @@ class ProposalsManager {
                 const designacao = designacaoEl ? designacaoEl.value.trim() : '';
                 const peso = pesoEl ? pesoEl.value.trim() : '';
                 const qtyCaixa = qtyCaixaEl && qtyCaixaEl.value !== '' ? parseInt(qtyCaixaEl.value, 10) : null;
-                if (!ref || !designacao || !peso || qtyCaixa == null || qtyCaixa < 0) {
-                    this.showNotification(msgRef, 'error');
-                    return;
-                }
+                if (!ref || !designacao || !peso || qtyCaixa == null || qtyCaixa < 0) continue;
                 row.referencia = ref || null;
                 row.designacao = designacao || null;
                 row.peso = peso || null;
@@ -4670,22 +4663,10 @@ class ProposalsManager {
             const personalizado = personalizadoEl ? personalizadoEl.value === 'true' : false;
             const obs = getVal('obs') || null;
 
-            if (quantidade < 1) {
-                this.showNotification(lang === 'es' ? 'Cantidad a encomendar debe ser al menos 1 (artículo externo).' : lang === 'pt' ? 'Quantidade a encomendar deve ser pelo menos 1 (artigo externo).' : 'Quantity to order must be at least 1 (external article).', 'error');
-                return;
-            }
-            if (isNaN(precoCusto) || precoCusto < 0) {
-                this.showNotification(msgFill, 'error');
-                return;
-            }
-            if (isNaN(porcentajeDescuento) || porcentajeDescuento < 0 || porcentajeDescuento > 100) {
-                this.showNotification(msgFill, 'error');
-                return;
-            }
-            if (!nomeFornecedor || !ref || !designacao || !peso || qtyCaixa < 0) {
-                this.showNotification(msgRef, 'error');
-                return;
-            }
+            if (quantidade < 1) continue;
+            if (isNaN(precoCusto) || precoCusto < 0) continue;
+            if (isNaN(porcentajeDescuento) || porcentajeDescuento < 0 || porcentajeDescuento > 100) continue;
+            if (!nomeFornecedor || !ref || !designacao || !peso || qtyCaixa < 0) continue;
 
             const extRowData = {
                 presupuesto_id: proposalId,
@@ -4759,6 +4740,11 @@ class ProposalsManager {
             rows.push(extRowData);
         }
 
+        if (rows.length === 0) {
+            this.showNotification(lang === 'es' ? 'Rellene al menos un producto (cantidad, precio, descuento y datos obligatorios) para guardar.' : lang === 'pt' ? 'Preencha pelo menos um produto (quantidade, preço, desconto e dados obrigatórios) para guardar.' : 'Fill at least one product (quantity, price, discount and required fields) to save.', 'error');
+            return;
+        }
+
         // Tipo: "encomenda a fornecedor" o "encomenda a fornecedor e criação de codigos" si falta código PHC en algún artículo
         const algumSemPhc = rows.some(r => (r.phc_ref || '').toString().trim() === '');
         const tipoPedido = algumSemPhc ? 'encomenda a fornecedor e criação de codigos' : 'encomenda a fornecedor';
@@ -4784,16 +4770,43 @@ class ProposalsManager {
         });
 
         try {
-            await this.supabase.from('gestao_compras').delete().eq('presupuesto_id', proposalId);
-            const { error: insErr } = await this.supabase.from('gestao_compras').insert(rowsToInsert);
-            if (insErr) {
-                throw insErr;
+            const { data: existingRows, error: fetchErr } = await this.supabase
+                .from('gestao_compras')
+                .select('id, presupuesto_articulo_id')
+                .eq('presupuesto_id', proposalId);
+            if (fetchErr) throw fetchErr;
+            const existingByArtId = {};
+            (existingRows || []).forEach(r => {
+                if (r.presupuesto_articulo_id != null) existingByArtId[r.presupuesto_articulo_id] = r.id;
+            });
+
+            const toInsert = [];
+            const toUpdate = [];
+            rowsToInsert.forEach(r => {
+                const artId = r.presupuesto_articulo_id;
+                const existingId = artId != null ? existingByArtId[artId] : null;
+                if (existingId) {
+                    toUpdate.push({ id: existingId, ...r });
+                } else {
+                    toInsert.push(r);
+                }
+            });
+
+            for (const row of toUpdate) {
+                const id = row.id;
+                const { id: _id, ...payload } = row;
+                const { error: upErr } = await this.supabase.from('gestao_compras').update(payload).eq('id', id);
+                if (upErr) throw upErr;
             }
-            await this.updateProposalStatus(proposalId, 'pedido_de_encomenda');
+            if (toInsert.length > 0) {
+                const { error: insErr } = await this.supabase.from('gestao_compras').insert(toInsert);
+                if (insErr) throw insErr;
+            }
+            await this.updateProposalStatus(proposalId, 'encomenda_en_curso');
             this.resetStatusSelects(proposalId);
             this.closePedidoEncomendaModal();
             await this.loadProposals();
-            this.showNotification(this.currentLanguage === 'es' ? 'Guardado en Gestão Compras.' : this.currentLanguage === 'pt' ? 'Guardado em Gestão Compras.' : 'Saved to Gestão Compras.', 'success');
+            this.showNotification(this.currentLanguage === 'es' ? 'Guardado. Las líneas guardadas pasan a En curso; el resto sigue en Pendientes.' : this.currentLanguage === 'pt' ? 'Guardado. As linhas guardadas passam a Em curso; o resto fica em Pendentes.' : 'Saved. Saved lines move to In progress; the rest stay in Pending.', 'success');
         } catch (e) {
             console.error('Error savePedidoEncomendaGestaoCompras:', e);
             let errMsg = 'Error al guardar';
@@ -8386,12 +8399,12 @@ class ProposalsManager {
                 documentos_urls: uploadedDocuments
             };
 
-            // Verificar si ya existe un registro
+            // Verificar si ya existe un registro (.maybeSingle() evita 406 cuando no hay fila)
             const { data: existing } = await this.supabase
                 .from('presupuestos_dossiers')
                 .select('id')
                 .eq('presupuesto_id', proposalId)
-                .single();
+                .maybeSingle();
 
             if (existing) {
                 await this.supabase
@@ -9700,8 +9713,25 @@ async function handleDossierDocumentUpload(event) {
         storageClient = window.proposalsManager.supabase;
     }
 
+    const lang = window.proposalsManager?.currentLanguage || 'pt';
+    const lblSubiendo = lang === 'es' ? 'Subiendo...' : lang === 'en' ? 'Uploading...' : 'A carregar...';
+
     for (const file of files) {
+        let placeholderDiv = null;
         try {
+            placeholderDiv = document.createElement('div');
+            placeholderDiv.className = 'aguarda-dossier-upload-placeholder';
+            placeholderDiv.style.cssText = 'position:relative;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;width:150px;height:150px;margin:5px;padding:12px;background:var(--bg-gray-100,#1e293b);border:2px dashed var(--primary,#3b82f6);border-radius:8px;';
+            const safeName = (file.name || '').replace(/</g, '&lt;').replace(/>/g, '&gt;').substring(0, 20) + (file.name && file.name.length > 20 ? '…' : '');
+            placeholderDiv.innerHTML = '<div class="aguarda-dossier-upload-spinner" style="width:32px;height:32px;border:3px solid var(--bg-gray-300);border-top-color:var(--primary,#3b82f6);border-radius:50%;animation:aguarda-dossier-spin 0.8s linear infinite;"></div><span style="margin-top:10px;font-size:11px;color:var(--text-secondary);text-align:center;">' + lblSubiendo + '</span><span style="font-size:10px;color:var(--text-secondary);text-align:center;word-break:break-all;margin-top:4px;">' + safeName + '</span>';
+            container.appendChild(placeholderDiv);
+            if (!document.getElementById('aguarda-dossier-spinner-style')) {
+                const style = document.createElement('style');
+                style.id = 'aguarda-dossier-spinner-style';
+                style.textContent = '@keyframes aguarda-dossier-spin { to { transform: rotate(360deg); } }';
+                document.head.appendChild(style);
+            }
+
             // Subir documento a Supabase Storage (nombre único para no duplicar)
             const fileExt = file.name.split('.').pop().toLowerCase();
             const baseName = (file.name && file.name.trim()) ? file.name.trim() : `doc.${fileExt}`;
@@ -9752,7 +9782,8 @@ async function handleDossierDocumentUpload(event) {
                 .from('proposal-logos')
                 .getPublicUrl(fileName);
 
-            // Crear elemento de documento
+            // Quitar placeholder de carga y crear elemento de documento
+            if (placeholderDiv && placeholderDiv.parentNode) placeholderDiv.remove();
             const docDiv = document.createElement('div');
             docDiv.style.position = 'relative';
             docDiv.style.display = 'inline-block';
@@ -9778,6 +9809,7 @@ async function handleDossierDocumentUpload(event) {
             }
             container.appendChild(docDiv);
         } catch (error) {
+            if (placeholderDiv && placeholderDiv.parentNode) placeholderDiv.remove();
             console.error('Error al subir documento:', error);
             const message = window.proposalsManager?.currentLanguage === 'es' ? 
                 `Error al subir documento: ${error.message}` : 

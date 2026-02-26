@@ -180,21 +180,15 @@ window.getUserPais = getUserPais;
 
 // Función para abrir/cerrar el menú desplegable
 async function toggleMenu() {
-    // Verificar si el usuario es comercial ANTES de abrir el menú
+    // Solo bloquear apertura del menú para rol comercial (compras sí puede abrirlo)
     try {
         const role = await getUserRole();
-        
-        // Si es comercial, bloquear la apertura del menú
         if (role === 'comercial') {
-            console.log('🚫 [toggleMenu] Usuario comercial - acceso al menú bloqueado');
-            return; // Salir sin abrir el menú
+            return;
         }
     } catch (error) {
-        console.warn('⚠️ [toggleMenu] Error verificando rol, permitiendo acceso:', error);
-        // Si hay error, permitir acceso por defecto
+        // Si hay error, permitir acceso
     }
-    
-    // Si no es comercial o hay error, abrir el menú normalmente
     const menu = document.getElementById('dropdownMenu');
     if (menu) {
         menu.classList.toggle('active');
@@ -261,29 +255,49 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// También bloquear los enlaces del menú desplegable para usuarios comerciales
+// Restricciones por rol: comercial no puede usar el menú; compras solo puede ir a Gestão de Encomendas
 document.addEventListener('DOMContentLoaded', () => {
-    // Esperar a que el DOM esté completamente cargado
-    setTimeout(() => {
+    setTimeout(async () => {
+        const role = typeof window.getUserRole === 'function' ? await window.getUserRole() : null;
+        const roleLower = (role || '').toString().toLowerCase();
+
+        if (roleLower === 'compras') {
+            const navCart = document.getElementById('nav-cart-link');
+            const navProposals = document.getElementById('nav-proposals-link');
+            if (navCart) navCart.style.display = 'none';
+            if (navProposals) navProposals.style.display = 'none';
+            const dropdownMenu = document.getElementById('dropdownMenu');
+            if (dropdownMenu) {
+                dropdownMenu.querySelectorAll('a.dropdown-link').forEach(link => {
+                    const href = (link.getAttribute('href') || '').toLowerCase();
+                    if (!href.includes('gestao-encomendas')) link.style.display = 'none';
+                });
+            }
+        }
+
         const dropdownMenu = document.getElementById('dropdownMenu');
         if (dropdownMenu) {
-            const menuLinks = dropdownMenu.querySelectorAll('a.dropdown-link');
-            menuLinks.forEach(link => {
+            dropdownMenu.querySelectorAll('a.dropdown-link').forEach(link => {
                 link.addEventListener('click', async (e) => {
-                    // Verificar rol solo cuando se hace clic en el enlace
                     try {
-                        const role = await getUserRole();
-                        if (role === 'comercial') {
+                        const r = await getUserRole();
+                        const rl = (r || '').toString().toLowerCase();
+                        if (rl === 'comercial') {
                             e.preventDefault();
                             e.stopPropagation();
-                            console.log('🚫 [menu-hamburguesa] Usuario comercial - acceso a', link.href, 'bloqueado');
                             return false;
                         }
-                    } catch (error) {
-                        console.warn('⚠️ [menu-hamburguesa] Error verificando rol, permitiendo acceso:', error);
-                    }
-                }, true); // Usar capture phase para interceptar antes
+                        if (rl === 'compras') {
+                            const href = (link.getAttribute('href') || '').toLowerCase();
+                            if (!href.includes('gestao-encomendas')) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                return false;
+                            }
+                        }
+                    } catch (err) {}
+                }, true);
             });
         }
-    }, 500);
+    }, 400);
 });

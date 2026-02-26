@@ -335,6 +335,16 @@ class AuthManager {
                 }
                 return false;
             }
+            const role = typeof window.getUserRole === 'function' ? await window.getUserRole() : null;
+            if ((role || '').toString().toLowerCase() === 'compras') {
+                const allowedForCompras = ['login.html', 'index.html', 'productos-dinamico.html', 'gestao-encomendas.html', 'reset-password'];
+                const pathLower = path.toLowerCase();
+                const allowed = allowedForCompras.some(a => pathLower.includes(a));
+                if (!allowed) {
+                    window.location.href = 'index.html';
+                    return false;
+                }
+            }
             return true;
         } catch (error) {
             console.error('Error en requireAuth:', error);
