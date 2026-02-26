@@ -1368,12 +1368,19 @@
                 if (!isNaN(vt)) { infoHtml += `<span><strong>${t('valorTransportes')}:</strong></span><span>${formatNumber(vt)}</span>`; }
             }
             if (gc.tem_cliche != null) {
-                infoHtml += `<span><strong>${t('temCliche')}:</strong></span><span>${gc.tem_cliche ? t('sim') : t('nao')}`;
-                if (gc.tem_cliche && gc.preco_cliche != null && gc.preco_cliche !== '') {
-                    const pc = Number(gc.preco_cliche);
-                    if (!isNaN(pc)) infoHtml += ` — ${t('precoCliche')}: ${formatNumber(pc)}`;
+                infoHtml += `<span><strong>${t('temCliche')}:</strong></span><span>${gc.tem_cliche ? t('sim') : t('nao')}</span>`;
+                if (gc.tem_cliche) {
+                    const pc = (gc.preco_cliche != null && gc.preco_cliche !== '') ? Number(gc.preco_cliche) : NaN;
+                    const desc = (gc.porcentaje_descuento != null && gc.porcentaje_descuento !== '') ? Number(gc.porcentaje_descuento) : NaN;
+                    const hasPc = !isNaN(pc);
+                    const hasDesc = !isNaN(desc) && desc > 0;
+                    if (hasPc || hasDesc) {
+                        infoHtml += `<span style="grid-column: 1 / -1; margin-left: 0.5rem; font-size: 0.8rem;">`;
+                        if (hasPc) infoHtml += `${t('precoCliche')}: ${formatNumber(pc)}`;
+                        if (hasDesc) infoHtml += (hasPc ? ' · ' : '') + `${t('desconto')}: ${formatNumber(desc)}%`;
+                        infoHtml += `</span>`;
+                    }
                 }
-                infoHtml += `</span>`;
             }
             if ((gc.personalizado_observacoes || '').trim()) {
                 infoHtml += `<span style="grid-column: 1 / -1; margin-top: 4px;"><strong>${t('observaciones')}:</strong> ${escapeHtml((gc.personalizado_observacoes || '').trim())}</span>`;
@@ -1385,12 +1392,19 @@
                 if (!isNaN(vt)) infoHtml += `<div style="margin-top: 4px; font-size: 0.85rem; color: var(--text-secondary);"><strong>${t('valorTransportes')}:</strong> ${formatNumber(vt)}</div>`;
             }
             if (gc.tem_cliche != null) {
-                infoHtml += `<div style="font-size: 0.85rem; color: var(--text-secondary);"><strong>${t('temCliche')}:</strong> ${gc.tem_cliche ? t('sim') : t('nao')}`;
-                if (gc.tem_cliche && gc.preco_cliche != null && gc.preco_cliche !== '') {
-                    const pc = Number(gc.preco_cliche);
-                    if (!isNaN(pc)) infoHtml += ` — ${t('precoCliche')}: ${formatNumber(pc)}`;
+                infoHtml += `<div style="font-size: 0.85rem; color: var(--text-secondary);"><strong>${t('temCliche')}:</strong> ${gc.tem_cliche ? t('sim') : t('nao')}</div>`;
+                if (gc.tem_cliche) {
+                    const pc = (gc.preco_cliche != null && gc.preco_cliche !== '') ? Number(gc.preco_cliche) : NaN;
+                    const desc = (gc.porcentaje_descuento != null && gc.porcentaje_descuento !== '') ? Number(gc.porcentaje_descuento) : NaN;
+                    const hasPc = !isNaN(pc);
+                    const hasDesc = !isNaN(desc) && desc > 0;
+                    if (hasPc || hasDesc) {
+                        infoHtml += `<div style="font-size: 0.8rem; color: var(--text-secondary); margin-left: 0.5rem; margin-top: 2px;">`;
+                        if (hasPc) infoHtml += `${t('precoCliche')}: ${formatNumber(pc)}`;
+                        if (hasDesc) infoHtml += (hasPc ? ' · ' : '') + `${t('desconto')}: ${formatNumber(desc)}%`;
+                        infoHtml += `</div>`;
+                    }
                 }
-                infoHtml += `</div>`;
             }
         }
         infoHtml += `</div>`;
