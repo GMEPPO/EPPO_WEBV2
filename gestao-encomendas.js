@@ -66,6 +66,7 @@
             historicoEmails: 'Histórico de emails',
             verDescargar: 'Ver / Descargar',
             nenhumAnexo: 'Nenhum anexo.',
+            anexos: 'Anexos',
             historico: 'Histórico',
             encomendasConcluidas: 'Encomendas concluídas',
             contactosFinalizados: 'Contactos finalizados',
@@ -134,6 +135,7 @@
             historicoEmails: 'Histórico de emails',
             verDescargar: 'Ver / Descargar',
             nenhumAnexo: 'Ningún anexo.',
+            anexos: 'Anexos',
             historico: 'Histórico',
             encomendasConcluidas: 'Encomendas concluídas',
             contactosFinalizados: 'Contactos finalizados',
@@ -202,6 +204,7 @@
             historicoEmails: 'Email history',
             verDescargar: 'View / Download',
             nenhumAnexo: 'No attachments.',
+            anexos: 'Attachments',
             historico: 'History',
             encomendasConcluidas: 'Completed orders',
             contactosFinalizados: 'Closed contacts',
@@ -1236,6 +1239,24 @@
         return Number(n).toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
     }
 
+    function buildAnexosLinksForProduct(gc) {
+        const anexosUrls = parseFotosUrls(gc.personalizado_anexos_urls);
+        const historicoUrl = (gc.historico_emails_url || '').trim();
+        if (anexosUrls.length === 0 && !historicoUrl) return '';
+        let html = '<div style="margin-top:8px;padding-top:6px;border-top:1px solid var(--bg-gray-200);font-size:0.75rem;">';
+        html += '<div style="color:var(--text-secondary);margin-bottom:4px;"><strong>' + escapeHtml(t('anexos')) + ':</strong></div>';
+        html += '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
+        anexosUrls.forEach((url, i) => {
+            const safe = escapeAttr(url);
+            html += '<a href="' + safe + '" target="_blank" rel="noopener noreferrer" class="ge-btn ge-btn-secondary" style="padding:4px 8px;font-size:0.7rem;"><i class="fas fa-paperclip"></i> ' + escapeHtml(t('verDescargar')) + (anexosUrls.length > 1 ? ' ' + (i + 1) : '') + '</a>';
+        });
+        if (historicoUrl) {
+            html += '<a href="' + escapeAttr(historicoUrl) + '" target="_blank" rel="noopener noreferrer" class="ge-btn ge-btn-secondary" style="padding:4px 8px;font-size:0.7rem;"><i class="fas fa-envelope"></i> ' + escapeHtml(t('historicoEmails')) + '</a>';
+        }
+        html += '</div></div>';
+        return html;
+    }
+
     function buildProductDetailsHtml(gc, options) {
         const { showFaltaBadge = false } = options || {};
         const refFornecedor = (gc.referencia || '').trim() || '-';
@@ -1259,6 +1280,7 @@
             }
             html += `</div>`;
         }
+        html += buildAnexosLinksForProduct(gc);
         html += `</div>`;
         return html;
     }

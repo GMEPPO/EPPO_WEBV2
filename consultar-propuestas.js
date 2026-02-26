@@ -4252,7 +4252,7 @@ class ProposalsManager {
                             <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.temCliche}</label><select id="ge-tem-cliche-${articuloId}" class="form-input" style="width:100%;padding:6px;"><option value="false">${L.temClicheNao}</option><option value="true">${L.temClicheSim}</option></select></div>
                             <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.precoCliche}</label><input type="number" id="ge-preco-cliche-${articuloId}" class="form-input" min="0" step="0.01" style="width:100%;padding:6px;" placeholder=""></div>
                         </div>
-                        <div style="margin-top: 10px;"><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.anexosLogotipoArte}</label><div style="font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 4px;">${L.anexosHint}</div><div class="pedido-encomenda-dropzone" data-max-files="4"><input type="file" id="ge-anexos-${articuloId}" class="form-input" accept="image/*,.pdf,.doc,.docx" multiple style="width:100%;padding:6px;"><span class="pedido-encomenda-dropzone-hint">${lang === 'es' ? 'O arrastre ficheros aquí' : lang === 'en' ? 'Or drag files here' : 'Ou arraste ficheiros aqui'}</span></div></div>
+                        <div style="margin-top: 10px;"><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.anexosLogotipoArte}</label><div style="font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 4px;">${L.anexosHint}</div><div class="pedido-encomenda-dropzone" data-max-files="4"><input type="file" id="ge-anexos-${articuloId}" class="form-input" accept="image/*,.pdf,.doc,.docx,.msg,.eml" multiple style="width:100%;padding:6px;"><span class="pedido-encomenda-dropzone-hint">${lang === 'es' ? 'O arrastre ficheros aquí' : lang === 'en' ? 'Or drag files here' : 'Ou arraste ficheiros aqui'}</span></div></div>
                         <div style="margin-top: 10px;"><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.urlOpcional}</label><input type="url" id="ge-personalizado-url-${articuloId}" class="form-input" style="width:100%;padding:6px;" placeholder="https://"></div>
                         <div style="margin-top: 10px;"><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.historicoEmailsOutlook}</label><div style="font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 4px;">${L.historicoEmailsHint}</div><div class="pedido-encomenda-dropzone" data-max-files="1"><input type="file" id="ge-historico-emails-${articuloId}" class="form-input" accept=".msg,.eml,application/vnd.ms-outlook,application/octet-stream,*/*" style="width:100%;padding:6px;"><span class="pedido-encomenda-dropzone-hint">${lang === 'es' ? 'O arrastre o ficheiro aquí' : lang === 'en' ? 'Or drag file here' : 'Ou arraste o ficheiro aqui'}</span></div></div>
                     </div>
@@ -4374,7 +4374,7 @@ class ProposalsManager {
                             <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.temCliche}</label><select id="ge-${extId}-tem-cliche" class="form-input" style="width:100%;padding:6px;"><option value="false">${L.temClicheNao}</option><option value="true">${L.temClicheSim}</option></select></div>
                             <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.precoCliche}</label><input type="number" id="ge-${extId}-preco-cliche" class="form-input" min="0" step="0.01" style="width:100%;padding:6px;" placeholder=""></div>
                         </div>
-                        <div style="margin-top: 10px;"><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.anexosLogotipoArte}</label><div style="font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 4px;">${L.anexosHint}</div><div class="pedido-encomenda-dropzone" data-max-files="4"><input type="file" id="ge-${extId}-anexos" class="form-input" accept="image/*,.pdf,.doc,.docx" multiple style="width:100%;padding:6px;"><span class="pedido-encomenda-dropzone-hint">${lang === 'es' ? 'O arrastre ficheiros aquí' : lang === 'en' ? 'Or drag files here' : 'Ou arraste ficheiros aqui'}</span></div></div>
+                        <div style="margin-top: 10px;"><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.anexosLogotipoArte}</label><div style="font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 4px;">${L.anexosHint}</div><div class="pedido-encomenda-dropzone" data-max-files="4"><input type="file" id="ge-${extId}-anexos" class="form-input" accept="image/*,.pdf,.doc,.docx,.msg,.eml" multiple style="width:100%;padding:6px;"><span class="pedido-encomenda-dropzone-hint">${lang === 'es' ? 'O arrastre ficheiros aquí' : lang === 'en' ? 'Or drag files here' : 'Ou arraste ficheiros aqui'}</span></div></div>
                         <div style="margin-top: 10px;"><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.urlOpcional}</label><input type="url" id="ge-${extId}-personalizado-url" class="form-input" style="width:100%;padding:6px;" placeholder="https://"></div>
                         <div style="margin-top: 10px;"><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.historicoEmailsOutlook}</label><div style="font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 4px;">${L.historicoEmailsHint}</div><div class="pedido-encomenda-dropzone" data-max-files="1"><input type="file" id="ge-${extId}-historico-emails" class="form-input" accept=".msg,.eml,application/vnd.ms-outlook,application/octet-stream,*/*" style="width:100%;padding:6px;"><span class="pedido-encomenda-dropzone-hint">${lang === 'es' ? 'O arrastre o ficheiro aquí' : lang === 'en' ? 'Or drag file here' : 'Ou arraste o ficheiro aqui'}</span></div></div>
                     </div>
@@ -4692,11 +4692,29 @@ class ProposalsManager {
         const tipoPedido = algumSemPhc ? 'encomenda a fornecedor e criação de codigos' : 'encomenda a fornecedor';
         rows.forEach(r => { r.tipo = tipoPedido; });
 
+        // Normalizar payload para Supabase: evitar undefined y asegurar tipos correctos (evita 400)
+        const rowsToInsert = rows.map(r => {
+            const clean = {};
+            for (const key of Object.keys(r)) {
+                const v = r[key];
+                if (v === undefined) continue;
+                if (key === 'personalizado_anexos_urls') {
+                    clean[key] = Array.isArray(v) ? v : [];
+                } else if (key === 'historico_emails_url') {
+                    clean[key] = (v != null && String(v).trim() !== '') ? String(v).trim() : null;
+                } else {
+                    clean[key] = v;
+                }
+            }
+            if (!('personalizado_anexos_urls' in clean)) clean.personalizado_anexos_urls = [];
+            if (!('historico_emails_url' in clean)) clean.historico_emails_url = null;
+            return clean;
+        });
+
         try {
             await this.supabase.from('gestao_compras').delete().eq('presupuesto_id', proposalId);
-            const { error: insErr } = await this.supabase.from('gestao_compras').insert(rows);
+            const { error: insErr } = await this.supabase.from('gestao_compras').insert(rowsToInsert);
             if (insErr) {
-                console.error('Error insert gestao_compras (400 suele ser validación/RLS/tipos):', insErr.message, insErr.details || insErr);
                 throw insErr;
             }
             await this.updateProposalStatus(proposalId, 'pedido_de_encomenda');
@@ -4706,7 +4724,8 @@ class ProposalsManager {
             this.showNotification(this.currentLanguage === 'es' ? 'Guardado en Gestão Compras.' : this.currentLanguage === 'pt' ? 'Guardado em Gestão Compras.' : 'Saved to Gestão Compras.', 'success');
         } catch (e) {
             console.error('Error savePedidoEncomendaGestaoCompras:', e);
-            this.showNotification(e.message || 'Error al guardar', 'error');
+            const errMsg = (e && (e.message || e.details)) ? (e.message + (e.details ? ' ' + (typeof e.details === 'string' ? e.details : (e.details.hint || e.details.message || ''))) : e.message) : 'Error al guardar';
+            this.showNotification(errMsg || 'Error al guardar', 'error');
         }
     }
 
