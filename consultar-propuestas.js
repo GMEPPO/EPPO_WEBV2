@@ -4724,7 +4724,14 @@ class ProposalsManager {
             this.showNotification(this.currentLanguage === 'es' ? 'Guardado en Gestão Compras.' : this.currentLanguage === 'pt' ? 'Guardado em Gestão Compras.' : 'Saved to Gestão Compras.', 'success');
         } catch (e) {
             console.error('Error savePedidoEncomendaGestaoCompras:', e);
-            const errMsg = (e && (e.message || e.details)) ? (e.message + (e.details ? ' ' + (typeof e.details === 'string' ? e.details : (e.details.hint || e.details.message || ''))) : e.message) : 'Error al guardar';
+            let errMsg = 'Error al guardar';
+            if (e && (e.message || e.details)) {
+                errMsg = e.message || '';
+                if (e.details) {
+                    const det = typeof e.details === 'string' ? e.details : (e.details.hint || e.details.message || '');
+                    if (det) errMsg += (errMsg ? ' ' : '') + det;
+                }
+            }
             this.showNotification(errMsg || 'Error al guardar', 'error');
         }
     }
