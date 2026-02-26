@@ -281,6 +281,79 @@ body {
   display: block;
 }
 
+/* ---------------------- Barra de usuario (nombre, rol, logout) ---------------------- */
+.user-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-left: var(--space-4);
+  padding-left: var(--space-4);
+  border-left: 1px solid var(--bg-gray-200);
+}
+
+.user-bar-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--accent-500);
+}
+
+.user-bar-sep {
+  color: var(--text-muted);
+  font-weight: 300;
+  user-select: none;
+}
+
+.user-bar-role {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.user-bar-logout {
+  background: var(--bg-gray-200);
+  color: var(--text-primary);
+  border: none;
+  padding: var(--space-2) var(--space-4);
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-left: var(--space-2);
+}
+
+.user-bar-logout:hover {
+  background: var(--primary-500);
+  color: var(--text-white);
+}
+
+[data-theme="dark"] .user-bar {
+  border-left-color: var(--bg-gray-200);
+}
+
+[data-theme="dark"] .user-bar-logout {
+  background: var(--bg-gray-200);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .user-bar-logout:hover {
+  background: var(--primary-500);
+  color: var(--text-white);
+}
+
+/* Ocultar barra de usuario en móvil si no hay espacio (opcional) */
+@media (max-width: 768px) {
+  .user-bar {
+    gap: var(--space-2);
+    margin-left: var(--space-2);
+    padding-left: var(--space-2);
+  }
+  .user-bar-name { font-size: 0.8rem; }
+  .user-bar-role { font-size: 0.75rem; }
+  .user-bar-logout { padding: var(--space-1) var(--space-3); font-size: 0.8rem; }
+}
+
 /* ---------------------- Contenido principal ---------------------- */
 .main-content {
   min-height: calc(100vh - 80px);

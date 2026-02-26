@@ -8,7 +8,9 @@
  * añade _1, _2, etc. para no duplicar nombres.
  */
 async function getUniqueStorageFilePathConsultar(storageClient, bucket, folderPrefix, fileName) {
-    const sanitized = (fileName || 'file').replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').trim() || 'file';
+    // Sanitizar: caracteres prohibidos en rutas + espacios (evitan 400 al cargar la URL en Storage)
+    let sanitized = (fileName || 'file').replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').trim() || 'file';
+    sanitized = sanitized.replace(/\s+/g, '_');
     const lastDot = sanitized.lastIndexOf('.');
     const base = lastDot > 0 ? sanitized.slice(0, lastDot) : sanitized;
     const ext = lastDot > 0 ? sanitized.slice(lastDot + 1) : '';
@@ -4693,7 +4695,10 @@ class ProposalsManager {
         try {
             await this.supabase.from('gestao_compras').delete().eq('presupuesto_id', proposalId);
             const { error: insErr } = await this.supabase.from('gestao_compras').insert(rows);
-            if (insErr) throw insErr;
+            if (insErr) {
+                console.error('Error insert gestao_compras (400 suele ser validación/RLS/tipos):', insErr.message, insErr.details || insErr);
+                throw insErr;
+            }
             await this.updateProposalStatus(proposalId, 'pedido_de_encomenda');
             this.resetStatusSelects(proposalId);
             this.closePedidoEncomendaModal();
