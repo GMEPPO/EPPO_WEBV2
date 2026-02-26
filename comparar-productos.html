@@ -419,9 +419,10 @@
     <!-- Header -->
     <header class="header">
         <div class="header-content">
-            <div class="logo">
-                <span>EPPO by <span class="groupe-gm">Groupe GM</span></span>
-            </div>
+            <a href="index.html" class="logo">
+                <span class="logo-line1">EPPO by</span>
+                <span class="logo-line2 groupe-gm">Groupe GM</span>
+            </a>
             <nav class="nav">
                 <a href="index.html" class="nav-link">Home</a>
                 <a href="productos-dinamico.html" class="nav-link">Products</a>
@@ -449,13 +450,6 @@
                     </div>
                 </div>
                 
-                <div class="user-bar" id="user-bar">
-                    <span class="user-bar-name" id="user-bar-name">—</span>
-                    <span class="user-bar-sep" aria-hidden="true">|</span>
-                    <span class="user-bar-role" id="user-bar-role">—</span>
-                    <button type="button" class="user-bar-logout" id="user-bar-logout">Logout</button>
-                </div>
-                
                 <div class="language-selector">
                     <button class="flag-btn active" data-lang="pt" title="Português" onclick="changeLanguage('pt')">
                         <img src="https://flagcdn.com/w20/pt.png" alt="Portugal">
@@ -463,14 +457,17 @@
                     <button class="flag-btn" data-lang="es" title="Español" onclick="changeLanguage('es')">
                         <img src="https://flagcdn.com/w20/es.png" alt="España">
                     </button>
-                    <button class="flag-btn" data-lang="en" title="English" onclick="changeLanguage('en')">
-                        <img src="https://flagcdn.com/w20/gb.png" alt="Reino Unido">
-                    </button>
                 </div>
                 <button class="theme-toggle" id="theme-toggle" title="Cambiar tema">
                     <i class="fas fa-sun sun-icon"></i>
                     <i class="fas fa-moon moon-icon"></i>
                 </button>
+                <div class="user-bar" id="user-bar">
+                    <span class="user-bar-name" id="user-bar-name">—</span>
+                    <span class="user-bar-sep" aria-hidden="true">|</span>
+                    <span class="user-bar-role" id="user-bar-role">—</span>
+                    <button type="button" class="user-bar-logout" id="user-bar-logout">Logout</button>
+                </div>
             </nav>
         </div>
     </header>

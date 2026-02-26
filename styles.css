@@ -137,13 +137,26 @@ body {
 
 .logo {
   font-family: var(--font-display);
-  font-size: 1.875rem;
+  font-size: 1.125rem;
   font-weight: 600;
   color: var(--primary-600);
   text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
 }
 
-.logo .groupe-gm {
+.logo-line1 {
+  font-size: 1em;
+}
+
+.logo-line2 {
+  font-size: 1.35em;
+  font-weight: 700;
+}
+
+.logo .groupe-gm,
+.logo-line2.groupe-gm {
   color: var(--groupe-gm-color);
   font-weight: 700;
 }
@@ -1148,7 +1161,10 @@ body {
 
 @media (max-width: 480px) {
   .logo {
-    font-size: 1.5rem;
+    font-size: 1rem;
+  }
+  .logo-line2 {
+    font-size: 1.2em;
   }
   
   .nav {
