@@ -1,27 +1,23 @@
 {
-  "name": "web-interna",
-  "version": "1.0.0",
-  "description": "Sistema de gestión de propuestas y productos",
-  "main": "index.html",
+  "name": "company-apps-hub",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
   "scripts": {
-    "dev": "npx http-server -p 8000",
-    "start": "npx http-server -p 8000"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   },
-  "keywords": [
-    "propuestas",
-    "productos",
-    "supabase"
-  ],
-  "author": "",
-  "license": "ISC",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
   "devDependencies": {
-    "http-server": "^14.1.1"
+    "@vitejs/plugin-react": "^4.3.3",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.15",
+    "vite": "^6.0.1"
   }
 }
-
-
-
-
-
-
-
