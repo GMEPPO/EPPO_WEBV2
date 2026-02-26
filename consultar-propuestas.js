@@ -18,6 +18,16 @@ function getSafeContentType(file) {
     return t || 'application/octet-stream';
 }
 
+/** Sube el archivo como binario puro (ArrayBuffer) para que Supabase guarde solo los bytes del fichero, no multipart. */
+async function uploadFileAsBinary(supabaseClient, bucket, fileName, file, contentType) {
+    const arrayBuffer = await file.arrayBuffer();
+    return supabaseClient.storage.from(bucket).upload(fileName, arrayBuffer, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: contentType || getSafeContentType(file)
+    });
+}
+
 async function getUniqueStorageFilePathConsultar(storageClient, bucket, folderPrefix, fileName) {
     // Sanitizar: caracteres prohibidos en rutas + espacios (evitan 400 al cargar la URL en Storage)
     let sanitized = (fileName || 'file').replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').trim() || 'file';
@@ -4572,7 +4582,7 @@ class ProposalsManager {
                                 baseName = baseName.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/\s+/g, '_').trim() || `anexo_${Date.now()}.${ext}`;
                                 const fileName = await getUniqueStorageFilePathConsultar(this.supabase, bucketGE, subfolder, baseName);
                                 const contentType = getSafeContentType(file);
-                                const { error: upErr } = await this.supabase.storage.from(bucketGE).upload(fileName, file, { cacheControl: '3600', upsert: false, contentType });
+                                const { error: upErr } = await uploadFileAsBinary(this.supabase, bucketGE, fileName, file, contentType);
                                 if (!upErr) {
                                     const { data: urlData } = this.supabase.storage.from(bucketGE).getPublicUrl(fileName);
                                     if (urlData?.publicUrl) row.personalizado_anexos_urls.push(urlData.publicUrl);
@@ -4590,7 +4600,7 @@ class ProposalsManager {
                             baseName = baseName.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/\s+/g, '_').trim() || `historico_${Date.now()}.${ext}`;
                             const fileName = await getUniqueStorageFilePathConsultar(this.supabase, bucketGE, subfolder, baseName);
                             const contentType = getSafeContentType(file);
-                            const { error: upErr } = await this.supabase.storage.from(bucketGE).upload(fileName, file, { cacheControl: '3600', upsert: false, contentType });
+                            const { error: upErr } = await uploadFileAsBinary(this.supabase, bucketGE, fileName, file, contentType);
                             if (!upErr) {
                                 const { data: urlData } = this.supabase.storage.from(bucketGE).getPublicUrl(fileName);
                                 if (urlData?.publicUrl) row.historico_emails_url = urlData.publicUrl;
@@ -4685,7 +4695,7 @@ class ProposalsManager {
                             baseName = baseName.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/\s+/g, '_').trim() || `anexo_${Date.now()}.${ext}`;
                             const fileName = await getUniqueStorageFilePathConsultar(this.supabase, bucketGEExt, subfolderExt, baseName);
                             const contentType = getSafeContentType(file);
-                            const { error: upErr } = await this.supabase.storage.from(bucketGEExt).upload(fileName, file, { cacheControl: '3600', upsert: false, contentType });
+                            const { error: upErr } = await uploadFileAsBinary(this.supabase, bucketGEExt, fileName, file, contentType);
                             if (!upErr) {
                                 const { data: urlData } = this.supabase.storage.from(bucketGEExt).getPublicUrl(fileName);
                                 if (urlData?.publicUrl) extRowData.personalizado_anexos_urls.push(urlData.publicUrl);
@@ -4703,7 +4713,7 @@ class ProposalsManager {
                         baseName = baseName.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/\s+/g, '_').trim() || `historico_${Date.now()}.${ext}`;
                         const fileName = await getUniqueStorageFilePathConsultar(this.supabase, bucketGEExt, subfolderExt, baseName);
                         const contentType = getSafeContentType(file);
-                        const { error: upErr } = await this.supabase.storage.from(bucketGEExt).upload(fileName, file, { cacheControl: '3600', upsert: false, contentType });
+                        const { error: upErr } = await uploadFileAsBinary(this.supabase, bucketGEExt, fileName, file, contentType);
                         if (!upErr) {
                             const { data: urlData } = this.supabase.storage.from(bucketGEExt).getPublicUrl(fileName);
                             if (urlData?.publicUrl) extRowData.historico_emails_url = urlData.publicUrl;
