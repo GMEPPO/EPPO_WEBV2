@@ -458,10 +458,6 @@
                         <img src="https://flagcdn.com/w20/es.png" alt="España">
                     </button>
                 </div>
-                <button class="theme-toggle" id="theme-toggle" title="Cambiar tema">
-                    <i class="fas fa-sun sun-icon"></i>
-                    <i class="fas fa-moon moon-icon"></i>
-                </button>
                 <div class="user-bar" id="user-bar">
                     <span class="user-bar-name" id="user-bar-name">—</span>
                     <span class="user-bar-sep" aria-hidden="true">|</span>
@@ -1261,49 +1257,6 @@
     </script>
     
     <script>
-        // Función para manejar el cambio de tema
-        function toggleTheme() {
-            const html = document.documentElement;
-            const currentTheme = html.getAttribute('data-theme');
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            
-            html.setAttribute('data-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
-            
-            // Actualizar el título del botón
-            const toggleButton = document.getElementById('theme-toggle');
-            toggleButton.setAttribute('title', newTheme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro');
-        }
-
-        // Función para inicializar el tema
-        function initTheme() {
-            const savedTheme = localStorage.getItem('theme');
-            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            const theme = savedTheme || (prefersDark ? 'dark' : 'light');
-            
-            document.documentElement.setAttribute('data-theme', theme);
-            
-            const toggleButton = document.getElementById('theme-toggle');
-            toggleButton.setAttribute('title', theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro');
-        }
-
-        // Event listeners
-        document.addEventListener('DOMContentLoaded', function() {
-            initTheme();
-            
-            const toggleButton = document.getElementById('theme-toggle');
-            if (toggleButton) {
-                toggleButton.addEventListener('click', toggleTheme);
-            }
-        });
-
-        // Escuchar cambios en las preferencias del sistema
-        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
-            if (!localStorage.getItem('theme')) {
-                const theme = e.matches ? 'dark' : 'light';
-                document.documentElement.setAttribute('data-theme', theme);
-            }
-        });
     </script>
     <script src="menu-hamburguesa.js"></script>
     <script src="theme-common.js"></script>

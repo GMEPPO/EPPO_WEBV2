@@ -179,6 +179,10 @@
                 <p>Accede a tu cuenta de EPPO</p>
             </div>
 
+            <div id="localFileWarning" style="display: none; margin-bottom: 1rem; padding: 12px; background: rgba(245, 158, 11, 0.15); border: 1px solid #f59e0b; border-radius: 8px; font-size: 0.875rem; color: var(--text-primary, #111);">
+                <strong>Acceso en local:</strong> Para ver datos y usar la aplicación debe abrirla desde un servidor (por ejemplo <code>http://localhost:8000</code>), no como archivo local.
+            </div>
+
             <div class="error-message" id="errorMessage"></div>
             <div class="success-message" id="successMessage"></div>
 
@@ -233,6 +237,10 @@
         }
 
         async function loadAllScripts() {
+            if (window.location.protocol === 'file:') {
+                const w = document.getElementById('localFileWarning');
+                if (w) w.style.display = 'block';
+            }
             try {
                 // 1. Cargar Supabase primero
                 await loadScript('https://unpkg.com/@supabase/supabase-js@2');

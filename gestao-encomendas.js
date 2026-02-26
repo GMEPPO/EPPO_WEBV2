@@ -1283,7 +1283,11 @@
         document.querySelectorAll('.ge-save-encurso').forEach(btn => { btn.textContent = t('guardar'); });
     }
 
-    function init() {
+    async function init() {
+        const isAuth = window.authManager && await window.authManager.requireAuth('login.html');
+        if (!isAuth) {
+            return;
+        }
         const backBtn = document.getElementById('ge-back-btn');
         if (backBtn) backBtn.addEventListener('click', backToList);
 

@@ -190,10 +190,6 @@
                         <img src="https://flagcdn.com/w20/es.png" alt="España">
                     </button>
                 </div>
-                <button class="theme-toggle" id="theme-toggle" title="Cambiar tema">
-                    <i class="fas fa-sun sun-icon"></i>
-                    <i class="fas fa-moon moon-icon"></i>
-                </button>
                 <div class="user-bar" id="user-bar">
                     <span class="user-bar-name" id="user-bar-name">—</span>
                     <span class="user-bar-sep" aria-hidden="true">|</span>
@@ -225,50 +221,6 @@
     </main>
 
     <script>
-        // Función para manejar el cambio de tema
-        function toggleTheme() {
-            const html = document.documentElement;
-            const currentTheme = html.getAttribute('data-theme');
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            
-            html.setAttribute('data-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
-            
-            // Actualizar el título del botón
-            const toggleButton = document.getElementById('theme-toggle');
-            toggleButton.setAttribute('title', newTheme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro');
-        }
-
-        // Función para inicializar el tema
-        function initTheme() {
-            const savedTheme = localStorage.getItem('theme');
-            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            const theme = savedTheme || (prefersDark ? 'dark' : 'light');
-            
-            document.documentElement.setAttribute('data-theme', theme);
-            
-            const toggleButton = document.getElementById('theme-toggle');
-            toggleButton.setAttribute('title', theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro');
-        }
-
-        // Event listeners
-        document.addEventListener('DOMContentLoaded', function() {
-            initTheme();
-            
-            const toggleButton = document.getElementById('theme-toggle');
-            if (toggleButton) {
-                toggleButton.addEventListener('click', toggleTheme);
-            }
-        });
-
-        // Escuchar cambios en las preferencias del sistema
-        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
-            if (!localStorage.getItem('theme')) {
-                const theme = e.matches ? 'dark' : 'light';
-                document.documentElement.setAttribute('data-theme', theme);
-            }
-        });
-
         // Función para cambiar idioma
         // NO sobrescribir la función global changeLanguage
         // En su lugar, escuchar el evento languageChanged para actualizar elementos específicos
@@ -390,14 +342,12 @@
 
                 // Asegurar que universalSupabase esté disponible
                 if (!window.universalSupabase) {
-                    console.warn('universalSupabase no disponible, esperando...');
                     await new Promise(resolve => setTimeout(resolve, 500));
                 }
 
                 if (window.universalSupabase) {
                     supabaseClient = await window.universalSupabase.getClient();
                     if (supabaseClient) {
-                        console.log('✅ Supabase inicializado correctamente');
                 return supabaseClient;
                     }
                 }
@@ -421,7 +371,6 @@
             // Mostrar indicador de carga
             grid.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-secondary);"><i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 10px;"></i><p>Cargando categorías...</p></div>';
 
-            console.log('🔄 Inicializando Supabase...');
             const client = await initSupabase();
             if (!client) {
                 console.error('❌ No se pudo obtener el cliente de Supabase');
@@ -430,20 +379,12 @@
             }
 
             try {
-                console.log('🔄 Cargando categorías desde Supabase...');
-                console.log('📋 Tabla: categorias_geral');
-                console.log('📋 Filtros: tipo=home, is_active=true');
-                
                 // Cargar solo categorías activas (sin ordenar por número, se ordenarán alfabéticamente)
                 const { data, error } = await client
                     .from('categorias_geral')
                     .select('*')
                     .eq('tipo', 'home')
                     .eq('is_active', true);
-
-                console.log('📊 Respuesta de Supabase recibida');
-                console.log('📊 Data:', data);
-                console.log('📊 Error:', error);
 
                 if (error) {
                     console.error('❌ Error de Supabase:', error);
@@ -462,25 +403,14 @@
                 }
 
                 homeCategories = data || [];
-                console.log(`✅ Categorías cargadas: ${homeCategories.length}`);
-
-                // Categorías cargadas
-                if (homeCategories.length > 0) {
-                homeCategories.forEach(cat => {
-                    console.log(`  - ${cat.nombre_es}: foto = "${cat.foto}"`);
-                });
-                }
 
                 if (homeCategories.length === 0) {
-                    console.warn('⚠️ No hay categorías disponibles en la base de datos');
                     grid.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-secondary);"><p>No hay categorías disponibles. Contacta al administrador.</p></div>';
                     return;
                 }
 
                 // Renderizar categorías
-                console.log('🔄 Renderizando categorías...');
                 renderHomeCategories();
-                console.log('✅ Categorías renderizadas correctamente');
             } catch (error) {
                 console.error('❌ Error cargando categorías del home:', error);
                 grid.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-danger);"><p>Error al cargar las categorías: ' + (error.message || 'Error desconocido') + '</p><p style="margin-top: 10px; font-size: 0.9rem;">Por favor, recarga la página.</p></div>';
@@ -526,9 +456,6 @@
                     .replace(/[^a-z0-9-]/g, '');
                 const href = `productos-dinamico.html?category=${categorySlug}`;
 
-                // Debug: mostrar en consola qué foto se está usando
-                console.log('Categoría:', category.nombre_es, 'Foto en BD:', category.foto);
-
                 // Validar que la foto existe y no está vacía
                 const fotoUrl = category.foto && category.foto.trim() ? category.foto.trim() : null;
 
@@ -537,7 +464,7 @@
                         ${fotoUrl ? 
                             `<img src="${fotoUrl}" alt="${nombre}" 
                                 onerror="console.error('❌ Error cargando imagen para categoría ${category.nombre_es}:', '${fotoUrl}'); this.style.display='none';" 
-                                onload="console.log('✅ Imagen cargada correctamente para ${category.nombre_es}:', '${fotoUrl}');"
+                                onload=""
                                 loading="lazy"
                                 data-foto-original="${fotoUrl}">` :
                             `<div style="width: 100%; height: 100%; background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%); display: flex; align-items: center; justify-content: center; color: #9ca3af;">
@@ -553,28 +480,6 @@
 
             grid.innerHTML = html || '<div style="text-align: center; padding: 40px; color: var(--text-secondary);"><p>No hay categorías disponibles</p></div>';
             
-            // Agregar event listeners para depuración al hacer clic en las categorías
-            document.querySelectorAll('.category-card').forEach(card => {
-                card.addEventListener('click', function(e) {
-                    const categoryId = this.getAttribute('data-category-id');
-                    const categoryName = this.getAttribute('data-category-name');
-                    const fotoUrl = this.getAttribute('data-foto-url');
-                    const img = this.querySelector('img');
-                    const imgSrc = img ? img.src : 'No hay imagen';
-                    const imgDataOriginal = img ? img.getAttribute('data-foto-original') : 'No hay imagen';
-                    
-                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-                    console.log('🖼️ INFORMACIÓN DE LA CATEGORÍA CLICKEADA:');
-                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-                    console.log('📝 Nombre:', categoryName);
-                    console.log('🆔 ID:', categoryId);
-                    console.log('💾 Foto en Base de Datos (data-foto-url):', fotoUrl);
-                    console.log('🖼️ Foto Original (data-foto-original):', imgDataOriginal);
-                    console.log('🌐 URL Actual de la Imagen (img.src):', imgSrc);
-                    console.log('🔍 ¿Coinciden?', fotoUrl === imgSrc || imgDataOriginal === imgSrc ? '✅ SÍ' : '❌ NO');
-                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-                });
-            });
         }
 
         // Actualizar categorías cuando cambia el idioma
@@ -660,8 +565,6 @@
 
         // Inicializar idioma y cargar categorías al cargar la página
         document.addEventListener('DOMContentLoaded', async function() {
-            console.log('🚀 DOMContentLoaded - Iniciando carga de index.html');
-            
             // Si por rewrite se sirvió index para /reset-password, ir a la página dedicada (sin layout)
             const pathname = (window.location.pathname || '').toLowerCase();
             if (pathname.includes('reset-password')) {
@@ -706,85 +609,10 @@
                 }
             });
             
-            // Verificar si ya estamos en proceso de redirección (evitar bucles)
-            const redirectFlag = sessionStorage.getItem('auth_redirecting');
-            if (redirectFlag === 'true') {
-                console.log('⚠️ Redirección en curso, esperando...');
-                sessionStorage.removeItem('auth_redirecting');
-                // Esperar un momento antes de verificar de nuevo
-                await new Promise(resolve => setTimeout(resolve, 1000));
-            }
-            
-            // Verificar autenticación primero (pero no bloquear si hay problemas)
-            console.log('🔐 Verificando autenticación...');
-            let isAuth = false;
-            
-            // Si estamos usando file://, mostrar mensaje claro
-            if (window.location.protocol === 'file:') {
-                console.error('❌ PROBLEMA: Estás usando file:// protocol');
-                console.error('❌ Supabase NO puede autenticar usuarios con file://');
-                console.error('');
-                console.error('💡 SOLUCIÓN: Usa un servidor HTTP local');
-                console.error('   1. Abre PowerShell o CMD en esta carpeta');
-                console.error('   2. Ejecuta: python -m http.server 8000');
-                console.error('   3. Abre en el navegador: http://localhost:8000');
-                console.error('');
-                console.warn('⚠️ Continuando sin autenticación (funcionalidad limitada)');
-            }
-            
-            // Esperar un momento para que authManager se inicialice completamente
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            // Verificar autenticación de forma optimizada
-            try {
-                if (window.authManager && typeof window.authManager.isAuthenticated === 'function') {
-                    // La función isAuthenticated ya tiene su propio timeout interno
-                    isAuth = await window.authManager.isAuthenticated();
-                } else {
-                    console.warn('⚠️ authManager no disponible');
-                    isAuth = false;
-                }
-                
-                if (window.location.protocol === 'file:') {
-                    console.log('🔐 Estado: No autenticado (esperado con file://)');
-                } else {
-                    console.log('🔐 Estado de autenticación:', isAuth ? '✅ Autenticado' : '⚠️ No autenticado');
-                }
-                
-                // Solo redirigir si NO estamos usando file:// y NO está autenticado
-                // Y solo si no hay una bandera de redirección activa
-                if (!isAuth && window.location.protocol !== 'file:') {
-                    // No redirigir si estamos en login o en reset-password (flujo de recuperación sin sesión)
-                    const currentPath = window.location.pathname || window.location.href;
-                    if (!currentPath.includes('login.html') && !currentPath.includes('reset-password')) {
-                        // Verificar que no hayamos redirigido recientemente
-                        const lastRedirect = sessionStorage.getItem('last_auth_redirect');
-                        const now = Date.now();
-                        if (!lastRedirect || (now - parseInt(lastRedirect)) > 2000) {
-                            console.log('❌ Usuario no autenticado, redirigiendo a login...');
-                            sessionStorage.setItem('auth_redirecting', 'true');
-                            sessionStorage.setItem('last_auth_redirect', now.toString());
-                            window.location.href = 'login.html';
-                            return;
-                        } else {
-                            console.warn('⚠️ Redirección reciente detectada, evitando bucle');
-                        }
-                    }
-                }
-            } catch (error) {
-                if (window.location.protocol !== 'file:') {
-                    console.error('⚠️ Error verificando autenticación (continuando):', error);
-                }
-                // Continuar aunque haya error en autenticación
-            }
-            
-            console.log('✅ Continuando con la carga de la página...');
-
-            // El rol se consultará directamente desde Supabase cuando sea necesario
-            // (en toggleMenu() cuando el usuario intente abrir el menú)
-            // No necesitamos cargar el rol aquí
-            if (isAuth) {
-                console.log('✅ [index.html] Usuario autenticado, el rol se consultará cuando sea necesario');
+            // En local (file://) o sin usuario autenticado: no se permite ver datos de Supabase (redirige a login)
+            const isAuth = window.authManager && await window.authManager.requireAuth('login.html');
+            if (!isAuth) {
+                return;
             }
 
             // Configurar idioma (no bloquea)
@@ -793,8 +621,6 @@
             initPageLanguage();
             
             // Inicializar Supabase y cargar categorías del home
-            // IMPORTANTE: Esto se ejecuta INMEDIATAMENTE, sin esperar a rolesManager
-            console.log('🔄 Iniciando carga de categorías (sin bloqueo por roles)...');
             try {
             await initSupabase();
             await loadHomeCategories();

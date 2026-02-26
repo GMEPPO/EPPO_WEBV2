@@ -22,15 +22,6 @@ class AuthManager {
         }
 
         try {
-            // Si estamos usando file://, mostrar advertencia pero intentar continuar
-            if (window.location.protocol === 'file:') {
-                console.warn('⚠️ ADVERTENCIA: Estás usando file:// protocol');
-                console.warn('⚠️ Supabase NO puede funcionar correctamente con file://');
-                console.warn('💡 SOLUCIÓN: Usa un servidor HTTP local');
-                console.warn('   Ejecuta: python -m http.server 8000');
-                console.warn('   Luego abre: http://localhost:8000');
-            }
-
             // Obtener cliente Supabase - usar siempre el cliente compartido
             if (window.universalSupabase) {
                 this.supabase = await window.universalSupabase.getClient();
@@ -42,7 +33,6 @@ class AuthManager {
                 } else {
                     // Si estamos en file://, no lanzar error fatal
                     if (window.location.protocol === 'file:') {
-                        console.warn('⚠️ Supabase no disponible en file:// - la autenticación no funcionará');
                         this.isInitialized = true; // Marcar como inicializado para evitar reintentos
                         return null;
                     }
@@ -65,9 +55,7 @@ class AuthManager {
             }
                 } catch (error) {
                     // Si falla por CORS, es porque estamos en file://
-                    if (error.message && (error.message.includes('CORS') || error.message.includes('Failed to fetch'))) {
-                        console.warn('⚠️ Error de CORS - Supabase no puede funcionar con file://');
-                    } else {
+                    if (!error.message || (!error.message.includes('CORS') && !error.message.includes('Failed to fetch'))) {
                         console.error('Error obteniendo sesión:', error);
                     }
                 }
@@ -79,19 +67,12 @@ class AuthManager {
                             if (event === 'SIGNED_IN' && session) {
                                 // Evitar procesar múltiples veces el mismo SIGNED_IN
                                 if (this.processingSignIn) {
-                                    console.log('⏭️ [auth.js] SIGNED_IN ya se está procesando, saltando...');
                                     return;
                                 }
                                 
                                 this.processingSignIn = true;
                     this.currentUser = session?.user || null;
                                 if (this.currentUser) this.syncIdentityFromUserRoles().catch(() => {});
-                                console.log('✅ [auth.js] Usuario autenticado:', this.currentUser?.email);
-                                
-                                // El rol se consultará directamente desde Supabase cuando sea necesario
-                                // (en toggleMenu() cuando el usuario intente abrir el menú)
-                                // No necesitamos cargar el rol aquí
-                                console.log('✅ [auth.js] Usuario autenticado, el rol se consultará cuando sea necesario');
                                 this.processingSignIn = false;
                 } else if (event === 'SIGNED_OUT') {
                     this.currentUser = null;
@@ -102,9 +83,8 @@ class AuthManager {
                 }
             });
                     this.authStateChangeListenerAdded = true;
-                    console.log('✅ [auth.js] Listener de autenticación configurado (solo una vez)');
                 } catch (error) {
-                    console.warn('⚠️ [auth.js] No se pudo configurar listener de autenticación:', error);
+                    // No se pudo configurar listener de autenticación
                 }
             }
             } // Cerrar el if (window.location.protocol !== 'file:')
@@ -114,7 +94,6 @@ class AuthManager {
         } catch (error) {
             // Si es error de CORS y estamos en file://, no es crítico
             if (window.location.protocol === 'file:' && error.message && (error.message.includes('CORS') || error.message.includes('Failed to fetch'))) {
-                console.warn('⚠️ Error de CORS esperado con file:// - la autenticación no funcionará');
                 this.isInitialized = true;
                 return null;
             }
@@ -153,20 +132,14 @@ class AuthManager {
      */
     async getClient() {
         if (!this.isInitialized) {
-            console.log('🔍 [getClient] Inicializando porque no está inicializado...');
             await this.initialize();
         }
         
         if (!this.supabase) {
-            console.error('❌ [getClient] Supabase no está disponible después de inicializar');
             // Intentar obtener directamente desde universalSupabase
             if (window.universalSupabase) {
-                console.log('🔍 [getClient] Intentando obtener desde universalSupabase directamente...');
                 try {
                     this.supabase = await window.universalSupabase.getClient();
-                    if (this.supabase) {
-                        console.log('✅ [getClient] Cliente obtenido desde universalSupabase');
-                    }
                 } catch (error) {
                     console.error('❌ [getClient] Error obteniendo cliente:', error);
                 }
@@ -338,28 +311,33 @@ class AuthManager {
     }
 
     /**
-     * Requerir autenticación (redirige a login si no está autenticado)
+     * Requerir autenticación (redirige a login si no está autenticado o si se abre en local file://).
+     * En local o sin usuario autenticado no se debe permitir ver datos de Supabase.
      */
     async requireAuth(redirectTo = 'login.html') {
         try {
-        // Esperar un momento para que la sesión se cargue desde localStorage
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        const isAuth = await this.isAuthenticated();
-        if (!isAuth) {
-                const path = window.location.pathname || '';
-                const isLogin = path.includes('login.html');
-                const isResetPassword = path.includes('reset-password');
-                // No redirigir en login ni en reset-password (flujo de recuperación sin sesión)
-                if (!isLogin && !isResetPassword && window.location.protocol !== 'file:') {
+            const path = (window.location.pathname || window.location.href || '');
+            const isLogin = path.includes('login.html');
+            const isResetPassword = path.includes('reset-password');
+            const isLocalFile = window.location.protocol === 'file:';
+
+            // En local (file://): redirigir a login para no exponer datos de Supabase
+            if (isLocalFile && !isLogin && !isResetPassword) {
                 window.location.href = redirectTo;
+                return false;
             }
-            return false;
-        }
-        return true;
+
+            await new Promise(resolve => setTimeout(resolve, 100));
+            const isAuth = await this.isAuthenticated();
+            if (!isAuth) {
+                if (!isLogin && !isResetPassword) {
+                    window.location.href = redirectTo;
+                }
+                return false;
+            }
+            return true;
         } catch (error) {
             console.error('Error en requireAuth:', error);
-            // Si hay error, retornar false pero no bloquear
             return false;
         }
     }

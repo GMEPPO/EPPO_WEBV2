@@ -9755,12 +9755,17 @@ function closeProposalDetails() {
     }
 }
 
-// Inicializar cuando el DOM esté listo
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('📄 DOM cargado, inicializando ProposalsManager...');
-    
+// Inicializar cuando el DOM esté listo (solo si hay usuario autenticado y no es entorno local file://)
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log('📄 DOM cargado, verificando autenticación...');
+    const isAuth = window.authManager && await window.authManager.requireAuth('login.html');
+    if (!isAuth) {
+        console.log('❌ Sin autenticación o entorno local: no se cargan datos de Supabase.');
+        return;
+    }
+    console.log('📄 Inicializando ProposalsManager...');
     try {
-    window.proposalsManager = new ProposalsManager();
+        window.proposalsManager = new ProposalsManager();
         console.log('✅ ProposalsManager creado');
     } catch (error) {
         console.error('❌ Error al crear ProposalsManager:', error);

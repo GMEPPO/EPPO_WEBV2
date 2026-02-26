@@ -45,7 +45,6 @@ async function loadConfigFromAPI() {
             }
         } catch (error) {
             // API no disponible, continuar con otros métodos
-            console.log('ℹ️ API de configuración no disponible, usando otros métodos');
         }
         return null;
     })();
@@ -206,7 +205,6 @@ if (typeof UniversalSupabaseClient === 'undefined') {
 
             // Si ya existe un cliente, reutilizarlo para evitar múltiples instancias
             if (this.client && this.client.auth) {
-                console.log('ℹ️ Reutilizando cliente Supabase existente');
                 this.isInitialized = true;
                 return this.client;
             }
@@ -241,7 +239,7 @@ if (typeof UniversalSupabaseClient === 'undefined') {
                 try {
             await this.testConnection();
                 } catch (error) {
-                    console.warn('⚠️ Error en test de conexión (continuando):', error);
+                    // Error en test de conexión, continuar
                 }
             }
             
@@ -290,7 +288,6 @@ if (typeof UniversalSupabaseClient === 'undefined') {
         
         // Si no está inicializado, inicializar
         if (!this.isInitialized) {
-            console.log('🔍 [getClient] Cliente no inicializado, inicializando...');
             await this.initialize();
         }
         
