@@ -24,8 +24,8 @@
             guardado: 'Guardado.',
             error: 'Erro ao guardar.',
             errorCarga: 'Erro ao carregar dados.',
-            pendientes: 'Encomendas pendentes',
-            enCurso: 'Encomendas em curso',
+            pendientes: 'Pedidos pendentes',
+            enCurso: 'Pedidos em curso',
             nuevosProveedores: 'Contactos com novos fornecedores',
             refPhc: 'Ref. PHC',
             observaciones: 'Observações',
@@ -579,7 +579,7 @@
     }
 
     function updateTabCounts() {
-        const pendientesCount = listData.filter(r => r.source === 'contacto_fornecedores' || !r.isEnCurso || r.hasArticulosPendientes === true).length;
+        const pendientesCount = listData.filter(r => r.source === 'contacto_fornecedores' || !r.isEnCurso).length;
         const enCursoCount = getEnCursoRowsByFornecedor().length;
         const elP = document.getElementById('ge-tab-pendientes-count');
         const elE = document.getElementById('ge-tab-encurso-count');
@@ -666,7 +666,8 @@
             });
             setEmpty(historicoFiltered.length === 0);
         } else {
-            let filtered = listData.filter(row => row.source === 'contacto_fornecedores' || !row.isEnCurso || row.hasArticulosPendientes === true);
+            // Solo pendientes: contactos + propuestas que aún no tienen todos los nº encomenda (no isEnCurso)
+            let filtered = listData.filter(row => row.source === 'contacto_fornecedores' || !row.isEnCurso);
             filtered = filtered.filter(row => matchesListSearch(row, false));
             tbody.innerHTML = '';
             filtered.forEach(row => {
@@ -739,7 +740,7 @@
             const iconColor = type === 'pdf' ? '#ef4444' : type === 'email' ? '#3b82f6' : '#94a3b8';
             preview = '<div class="ge-doc-preview-icon" style="width:' + thumbSize + ';height:' + thumbSize + ';border-radius:6px;background:#334155;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fas ' + icon + '" style="font-size:1.15rem;color:' + iconColor + ';"></i></div>';
         }
-        return '<div class="ge-doc-card" style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:#1e293b;border-radius:6px;border:1px solid #334155;margin-bottom:4px;">' +
+        return '<div class="ge-doc-card" style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:#1e293b;border-radius:6px;border:1px solid #334155;">' +
             preview +
             '<div style="flex:1;min-width:0;">' +
             '<div style="font-size:0.7rem;color:#e2e8f0;margin-bottom:4px;">' + escapeHtml(label || filename) + '</div>' +
@@ -1331,8 +1332,8 @@
         const historicoUrl = (gc.historico_emails_url || '').trim();
         if (anexosUrls.length === 0 && !historicoUrl) return '';
         let html = wrapInDiv !== false ? '<div class="ge-product-anexos" style="font-size:0.75rem;">' : '';
-        html += '<div style="color:var(--text-secondary);margin-bottom:4px;"><strong>' + escapeHtml(t('anexos')) + ':</strong></div>';
-        html += '<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-start;">';
+        html += '<div style="color:var(--text-secondary);margin-bottom:6px;"><strong>' + escapeHtml(t('anexos')) + ':</strong></div>';
+        html += '<div class="ge-anexos-list">';
         anexosUrls.forEach((url, i) => {
             html += buildDocPreviewCard(url, t('verDescargar') + (anexosUrls.length > 1 ? ' ' + (i + 1) : ''));
         });

@@ -56,9 +56,11 @@
         /* Distribución producto + anexos: dos columnas para equilibrar la fila */
         .ge-product-details { display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: start; min-width: 260px; max-width: 400px; }
         .ge-product-details .ge-product-info { min-width: 0; }
-        .ge-product-details .ge-product-anexos { flex-shrink: 0; }
+        .ge-product-details .ge-product-anexos { flex-shrink: 0; min-width: 0; padding-left: 0.75rem; border-left: 1px solid var(--bg-gray-200, #334155); }
+        .ge-product-details .ge-anexos-list { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.25rem; }
         .ge-table .ge-td-product { vertical-align: top; min-width: 280px; }
         .ge-table .ge-td-product .ge-product-details { white-space: normal; }
+        .ge-doc-card { flex-shrink: 0; margin: 0; }
     </style>
 </head>
 <body>
@@ -121,10 +123,10 @@
                 </div>
                 <div class="ge-tabs">
                     <button type="button" class="ge-tab ge-tab-active" data-tab="pendientes" id="ge-tab-pendientes">
-                        <i class="fas fa-clock"></i> <span id="ge-tab-pendientes-text">Encomendas pendentes</span><span class="ge-tab-count" id="ge-tab-pendientes-count"></span>
+                        <i class="fas fa-clock"></i> <span id="ge-tab-pendientes-text">Pedidos pendentes</span><span class="ge-tab-count" id="ge-tab-pendientes-count"></span>
                     </button>
                     <button type="button" class="ge-tab" data-tab="encurso" id="ge-tab-encurso">
-                        <i class="fas fa-truck"></i> <span id="ge-tab-encurso-text">Encomendas em curso</span><span class="ge-tab-count" id="ge-tab-encurso-count"></span>
+                        <i class="fas fa-truck"></i> <span id="ge-tab-encurso-text">Pedidos em curso</span><span class="ge-tab-count" id="ge-tab-encurso-count"></span>
                     </button>
                     <button type="button" class="ge-tab" data-tab="historico" id="ge-tab-historico">
                         <i class="fas fa-history"></i> <span id="ge-tab-historico-text">Histórico</span><span class="ge-tab-count" id="ge-tab-historico-count"></span>
