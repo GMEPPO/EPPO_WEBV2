@@ -68,7 +68,9 @@
             nenhumAnexo: 'Nenhum anexo.',
             historico: 'Histórico',
             encomendasConcluidas: 'Encomendas concluídas',
-            contactosFinalizados: 'Contactos finalizados'
+            contactosFinalizados: 'Contactos finalizados',
+            concluirTarefa: 'Concluir tarefa',
+            confirmarConcluir: 'Quer marcar esta encomenda como concluída? Ela passará para o Histórico.'
         },
         es: {
             loading: 'Cargando...',
@@ -134,7 +136,9 @@
             nenhumAnexo: 'Ningún anexo.',
             historico: 'Histórico',
             encomendasConcluidas: 'Encomendas concluídas',
-            contactosFinalizados: 'Contactos finalizados'
+            contactosFinalizados: 'Contactos finalizados',
+            concluirTarefa: 'Concluir tarea',
+            confirmarConcluir: '¿Marcar esta encomienda como concluida? Pasará al Histórico.'
         },
         en: {
             loading: 'Loading...',
@@ -200,7 +204,9 @@
             nenhumAnexo: 'No attachments.',
             historico: 'History',
             encomendasConcluidas: 'Completed orders',
-            contactosFinalizados: 'Closed contacts'
+            contactosFinalizados: 'Closed contacts',
+            concluirTarefa: 'Complete task',
+            confirmarConcluir: 'Mark this order as completed? It will move to History.'
         }
     };
 
@@ -401,7 +407,9 @@
                 const { data: gcRows } = await client.from('gestao_compras').select('presupuesto_id, nome_fornecedor, tipo').in('presupuesto_id', ids);
                 const tipoByPresupuesto = {};
                 const fornecedoresByPresupuesto = {};
+                const presupuestoIdsComGestao = new Set();
                 (gcRows || []).forEach(r => {
+                    if (r.presupuesto_id) presupuestoIdsComGestao.add(r.presupuesto_id);
                     if (r.presupuesto_id && r.tipo && (r.tipo || '').trim() !== '' && !tipoByPresupuesto[r.presupuesto_id]) tipoByPresupuesto[r.presupuesto_id] = r.tipo.trim();
                     if (r.presupuesto_id && r.nome_fornecedor) {
                         if (!fornecedoresByPresupuesto[r.presupuesto_id]) fornecedoresByPresupuesto[r.presupuesto_id] = [];
@@ -410,6 +418,7 @@
                     }
                 });
                 presupuestosConcluidos.forEach(p => {
+                    if (!presupuestoIdsComGestao.has(p.id)) return;
                     historicoListData.push({
                         source: 'presupuesto',
                         presupuesto_id: p.id,
@@ -1090,9 +1099,10 @@
 
             const codigoPropuestaEc = (proposal && proposal.codigo_propuesta) ? proposal.codigo_propuesta : (presupuestoId ? String(presupuestoId).substring(0, 8) : '-');
             const responsavelEc = (proposal && proposal.responsavel) ? proposal.responsavel : '-';
-            const numeroPropostaBlockEc = '<div class="ge-fornecedor-block" style="margin-bottom:1rem;"><div style="display:grid;grid-template-columns:auto 1fr;gap:1rem;align-items:center;"><div><span style="font-size:0.8rem;color:#94a3b8;">' + t('numPropuesta') + '</span><div style="font-weight:600;color:#f1f5f9;font-size:1.1rem;">' + escapeHtml(codigoPropuestaEc) + '</div></div><div><span style="font-size:0.8rem;color:#94a3b8;">' + t('responsable') + '</span><div style="font-weight:600;color:#f1f5f9;">' + escapeHtml(responsavelEc) + '</div></div></div></div>';
+            const numeroPropostaBlockEc = '<div class="ge-fornecedor-block" style="margin-bottom:1rem;"><div style="display:grid;grid-template-columns:auto 1fr;gap:1rem;align-items:center;"><div><span style="font-size:0.8rem;color:var(--text-secondary);">' + t('numPropuesta') + '</span><div style="font-weight:600;color:var(--text-primary);font-size:1.1rem;">' + escapeHtml(codigoPropuestaEc) + '</div></div><div><span style="font-size:0.8rem;color:var(--text-secondary);">' + t('responsable') + '</span><div style="font-weight:600;color:var(--text-primary);">' + escapeHtml(responsavelEc) + '</div></div></div></div>';
 
-            blocksEl.innerHTML = numeroPropostaBlockEc + anexosHtmlEc;
+            const concluirBlockHtml = '<div class="ge-fornecedor-block" style="margin-bottom:1.5rem;"><button type="button" class="ge-btn ge-btn-success" id="ge-btn-concluir-encurso"><i class="fas fa-check-circle"></i> <span id="ge-btn-concluir-text">' + escapeHtml(t('concluirTarefa')) + '</span></button></div>';
+            blocksEl.innerHTML = numeroPropostaBlockEc + anexosHtmlEc + concluirBlockHtml;
             Object.keys(byFornecedor).sort().forEach(fornecedorName => {
                 const rows = byFornecedor[fornecedorName];
                 const block = document.createElement('div');
@@ -1141,6 +1151,8 @@
                 if (saveBtn) saveBtn.addEventListener('click', () => saveEnCursoBlock(block));
                 blocksEl.appendChild(block);
             });
+            const concluirBtn = document.getElementById('ge-btn-concluir-encurso');
+            if (concluirBtn) concluirBtn.addEventListener('click', () => concluirEncomendaEnCurso(presupuestoId));
         } catch (e) {
             console.error('showDetailsEnCurso:', e);
             blocksEl.innerHTML = '<div style="color: var(--danger-500);">' + escapeHtml(e.message || t('errorCarga')) + '</div>';
@@ -1169,6 +1181,30 @@
             showNotification(t('guardado'), 'success');
         } catch (e) {
             console.error('saveEnCursoBlock:', e);
+            showNotification(e.message || t('error'), 'error');
+        }
+    }
+
+    async function concluirEncomendaEnCurso(presupuestoId) {
+        if (!presupuestoId) return;
+        if (!confirm(t('confirmarConcluir'))) return;
+        const client = await getClient();
+        if (!client) return;
+        try {
+            const { error } = await client
+                .from('presupuestos')
+                .update({
+                    estado_propuesta: 'encomenda_concluida',
+                    fecha_ultima_actualizacion: new Date().toISOString()
+                })
+                .eq('id', presupuestoId);
+            if (error) throw error;
+            backToList();
+            await loadList();
+            await loadHistorico();
+            showNotification(lang === 'es' ? 'Encomienda marcada como concluida. Aparecerá en Histórico.' : lang === 'en' ? 'Order marked as completed. It will appear in History.' : 'Encomenda marcada como concluída. Aparecerá no Histórico.', 'success');
+        } catch (e) {
+            console.error('concluirEncomendaEnCurso:', e);
             showNotification(e.message || t('error'), 'error');
         }
     }
@@ -1207,13 +1243,13 @@
         const phcLabel = hasPhc ? (gc.phc_ref || '').trim() : t('semPhc');
         const isSemPhc = !!(gc.referencia || gc.designacao);
         const faltaCriarCodigo = showFaltaBadge && isSemPhc && !hasPhc;
-        const faltaBadge = faltaCriarCodigo ? ` <span class="ge-badge-falta" style="display:inline-block;margin-left:6px;padding:2px 8px;font-size:0.7rem;background:#b91c1c;color:#fff;border-radius:4px;">${t('faltaCriarCodigo')}</span>` : '';
+        const faltaBadge = faltaCriarCodigo ? ` <span class="ge-badge-falta" style="display:inline-block;margin-left:6px;padding:2px 8px;font-size:0.7rem;background:var(--danger-500);color:var(--text-white);border-radius:4px;">${t('faltaCriarCodigo')}</span>` : '';
         let html = `<div class="ge-product-details" style="font-size: 0.875rem;">`;
         html += `<div style="font-weight: 600; margin-bottom: 4px;">${escapeHtml(gc.nome_articulo || gc.designacao || refFornecedor || '-')}${faltaBadge}</div>`;
-        html += `<div style="color: #94a3b8; font-size: 0.8rem; margin-bottom: 6px;">${t('refFornecedor')}: ${escapeHtml(refFornecedor)}</div>`;
-        html += `<div style="color: #94a3b8; font-size: 0.8rem; margin-bottom: 6px;">${t('refPhc')}: ${hasPhc ? escapeHtml(phcLabel) : `<span style="color: #f59e0b;">${escapeHtml(phcLabel)}</span>`}</div>`;
+        html += `<div style="color: var(--text-secondary); font-size: 0.8rem; margin-bottom: 6px;">${t('refFornecedor')}: ${escapeHtml(refFornecedor)}</div>`;
+        html += `<div style="color: var(--text-secondary); font-size: 0.8rem; margin-bottom: 6px;">${t('refPhc')}: ${hasPhc ? escapeHtml(phcLabel) : `<span style="color: var(--accent-500);">${escapeHtml(phcLabel)}</span>`}</div>`;
         if (isSemPhc) {
-            html += `<div style="margin-top: 8px; padding-top: 6px; border-top: 1px solid #334155; font-size: 0.8rem; color: #cbd5e1;">`;
+            html += `<div style="margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--bg-gray-200); font-size: 0.8rem; color: var(--text-secondary);">`;
             html += `<div><strong>${t('designacao')}:</strong> ${escapeHtml((gc.designacao || '').trim() || '-')}</div>`;
             html += `<div><strong>${t('peso')}:</strong> ${escapeHtml((gc.peso || '').trim() || '-')}</div>`;
             html += `<div><strong>${t('qtyCaixa')}:</strong> ${gc.quantidade_por_caixa != null ? escapeHtml(String(gc.quantidade_por_caixa)) : '-'}</div>`;
