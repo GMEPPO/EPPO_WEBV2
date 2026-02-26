@@ -65,6 +65,8 @@
             anexosDocumentos: 'Anexos e documentos',
             historicoEmails: 'Histórico de emails',
             verDescargar: 'Ver / Descargar',
+            ver: 'Ver',
+            descargar: 'Descarregar',
             nenhumAnexo: 'Nenhum anexo.',
             anexos: 'Anexos',
             historico: 'Histórico',
@@ -134,6 +136,8 @@
             anexosDocumentos: 'Anexos y documentos',
             historicoEmails: 'Histórico de emails',
             verDescargar: 'Ver / Descargar',
+            ver: 'Ver',
+            descargar: 'Descargar',
             nenhumAnexo: 'Ningún anexo.',
             anexos: 'Anexos',
             historico: 'Histórico',
@@ -203,6 +207,8 @@
             anexosDocumentos: 'Attachments and documents',
             historicoEmails: 'Email history',
             verDescargar: 'View / Download',
+            ver: 'View',
+            descargar: 'Download',
             nenhumAnexo: 'No attachments.',
             anexos: 'Attachments',
             historico: 'History',
@@ -614,6 +620,51 @@
         return [];
     }
 
+    function getFileTypeFromUrl(url) {
+        if (!url || typeof url !== 'string') return 'document';
+        const path = url.split('?')[0].toLowerCase();
+        if (/\.(png|jpg|jpeg|gif|webp|bmp|svg)(\?|$)/i.test(path)) return 'image';
+        if (/\.pdf(\?|$)/i.test(path)) return 'pdf';
+        if (/\.(msg|eml)(\?|$)/i.test(path)) return 'email';
+        return 'document';
+    }
+
+    function getFilenameFromUrl(url) {
+        if (!url || typeof url !== 'string') return 'documento';
+        try {
+            const path = decodeURIComponent(url.split('?')[0]);
+            const name = path.split('/').pop() || 'documento';
+            return name.replace(/[<>:"/\\|?*]/g, '_') || 'documento';
+        } catch (_) {
+            return 'documento';
+        }
+    }
+
+    function buildDocPreviewCard(url, label) {
+        const safe = escapeAttr(url);
+        const type = getFileTypeFromUrl(url);
+        const filename = getFilenameFromUrl(url);
+        const safeFilename = escapeAttr(filename);
+        let preview = '';
+        if (type === 'image') {
+            preview = '<div class="ge-doc-preview-thumb" style="width:80px;height:80px;border-radius:8px;overflow:hidden;background:#334155;flex-shrink:0;position:relative;">' +
+                '<span class="ge-thumb-fallback" style="display:none;position:absolute;inset:0;flex:1;align-items:center;justify-content:center;color:#64748b;font-size:1.5rem;"><i class="fas fa-image"></i></span>' +
+                '<img src="' + safe + '" alt="" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\';var f=this.parentElement.querySelector(\'.ge-thumb-fallback\');if(f)f.style.display=\'flex\';"></div>';
+        } else {
+            const icon = type === 'pdf' ? 'fa-file-pdf' : type === 'email' ? 'fa-envelope' : 'fa-file';
+            const iconColor = type === 'pdf' ? '#ef4444' : type === 'email' ? '#3b82f6' : '#94a3b8';
+            preview = '<div class="ge-doc-preview-icon" style="width:80px;height:80px;border-radius:8px;background:#334155;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fas ' + icon + '" style="font-size:2rem;color:' + iconColor + ';"></i></div>';
+        }
+        return '<div class="ge-doc-card" style="display:flex;align-items:center;gap:10px;padding:10px;background:#1e293b;border-radius:8px;border:1px solid #334155;margin-bottom:8px;">' +
+            preview +
+            '<div style="flex:1;min-width:0;">' +
+            '<div style="font-size:0.8rem;color:#e2e8f0;margin-bottom:6px;">' + escapeHtml(label || filename) + '</div>' +
+            '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
+            '<a href="' + safe + '" target="_blank" rel="noopener noreferrer" class="ge-btn ge-btn-secondary" style="padding:4px 10px;font-size:0.75rem;"><i class="fas fa-external-link-alt"></i> ' + escapeHtml(t('ver')) + '</a>' +
+            '<button type="button" class="ge-btn ge-btn-secondary ge-download-doc" data-download-url="' + safe + '" data-download-filename="' + safeFilename + '" style="padding:4px 10px;font-size:0.75rem;"><i class="fas fa-download"></i> ' + escapeHtml(t('descargar')) + '</button>' +
+            '</div></div></div>';
+    }
+
     function showFotosModal(urls) {
         if (!urls || urls.length === 0) return;
         let overlay = document.getElementById('ge-fotos-modal-overlay');
@@ -803,11 +854,6 @@
             const anexosUnicos = [...new Set(anexosUrls)];
             const historicoUnicos = [...new Set(historicoUrls)];
 
-            function linkDoc(url, label) {
-                const safe = escapeAttr(url);
-                return '<a href="' + safe + '" target="_blank" rel="noopener noreferrer" class="ge-btn ge-btn-secondary" style="margin-right:8px;margin-bottom:8px;"><i class="fas fa-external-link-alt"></i> ' + escapeHtml(label || t('verDescargar')) + '</a>';
-            }
-
             const codigoPropuesta = (proposal && proposal.codigo_propuesta) ? proposal.codigo_propuesta : (presupuestoId ? String(presupuestoId).substring(0, 8) : '-');
             const responsavelVal = (proposal && proposal.responsavel) ? proposal.responsavel : '-';
             let numeroPropostaBlock = '<div class="ge-fornecedor-block" style="margin-bottom:1rem;"><div style="display:grid;grid-template-columns:auto 1fr;gap:1rem;align-items:center;"><div><span style="font-size:0.8rem;color:#94a3b8;">' + t('numPropuesta') + '</span><div style="font-weight:600;color:#f1f5f9;font-size:1.1rem;">' + escapeHtml(codigoPropuesta) + '</div></div><div><span style="font-size:0.8rem;color:#94a3b8;">' + t('responsable') + '</span><div style="font-weight:600;color:#f1f5f9;">' + escapeHtml(responsavelVal) + '</div></div></div></div>';
@@ -816,12 +862,12 @@
             if (anexosUnicos.length > 0 || historicoUnicos.length > 0) {
                 anexosHtml = '<div class="ge-fornecedor-block" style="margin-bottom:1.5rem;">';
                 anexosHtml += '<div class="ge-fornecedor-title"><i class="fas fa-paperclip"></i> ' + t('anexosDocumentos') + '</div>';
-                anexosHtml += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">';
+                anexosHtml += '<div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">';
                 anexosUnicos.forEach((url, i) => {
-                    anexosHtml += linkDoc(url, t('verDescargar') + ' ' + (i + 1));
+                    anexosHtml += buildDocPreviewCard(url, t('verDescargar') + ' ' + (i + 1));
                 });
                 historicoUnicos.forEach((url, i) => {
-                    anexosHtml += linkDoc(url, t('historicoEmails') + (historicoUnicos.length > 1 ? ' ' + (i + 1) : ''));
+                    anexosHtml += buildDocPreviewCard(url, t('historicoEmails') + (historicoUnicos.length > 1 ? ' ' + (i + 1) : ''));
                 });
                 anexosHtml += '</div></div>';
             }
@@ -1090,12 +1136,12 @@
             const historicoUnicosEc = [...new Set(historicoUrlsEc)];
             let anexosHtmlEc = '';
             if (anexosUnicosEc.length > 0 || historicoUnicosEc.length > 0) {
-                anexosHtmlEc = '<div class="ge-fornecedor-block" style="margin-bottom:1.5rem;"><div class="ge-fornecedor-title"><i class="fas fa-paperclip"></i> ' + t('anexosDocumentos') + '</div><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">';
+                anexosHtmlEc = '<div class="ge-fornecedor-block" style="margin-bottom:1.5rem;"><div class="ge-fornecedor-title"><i class="fas fa-paperclip"></i> ' + t('anexosDocumentos') + '</div><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">';
                 anexosUnicosEc.forEach((url, i) => {
-                    anexosHtmlEc += '<a href="' + escapeAttr(url) + '" target="_blank" rel="noopener noreferrer" class="ge-btn ge-btn-secondary" style="margin-right:8px;margin-bottom:8px;"><i class="fas fa-external-link-alt"></i> ' + escapeHtml(t('verDescargar') + ' ' + (i + 1)) + '</a>';
+                    anexosHtmlEc += buildDocPreviewCard(url, t('verDescargar') + ' ' + (i + 1));
                 });
                 historicoUnicosEc.forEach((url, i) => {
-                    anexosHtmlEc += '<a href="' + escapeAttr(url) + '" target="_blank" rel="noopener noreferrer" class="ge-btn ge-btn-secondary" style="margin-right:8px;margin-bottom:8px;"><i class="fas fa-external-link-alt"></i> ' + escapeHtml(t('historicoEmails') + (historicoUnicosEc.length > 1 ? ' ' + (i + 1) : '')) + '</a>';
+                    anexosHtmlEc += buildDocPreviewCard(url, t('historicoEmails') + (historicoUnicosEc.length > 1 ? ' ' + (i + 1) : ''));
                 });
                 anexosHtmlEc += '</div></div>';
             }
@@ -1245,13 +1291,12 @@
         if (anexosUrls.length === 0 && !historicoUrl) return '';
         let html = '<div style="margin-top:8px;padding-top:6px;border-top:1px solid var(--bg-gray-200);font-size:0.75rem;">';
         html += '<div style="color:var(--text-secondary);margin-bottom:4px;"><strong>' + escapeHtml(t('anexos')) + ':</strong></div>';
-        html += '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
+        html += '<div style="display:flex;flex-direction:column;gap:6px;">';
         anexosUrls.forEach((url, i) => {
-            const safe = escapeAttr(url);
-            html += '<a href="' + safe + '" target="_blank" rel="noopener noreferrer" class="ge-btn ge-btn-secondary" style="padding:4px 8px;font-size:0.7rem;"><i class="fas fa-paperclip"></i> ' + escapeHtml(t('verDescargar')) + (anexosUrls.length > 1 ? ' ' + (i + 1) : '') + '</a>';
+            html += buildDocPreviewCard(url, t('verDescargar') + (anexosUrls.length > 1 ? ' ' + (i + 1) : ''));
         });
         if (historicoUrl) {
-            html += '<a href="' + escapeAttr(historicoUrl) + '" target="_blank" rel="noopener noreferrer" class="ge-btn ge-btn-secondary" style="padding:4px 8px;font-size:0.7rem;"><i class="fas fa-envelope"></i> ' + escapeHtml(t('historicoEmails')) + '</a>';
+            html += buildDocPreviewCard(historicoUrl, t('historicoEmails'));
         }
         html += '</div></div>';
         return html;
@@ -1312,6 +1357,30 @@
         }
         const backBtn = document.getElementById('ge-back-btn');
         if (backBtn) backBtn.addEventListener('click', backToList);
+
+        document.body.addEventListener('click', async function geDownloadDocHandler(e) {
+            const btn = e.target && e.target.closest && e.target.closest('.ge-download-doc');
+            if (!btn || !btn.getAttribute('data-download-url')) return;
+            e.preventDefault();
+            const url = btn.getAttribute('data-download-url');
+            const filename = btn.getAttribute('data-download-filename') || 'documento';
+            try {
+                const res = await fetch(url, { method: 'GET', mode: 'cors' });
+                if (!res.ok) throw new Error('Network error');
+                const blob = await res.blob();
+                const blobUrl = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = blobUrl;
+                a.download = filename;
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(blobUrl);
+            } catch (err) {
+                window.open(url, '_blank');
+            }
+        });
 
         document.querySelectorAll('.ge-tab').forEach(tab => {
             tab.addEventListener('click', () => {
