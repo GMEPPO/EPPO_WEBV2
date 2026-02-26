@@ -244,9 +244,17 @@
         return (TEXTS[lang] || TEXTS.pt)[key] || key;
     }
 
+    /** Tipos que corresponden a pedido de encomenda / creación de códigos. Solo estos deben aparecer en Gestão de Encomendas cuando no tienen filas en gestao_compras. */
+    const TIPOS_PERMITIDOS_GE = ['encomienda', 'pedido_muestra', 'pedido_especial', 'criacao_codigos'];
+
+    function isTipoPermitidoParaGestaoEncomendas(tipoRegistro) {
+        if (!tipoRegistro || typeof tipoRegistro !== 'string') return false;
+        return TIPOS_PERMITIDOS_GE.includes((tipoRegistro || '').trim().toLowerCase());
+    }
+
     function getTipoLabelPresupuesto(tipoRegistro) {
         if (!tipoRegistro) return t('tipoPropostaNormal');
-        const map = { encomienda: 'tipoEncomienda', pedido_muestra: 'tipoPedidoAmostra', pedido_especial: 'tipoPedidoEspecial' };
+        const map = { encomienda: 'tipoEncomienda', pedido_muestra: 'tipoPedidoAmostra', pedido_especial: 'tipoPedidoEspecial', criacao_codigos: 'tipoCriacaoCodigos' };
         return t(map[tipoRegistro] || 'tipoPropostaNormal');
     }
 
@@ -410,7 +418,8 @@
                     idsSinGc.forEach(pid => {
                         if ((countByPresupuesto[pid] || 0) > 0) {
                             const pp = presupuestosPendientes.find(p => p.id === pid);
-                            if (pp && !listData.some(r => r.source === 'presupuesto' && r.presupuesto_id === pid)) {
+                            // Solo incluir si el tipo es de encomenda/creación de códigos; excluir propuestas normales ("Proposta")
+                            if (pp && !listData.some(r => r.source === 'presupuesto' && r.presupuesto_id === pid) && isTipoPermitidoParaGestaoEncomendas(pp.tipo_registro_directo)) {
                                 listData.push({
                                     source: 'presupuesto',
                                     presupuesto_id: pp.id,
@@ -980,7 +989,7 @@
                     if (gcId) tr.setAttribute('data-gc-id', gcId);
                     if (needsPhcInput) tr.setAttribute('data-sem-phc', '1');
                     tr.innerHTML = `
-                        <td style="vertical-align: top; min-width: 220px;">${productDetailsHtml}</td>
+                        <td class="ge-td-product" style="vertical-align: top;">${productDetailsHtml}</td>
                         <td style="vertical-align: top;">${phcCell}</td>
                         <td>${gc.quantidade_encomendar ?? '-'}</td>
                         <td>${preco}</td>
@@ -1220,7 +1229,7 @@
                     const tr = document.createElement('tr');
                     tr.setAttribute('data-articulo-id', articuloId);
                     tr.innerHTML = `
-                        <td style="vertical-align: top; min-width: 220px;">${productDetailsHtml}</td>
+                        <td class="ge-td-product" style="vertical-align: top;">${productDetailsHtml}</td>
                         <td>${escapeHtml(numero)}</td>
                         <td>${escapeHtml(fechaEnc)}</td>
                         <td>${previsaoCell}</td>
@@ -1317,20 +1326,21 @@
         return Number(n).toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
     }
 
-    function buildAnexosLinksForProduct(gc) {
+    function buildAnexosLinksForProduct(gc, wrapInDiv) {
         const anexosUrls = parseFotosUrls(gc.personalizado_anexos_urls);
         const historicoUrl = (gc.historico_emails_url || '').trim();
         if (anexosUrls.length === 0 && !historicoUrl) return '';
-        let html = '<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--bg-gray-200);font-size:0.7rem;">';
-        html += '<div style="color:var(--text-secondary);margin-bottom:2px;"><strong>' + escapeHtml(t('anexos')) + ':</strong></div>';
-        html += '<div style="display:flex;flex-direction:column;gap:2px;">';
+        let html = wrapInDiv !== false ? '<div class="ge-product-anexos" style="font-size:0.75rem;">' : '';
+        html += '<div style="color:var(--text-secondary);margin-bottom:4px;"><strong>' + escapeHtml(t('anexos')) + ':</strong></div>';
+        html += '<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-start;">';
         anexosUrls.forEach((url, i) => {
             html += buildDocPreviewCard(url, t('verDescargar') + (anexosUrls.length > 1 ? ' ' + (i + 1) : ''));
         });
         if (historicoUrl) {
             html += buildDocPreviewCard(historicoUrl, t('historicoEmails'));
         }
-        html += '</div></div>';
+        html += '</div>';
+        if (wrapInDiv !== false) html += '</div>';
         return html;
     }
 
@@ -1342,51 +1352,49 @@
         const isSemPhc = !!(gc.referencia || gc.designacao);
         const faltaCriarCodigo = showFaltaBadge && isSemPhc && !hasPhc;
         const faltaBadge = faltaCriarCodigo ? ` <span class="ge-badge-falta" style="display:inline-block;margin-left:6px;padding:2px 8px;font-size:0.7rem;background:var(--danger-500);color:var(--text-white);border-radius:4px;">${t('faltaCriarCodigo')}</span>` : '';
-        let html = `<div class="ge-product-details" style="font-size: 1rem;">`;
-        html += `<div style="font-weight: 600; margin-bottom: 6px; font-size: 1.05rem;">${escapeHtml(gc.nome_articulo || gc.designacao || refFornecedor || '-')}${faltaBadge}</div>`;
-        html += `<div style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 6px;">${t('refFornecedor')}: ${escapeHtml(refFornecedor)}</div>`;
-        html += `<div style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 6px;">${t('refPhc')}: ${hasPhc ? escapeHtml(phcLabel) : `<span style="color: var(--accent-500);">${escapeHtml(phcLabel)}</span>`}</div>`;
+        let infoHtml = `<div class="ge-product-info" style="font-size: 0.95rem;">`;
+        infoHtml += `<div style="font-weight: 600; margin-bottom: 4px; font-size: 1rem;">${escapeHtml(gc.nome_articulo || gc.designacao || refFornecedor || '-')}${faltaBadge}</div>`;
+        infoHtml += `<div style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 2px;">${t('refFornecedor')}: ${escapeHtml(refFornecedor)}</div>`;
+        infoHtml += `<div style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 4px;">${t('refPhc')}: ${hasPhc ? escapeHtml(phcLabel) : `<span style="color: var(--accent-500);">${escapeHtml(phcLabel)}</span>`}</div>`;
         if (isSemPhc) {
-            html += `<div style="margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--bg-gray-200); font-size: 0.9rem; color: var(--text-secondary);">`;
-            html += `<div><strong>${t('designacao')}:</strong> ${escapeHtml((gc.designacao || '').trim() || '-')}</div>`;
-            html += `<div><strong>${t('peso')}:</strong> ${escapeHtml((gc.peso || '').trim() || '-')}</div>`;
-            html += `<div><strong>${t('qtyCaixa')}:</strong> ${gc.quantidade_por_caixa != null ? escapeHtml(String(gc.quantidade_por_caixa)) : '-'}</div>`;
-            html += `<div><strong>${t('personalizado')}:</strong> ${gc.personalizado ? t('sim') : t('nao')}</div>`;
+            infoHtml += `<div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--bg-gray-200); font-size: 0.85rem; color: var(--text-secondary); display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; align-items: baseline;">`;
+            infoHtml += `<span><strong>${t('designacao')}:</strong></span><span>${escapeHtml((gc.designacao || '').trim() || '-')}</span>`;
+            infoHtml += `<span><strong>${t('peso')}:</strong></span><span>${escapeHtml((gc.peso || '').trim() || '-')}</span>`;
+            infoHtml += `<span><strong>${t('qtyCaixa')}:</strong></span><span>${gc.quantidade_por_caixa != null ? escapeHtml(String(gc.quantidade_por_caixa)) : '-'}</span>`;
+            infoHtml += `<span><strong>${t('personalizado')}:</strong></span><span>${gc.personalizado ? t('sim') : t('nao')}</span>`;
             if (gc.valor_transportes != null && gc.valor_transportes !== '') {
                 const vt = Number(gc.valor_transportes);
-                if (!isNaN(vt)) html += `<div><strong>${t('valorTransportes')}:</strong> ${formatNumber(vt)}</div>`;
+                if (!isNaN(vt)) { infoHtml += `<span><strong>${t('valorTransportes')}:</strong></span><span>${formatNumber(vt)}</span>`; }
             }
             if (gc.tem_cliche != null) {
-                html += `<div><strong>${t('temCliche')}:</strong> ${gc.tem_cliche ? t('sim') : t('nao')}`;
+                infoHtml += `<span><strong>${t('temCliche')}:</strong></span><span>${gc.tem_cliche ? t('sim') : t('nao')}`;
                 if (gc.tem_cliche && gc.preco_cliche != null && gc.preco_cliche !== '') {
                     const pc = Number(gc.preco_cliche);
-                    if (!isNaN(pc)) html += ` — ${t('precoCliche')}: ${formatNumber(pc)}`;
+                    if (!isNaN(pc)) infoHtml += ` — ${t('precoCliche')}: ${formatNumber(pc)}`;
                 }
-                html += `</div>`;
+                infoHtml += `</span>`;
             }
             if ((gc.personalizado_observacoes || '').trim()) {
-                html += `<div style="margin-top: 4px;"><strong>${t('observaciones')}:</strong> ${escapeHtml((gc.personalizado_observacoes || '').trim())}</div>`;
+                infoHtml += `<span style="grid-column: 1 / -1; margin-top: 4px;"><strong>${t('observaciones')}:</strong> ${escapeHtml((gc.personalizado_observacoes || '').trim())}</span>`;
             }
-            html += `</div>`;
+            infoHtml += `</div>`;
         } else {
             if (gc.valor_transportes != null && gc.valor_transportes !== '') {
                 const vt = Number(gc.valor_transportes);
-                if (!isNaN(vt)) {
-                    html += `<div style="margin-top: 6px; font-size: 0.9rem; color: var(--text-secondary);"><strong>${t('valorTransportes')}:</strong> ${formatNumber(vt)}</div>`;
-                }
+                if (!isNaN(vt)) infoHtml += `<div style="margin-top: 4px; font-size: 0.85rem; color: var(--text-secondary);"><strong>${t('valorTransportes')}:</strong> ${formatNumber(vt)}</div>`;
             }
             if (gc.tem_cliche != null) {
-                html += `<div style="font-size: 0.9rem; color: var(--text-secondary);"><strong>${t('temCliche')}:</strong> ${gc.tem_cliche ? t('sim') : t('nao')}`;
+                infoHtml += `<div style="font-size: 0.85rem; color: var(--text-secondary);"><strong>${t('temCliche')}:</strong> ${gc.tem_cliche ? t('sim') : t('nao')}`;
                 if (gc.tem_cliche && gc.preco_cliche != null && gc.preco_cliche !== '') {
                     const pc = Number(gc.preco_cliche);
-                    if (!isNaN(pc)) html += ` — ${t('precoCliche')}: ${formatNumber(pc)}`;
+                    if (!isNaN(pc)) infoHtml += ` — ${t('precoCliche')}: ${formatNumber(pc)}`;
                 }
-                html += `</div>`;
+                infoHtml += `</div>`;
             }
         }
-        html += buildAnexosLinksForProduct(gc);
-        html += `</div>`;
-        return html;
+        infoHtml += `</div>`;
+        const anexosHtml = buildAnexosLinksForProduct(gc);
+        return `<div class="ge-product-details">${infoHtml}${anexosHtml}</div>`;
     }
 
     function updateTexts() {

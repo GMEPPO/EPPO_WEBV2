@@ -53,6 +53,12 @@
         .ge-tab-count { display: inline-block; min-width: 20px; padding: 2px 6px; margin-left: 6px; font-size: 0.7rem; font-weight: 600; line-height: 1.2; text-align: center; background: var(--bg-gray-200); color: var(--text-primary); border-radius: 10px; }
         .ge-tab.ge-tab-active .ge-tab-count { background: var(--primary-500); color: var(--text-white); }
         .ge-obs-input { padding: 6px 10px; border: 1px solid var(--bg-gray-200); border-radius: var(--radius-md); font-size: 0.875rem; background: var(--bg-white); color: var(--text-primary); width: 100%; min-width: 200px; min-height: 60px; resize: vertical; }
+        /* Distribución producto + anexos: dos columnas para equilibrar la fila */
+        .ge-product-details { display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: start; min-width: 260px; max-width: 400px; }
+        .ge-product-details .ge-product-info { min-width: 0; }
+        .ge-product-details .ge-product-anexos { flex-shrink: 0; }
+        .ge-table .ge-td-product { vertical-align: top; min-width: 280px; }
+        .ge-table .ge-td-product .ge-product-details { white-space: normal; }
     </style>
 </head>
 <body>
