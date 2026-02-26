@@ -7,6 +7,17 @@
  * Obtener una ruta de archivo única en el bucket: si ya existe un archivo con ese nombre,
  * añade _1, _2, etc. para no duplicar nombres.
  */
+function getSafeContentType(file) {
+    if (!file || !file.name) return 'application/octet-stream';
+    const t = (file.type || '').toLowerCase();
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    if (t.startsWith('image/') || t === 'application/pdf') return file.type;
+    if (ext === 'pdf') return 'application/pdf';
+    if (ext === 'msg' || ext === 'eml') return 'application/octet-stream';
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return t || 'application/octet-stream';
+    return t || 'application/octet-stream';
+}
+
 async function getUniqueStorageFilePathConsultar(storageClient, bucket, folderPrefix, fileName) {
     // Sanitizar: caracteres prohibidos en rutas + espacios (evitan 400 al cargar la URL en Storage)
     let sanitized = (fileName || 'file').replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').trim() || 'file';
@@ -4551,33 +4562,42 @@ class ProposalsManager {
                     const anexosInput = document.getElementById(`ge-anexos-${articuloId}`);
                     const historicoInput = document.getElementById(`ge-historico-emails-${articuloId}`);
                     const subfolder = `gestao-compras/${proposalId}/${articuloId}`;
+                    const bucketGE = 'gestao-encomendas';
                     if (anexosInput?.files?.length) {
                         const files = Array.from(anexosInput.files).slice(0, 4);
                         for (const file of files) {
                             try {
                                 const ext = (file.name.split('.').pop() || 'file').toLowerCase().replace(/[^a-z0-9]/g, '') || 'file';
-                                const baseName = (file.name && file.name.trim()) ? file.name.trim() : `anexo_${Date.now()}.${ext}`;
-                                const fileName = await getUniqueStorageFilePathConsultar(this.supabase, 'product-images', subfolder, baseName);
-                                const { error: upErr } = await this.supabase.storage.from('product-images').upload(fileName, file, { cacheControl: '3600', upsert: false, contentType: file.type || 'application/octet-stream' });
+                                let baseName = (file.name && file.name.trim()) ? file.name.trim() : `anexo_${Date.now()}.${ext}`;
+                                baseName = baseName.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/\s+/g, '_').trim() || `anexo_${Date.now()}.${ext}`;
+                                const fileName = await getUniqueStorageFilePathConsultar(this.supabase, bucketGE, subfolder, baseName);
+                                const contentType = getSafeContentType(file);
+                                const { error: upErr } = await this.supabase.storage.from(bucketGE).upload(fileName, file, { cacheControl: '3600', upsert: false, contentType });
                                 if (!upErr) {
-                                    const { data: urlData } = this.supabase.storage.from('product-images').getPublicUrl(fileName);
+                                    const { data: urlData } = this.supabase.storage.from(bucketGE).getPublicUrl(fileName);
                                     if (urlData?.publicUrl) row.personalizado_anexos_urls.push(urlData.publicUrl);
+                                } else {
+                                    console.error('Storage upload anexo 400:', upErr.message, upErr.name, file.name, contentType);
                                 }
-                            } catch (e) { console.warn('Upload anexo:', e); }
+                            } catch (e) { console.error('Upload anexo:', e); }
                         }
                     }
                     if (historicoInput?.files?.length) {
                         try {
                             const file = historicoInput.files[0];
                             const ext = (file.name.split('.').pop() || 'file').toLowerCase().replace(/[^a-z0-9]/g, '') || 'file';
-                            const baseName = (file.name && file.name.trim()) ? file.name.trim() : `historico_${Date.now()}.${ext}`;
-                            const fileName = await getUniqueStorageFilePathConsultar(this.supabase, 'product-images', subfolder, baseName);
-                            const { error: upErr } = await this.supabase.storage.from('product-images').upload(fileName, file, { cacheControl: '3600', upsert: false, contentType: file.type || 'application/octet-stream' });
+                            let baseName = (file.name && file.name.trim()) ? file.name.trim() : `historico_${Date.now()}.${ext}`;
+                            baseName = baseName.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/\s+/g, '_').trim() || `historico_${Date.now()}.${ext}`;
+                            const fileName = await getUniqueStorageFilePathConsultar(this.supabase, bucketGE, subfolder, baseName);
+                            const contentType = getSafeContentType(file);
+                            const { error: upErr } = await this.supabase.storage.from(bucketGE).upload(fileName, file, { cacheControl: '3600', upsert: false, contentType });
                             if (!upErr) {
-                                const { data: urlData } = this.supabase.storage.from('product-images').getPublicUrl(fileName);
+                                const { data: urlData } = this.supabase.storage.from(bucketGE).getPublicUrl(fileName);
                                 if (urlData?.publicUrl) row.historico_emails_url = urlData.publicUrl;
+                            } else {
+                                console.error('Storage upload histórico 400:', upErr.message, upErr.name, file.name, contentType);
                             }
-                        } catch (e) { console.warn('Upload histórico:', e); }
+                        } catch (e) { console.error('Upload histórico:', e); }
                     }
                 }
             }
@@ -4654,34 +4674,43 @@ class ProposalsManager {
                 extRowData.historico_emails_url = null;
                 const anexosInput = document.getElementById(`ge-${extId}-anexos`);
                 const historicoInput = document.getElementById(`ge-${extId}-historico-emails`);
-                const subfolder = `gestao-compras/${proposalId}/${extId}`;
+                const subfolderExt = `gestao-compras/${proposalId}/${extId}`;
+                const bucketGEExt = 'gestao-encomendas';
                 if (anexosInput?.files?.length) {
                     const files = Array.from(anexosInput.files).slice(0, 4);
                     for (const file of files) {
                         try {
                             const ext = (file.name.split('.').pop() || 'file').toLowerCase().replace(/[^a-z0-9]/g, '') || 'file';
-                            const baseName = (file.name && file.name.trim()) ? file.name.trim() : `anexo_${Date.now()}.${ext}`;
-                            const fileName = await getUniqueStorageFilePathConsultar(this.supabase, 'product-images', subfolder, baseName);
-                            const { error: upErr } = await this.supabase.storage.from('product-images').upload(fileName, file, { cacheControl: '3600', upsert: false, contentType: file.type || 'application/octet-stream' });
+                            let baseName = (file.name && file.name.trim()) ? file.name.trim() : `anexo_${Date.now()}.${ext}`;
+                            baseName = baseName.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/\s+/g, '_').trim() || `anexo_${Date.now()}.${ext}`;
+                            const fileName = await getUniqueStorageFilePathConsultar(this.supabase, bucketGEExt, subfolderExt, baseName);
+                            const contentType = getSafeContentType(file);
+                            const { error: upErr } = await this.supabase.storage.from(bucketGEExt).upload(fileName, file, { cacheControl: '3600', upsert: false, contentType });
                             if (!upErr) {
-                                const { data: urlData } = this.supabase.storage.from('product-images').getPublicUrl(fileName);
+                                const { data: urlData } = this.supabase.storage.from(bucketGEExt).getPublicUrl(fileName);
                                 if (urlData?.publicUrl) extRowData.personalizado_anexos_urls.push(urlData.publicUrl);
+                            } else {
+                                console.error('Storage upload anexo externo 400:', upErr.message, upErr.name, file.name, contentType);
                             }
-                        } catch (e) { console.warn('Upload anexo externo:', e); }
+                        } catch (e) { console.error('Upload anexo externo:', e); }
                     }
                 }
                 if (historicoInput?.files?.length) {
                     try {
                         const file = historicoInput.files[0];
                         const ext = (file.name.split('.').pop() || 'file').toLowerCase().replace(/[^a-z0-9]/g, '') || 'file';
-                        const baseName = (file.name && file.name.trim()) ? file.name.trim() : `historico_${Date.now()}.${ext}`;
-                        const fileName = await getUniqueStorageFilePathConsultar(this.supabase, 'product-images', subfolder, baseName);
-                        const { error: upErr } = await this.supabase.storage.from('product-images').upload(fileName, file, { cacheControl: '3600', upsert: false, contentType: file.type || 'application/octet-stream' });
+                        let baseName = (file.name && file.name.trim()) ? file.name.trim() : `historico_${Date.now()}.${ext}`;
+                        baseName = baseName.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/\s+/g, '_').trim() || `historico_${Date.now()}.${ext}`;
+                        const fileName = await getUniqueStorageFilePathConsultar(this.supabase, bucketGEExt, subfolderExt, baseName);
+                        const contentType = getSafeContentType(file);
+                        const { error: upErr } = await this.supabase.storage.from(bucketGEExt).upload(fileName, file, { cacheControl: '3600', upsert: false, contentType });
                         if (!upErr) {
-                            const { data: urlData } = this.supabase.storage.from('product-images').getPublicUrl(fileName);
+                            const { data: urlData } = this.supabase.storage.from(bucketGEExt).getPublicUrl(fileName);
                             if (urlData?.publicUrl) extRowData.historico_emails_url = urlData.publicUrl;
+                        } else {
+                            console.error('Storage upload histórico externo 400:', upErr.message, upErr.name, file.name, contentType);
                         }
-                    } catch (e) { console.warn('Upload histórico externo:', e); }
+                    } catch (e) { console.error('Upload histórico externo:', e); }
                 }
             }
             rows.push(extRowData);
