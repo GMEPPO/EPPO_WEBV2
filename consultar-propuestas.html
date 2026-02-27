@@ -179,17 +179,18 @@
             align-items: center;
             gap: 8px;
             padding: 10px 18px;
-            background: #1f2937;
-            color: #F1F5F9;
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            color: white;
             border: none;
             border-radius: 8px;
             font-weight: 600;
             font-size: 0.9rem;
             cursor: pointer;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3);
         }
         .btn-registro-directo:hover {
-            background: #374151;
+            background: linear-gradient(135deg, #047857 0%, #065f46 100%);
+            box-shadow: 0 4px 12px rgba(5, 150, 105, 0.4);
         }
         /* Modal Registro directo: overlay y animación */
         #registroDirectoModal {
@@ -215,7 +216,7 @@
             }
         }
         #registroDirectoModal .modal-header {
-            background: #1f2937;
+            background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
             margin: 0;
             padding: 1.25rem 1.5rem;
             border-bottom: none;
@@ -277,8 +278,9 @@
             transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
         }
         .registro-directo-type-btn:hover {
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-            border-color: var(--primary-500, #2563eb);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(37, 99, 235, 0.12);
+            border-color: var(--brand-blue);
             background: var(--bg-gray-50);
         }
         [data-theme="dark"] .registro-directo-type-btn {
@@ -288,7 +290,8 @@
         }
         [data-theme="dark"] .registro-directo-type-btn:hover {
             background: #475569;
-            border-color: #64748B;
+            border-color: #3b82f6;
+            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.2);
         }
         .registro-directo-type-btn .rd-icon-wrap {
             width: 44px;
@@ -303,10 +306,10 @@
         .registro-directo-type-btn:hover .rd-icon-wrap {
             transform: scale(1.05);
         }
-        .registro-directo-type-btn[data-type="encomienda"] .rd-icon-wrap { background: #2563eb; color: #fff; }
-        .registro-directo-type-btn[data-type="pedido_muestra"] .rd-icon-wrap { background: #475569; color: #F1F5F9; }
-        .registro-directo-type-btn[data-type="pedido_especial"] .rd-icon-wrap { background: #334155; color: #F1F5F9; }
-        .registro-directo-type-btn[data-type="contacto_fornecedores"] .rd-icon-wrap { background: #1E293B; color: #F1F5F9; }
+        .registro-directo-type-btn[data-type="encomienda"] .rd-icon-wrap { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: #fff; }
+        .registro-directo-type-btn[data-type="pedido_muestra"] .rd-icon-wrap { background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: #fff; }
+        .registro-directo-type-btn[data-type="pedido_especial"] .rd-icon-wrap { background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%); color: #fff; }
+        .registro-directo-type-btn[data-type="contacto_fornecedores"] .rd-icon-wrap { background: linear-gradient(135deg, #059669 0%, #047857 100%); color: #fff; }
         .registro-directo-type-btn i {
             font-size: 1.15rem;
         }
@@ -1870,7 +1873,7 @@
     <!-- Modal de confirmación para eliminar propuesta -->
     <div class="modal-overlay" id="deleteProposalConfirmModal" style="display: none;">
         <div class="modal" style="max-width: 500px;">
-            <div class="modal-header" style="background: #dc2626; color: white;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white;">
                 <h3 class="modal-title" id="delete-confirm-title" style="color: white; margin: 0;">Confirmar Eliminación</h3>
                 <button class="modal-close" onclick="window.proposalsManager.closeDeleteConfirmModal()" style="color: white;">
                     <i class="fas fa-times"></i>
@@ -1921,7 +1924,7 @@
                     Cancelar
                 </button>
                 <button type="button" class="btn-primary" onclick="window.proposalsManager.confirmDeleteProposal()" id="delete-confirm-delete-btn" style="
-                    background: #dc2626;
+                    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
                     color: white;
                     border: none;
                     padding: 10px 20px;

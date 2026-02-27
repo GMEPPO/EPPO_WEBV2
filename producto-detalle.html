@@ -213,25 +213,43 @@
             display: inline-flex;
             align-items: center;
             gap: var(--space-2);
-            background: #2563eb;
+            background: linear-gradient(135deg, var(--primary-600), var(--primary-700));
             color: var(--text-white);
             padding: var(--space-3) var(--space-4);
             border-radius: var(--radius-md);
             text-decoration: none;
             font-weight: 500;
             font-size: 0.9rem;
-            transition: all 0.2s ease;
-            border: 1px solid #1E293B;
+            transition: all 0.3s ease;
+            border: 2px solid var(--primary-500);
             cursor: pointer;
             position: relative;
             overflow: hidden;
             box-shadow: var(--shadow-sm);
         }
         
+        .download-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s ease;
+        }
+        
+        .download-button:hover::before {
+            left: 100%;
+        }
+        
         .download-button:hover {
-            background: #1d4ed8;
+            background: linear-gradient(135deg, var(--primary-500), var(--primary-600));
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-xl);
             text-decoration: none;
             color: var(--text-white);
+            border-color: var(--primary-300);
         }
         
         .download-button:active {
@@ -240,7 +258,7 @@
         
         .download-button:focus {
             outline: none;
-            box-shadow: 0 0 0 2px #C6A75E;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.3);
         }
         
         .download-button i {
@@ -254,7 +272,9 @@
 
         /* Botón agregar al carrito */
         .add-to-cart-button:hover {
-            background: #1d4ed8 !important;
+            background: linear-gradient(135deg, var(--primary-500), var(--primary-600)) !important;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
         }
 
         .add-to-cart-button:active {
@@ -300,11 +320,15 @@
         }
         
         [data-theme="dark"] .download-button {
-            background: #2563eb;
-            border-color: #334155;
+            background: linear-gradient(135deg, var(--primary-500), var(--primary-600));
+            border-color: var(--primary-400);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
         }
+        
         [data-theme="dark"] .download-button:hover {
-            background: #1d4ed8;
+            background: linear-gradient(135deg, var(--primary-400), var(--primary-500));
+            border-color: var(--primary-300);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
         }
         
         /* Modal de imagen ampliada */
@@ -1200,7 +1224,7 @@
                                 <div class="product-title-price">
                                     <div class="product-price">${(product.precio === 0 || product.precio === null || product.precio === undefined) ? 'Sobre consulta' : '€' + product.precio.toFixed(2)}</div>
                                     <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 12px;">
-                                        <button onclick="window.addProductToCartFromDetail()" class="add-to-cart-button" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #2563eb; color: white; border: none; border-radius: 8px; padding: 12px 24px; font-weight: 600; font-size: 1rem; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.08);">
+                                        <button onclick="window.addProductToCartFromDetail()" class="add-to-cart-button" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: linear-gradient(135deg, var(--primary-600), var(--primary-700)); color: white; border: none; border-radius: 8px; padding: 12px 24px; font-weight: 600; font-size: 1rem; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
                                             <i class="fas fa-shopping-cart"></i>
                                             ${this.translateLabel('addToCart')}
                                         </button>

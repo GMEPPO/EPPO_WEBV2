@@ -16,19 +16,19 @@
 .menu-toggle {
     background: none;
     border: none;
-    color: var(--text-light, #F1F5F9);
+    color: var(--text-primary);
     font-size: 1.5rem;
     cursor: pointer;
     padding: var(--space-2) var(--space-3);
     border-radius: var(--radius-md);
-    transition: color 0.2s ease;
+    transition: all 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
 .menu-toggle:hover {
-    color: var(--accent, #C6A75E);
+    background: var(--bg-gray-100);
 }
 
 .dropdown-menu {
@@ -36,7 +36,7 @@
     top: 100%;
     right: 0;
     margin-top: var(--space-2);
-    background: var(--bg-surface, #F8FAFC);
+    background: var(--bg-white);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-xl);
     min-width: 220px;
@@ -45,7 +45,7 @@
     transform: translateY(-10px);
     transition: all 0.3s ease;
     z-index: 1000;
-    border: 1px solid var(--border-light, #E2E8F0);
+    border: 1px solid var(--bg-gray-200);
 }
 
 .dropdown-menu.active {
@@ -71,8 +71,8 @@
 }
 
 .dropdown-link:hover {
-    background: rgba(198, 167, 94, 0.08);
-    color: var(--link-blue, #1D4ED8);
+    background: var(--bg-gray-100);
+    color: var(--brand-blue);
 }
 
 .dropdown-link.active {
@@ -94,7 +94,7 @@
 }
 
 .dropdown-link:hover i {
-    color: var(--link-blue, #1D4ED8);
+    color: var(--brand-blue);
 }
 
 .dropdown-link.active i {
