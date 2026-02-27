@@ -77,7 +77,8 @@
             searchPlaceholder: 'Buscar por proposta, responsável, fornecedor, tipo...',
             valorTransportes: 'Valor transportes',
             temCliche: 'Cliché',
-            precoCliche: 'Preço cliché'
+            precoCliche: 'Preço cliché',
+            nomeHotel: 'Nome do hotel'
         },
         es: {
             loading: 'Cargando...',
@@ -114,6 +115,7 @@
             nao: 'No',
             semPhc: 'Sin PHC',
             obrigatorioPhcSemCodigo: 'Es obligatorio rellenar la Ref. PHC para todos los productos sin código PHC para guardar y dejar la encomienda en curso.',
+            nomeHotel: 'Nombre del hotel',
             tipo: 'Tipo',
             estado: 'Estado',
             solicitudPrecios: 'Solicitud de precios',
@@ -189,6 +191,7 @@
             nao: 'No',
             semPhc: 'No PHC',
             obrigatorioPhcSemCodigo: 'PHC Ref. is required for all products without PHC code to save and move the order to in progress.',
+            nomeHotel: 'Hotel name',
             tipo: 'Type',
             estado: 'Status',
             solicitudPrecios: 'Price request',
@@ -948,25 +951,32 @@
 
                 const block = document.createElement('div');
                 block.className = 'ge-fornecedor-block';
-                const formHtml = geReadOnly
-                    ? `<div class="ge-fornecedor-form" style="display:grid;gap:0.5rem;margin-bottom:1rem;">
-                        <div><label style="font-size:0.8rem;color:#94a3b8;">${t('numEncomenda')}</label><div style="font-weight:500;color:#f1f5f9;">${escapeHtml(numero || '-')}</div></div>
-                        <div><label style="font-size:0.8rem;color:#94a3b8;">${t('fechaEncomenda')}</label><div style="font-weight:500;color:#f1f5f9;">${escapeHtml(fecha || '-')}</div></div>
-                    </div>`
-                    : `<div class="ge-fornecedor-form">
-                        <div><label>${t('numEncomenda')}</label><input type="text" class="ge-editable ge-fn-numero" value="${escapeAttr(numero)}" placeholder="-"></div>
-                        <div><label>${t('fechaEncomenda')}</label><input type="date" class="ge-editable ge-fn-fecha" value="${escapeAttr(fecha)}"></div>
-                        <div style="align-self: flex-end;"><button type="button" class="ge-btn ge-btn-primary ge-save-fornecedor">${t('guardar')}</button></div>
-                    </div>`;
+                if (isSoloCreacaoCodigos) block.setAttribute('data-solo-creacao-codigos', '1');
+                const formHtml = isSoloCreacaoCodigos
+                    ? ''
+                    : (geReadOnly
+                        ? `<div class="ge-fornecedor-form" style="display:grid;gap:0.5rem;margin-bottom:1rem;">
+                            <div><label style="font-size:0.8rem;color:#94a3b8;">${t('numEncomenda')}</label><div style="font-weight:500;color:#f1f5f9;">${escapeHtml(numero || '-')}</div></div>
+                            <div><label style="font-size:0.8rem;color:#94a3b8;">${t('fechaEncomenda')}</label><div style="font-weight:500;color:#f1f5f9;">${escapeHtml(fecha || '-')}</div></div>
+                        </div>`
+                        : `<div class="ge-fornecedor-form">
+                            <div><label>${t('numEncomenda')}</label><input type="text" class="ge-editable ge-fn-numero" value="${escapeAttr(numero)}" placeholder="-"></div>
+                            <div><label>${t('fechaEncomenda')}</label><input type="date" class="ge-editable ge-fn-fecha" value="${escapeAttr(fecha)}"></div>
+                            <div style="align-self: flex-end;"><button type="button" class="ge-btn ge-btn-primary ge-save-fornecedor">${t('guardar')}</button></div>
+                        </div>`);
+                const tableHeaders = isSoloCreacaoCodigos
+                    ? `<thead><tr><th>${t('productoRef')}</th><th>${t('refPhc')}</th></tr></thead>`
+                    : `<thead><tr><th>${t('productoRef')}</th><th>${t('refPhc')}</th><th>${t('cantidad')}</th><th>${t('precio')}</th><th>${t('desconto')}</th><th>${t('previsaoEntrega')}</th></tr></thead>`;
                 block.innerHTML = `
                     <div class="ge-fornecedor-title">${t('fornecedor')}: ${escapeHtml(fornecedorName)}</div>
                     ${formHtml}
                     <div class="ge-table-wrap">
                         <table class="ge-table">
-                            <thead><tr><th>${t('productoRef')}</th><th>${t('refPhc')}</th><th>${t('cantidad')}</th><th>${t('precio')}</th><th>${t('desconto')}</th><th>${t('previsaoEntrega')}</th></tr></thead>
+                            ${tableHeaders}
                             <tbody class="ge-fornecedor-tbody"></tbody>
                         </table>
                     </div>
+                    ${(isSoloCreacaoCodigos && !geReadOnly) ? '<div style="margin-top:8px;"><button type="button" class="ge-btn ge-btn-primary ge-save-fornecedor">' + t('guardar') + '</button></div>' : ''}
                 `;
                 const tbody = block.querySelector('.ge-fornecedor-tbody');
                 rows.forEach(gc => {
@@ -976,10 +986,10 @@
                     const art = articuloId && articuloMap[articuloId] ? articuloMap[articuloId] : null;
                     const previsaoVal = art && art.fecha_prevista_entrega ? (typeof art.fecha_prevista_entrega === 'string' ? art.fecha_prevista_entrega.split('T')[0] : art.fecha_prevista_entrega) : '';
                     const hasArticuloId = articuloId && articuloId !== 'undefined';
-                    const productDetailsHtml = buildProductDetailsHtml(gc, { showFaltaBadge: true });
+                    const productDetailsHtml = buildProductDetailsHtml(gc, { showFaltaBadge: true, soloCreacaoCodigos: isSoloCreacaoCodigos });
                     const hasPhc = (gc.phc_ref || '').trim() !== '';
                     const isSemPhc = !!(gc.referencia || gc.designacao);
-                    const needsPhcInput = isSemPhc && !hasPhc;
+                    const needsPhcInput = (isSemPhc || isSoloCreacaoCodigos) && !hasPhc;
                     const gcId = (gc.id || '').toString();
                     const phcCell = geReadOnly
                         ? escapeHtml((gc.phc_ref || '').trim() || '-')
@@ -994,14 +1004,21 @@
                     tr.setAttribute('data-articulo-id', articuloId);
                     if (gcId) tr.setAttribute('data-gc-id', gcId);
                     if (needsPhcInput) tr.setAttribute('data-sem-phc', '1');
-                    tr.innerHTML = `
-                        <td class="ge-td-product" style="vertical-align: top;">${productDetailsHtml}</td>
-                        <td style="vertical-align: top;">${phcCell}</td>
-                        <td>${gc.quantidade_encomendar ?? '-'}</td>
-                        <td>${preco}</td>
-                        <td>${desconto}</td>
-                        <td>${previsaoCell}</td>
-                    `;
+                    if (isSoloCreacaoCodigos) {
+                        tr.innerHTML = `
+                            <td class="ge-td-product" style="vertical-align: top;">${productDetailsHtml}</td>
+                            <td style="vertical-align: top;">${phcCell}</td>
+                        `;
+                    } else {
+                        tr.innerHTML = `
+                            <td class="ge-td-product" style="vertical-align: top;">${productDetailsHtml}</td>
+                            <td style="vertical-align: top;">${phcCell}</td>
+                            <td>${gc.quantidade_encomendar ?? '-'}</td>
+                            <td>${preco}</td>
+                            <td>${desconto}</td>
+                            <td>${previsaoCell}</td>
+                        `;
+                    }
                     tbody.appendChild(tr);
                 });
                 const saveBtn = block.querySelector('.ge-save-fornecedor');
@@ -1024,12 +1041,15 @@
         const client = await getClient();
         if (!client) return;
 
+        const soloCreacaoCodigos = block.getAttribute('data-solo-creacao-codigos') === '1';
         const phcInputs = block.querySelectorAll('.ge-phc-ref-input');
-        for (const input of phcInputs) {
-            if (!(input.value || '').trim()) {
-                showNotification(t('obrigatorioPhcSemCodigo'), 'error');
-                input.focus();
-                return;
+        if (!soloCreacaoCodigos) {
+            for (const input of phcInputs) {
+                if (!(input.value || '').trim()) {
+                    showNotification(t('obrigatorioPhcSemCodigo'), 'error');
+                    input.focus();
+                    return;
+                }
             }
         }
 
@@ -1042,10 +1062,11 @@
         const rows = tbody ? tbody.querySelectorAll('tr[data-articulo-id]') : [];
 
         try {
-            for (const tr of rows) {
-                const articuloId = tr.getAttribute('data-articulo-id');
-                if (!articuloId || articuloId === 'undefined') continue;
-                const previsaoEl = tr.querySelector('.ge-row-previsao');
+            if (!soloCreacaoCodigos) {
+                for (const tr of rows) {
+                    const articuloId = tr.getAttribute('data-articulo-id');
+                    if (!articuloId || articuloId === 'undefined') continue;
+                    const previsaoEl = tr.querySelector('.ge-row-previsao');
                 const fecha_prevista_entrega = previsaoEl && previsaoEl.value ? previsaoEl.value : null;
 
                 const { error } = await client
@@ -1058,6 +1079,7 @@
                     .eq('id', articuloId);
 
                 if (error) throw error;
+                }
             }
             for (const input of phcInputs) {
                 const gcId = input.getAttribute('data-gc-id');
@@ -1071,7 +1093,7 @@
             }
             showNotification(t('guardado'), 'success');
 
-            if (presupuestoId) {
+            if (presupuestoId && !soloCreacaoCodigos) {
                 await tryMoveProposalToEncomendaEnCurso(client, presupuestoId);
             }
         } catch (e) {
@@ -1414,7 +1436,7 @@
     }
 
     function buildProductDetailsHtml(gc, options) {
-        const { showFaltaBadge = false } = options || {};
+        const { showFaltaBadge = false, soloCreacaoCodigos = false } = options || {};
         const refFornecedor = (gc.referencia || '').trim() || '-';
         const hasPhc = (gc.phc_ref || '').trim() !== '';
         const phcLabel = hasPhc ? (gc.phc_ref || '').trim() : t('semPhc');
@@ -1425,33 +1447,37 @@
         infoHtml += `<div style="font-weight: 600; margin-bottom: 4px; font-size: 1rem;">${escapeHtml(gc.nome_articulo || gc.designacao || refFornecedor || '-')}${faltaBadge}</div>`;
         infoHtml += `<div style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 2px;">${t('refFornecedor')}: ${escapeHtml(refFornecedor)}</div>`;
         infoHtml += `<div style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 4px;">${t('refPhc')}: ${hasPhc ? escapeHtml(phcLabel) : `<span style="color: var(--accent-500);">${escapeHtml(phcLabel)}</span>`}</div>`;
-        if (isSemPhc) {
+        if (isSemPhc || soloCreacaoCodigos) {
             infoHtml += `<div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--bg-gray-200); font-size: 0.85rem; color: var(--text-secondary); display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; align-items: baseline;">`;
             infoHtml += `<span><strong>${t('designacao')}:</strong></span><span>${escapeHtml((gc.designacao || '').trim() || '-')}</span>`;
             infoHtml += `<span><strong>${t('peso')}:</strong></span><span>${escapeHtml((gc.peso || '').trim() || '-')}</span>`;
             infoHtml += `<span><strong>${t('qtyCaixa')}:</strong></span><span>${gc.quantidade_por_caixa != null ? escapeHtml(String(gc.quantidade_por_caixa)) : '-'}</span>`;
             infoHtml += `<span><strong>${t('personalizado')}:</strong></span><span>${gc.personalizado ? t('sim') : t('nao')}</span>`;
-            if (gc.valor_transportes != null && gc.valor_transportes !== '') {
-                const vt = Number(gc.valor_transportes);
-                if (!isNaN(vt)) { infoHtml += `<span><strong>${t('valorTransportes')}:</strong></span><span>${formatNumber(vt)}</span>`; }
+            if (gc.personalizado && (gc.personalizado_observacoes || '').trim()) {
+                infoHtml += `<span style="grid-column: 1 / -1; margin-top: 4px;"><strong>${t('nomeHotel')}:</strong> ${escapeHtml((gc.personalizado_observacoes || '').trim())}</span>`;
+            } else if (!soloCreacaoCodigos && (gc.personalizado_observacoes || '').trim()) {
+                infoHtml += `<span style="grid-column: 1 / -1; margin-top: 4px;"><strong>${t('observaciones')}:</strong> ${escapeHtml((gc.personalizado_observacoes || '').trim())}</span>`;
             }
-            if (gc.tem_cliche != null) {
-                infoHtml += `<span><strong>${t('temCliche')}:</strong></span><span>${gc.tem_cliche ? t('sim') : t('nao')}</span>`;
-                if (gc.tem_cliche) {
-                    const pc = (gc.preco_cliche != null && gc.preco_cliche !== '') ? Number(gc.preco_cliche) : NaN;
-                    const desc = (gc.porcentaje_descuento != null && gc.porcentaje_descuento !== '') ? Number(gc.porcentaje_descuento) : NaN;
-                    const hasPc = !isNaN(pc);
-                    const hasDesc = !isNaN(desc) && desc > 0;
-                    if (hasPc || hasDesc) {
-                        infoHtml += `<span style="grid-column: 1 / -1; margin-left: 0.5rem; font-size: 0.8rem;">`;
-                        if (hasPc) infoHtml += `${t('precoCliche')}: ${formatNumber(pc)}`;
-                        if (hasDesc) infoHtml += (hasPc ? ' · ' : '') + `${t('desconto')}: ${formatNumber(desc)}%`;
-                        infoHtml += `</span>`;
+            if (!soloCreacaoCodigos) {
+                if (gc.valor_transportes != null && gc.valor_transportes !== '') {
+                    const vt = Number(gc.valor_transportes);
+                    if (!isNaN(vt)) { infoHtml += `<span><strong>${t('valorTransportes')}:</strong></span><span>${formatNumber(vt)}</span>`; }
+                }
+                if (gc.tem_cliche != null) {
+                    infoHtml += `<span><strong>${t('temCliche')}:</strong></span><span>${gc.tem_cliche ? t('sim') : t('nao')}</span>`;
+                    if (gc.tem_cliche) {
+                        const pc = (gc.preco_cliche != null && gc.preco_cliche !== '') ? Number(gc.preco_cliche) : NaN;
+                        const desc = (gc.porcentaje_descuento != null && gc.porcentaje_descuento !== '') ? Number(gc.porcentaje_descuento) : NaN;
+                        const hasPc = !isNaN(pc);
+                        const hasDesc = !isNaN(desc) && desc > 0;
+                        if (hasPc || hasDesc) {
+                            infoHtml += `<span style="grid-column: 1 / -1; margin-left: 0.5rem; font-size: 0.8rem;">`;
+                            if (hasPc) infoHtml += `${t('precoCliche')}: ${formatNumber(pc)}`;
+                            if (hasDesc) infoHtml += (hasPc ? ' · ' : '') + `${t('desconto')}: ${formatNumber(desc)}%`;
+                            infoHtml += `</span>`;
+                        }
                     }
                 }
-            }
-            if ((gc.personalizado_observacoes || '').trim()) {
-                infoHtml += `<span style="grid-column: 1 / -1; margin-top: 4px;"><strong>${t('observaciones')}:</strong> ${escapeHtml((gc.personalizado_observacoes || '').trim())}</span>`;
             }
             infoHtml += `</div>`;
         } else {
@@ -1476,7 +1502,7 @@
             }
         }
         infoHtml += `</div>`;
-        const anexosHtml = buildAnexosLinksForProduct(gc);
+        const anexosHtml = soloCreacaoCodigos ? '' : buildAnexosLinksForProduct(gc);
         return `<div class="ge-product-details">${infoHtml}${anexosHtml}</div>`;
     }
 

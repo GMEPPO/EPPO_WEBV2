@@ -67,6 +67,12 @@
 }
 
 /* Variables para Modo Oscuro */
+[data-theme="dark"] body,
+[data-theme="dark"] .main-content,
+[data-theme="dark"] .products-main {
+  background: #0f172a !important;
+  color: var(--text-primary);
+}
 [data-theme="dark"] {
   /* Colores de fondo - Modo Oscuro */
   --bg-white: #1a1a1a;

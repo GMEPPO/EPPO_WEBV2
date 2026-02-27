@@ -1,9 +1,14 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="pt" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EPPO by Groupe GM - Crear Producto</title>
+    <style>
+        /* Forzar modo oscuro desde el inicio (evitar FOUC) */
+        html, html[data-theme="dark"] { background: #0f172a !important; }
+        body { background: #0f172a !important; color: #f1f5f9 !important; }
+    </style>
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11,6 +16,74 @@
     
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="menu-hamburguesa.css">
+    <style>
+        /* Forzar modo oscuro en toda la página de creación/edición de productos */
+        html[data-theme="dark"] body,
+        html[data-theme="dark"] .main-content {
+            background: #0f172a !important;
+            color: #f1f5f9 !important;
+        }
+        html[data-theme="dark"] .header,
+        html[data-theme="dark"] .header-content,
+        html[data-theme="dark"] .nav,
+        html[data-theme="dark"] header {
+            background: #0f172a !important;
+            border-color: #334155 !important;
+            color: #f1f5f9 !important;
+        }
+        html[data-theme="dark"] .nav-link { color: #e2e8f0 !important; }
+        html[data-theme="dark"] .nav-link:hover { color: #f1f5f9 !important; }
+        html[data-theme="dark"] .logo, html[data-theme="dark"] .logo-line1, html[data-theme="dark"] .logo-line2 { color: #f1f5f9 !important; }
+        html[data-theme="dark"] .user-bar-name { color: #f59e0b !important; }
+        html[data-theme="dark"] .user-bar-role { color: #94a3b8 !important; }
+        html[data-theme="dark"] .user-bar-logout { background: #334155 !important; color: #f1f5f9 !important; border-color: #475569 !important; }
+        html[data-theme="dark"] .product-form-container,
+        html[data-theme="dark"] .container,
+        html[data-theme="dark"] .form-section {
+            background: #1e293b !important;
+            border-color: #334155 !important;
+        }
+        html[data-theme="dark"] .form-section h2 { color: #f1f5f9 !important; border-color: #334155 !important; }
+        html[data-theme="dark"] .product-form-title,
+        html[data-theme="dark"] .product-form-subtitle { color: #f1f5f9 !important; }
+        html[data-theme="dark"] .product-form-header { border-color: #334155 !important; }
+        html[data-theme="dark"] .mode-selector-card,
+        html[data-theme="dark"] #mode-selector .mode-selector-card { background: #1e293b !important; border-color: #334155 !important; }
+        html[data-theme="dark"] .form-section label,
+        html[data-theme="dark"] .form-group label { color: #e2e8f0 !important; }
+        html[data-theme="dark"] input, html[data-theme="dark"] textarea, html[data-theme="dark"] select {
+            background: #334155 !important; color: #f1f5f9 !important; border-color: #475569 !important;
+        }
+        html[data-theme="dark"] .product-form-stepper,
+        html[data-theme="dark"] .stepper-steps,
+        html[data-theme="dark"] .stepper-step { background: transparent !important; color: #e2e8f0 !important; }
+        html[data-theme="dark"] .stepper-step.active { color: #22c55e !important; }
+        html[data-theme="dark"] .product-form-context-banner { background: linear-gradient(135deg, #1e3a5f 0%, #1d3557 100%) !important; color: #f1f5f9 !important; }
+        /* Asegurar que la barra de usuario sea visible en modo oscuro */
+        html[data-theme="dark"] .user-bar,
+        .user-bar { display: flex !important; align-items: center !important; gap: 0.5rem !important; visibility: visible !important; opacity: 1 !important; }
+        html[data-theme="dark"] .user-bar-name,
+        .user-bar-name { color: #f59e0b !important; font-weight: 600 !important; }
+        html[data-theme="dark"] .user-bar-role,
+        .user-bar-role { color: #94a3b8 !important; }
+        html[data-theme="dark"] .user-bar-sep,
+        .user-bar-sep { color: #475569 !important; }
+        html[data-theme="dark"] .user-bar-logout,
+        .user-bar-logout { background: #334155 !important; color: #f1f5f9 !important; border: 1px solid #475569 !important; }
+        /* Contenedores y secciones que puedan quedar en blanco */
+        html[data-theme="dark"] .main-content,
+        .main-content { background: #0f172a !important; }
+        html[data-theme="dark"] .product-form-container,
+        .product-form-container { background: #0f172a !important; }
+        html[data-theme="dark"] #alert-container + * { background: transparent !important; }
+        /* Header siempre oscuro en esta página */
+        html[data-theme="dark"] .header,
+        .header { background: #0f172a !important; border-bottom-color: #334155 !important; }
+        html[data-theme="dark"] .header-content,
+        .header-content { background: #0f172a !important; }
+        html[data-theme="dark"] .nav,
+        .nav { background: transparent !important; }
+    </style>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="load-config.js"></script>
@@ -18,6 +91,7 @@
     <script src="translation-system.js"></script>
     <script src="auth.js"></script>
     <script src="stock-warning.js"></script>
+    <script src="theme-common.js"></script>
     <style>
         .product-form-container {
             max-width: 1400px;
@@ -1547,6 +1621,7 @@
         </div>
     </div>
 
+    <script src="menu-hamburguesa.js"></script>
     <script src="admin-productos.js"></script>
     <script>
         // Función para toggle del menú hamburguesa
@@ -1576,6 +1651,12 @@
             }
 
             initTheme();
+            if (typeof window.refreshUserBar === 'function') {
+                window.refreshUserBar();
+                setTimeout(function() { window.refreshUserBar(); }, 400);
+                setTimeout(function() { window.refreshUserBar(); }, 1000);
+                setTimeout(function() { window.refreshUserBar(); }, 2500);
+            }
 
             // Cargar idioma guardado
             const savedLang = localStorage.getItem('language') || 'pt';
