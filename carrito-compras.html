@@ -22,7 +22,7 @@
             bottom: 0;
             left: 0;
             right: 0;
-            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            background: #0B1C2D;
             color: white;
             padding: var(--space-3) var(--space-6);
             z-index: 10000;
@@ -239,7 +239,7 @@
             align-items: center;
             gap: var(--space-3);
             padding: var(--space-3) var(--space-5);
-            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            background: #0B1C2D;
             color: white;
             border-radius: var(--radius-md);
             font-weight: 600;
@@ -318,7 +318,7 @@
         }
 
         .cart-item-wrapper {
-            background: linear-gradient(135deg, #1f2a48 0%, #1c2f60 100%);
+            background: #14263D;
             border-radius: var(--radius-sm);
             padding: var(--space-1);
             margin-bottom: var(--space-2);
@@ -1165,7 +1165,7 @@
         }
 
         .price-tiers-current {
-            background: linear-gradient(135deg, rgba(13, 42, 60, 0.08) 0%, rgba(198, 161, 91, 0.12) 100%);
+            background: rgba(11, 28, 45, 0.06);
             border: 2px solid var(--brand-gold, #C6A15B);
             border-radius: 10px;
             padding: 16px;
@@ -1173,7 +1173,7 @@
         }
 
         [data-theme="dark"] .price-tiers-current {
-            background: linear-gradient(135deg, rgba(198, 161, 91, 0.15) 0%, rgba(198, 161, 91, 0.08) 100%);
+            background: rgba(11, 28, 45, 0.06);
             border-color: var(--brand-gold, #C6A15B);
         }
 
@@ -1258,12 +1258,12 @@
         }
 
         .price-tiers-table tbody tr.active-tier {
-            background: linear-gradient(135deg, rgba(198, 161, 91, 0.1) 0%, rgba(198, 161, 91, 0.05) 100%);
+            background: rgba(11, 28, 45, 0.05);
             border-left: 3px solid var(--brand-gold, #C6A15B);
         }
 
         [data-theme="dark"] .price-tiers-table tbody tr.active-tier {
-            background: linear-gradient(135deg, rgba(198, 161, 91, 0.2) 0%, rgba(198, 161, 91, 0.1) 100%);
+            background: rgba(11, 28, 45, 0.08);
         }
 
         .price-tiers-table tbody tr.active-tier td {
@@ -1375,7 +1375,7 @@
                     <button class="btn-primary" onclick="openAddProductModal()" style="background: #10b981;">
                         <i class="fas fa-search"></i> <span id="add-product-text">Agregar Producto</span>
                     </button>
-                    <button class="btn-primary" id="addExclusiveProductBtn" onclick="openAddExclusiveProductModal()" style="background: linear-gradient(135deg, #C6A15B 0%, #B8944F 100%); display: none;">
+                    <button class="btn-primary" id="addExclusiveProductBtn" onclick="openAddExclusiveProductModal()" style="background: #0B1C2D; display: none;">
                         <i class="fas fa-star"></i> <span id="add-exclusive-product-text">Agregar Producto Exclusivo</span>
                     </button>
                     <button class="btn-primary" onclick="addEmptyModule()" style="background: #8b5cf6;">
@@ -1471,7 +1471,7 @@
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            <div style="margin-bottom: var(--space-4); padding: var(--space-4); background: linear-gradient(135deg, rgba(13, 42, 60, 0.05) 0%, rgba(198, 161, 91, 0.08) 100%); border: 2px solid var(--brand-gold, #C6A15B); border-radius: var(--radius-md);">
+            <div style="margin-bottom: var(--space-4); padding: var(--space-4); background: rgba(11, 28, 45, 0.05); border: 1px solid #E2E8F0; border-radius: var(--radius-md);">
                 <p style="margin: 0; color: var(--text-secondary); font-size: 0.875rem;">
                     <i class="fas fa-info-circle" style="margin-right: 8px; color: var(--brand-gold, #C6A15B);"></i>
                     <span id="exclusive-products-info">Estos productos están asociados exclusivamente a este cliente y solo aparecen en sus propuestas.</span>
@@ -1519,7 +1519,7 @@
                 <input type="text" class="form-input" id="productSearchInput" placeholder="" autocomplete="off">
             </div>
             <!-- Sección de productos exclusivos del cliente (solo visible al editar propuesta) -->
-            <div id="clientExclusiveProductsSection" style="display: none; margin-bottom: var(--space-4); padding: var(--space-4); background: linear-gradient(135deg, rgba(13, 42, 60, 0.05) 0%, rgba(198, 161, 91, 0.08) 100%); border: 2px solid var(--brand-gold, #C6A15B); border-radius: var(--radius-md);">
+            <div id="clientExclusiveProductsSection" style="display: none; margin-bottom: var(--space-4); padding: var(--space-4); background: rgba(11, 28, 45, 0.05); border: 1px solid #E2E8F0; border-radius: var(--radius-md);">
                 <h4 style="margin: 0 0 var(--space-3) 0; color: var(--brand-blue, #0D2A3C); font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
                     <i class="fas fa-star" style="color: var(--brand-gold, #C6A15B);"></i>
                     <span id="exclusive-products-title">Productos Exclusivos de este Cliente</span>
@@ -2157,7 +2157,7 @@
                     </button>
                     <button onclick="closeVersionModal(true)" style="
                         padding: 10px 20px;
-                        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+                        background: #0B1C2D;
                         color: white;
                         border: none;
                         border-radius: 8px;

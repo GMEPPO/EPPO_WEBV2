@@ -13,7 +13,7 @@
     width: 60px;
     height: 60px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--primary-500, #2563eb) 0%, var(--primary-600, #1d4ed8) 100%);
+    background: #0B1C2D;
     color: white;
     display: flex;
     align-items: center;
@@ -50,7 +50,7 @@
 
 /* Header del chat */
 .chat-widget-header {
-    background: linear-gradient(135deg, var(--primary-500, #2563eb) 0%, var(--primary-600, #1d4ed8) 100%);
+    background: #0B1C2D;
     color: white;
     padding: 16px 20px;
     display: flex;
@@ -157,7 +157,7 @@
 }
 
 .chat-message-user .chat-message-content {
-    background: linear-gradient(135deg, var(--primary-500, #2563eb) 0%, var(--primary-600, #1d4ed8) 100%);
+    background: #0B1C2D;
     color: white;
     border-bottom-right-radius: 4px;
 }
@@ -358,7 +358,7 @@
 .chat-widget-send {
     width: 44px;
     height: 44px;
-    background: linear-gradient(135deg, var(--primary-500, #2563eb) 0%, var(--primary-600, #1d4ed8) 100%);
+    background: #0B1C2D;
     color: white;
     border: none;
     border-radius: 8px;
