@@ -377,12 +377,11 @@
                 const articuloIds = Array.from(info.articuloIds || []);
                 const totalArticulos = articulosCountByPresupuesto[p.id] || 0;
                 const hasArticulosPendientes = totalArticulos > articuloIds.length;
-                const estado = (p.estado_propuesta || '').toLowerCase();
-                const isSoloCreacaoCodigos = (tipoByPresupuesto[p.id] || '').toLowerCase() === 'criacao_codigos';
-                const isEnCurso = (estado === 'aguarda_creacion_codigo_phc' && isSoloCreacaoCodigos)
-                    ? true
-                    : (articuloIds.length > 0 && articuloIds.every(aid => (articuloNumeroMap[aid] || '').trim() !== ''));
                 const tipoFromGestao = tipoByPresupuesto[p.id];
+                const isSoloCreacaoCodigos = (tipoFromGestao || '').toLowerCase() === 'criacao_codigos';
+                const isEnCurso = isSoloCreacaoCodigos
+                    ? false
+                    : (articuloIds.length > 0 && articuloIds.every(aid => (articuloNumeroMap[aid] || '').trim() !== ''));
                 const tipoLabel = (tipoFromGestao && (tipoFromGestao || '').trim() !== '')
                     ? tipoFromGestao.trim()
                     : getTipoLabelPresupuesto(p.tipo_registro_directo);
@@ -935,9 +934,11 @@
 
             const codigoPropuesta = (proposal && proposal.codigo_propuesta) ? proposal.codigo_propuesta : (presupuestoId ? String(presupuestoId).substring(0, 8) : '-');
             const responsavelVal = (proposal && proposal.responsavel) ? proposal.responsavel : '-';
+            const isSoloCreacaoCodigos = (gcRows || []).length > 0 && (gcRows || []).every(gc => ((gc.tipo || '').toLowerCase() === 'criacao_codigos'));
+            const concluirBlockPendientes = (isSoloCreacaoCodigos && !geReadOnly) ? ('<div class="ge-fornecedor-block" style="margin-bottom:1.5rem;"><button type="button" class="ge-btn ge-btn-success" id="ge-btn-concluir-pendientes"><i class="fas fa-check-circle"></i> <span id="ge-btn-concluir-pendientes-text">' + escapeHtml(t('concluirTarefa')) + '</span></button></div>') : '';
             let numeroPropostaBlock = '<div class="ge-fornecedor-block" style="margin-bottom:1rem;"><div style="display:grid;grid-template-columns:auto 1fr;gap:1rem;align-items:center;"><div><span style="font-size:0.8rem;color:#94a3b8;">' + t('numPropuesta') + '</span><div style="font-weight:600;color:#f1f5f9;font-size:1.1rem;">' + escapeHtml(codigoPropuesta) + '</div></div><div><span style="font-size:0.8rem;color:#94a3b8;">' + t('responsable') + '</span><div style="font-weight:600;color:#f1f5f9;">' + escapeHtml(responsavelVal) + '</div></div></div></div>';
 
-            blocksEl.innerHTML = numeroPropostaBlock;
+            blocksEl.innerHTML = numeroPropostaBlock + concluirBlockPendientes;
             Object.keys(byFornecedor).sort().forEach(fornecedorName => {
                 const rows = byFornecedor[fornecedorName];
                 const articuloIds = rows.map(r => r.presupuesto_articulo_id).filter(Boolean);
@@ -1007,6 +1008,8 @@
                 if (saveBtn && !geReadOnly) saveBtn.addEventListener('click', () => saveFornecedorGroup(block, articuloIds, presupuestoId));
                 blocksEl.appendChild(block);
             });
+            const concluirBtnPendientes = document.getElementById('ge-btn-concluir-pendientes');
+            if (concluirBtnPendientes && !geReadOnly) concluirBtnPendientes.addEventListener('click', () => concluirEncomendaEnCurso(presupuestoId));
         } catch (e) {
             console.error('showDetailsPendientes:', e);
             blocksEl.innerHTML = '<div style="color: var(--danger-500);">' + escapeHtml(e.message || t('errorCarga')) + '</div>';
