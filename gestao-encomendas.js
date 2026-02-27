@@ -349,6 +349,9 @@
 
             if (errPres) throw errPres;
 
+            const estadoConcluida = (e) => (e || '').toLowerCase().includes('concluida') || (e || '').toLowerCase().includes('concluída');
+            const presupuestosActivos = (presupuestos || []).filter(p => !estadoConcluida(p.estado_propuesta));
+
             const { data: articulos, error: errArt } = await client
                 .from('presupuestos_articulos')
                 .select('id, presupuesto_id, numero_encomenda')
@@ -375,7 +378,7 @@
                 }
             });
 
-            listData = (presupuestos || []).map(p => {
+            listData = (presupuestosActivos || []).map(p => {
                 const info = byPresupuesto[p.id] || { fornecedores: [], articuloIds: new Set() };
                 const articuloIds = Array.from(info.articuloIds || []);
                 const totalArticulos = articulosCountByPresupuesto[p.id] || 0;
