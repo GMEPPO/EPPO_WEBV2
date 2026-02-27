@@ -3,8 +3,16 @@
  * Funciones reutilizables para todas las páginas
  */
 
+(function() {
+    try {
+        var r = localStorage.getItem('eppo_user_role');
+        if (r === 'compras') document.documentElement.classList.add('role-compras');
+    } catch (e) {}
+})();
+
 // Caché simple del rol para evitar consultas repetitivas
 let cachedRole = null;
+const ROLE_STORAGE_KEY = 'eppo_user_role';
 let roleCacheTimestamp = 0;
 const ROLE_CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
 
@@ -54,9 +62,10 @@ async function getUserRole() {
 
         if (error) {
             if (error.code === 'PGRST116') {
-                // Usuario sin rol asignado, usar 'comercial' por defecto
                 cachedRole = 'comercial';
                 roleCacheTimestamp = now;
+                try { localStorage.setItem(ROLE_STORAGE_KEY, 'comercial'); } catch (e) {}
+                document.documentElement.classList.remove('role-compras');
                 return 'comercial';
             }
             console.warn('⚠️ [getUserRole] Error al consultar rol:', error.message);
@@ -69,16 +78,18 @@ async function getUserRole() {
             if (role === 'editor' || role === 'viewer') {
                 role = 'comercial';
             }
-            
-            // Guardar en caché
             cachedRole = role;
             roleCacheTimestamp = now;
+            try { localStorage.setItem(ROLE_STORAGE_KEY, String(role).toLowerCase()); } catch (e) {}
+            if (String(role).toLowerCase() === 'compras') document.documentElement.classList.add('role-compras');
+            else document.documentElement.classList.remove('role-compras');
             return role;
         }
 
-        // Si no hay rol, usar 'comercial' por defecto
         cachedRole = 'comercial';
         roleCacheTimestamp = now;
+        try { localStorage.setItem(ROLE_STORAGE_KEY, 'comercial'); } catch (e) {}
+        document.documentElement.classList.remove('role-compras');
         return 'comercial';
 
     } catch (error) {
@@ -96,7 +107,8 @@ window.clearRoleCache = function() {
     roleCacheTimestamp = 0;
     cachedPais = null;
     paisCacheTimestamp = 0;
-    console.log('🗑️ [menu-hamburguesa] Caché de rol y país limpiado');
+    try { localStorage.removeItem(ROLE_STORAGE_KEY); } catch (e) {}
+    document.documentElement.classList.remove('role-compras');
 };
 
 // Permitir a auth.js establecer el rol tras cargar desde user_roles (evita doble consulta)
@@ -104,6 +116,9 @@ window.setCachedRole = function(role) {
     if (role) {
         cachedRole = role;
         roleCacheTimestamp = Date.now();
+        try { localStorage.setItem(ROLE_STORAGE_KEY, String(role).toLowerCase()); } catch (e) {}
+        if (String(role).toLowerCase() === 'compras') document.documentElement.classList.add('role-compras');
+        else document.documentElement.classList.remove('role-compras');
     }
 };
 

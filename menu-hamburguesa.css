@@ -1,5 +1,14 @@
 /* Menú desplegable hamburguesa - Estilos comunes */
 
+/* Rol compras: ocultar enlaces no permitidos desde el primer pintado (evita parpadeo al recargar) */
+.role-compras #nav-cart-link,
+.role-compras #nav-proposals-link {
+    display: none !important;
+}
+.role-compras .dropdown-menu .dropdown-link:not([href*="gestao-encomendas"]) {
+    display: none !important;
+}
+
 .menu-dropdown {
     position: relative;
 }
