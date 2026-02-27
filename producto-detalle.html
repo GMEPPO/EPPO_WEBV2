@@ -213,7 +213,7 @@
             display: inline-flex;
             align-items: center;
             gap: var(--space-2);
-            background: #0B1C2D;
+            background: #2563eb;
             color: var(--text-white);
             padding: var(--space-3) var(--space-4);
             border-radius: var(--radius-md);
@@ -229,7 +229,7 @@
         }
         
         .download-button:hover {
-            background: #091827;
+            background: #1d4ed8;
             text-decoration: none;
             color: var(--text-white);
         }
@@ -254,7 +254,7 @@
 
         /* Botón agregar al carrito */
         .add-to-cart-button:hover {
-            background: #091827 !important;
+            background: #1d4ed8 !important;
         }
 
         .add-to-cart-button:active {
@@ -300,11 +300,11 @@
         }
         
         [data-theme="dark"] .download-button {
-            background: #0B1C2D;
+            background: #2563eb;
             border-color: #334155;
         }
         [data-theme="dark"] .download-button:hover {
-            background: #091827;
+            background: #1d4ed8;
         }
         
         /* Modal de imagen ampliada */
@@ -1200,7 +1200,7 @@
                                 <div class="product-title-price">
                                     <div class="product-price">${(product.precio === 0 || product.precio === null || product.precio === undefined) ? 'Sobre consulta' : '€' + product.precio.toFixed(2)}</div>
                                     <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 12px;">
-                                        <button onclick="window.addProductToCartFromDetail()" class="add-to-cart-button" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #0B1C2D; color: white; border: none; border-radius: 8px; padding: 12px 24px; font-weight: 600; font-size: 1rem; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.08);">
+                                        <button onclick="window.addProductToCartFromDetail()" class="add-to-cart-button" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #2563eb; color: white; border: none; border-radius: 8px; padding: 12px 24px; font-weight: 600; font-size: 1rem; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.08);">
                                             <i class="fas fa-shopping-cart"></i>
                                             ${this.translateLabel('addToCart')}
                                         </button>

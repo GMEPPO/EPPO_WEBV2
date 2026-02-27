@@ -6,24 +6,31 @@
    - Responsive y accesible
    ===================================================== */
 
-/* ---------------------- Variables de tema (B2B corporativo) ---------------------- */
+/* ---------------------- Variables de tema (tema anterior) ---------------------- */
 :root {
-  /* Identidad corporativa */
-  --primary-navy: #0B1C2D;        /* Navbar / fondos oscuros */
-  --secondary-navy: #14263D;     /* Hero / secciones destacadas */
-  --bg-surface: #F8FAFC;         /* Cards / fondos claros */
+  /* Colores principales */
+  --primary-50: #eff6ff;
+  --primary-200: #bfdbfe;
+  --primary-500: #2563eb;        /* Azul */
+  --primary-600: #1d4ed8;
+  --primary-700: #1e40af;
+  --accent-500: #f59e0b;         /* Naranja/ámbar - precios, hover, nombre usuario */
+  --accent-600: #d97706;
+  --success-500: #10b981;
+  --danger-500: #ef4444;
+
+  /* Fondos y superficie */
+  --bg-surface: #F8FAFC;
+  --bg-nav: #1f2937;             /* Navbar gris oscuro */
   --text-dark: #1E293B;
   --text-light: #F1F5F9;
   --text-muted: #64748B;
   --border-neutral: #E2E8F0;
-  --accent-gold: #C6A75E;        /* Uso mínimo: hover nav, focus, línea 1px */
   --input-border: #CBD5E1;
-  --border-nav: #1E293B;         /* Línea inferior navbar */
+  --border-nav: rgba(255,255,255,0.1);
 
-  /* Aliases para compatibilidad */
-  --bg-nav: var(--primary-navy);
-  --bg-hero: var(--secondary-navy);
-  --accent: var(--accent-gold);
+  /* Aliases */
+  --accent: var(--accent-500);
   --text-primary: var(--text-dark);
   --text-secondary: var(--text-muted);
   --text-white: #ffffff;
@@ -31,32 +38,22 @@
   --bg-gray-50: #F8FAFC;
   --bg-gray-100: #F1F5F9;
   --bg-gray-200: #E2E8F0;
-  --bg-gray-800: #1E293B;
-  --bg-gray-900: #0B1C2D;
-  --primary-50: #f0f9ff;
-  --primary-200: #bae6fd;
-  --primary-500: #0B1C2D;
-  --primary-600: #091827;
-  --primary-700: #071420;
-  --accent-500: #C6A75E;
-  --accent-600: #b8944d;
-  --success-500: #10b981;
-  --danger-500: #ef4444;
+  --bg-gray-800: #1f2937;
+  --bg-gray-900: #111827;
   --groupe-gm-color: var(--text-dark);
 
-  /* Sombras suaves (enterprise) */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 1px 3px 0 rgba(0, 0, 0, 0.08), 0 1px 2px -1px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
-  --shadow-xl: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.06);
+  /* Hero: fondo gris oscuro (tema negro/gris) */
+  --bg-hero: #1f2937;
 
-  /* Bordes */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+
   --radius-sm: 0.375rem;
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
   --radius-xl: 1rem;
-
-  /* Espaciado */
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 0.75rem;
@@ -66,35 +63,34 @@
   --space-8: 2rem;
   --space-10: 2.5rem;
   --space-12: 3rem;
-
-  /* Tipografía */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-display: 'Playfair Display', Georgia, serif;
 }
 
-/* Modo oscuro: mismo tema corporativo navy, fondos oscuros */
+/* Modo oscuro: fondo gris oscuro, texto claro */
 [data-theme="dark"] body,
 [data-theme="dark"] .main-content,
 [data-theme="dark"] .products-main {
-  background: var(--primary-navy) !important;
+  background: #111827 !important;
   color: var(--text-light);
 }
 [data-theme="dark"] {
-  --bg-surface: #14263D;
-  --bg-white: #14263D;
-  --bg-gray-50: #1E293B;
-  --bg-gray-100: #334155;
-  --text-primary: #F1F5F9;
-  --text-dark: #F1F5F9;
-  --text-secondary: #CBD5E1;
-  --text-muted: #94A3B8;
-  --border-neutral: #334155;
-  --border-nav: #334155;
+  --bg-surface: #111827;
+  --bg-hero: #1f2937;
+  --bg-white: #1f2937;
+  --bg-gray-50: #1f2937;
+  --bg-gray-100: #374151;
+  --text-primary: #F9FAFB;
+  --text-dark: #F9FAFB;
+  --text-secondary: #D1D5DB;
+  --text-muted: #9CA3AF;
+  --border-neutral: #374151;
+  --border-nav: rgba(255,255,255,0.1);
   --groupe-gm-color: #F1F5F9;
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
-  --shadow-md: 0 1px 3px 0 rgba(0, 0, 0, 0.25);
-  --shadow-lg: 0 4px 6px -1px rgba(0, 0, 0, 0.25);
-  --shadow-xl: 0 10px 15px -3px rgba(0, 0, 0, 0.25);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
 }
 
 /* Importar tema base */
@@ -121,9 +117,9 @@ body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* ---------------------- Header (Navbar corporativo - Navy) ---------------------- */
+/* ---------------------- Header (Navbar) ---------------------- */
 .header {
-  background: var(--primary-navy);
+  background: var(--bg-nav);
   border-bottom: 1px solid var(--border-nav);
   box-shadow: var(--shadow-sm);
   position: sticky;
@@ -153,6 +149,7 @@ body {
 
 .logo-line1 {
   font-size: 1em;
+  color: #93c5fd;   /* Azul claro "EPPO by" */
 }
 
 .logo-line2 {
@@ -182,12 +179,12 @@ body {
 }
 
 .nav-link:hover {
-  color: var(--accent-gold);
+  color: var(--accent-500);
   text-decoration: none;
 }
 
 .nav-link.active {
-  color: var(--accent-gold);
+  color: var(--accent-500);
   text-decoration: none;
 }
 
@@ -200,8 +197,8 @@ body {
   position: absolute;
   top: -6px;
   right: -6px;
-  background: var(--primary-navy);
-  color: var(--text-light);
+  background: var(--primary-500);
+  color: white;
   border-radius: 50%;
   min-width: 20px;
   height: 20px;
@@ -243,13 +240,13 @@ body {
 }
 
 .flag-btn:hover {
-  border-color: var(--accent-gold);
+  border-color: var(--accent-500);
   transform: scale(1.05);
 }
 
 .flag-btn.active {
-  border-color: var(--accent-gold);
-  box-shadow: 0 0 0 2px rgba(198, 167, 94, 0.2);
+  border-color: var(--accent-500);
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.25);
 }
 
 .flag-btn img {
@@ -317,7 +314,7 @@ body {
 .user-bar-name {
   font-weight: 600;
   font-size: 0.9rem;
-  color: var(--accent-gold);
+  color: var(--accent-500);
 }
 
 .user-bar-sep {
@@ -347,7 +344,7 @@ body {
 }
 
 .user-bar-logout:hover {
-  border: 1px solid var(--accent-gold);
+  border: 1px solid var(--accent-500);
   color: var(--text-light);
 }
 
@@ -362,7 +359,7 @@ body {
 }
 
 [data-theme="dark"] .user-bar-logout:hover {
-  border: 1px solid var(--accent-gold);
+  border: 1px solid var(--accent-500);
   color: var(--text-light);
 }
 
@@ -406,7 +403,7 @@ body {
   margin-top: var(--space-8);
 }
 
-/* Hero corporativo - Navy 2, título claro, separador dorado fino */
+/* Hero tema oscuro - fondo gris */
 .comparison-hero {
   background: var(--bg-hero);
   color: var(--text-light);
@@ -423,7 +420,7 @@ body {
   transform: translateX(-50%);
   width: 80px;
   height: 1px;
-  background: var(--accent-gold);
+  background: rgba(255, 255, 255, 0.4);
 }
 .comparison-hero h1 {
   color: var(--text-light);
@@ -433,7 +430,7 @@ body {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 .comparison-hero p {
-  color: #CBD5E1;
+  color: rgba(255, 255, 255, 0.9);
   font-size: 1rem;
   margin: 0;
 }
@@ -450,12 +447,12 @@ body {
 }
 
 .category-card:hover {
-  box-shadow: var(--shadow-sm);
-  border-left: 3px solid var(--accent-gold);
+  box-shadow: var(--shadow-md);
+  border-left: 3px solid var(--primary-500);
 }
 
 .category-card:focus-visible {
-  outline: 2px solid var(--accent-gold);
+  outline: 2px solid var(--primary-500);
   outline-offset: 2px;
 }
 
@@ -480,7 +477,7 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
-  background: rgba(11, 28, 45, 0.5);
+  background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.7) 100%);
   padding: var(--space-6);
   color: var(--text-white);
 }
@@ -1264,7 +1261,7 @@ body {
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent-gold);
+  outline: 2px solid var(--primary-500);
   outline-offset: 2px;
 }
 
@@ -1277,7 +1274,7 @@ body {
 }
 
 .spec-mini {
-  background: var(--primary-navy);
+  background: var(--primary-500);
   color: var(--text-light);
   padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-sm);
@@ -1941,7 +1938,7 @@ body {
 }
 
 [data-theme="dark"] .category-card:hover {
-  border-left: 3px solid var(--accent-gold);
+  border-left: 3px solid var(--primary-500);
 }
 
 [data-theme="dark"] .product-card {
@@ -1949,7 +1946,7 @@ body {
 }
 
 [data-theme="dark"] .product-card:hover {
-  border-left: 3px solid var(--accent-gold);
+  border-left: 3px solid var(--primary-500);
 }
 
 [data-theme="dark"] .filters-sidebar,
