@@ -66,11 +66,11 @@
   --font-display: 'Playfair Display', Georgia, serif;
 }
 
-/* Variables para Modo Oscuro */
+/* Variables para Modo Oscuro - fondo gris neutro (sin tinte azul) para combinar con el resto */
 [data-theme="dark"] body,
 [data-theme="dark"] .main-content,
 [data-theme="dark"] .products-main {
-  background: #0f172a !important;
+  background: #111827 !important;
   color: var(--text-primary);
 }
 [data-theme="dark"] {
