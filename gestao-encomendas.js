@@ -377,7 +377,11 @@
                 const articuloIds = Array.from(info.articuloIds || []);
                 const totalArticulos = articulosCountByPresupuesto[p.id] || 0;
                 const hasArticulosPendientes = totalArticulos > articuloIds.length;
-                const isEnCurso = articuloIds.length > 0 && articuloIds.every(aid => (articuloNumeroMap[aid] || '').trim() !== '');
+                const estado = (p.estado_propuesta || '').toLowerCase();
+                const isSoloCreacaoCodigos = (tipoByPresupuesto[p.id] || '').toLowerCase() === 'criacao_codigos';
+                const isEnCurso = (estado === 'aguarda_creacion_codigo_phc' && isSoloCreacaoCodigos)
+                    ? true
+                    : (articuloIds.length > 0 && articuloIds.every(aid => (articuloNumeroMap[aid] || '').trim() !== ''));
                 const tipoFromGestao = tipoByPresupuesto[p.id];
                 const tipoLabel = (tipoFromGestao && (tipoFromGestao || '').trim() !== '')
                     ? tipoFromGestao.trim()
@@ -1187,6 +1191,7 @@
                 byFornecedor[fn].push(gc);
             });
 
+            const isCreacaoCodigosView = (gcRows || []).some(gc => ((gc.tipo || '').toLowerCase().includes('criacao') || (gc.tipo || '').toLowerCase() === 'criacao_codigos'));
             const codigoPropuestaEc = (proposal && proposal.codigo_propuesta) ? proposal.codigo_propuesta : (presupuestoId ? String(presupuestoId).substring(0, 8) : '-');
             const responsavelEc = (proposal && proposal.responsavel) ? proposal.responsavel : '-';
             const numeroPropostaBlockEc = '<div class="ge-fornecedor-block" style="margin-bottom:1rem;"><div style="display:grid;grid-template-columns:auto 1fr;gap:1rem;align-items:center;"><div><span style="font-size:0.8rem;color:var(--text-secondary);">' + t('numPropuesta') + '</span><div style="font-weight:600;color:var(--text-primary);font-size:1.1rem;">' + escapeHtml(codigoPropuestaEc) + '</div></div><div><span style="font-size:0.8rem;color:var(--text-secondary);">' + t('responsable') + '</span><div style="font-weight:600;color:var(--text-primary);">' + escapeHtml(responsavelEc) + '</div></div></div></div>';
@@ -1198,12 +1203,14 @@
                 const block = document.createElement('div');
                 block.className = 'ge-fornecedor-block';
                 const saveBtnHtml = geReadOnly ? '' : '<div style="margin-top: 8px;"><button type="button" class="ge-btn ge-btn-primary ge-save-encurso">' + t('guardar') + '</button></div>';
+                const phcHeader = isCreacaoCodigosView ? '<th>' + t('refPhc') + '</th>' : '';
                 block.innerHTML = `
                     <div class="ge-fornecedor-title">${t('fornecedor')}: ${escapeHtml(fornecedorName)}</div>
                     <div class="ge-table-wrap">
                         <table class="ge-table">
                             <thead><tr>
                                 <th>${t('productoRef')} / ${t('detalles')}</th>
+                                ${phcHeader}
                                 <th>${t('numEncomenda')}</th>
                                 <th>${t('fechaEncomenda')}</th>
                                 <th>${t('previsaoEntrega')}</th>
@@ -1226,11 +1233,18 @@
                     const productDetailsHtml = buildProductDetailsHtml(gc, { showFaltaBadge: true });
                     const previsaoCell = geReadOnly ? (hasArticuloId ? escapeHtml(previsaoVal || '-') : '-') : (hasArticuloId ? `<input type="date" class="ge-editable ge-encurso-previsao" data-articulo-id="${articuloId}" value="${escapeAttr(previsaoVal)}">` : '-');
                     const obsCell = geReadOnly ? (hasArticuloId ? escapeHtml(obsVal || '-') : '-') : (hasArticuloId ? `<textarea class="ge-obs-input ge-encurso-obs" data-articulo-id="${articuloId}" rows="2">${escapeHtml(obsVal)}</textarea>` : '-');
+                    const isCreacaoCodigosRow = (gc.tipo || '').toLowerCase().includes('criacao') || (gc.tipo || '').toLowerCase() === 'criacao_codigos';
+                    const gcId = (gc.id || '').toString();
+                    const phcCell = isCreacaoCodigosView ? (isCreacaoCodigosRow && gcId && !geReadOnly
+                        ? '<td><input type="text" class="ge-editable ge-phc-ref-input" data-gc-id="' + escapeAttr(gcId) + '" value="' + escapeAttr((gc.phc_ref || '').trim()) + '" placeholder="' + escapeAttr(t('refPhc')) + '" style="min-width:100px;"></td>'
+                        : '<td>' + escapeHtml((gc.phc_ref || '').trim() || '-') + '</td>') : '';
 
                     const tr = document.createElement('tr');
                     tr.setAttribute('data-articulo-id', articuloId);
+                    tr.setAttribute('data-gc-id', gcId);
                     tr.innerHTML = `
                         <td class="ge-td-product" style="vertical-align: top;">${productDetailsHtml}</td>
+                        ${phcCell}
                         <td>${escapeHtml(numero)}</td>
                         <td>${escapeHtml(fechaEnc)}</td>
                         <td>${previsaoCell}</td>
@@ -1269,6 +1283,14 @@
                     .eq('id', articuloId);
                 if (error) throw error;
             }
+            const phcInputs = block.querySelectorAll('.ge-phc-ref-input');
+            for (const input of phcInputs) {
+                const gcId = input.getAttribute('data-gc-id');
+                const phcRef = (input.value || '').trim() || null;
+                if (!gcId) continue;
+                const { error } = await client.from('gestao_compras').update({ phc_ref: phcRef }).eq('id', gcId);
+                if (error) throw error;
+            }
             showNotification(t('guardado'), 'success');
         } catch (e) {
             console.error('saveEnCursoBlock:', e);
@@ -1282,6 +1304,23 @@
         const client = await getClient();
         if (!client) return;
         try {
+            const detailsView = document.getElementById('ge-details-view');
+            const phcInputs = detailsView ? detailsView.querySelectorAll('.ge-phc-ref-input') : [];
+            for (const input of phcInputs) {
+                const gcId = input.getAttribute('data-gc-id');
+                const phcRef = (input.value || '').trim() || null;
+                if (!gcId) continue;
+                await client.from('gestao_compras').update({ phc_ref: phcRef }).eq('id', gcId);
+            }
+
+            const { data: gcRows } = await client.from('gestao_compras').select('tipo, phc_ref, nome_articulo, nome_fornecedor').eq('presupuesto_id', presupuestoId);
+            const isCreacaoCodigos = (gcRows || []).some(r => (r.tipo || '').toLowerCase().includes('criacao') || (r.tipo || '').toLowerCase() === 'criacao_codigos');
+            const withPhc = (gcRows || []).filter(r => (r.phc_ref || '').trim() !== '');
+            if (isCreacaoCodigos && gcRows && gcRows.length > 0 && withPhc.length === 0) {
+                showNotification(lang === 'es' ? 'Indique el código PHC en al menos un producto antes de concluir.' : lang === 'en' ? 'Enter the PHC code for at least one product before completing.' : 'Indique o código PHC em pelo menos um produto antes de concluir.', 'error');
+                return;
+            }
+
             const { error } = await client
                 .from('presupuestos')
                 .update({
@@ -1290,6 +1329,32 @@
                 })
                 .eq('id', presupuestoId);
             if (error) throw error;
+
+            if (isCreacaoCodigos && gcRows && gcRows.length > 0) {
+                if (withPhc.length > 0) {
+                    const { data: presupuesto } = await client.from('presupuestos').select('codigo_propuesta, responsavel, nombre_cliente, numero_cliente').eq('id', presupuestoId).single();
+                    const payload = {
+                        tipo_alerta: 'creacao_codigos_concluida',
+                        numero_propuesta: (presupuesto && presupuesto.codigo_propuesta) ? presupuesto.codigo_propuesta : presupuestoId,
+                        gestor_propuesta: (presupuesto && presupuesto.responsavel) ? presupuesto.responsavel : '',
+                        nombre_cliente: (presupuesto && presupuesto.nombre_cliente) ? presupuesto.nombre_cliente : '',
+                        numero_cliente: (presupuesto && presupuesto.numero_cliente) ? presupuesto.numero_cliente : '',
+                        productos: withPhc.map(r => ({
+                            codigo_phc_creado: (r.phc_ref || '').trim(),
+                            nombre_producto: (r.nome_articulo || '').trim() || '-',
+                            nombre_fornecedor: (r.nome_fornecedor || '').trim() || '-'
+                        }))
+                    };
+                    const origin = (typeof window !== 'undefined' && window.location && window.location.origin) ? window.location.origin : '';
+                    const webhookUrl = origin && origin !== 'null' && !origin.startsWith('file') ? (origin + '/api/follow-up-webhook.json') : null;
+                    if (webhookUrl) {
+                        try {
+                            await fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                        } catch (e) { console.error('Webhook creacao_codigos_concluida:', e); }
+                    }
+                }
+            }
+
             backToList();
             await loadList();
             await loadHistorico();

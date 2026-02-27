@@ -252,6 +252,26 @@ class AuthManager {
     }
 
     /**
+     * Obtener nombre para mostrar en la barra de usuario (siempre desde user_roles).
+     * Así el header no se ve afectado por localStorage commercial_name (p. ej. comercial elegido en carrito).
+     */
+    async getDisplayName() {
+        const user = await this.getCurrentUser();
+        if (!user || !this.supabase) return '';
+        try {
+            const { data, error } = await this.supabase
+                .from('user_roles')
+                .select('"Name"')
+                .eq('user_id', user.id)
+                .maybeSingle();
+            if (!error && data && data.Name && String(data.Name).trim()) {
+                return String(data.Name).trim();
+            }
+        } catch (e) {}
+        return (user.email || user.id || '').trim() || '';
+    }
+
+    /**
      * Verificar si el usuario está autenticado.
      * Usa getUser() para validar el JWT con Supabase (no solo localStorage),
      * así solo usuarios realmente registrados en Auth pueden acceder.

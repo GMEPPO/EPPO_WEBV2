@@ -3780,6 +3780,8 @@ class ProposalsManager {
             this.openRejeitadaModal(proposal);
         } else if (normalizedStatus === 'proposta_adjudicada') {
             this.openPropostaAdjudicadaModal(proposal);
+        } else if (normalizedStatus === 'aguarda_creacion_codigo_phc') {
+            this.openAguardaCreacionCodigoPhcModal(proposal);
         } else {
             // Para otros estados, cambiar directamente
             await this.updateProposalStatus(proposalId, normalizedStatus);
@@ -4807,6 +4809,7 @@ class ProposalsManager {
             this.closePedidoEncomendaModal();
             await this.loadProposals();
             this.showNotification(this.currentLanguage === 'es' ? 'Guardado. Las líneas guardadas pasan a En curso; el resto sigue en Pendientes.' : this.currentLanguage === 'pt' ? 'Guardado. As linhas guardadas passam a Em curso; o resto fica em Pendentes.' : 'Saved. Saved lines move to In progress; the rest stay in Pending.', 'success');
+            if (typeof window.refreshUserBar === 'function') window.refreshUserBar();
         } catch (e) {
             console.error('Error savePedidoEncomendaGestaoCompras:', e);
             let errMsg = 'Error al guardar';
@@ -4818,6 +4821,309 @@ class ProposalsManager {
                 }
             }
             this.showNotification(errMsg || 'Error al guardar', 'error');
+        }
+    }
+
+    /**
+     * Abrir modal Aguarda Criação de Código PHC: seleccionar productos que precisam de código e preencher dados (sem preços, descontos, transportes).
+     */
+    openAguardaCreacionCodigoPhcModal(proposal) {
+        const modal = document.getElementById('changeStatusAguardaCreacionCodigoPhcModal');
+        const stepSelect = document.getElementById('aguarda-codigo-phc-step-select');
+        const stepForms = document.getElementById('aguarda-codigo-phc-step-forms');
+        const selectListEl = document.getElementById('aguarda-codigo-phc-select-list');
+        const subtitleSelectEl = document.getElementById('aguarda-codigo-phc-subtitle-select');
+        if (!modal || !selectListEl) return;
+
+        const lang = this.currentLanguage || 'pt';
+        const tSelect = {
+            pt: { subtitle: 'Selecione os produtos da proposta que precisam de código PHC. Depois preencha referência, designação, peso, etc. (sem preços, descontos ou transportes).', noProducts: 'Não há produtos nesta proposta.', continuar: 'Continuar', voltar: 'Voltar', guardar: 'Guardar', title: 'Aguarda Criação de Código PHC' },
+            es: { subtitle: 'Seleccione los productos de la propuesta que necesitan código PHC. Después rellene referencia, designación, peso, etc. (sin precios, descuentos ni transportes).', noProducts: 'No hay productos en esta propuesta.', continuar: 'Continuar', voltar: 'Volver', guardar: 'Guardar', title: 'Aguarda Creación de Código PHC' },
+            en: { subtitle: 'Select the products from the proposal that need a PHC code. Then fill reference, designation, weight, etc. (no prices, discounts or transport).', noProducts: 'No products in this proposal.', continuar: 'Continue', voltar: 'Back', guardar: 'Save', title: 'Awaiting PHC Code Creation' }
+        };
+        const Ls = tSelect[lang] || tSelect.pt;
+        if (subtitleSelectEl) subtitleSelectEl.textContent = Ls.subtitle;
+        const titleEl = document.getElementById('aguarda-codigo-phc-modal-title');
+        if (titleEl) titleEl.textContent = Ls.title;
+        ['aguarda-codigo-phc-continuar-text', 'aguarda-codigo-phc-back-text', 'aguarda-codigo-phc-save-text'].forEach((id, i) => { const el = document.getElementById(id); if (el) el.textContent = [Ls.continuar, Ls.voltar, Ls.guardar][i]; });
+
+        modal.setAttribute('data-proposal-id', proposal.id);
+        modal.removeAttribute('data-selected-articulo-ids');
+        selectListEl.innerHTML = '';
+        if (stepSelect) stepSelect.style.display = 'block';
+        if (stepForms) stepForms.style.display = 'none';
+
+        const articulos = proposal.articulos || [];
+        if (articulos.length === 0) {
+            selectListEl.innerHTML = '<p style="padding: var(--space-4); color: var(--text-secondary);">' + Ls.noProducts + '</p>';
+            modal.classList.add('active');
+            return;
+        }
+
+        const productMap = {};
+        if (this.allProducts && this.allProducts.length > 0) {
+            this.allProducts.forEach(p => { if (p.id) productMap[p.id] = p; if (p.phc_ref) productMap[p.phc_ref] = p; if (p.referencia_fornecedor) productMap[p.referencia_fornecedor] = p; });
+        }
+
+        articulos.forEach((articulo, index) => {
+            const product = productMap[articulo.referencia_articulo] || this.allProducts?.find(p => String(p.id) === String(articulo.referencia_articulo)) || this.allProducts?.find(p => String(p.phc_ref) === String(articulo.referencia_articulo));
+            const fornecedor = (product && product.nombre_fornecedor) ? String(product.nombre_fornecedor) : '-';
+            const fotoUrl = (product && product.foto) ? product.foto : '';
+            const articuloId = (articulo.id || `art-${index}`).toString().replace(/"/g, '');
+            const nomeArt = String(articulo.nombre_articulo || articulo.referencia_articulo || ('Producto ' + (index + 1))).replace(/</g, '&lt;').replace(/"/g, '&quot;');
+            const row = document.createElement('div');
+            row.className = 'pedido-encomenda-select-row';
+            const imgBlock = fotoUrl ? `<img src="${fotoUrl.replace(/"/g, '&quot;')}" alt="" class="pedido-select-img">` : `<div class="pedido-select-img-wrap"><i class="fas fa-image"></i></div>`;
+            row.innerHTML = `<input type="checkbox" id="aguarda-codigo-select-${articuloId}" class="form-input" data-articulo-id="${articuloId}">${imgBlock}<div class="pedido-select-info"><div class="pedido-select-name" title="${nomeArt}">${nomeArt}</div><div class="pedido-select-meta">${(fornecedor || '-').replace(/</g, '&lt;')}</div></div>`;
+            selectListEl.appendChild(row);
+        });
+
+        modal.classList.add('active');
+    }
+
+    aguardaCreacionCodigoPhcGoToStep2() {
+        const modal = document.getElementById('changeStatusAguardaCreacionCodigoPhcModal');
+        const proposalId = modal?.getAttribute('data-proposal-id');
+        const proposal = this.allProposals.find(p => p.id === proposalId);
+        if (!proposal || !proposal.articulos || proposal.articulos.length === 0) return;
+
+        const selectedIds = [];
+        proposal.articulos.forEach((articulo, index) => {
+            const articuloId = (articulo.id || `art-${index}`).toString();
+            const cb = document.getElementById(`aguarda-codigo-select-${articuloId}`);
+            if (cb && cb.checked) selectedIds.push(articulo.id != null ? articulo.id : articuloId);
+        });
+
+        const lang = this.currentLanguage || 'pt';
+        if (selectedIds.length === 0) {
+            this.showNotification(lang === 'es' ? 'Seleccione al menos un producto.' : lang === 'pt' ? 'Selecione pelo menos um produto.' : 'Select at least one product.', 'error');
+            return;
+        }
+
+        modal.setAttribute('data-selected-articulo-ids', JSON.stringify(selectedIds));
+        this._buildAguardaCreacionCodigoPhcFormStep(proposal, selectedIds);
+        document.getElementById('aguarda-codigo-phc-step-select').style.display = 'none';
+        document.getElementById('aguarda-codigo-phc-step-forms').style.display = 'block';
+    }
+
+    aguardaCreacionCodigoPhcBackToStep1() {
+        document.getElementById('aguarda-codigo-phc-step-forms').style.display = 'none';
+        document.getElementById('aguarda-codigo-phc-step-select').style.display = 'block';
+    }
+
+    closeAguardaCreacionCodigoPhcModal() {
+        const modal = document.getElementById('changeStatusAguardaCreacionCodigoPhcModal');
+        if (modal) modal.classList.remove('active');
+        this.resetStatusSelects(modal?.getAttribute('data-proposal-id') || '');
+    }
+
+    /**
+     * Construir formulario paso 2 para Aguarda Criação Código PHC: mismos campos que pedido de encomenda para productos sin PHC, pero sin quantidade/preço/desconto/transportes.
+     */
+    _buildAguardaCreacionCodigoPhcFormStep(proposal, selectedArticuloIds) {
+        const listEl = document.getElementById('aguarda-codigo-phc-products-list');
+        const subtitleEl = document.getElementById('aguarda-codigo-phc-subtitle');
+        if (!listEl) return;
+
+        const lang = this.currentLanguage || 'pt';
+        const t = {
+            pt: { ref: 'Referência (fornecedor)', designacao: 'Designação', peso: 'Peso', qtyCaixa: 'Quantidade por caixa', personalizado: 'Personalizado', personalizadoSim: 'Sim', personalizadoNao: 'Não', observacoes: 'Observações', temCliche: 'Tem cliché?', temClicheNao: 'Não', temClicheSim: 'Sim', precoCliche: 'Preço cliché', anexosLogotipoArte: 'Logotipo / Arte final / Dossier (máx. 4)', anexosHint: 'Imagem, PDF ou outro ficheiro. Máximo 4.', historicoEmailsOutlook: 'Histórico de emails Outlook', historicoEmailsHint: 'Anexe .msg ou .eml', fornecedor: 'Fornecedor', docsDaProposta: 'Documentos já na proposta', selecionarParaAssociar: 'Selecionar para associar', ver: 'Ver' },
+            es: { ref: 'Referencia (fornecedor)', designacao: 'Designación', peso: 'Peso', qtyCaixa: 'Cantidad por caja', personalizado: 'Personalizado', personalizadoSim: 'Sí', personalizadoNao: 'No', observacoes: 'Observaciones', temCliche: '¿Tiene clisé?', temClicheNao: 'No', temClicheSim: 'Sí', precoCliche: 'Precio clisé', anexosLogotipoArte: 'Logotipo / Arte final / Dossier (máx. 4)', anexosHint: 'Imagen, PDF u otro archivo. Máximo 4.', historicoEmailsOutlook: 'Histórico de emails Outlook', historicoEmailsHint: 'Adjunte .msg o .eml', fornecedor: 'Fornecedor', docsDaProposta: 'Documentos ya en la propuesta', selecionarParaAssociar: 'Seleccionar para asociar', ver: 'Ver' },
+            en: { ref: 'Reference (supplier)', designacao: 'Designation', peso: 'Weight', qtyCaixa: 'Qty per box', personalizado: 'Custom', personalizadoSim: 'Yes', personalizadoNao: 'No', observacoes: 'Observations', temCliche: 'Has cliché?', temClicheNao: 'No', temClicheSim: 'Yes', precoCliche: 'Cliché price', anexosLogotipoArte: 'Logo / Final art / Dossier (max 4)', anexosHint: 'Image, PDF or other file. Max 4.', historicoEmailsOutlook: 'Outlook email history', historicoEmailsHint: 'Attach .msg or .eml', fornecedor: 'Supplier', docsDaProposta: 'Documents already in proposal', selecionarParaAssociar: 'Select to associate', ver: 'View' }
+        };
+        const L = t[lang] || t.pt;
+        if (subtitleEl) subtitleEl.textContent = (lang === 'es' ? 'Rellene los datos de cada producto (sin precios, descuentos ni transportes).' : lang === 'en' ? 'Fill data for each product (no prices, discounts or transport).' : 'Preencha os dados de cada produto (sem preços, descontos ou transportes).');
+
+        listEl.innerHTML = '';
+        const productMap = {};
+        if (this.allProducts && this.allProducts.length > 0) this.allProducts.forEach(p => { if (p.id) productMap[p.id] = p; if (p.phc_ref) productMap[p.phc_ref] = p; });
+        const existingDocsFromProposal = [];
+        if (proposal.dossier_documentos && Array.isArray(proposal.dossier_documentos)) proposal.dossier_documentos.forEach(u => { if (u && String(u).trim()) existingDocsFromProposal.push(String(u).trim()); });
+        else if (proposal.dossier_documentos && typeof proposal.dossier_documentos === 'string') { try { const arr = JSON.parse(proposal.dossier_documentos); if (Array.isArray(arr)) arr.forEach(u => { if (u && String(u).trim()) existingDocsFromProposal.push(String(u).trim()); }); } catch (_) { if (proposal.dossier_documentos.trim()) existingDocsFromProposal.push(proposal.dossier_documentos.trim()); } }
+        (proposal.articulos || []).forEach(a => { if (a.logo_url && String(a.logo_url).trim() !== '') existingDocsFromProposal.push(String(a.logo_url).trim()); });
+        const uniquePropostaDocs = [...new Set(existingDocsFromProposal)];
+
+        function buildPropostaDocPreview(url) {
+            const path = (url || '').split('?')[0].toLowerCase();
+            const isImg = /\.(png|jpg|jpeg|gif|webp|bmp|svg)(\?|$)/.test(path);
+            const safe = (url || '').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            if (isImg) return '<div style="width:56px;height:56px;border-radius:6px;overflow:hidden;background:#334155;flex-shrink:0;"><img src="' + safe + '" alt="" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\'"></div>';
+            const isPdf = /\.pdf(\?|$)/.test(path);
+            return '<div style="width:56px;height:56px;border-radius:6px;background:#334155;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fas fa-file-pdf" style="color:#ef4444;"></i></div>';
+        }
+
+        const articulosFiltered = proposal.articulos.filter((a, idx) => selectedArticuloIds.some(sid => String(sid) === String(a.id != null ? a.id : `art-${idx}`)));
+        articulosFiltered.forEach((articulo, index) => {
+            const product = productMap[articulo.referencia_articulo] || this.allProducts?.find(p => String(p.id) === String(articulo.referencia_articulo));
+            const refFornecedor = (product && product.referencia_fornecedor) ? String(product.referencia_fornecedor).replace(/"/g, '&quot;') : '';
+            const fornecedor = (product && product.nombre_fornecedor) ? String(product.nombre_fornecedor) : '';
+            const fotoUrl = (product && product.foto) ? product.foto : '';
+            const articuloId = (articulo.id || `art-${index}`).toString().replace(/"/g, '');
+            const nomeArt = (articulo.nombre_articulo || '-').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+
+            const row = document.createElement('div');
+            row.className = 'pedido-encomenda-row';
+            row.style.cssText = 'display: flex; align-items: flex-start; gap: 16px; padding: 16px; border-bottom: 1px solid var(--bg-gray-200);';
+            row.innerHTML = `
+                <div style="flex-shrink: 0;">${fotoUrl ? `<img src="${fotoUrl.replace(/"/g, '&quot;')}" alt="" style="width:80px;height:80px;object-fit:contain;border-radius:8px;background:var(--bg-gray-100);">` : `<div style="width:80px;height:80px;background:var(--bg-gray-200);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--text-secondary);"><i class="fas fa-image"></i></div>`}</div>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-weight:600;color:var(--text-primary);margin-bottom:6px;">${nomeArt}</div>
+                    <div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:8px;">${L.fornecedor}: <input type="text" id="aguarda-codigo-fornecedor-${articuloId}" class="form-input" style="width:100%;max-width:280px;padding:6px;" value="${(fornecedor || '').replace(/"/g, '&quot;')}" placeholder=""></div>
+                    <div style="margin-top:8px;padding:10px;background:var(--bg-gray-100);border-radius:8px;display:grid;gap:8px;grid-template-columns:1fr 1fr;">
+                        <div><label style="font-size:0.75rem;color:var(--text-secondary);">${L.ref} *</label><input type="text" id="aguarda-codigo-ref-${articuloId}" class="form-input" style="width:100%;padding:6px;" value="${refFornecedor}" required></div>
+                        <div><label style="font-size:0.75rem;color:var(--text-secondary);">${L.designacao} *</label><input type="text" id="aguarda-codigo-designacao-${articuloId}" class="form-input" style="width:100%;padding:6px;" value="${nomeArt}" required></div>
+                        <div><label style="font-size:0.75rem;color:var(--text-secondary);">${L.peso} *</label><input type="text" id="aguarda-codigo-peso-${articuloId}" class="form-input" style="width:100%;padding:6px;" required></div>
+                        <div><label style="font-size:0.75rem;color:var(--text-secondary);">${L.qtyCaixa} *</label><input type="number" id="aguarda-codigo-qtycaixa-${articuloId}" class="form-input" style="width:100%;padding:6px;" min="0" required></div>
+                        <div style="grid-column:1/-1;"><label style="font-size:0.75rem;color:var(--text-secondary);">${L.personalizado}</label><select id="aguarda-codigo-personalizado-${articuloId}" class="form-input" style="width:100%;padding:6px;"><option value="false">${L.personalizadoNao}</option><option value="true">${L.personalizadoSim}</option></select></div>
+                        <div style="grid-column:1/-1;"><label style="font-size:0.75rem;color:var(--text-secondary);">${L.observacoes}</label><textarea id="aguarda-codigo-obs-${articuloId}" class="form-input" style="width:100%;padding:6px;min-height:50px;"></textarea></div>
+                        <div id="aguarda-codigo-personalizado-detalhes-${articuloId}" style="grid-column:1/-1;display:none;margin-top:8px;padding:12px;background:var(--bg-white);border-radius:8px;border:1px solid var(--primary);">
+                            <div style="font-size:0.8rem;font-weight:600;color:var(--primary);margin-bottom:8px;">${L.anexosLogotipoArte}</div>
+                            ${uniquePropostaDocs.length > 0 ? '<div style="margin-bottom:8px;"><div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:4px;">' + L.docsDaProposta + '</div><div style="display:flex;flex-direction:column;gap:6px;">' + uniquePropostaDocs.slice(0, 8).map((url, i) => { const safeUrl = (url || '').replace(/"/g, '&quot;').replace(/</g, '&lt;'); const name = (url || '').split('/').pop() || ('Doc ' + (i + 1)); return '<label style="display:flex;align-items:center;gap:8px;padding:6px;background:var(--bg-gray-100);border-radius:6px;cursor:pointer;"><input type="checkbox" class="aguarda-codigo-proposta-doc-cb" id="aguarda-codigo-doc-' + articuloId + '-' + i + '" data-doc-url="' + safeUrl + '">' + buildPropostaDocPreview(url) + '<span style="font-size:0.8rem;flex:1;overflow:hidden;text-overflow:ellipsis;">' + (name || '').replace(/</g, '&lt;') + '</span><a href="' + safeUrl + '" target="_blank" rel="noopener" style="font-size:0.75rem;">' + L.ver + '</a></label>'; }).join('') + '</div></div>' : ''}
+                            <div style="display:grid;gap:8px;grid-template-columns:1fr 1fr;"><div><label style="font-size:0.75rem;">${L.temCliche}</label><select id="aguarda-codigo-tem-cliche-${articuloId}" class="form-input" style="width:100%;padding:6px;"><option value="false">${L.temClicheNao}</option><option value="true">${L.temClicheSim}</option></select></div><div><label style="font-size:0.75rem;">${L.precoCliche}</label><input type="number" id="aguarda-codigo-preco-cliche-${articuloId}" class="form-input" min="0" step="0.01" style="width:100%;padding:6px;"></div></div>
+                            <div style="margin-top:8px;"><label style="font-size:0.75rem;">${L.anexosLogotipoArte}</label><input type="file" id="aguarda-codigo-anexos-${articuloId}" class="form-input" accept="image/*,.pdf,.doc,.docx,.msg,.eml" multiple style="width:100%;padding:6px;"></div>
+                            <div style="margin-top:8px;"><label style="font-size:0.75rem;">${L.historicoEmailsOutlook}</label><input type="file" id="aguarda-codigo-historico-${articuloId}" class="form-input" accept=".msg,.eml,application/octet-stream,*/*" style="width:100%;padding:6px;"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            listEl.appendChild(row);
+            const personalizadoSel = document.getElementById(`aguarda-codigo-personalizado-${articuloId}`);
+            const detalhesEl = document.getElementById(`aguarda-codigo-personalizado-detalhes-${articuloId}`);
+            const toggleDetalhes = () => { if (detalhesEl) detalhesEl.style.display = personalizadoSel && personalizadoSel.value === 'true' ? 'block' : 'none'; };
+            if (personalizadoSel) personalizadoSel.addEventListener('change', toggleDetalhes);
+            const anexosInput = document.getElementById(`aguarda-codigo-anexos-${articuloId}`);
+            const historicoInput = document.getElementById(`aguarda-codigo-historico-${articuloId}`);
+            if (anexosInput && typeof this._setupPedidoEncomendaDropzone === 'function') this._setupPedidoEncomendaDropzone(anexosInput, 4);
+            if (historicoInput && typeof this._setupPedidoEncomendaDropzone === 'function') this._setupPedidoEncomendaDropzone(historicoInput, 1);
+        });
+    }
+
+    async saveAguardaCreacionCodigoPhc() {
+        const modal = document.getElementById('changeStatusAguardaCreacionCodigoPhcModal');
+        const proposalId = modal?.getAttribute('data-proposal-id');
+        const selectedIdsJson = modal?.getAttribute('data-selected-articulo-ids');
+        if (!proposalId || !this.supabase) {
+            this.showNotification(this.currentLanguage === 'es' ? 'Error: falta propuesta o conexión.' : 'Error: missing proposal or connection.', 'error');
+            return;
+        }
+        const proposal = this.allProposals.find(p => p.id === proposalId);
+        if (!proposal) return;
+        let selectedIds = [];
+        try { selectedIds = JSON.parse(selectedIdsJson || '[]'); } catch (_) {}
+
+        const bucketGE = 'gestao-encomendas';
+        const rows = [];
+        const productMap = {};
+        if (this.allProducts && this.allProducts.length > 0) this.allProducts.forEach(p => { if (p.id) productMap[p.id] = p; if (p.phc_ref) productMap[p.phc_ref] = p; });
+
+        for (const articuloId of selectedIds) {
+            const articulo = (proposal.articulos || []).find(a => String(a.id) === String(articuloId) || String(a.id || '') === String(articuloId));
+            if (!articulo) continue;
+
+            const nomeFornecedor = (document.getElementById(`aguarda-codigo-fornecedor-${articuloId}`)?.value || '').trim();
+            const ref = (document.getElementById(`aguarda-codigo-ref-${articuloId}`)?.value || '').trim();
+            const designacao = (document.getElementById(`aguarda-codigo-designacao-${articuloId}`)?.value || '').trim();
+            const peso = (document.getElementById(`aguarda-codigo-peso-${articuloId}`)?.value || '').trim();
+            const qtyCaixaEl = document.getElementById(`aguarda-codigo-qtycaixa-${articuloId}`);
+            const qtyCaixa = qtyCaixaEl && qtyCaixaEl.value !== '' ? parseInt(qtyCaixaEl.value, 10) : null;
+            if (!ref || !designacao || !peso || qtyCaixa == null || qtyCaixa < 0) {
+                this.showNotification(this.currentLanguage === 'es' ? 'Rellene referência, designação, peso e quantidade por caixa em todos os produtos.' : 'Fill reference, designation, weight and qty per box for all products.', 'error');
+                return;
+            }
+
+            const personalizadoEl = document.getElementById(`aguarda-codigo-personalizado-${articuloId}`);
+            const personalizado = personalizadoEl ? personalizadoEl.value === 'true' : false;
+            const obsEl = document.getElementById(`aguarda-codigo-obs-${articuloId}`);
+            const observacoes = obsEl ? obsEl.value.trim() || null : null;
+
+            const row = {
+                presupuesto_id: proposalId,
+                presupuesto_articulo_id: articulo.id || null,
+                nome_fornecedor: nomeFornecedor || null,
+                nome_articulo: (articulo.nombre_articulo || designacao || ref).trim(),
+                quantidade_encomendar: 1,
+                referencia: ref || null,
+                designacao: designacao || null,
+                peso: peso || null,
+                quantidade_por_caixa: qtyCaixa,
+                personalizado: personalizado,
+                personalizado_observacoes: observacoes,
+                tipo: 'criacao_codigos',
+                phc_ref: null,
+                precio_custo: null,
+                porcentaje_descuento: null,
+                valor_transportes: null,
+                tem_cliche: null,
+                preco_cliche: null,
+                personalizado_anexos_urls: [],
+                historico_emails_url: null
+            };
+
+            if (personalizado) {
+                const temClicheEl = document.getElementById(`aguarda-codigo-tem-cliche-${articuloId}`);
+                const precoClicheEl = document.getElementById(`aguarda-codigo-preco-cliche-${articuloId}`);
+                row.tem_cliche = temClicheEl ? temClicheEl.value === 'true' : false;
+                const pc = precoClicheEl ? precoClicheEl.value.trim() : '';
+                row.preco_cliche = pc === '' ? null : (parseFloat(pc.replace(',', '.')) || null);
+                document.querySelectorAll('.aguarda-codigo-proposta-doc-cb[data-doc-url]').forEach(cb => {
+                    if (cb.id && cb.id.startsWith('aguarda-codigo-doc-' + articuloId + '-') && cb.checked) {
+                        const u = cb.getAttribute('data-doc-url');
+                        if (u && row.personalizado_anexos_urls.length < 4) row.personalizado_anexos_urls.push(u);
+                    }
+                });
+                const subfolder = `gestao-compras/${proposalId}/${articuloId}`;
+                const anexosInput = document.getElementById(`aguarda-codigo-anexos-${articuloId}`);
+                if (anexosInput?.files?.length) {
+                    for (const file of Array.from(anexosInput.files).slice(0, 4)) {
+                        try {
+                            const ext = (file.name.split('.').pop() || 'file').toLowerCase().replace(/[^a-z0-9]/g, '') || 'file';
+                            let baseName = (file.name && file.name.trim()) ? file.name.trim() : `anexo_${Date.now()}.${ext}`;
+                            baseName = baseName.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/\s+/g, '_').trim() || `anexo_${Date.now()}.${ext}`;
+                            const fileName = await getUniqueStorageFilePathConsultar(this.supabase, bucketGE, subfolder, baseName);
+                            const contentType = getSafeContentType(file);
+                            const { error: upErr } = await uploadFileAsBinary(this.supabase, bucketGE, fileName, file, contentType);
+                            if (!upErr && row.personalizado_anexos_urls.length < 4) {
+                                const { data: urlData } = this.supabase.storage.from(bucketGE).getPublicUrl(fileName);
+                                if (urlData?.publicUrl) row.personalizado_anexos_urls.push(urlData.publicUrl);
+                            }
+                        } catch (e) { console.error('Upload anexo aguarda codigo:', e); }
+                    }
+                }
+                const historicoInput = document.getElementById(`aguarda-codigo-historico-${articuloId}`);
+                if (historicoInput?.files?.length) {
+                    try {
+                        const file = historicoInput.files[0];
+                        const ext = (file.name.split('.').pop() || 'file').toLowerCase().replace(/[^a-z0-9]/g, '') || 'file';
+                        let baseName = (file.name && file.name.trim()) ? file.name.trim() : `historico_${Date.now()}.${ext}`;
+                        baseName = baseName.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/\s+/g, '_').trim() || `historico_${Date.now()}.${ext}`;
+                        const fileName = await getUniqueStorageFilePathConsultar(this.supabase, bucketGE, `gestao-compras/${proposalId}/${articuloId}`, baseName);
+                        const contentType = getSafeContentType(file);
+                        const { error: upErr } = await uploadFileAsBinary(this.supabase, bucketGE, fileName, file, contentType);
+                        if (!upErr) {
+                            const { data: urlData } = this.supabase.storage.from(bucketGE).getPublicUrl(fileName);
+                            if (urlData?.publicUrl) row.historico_emails_url = urlData.publicUrl;
+                        }
+                    } catch (e) { console.error('Upload histórico aguarda codigo:', e); }
+                }
+            }
+
+            rows.push(row);
+        }
+
+        try {
+            await this.updateProposalStatus(proposalId, 'aguarda_creacion_codigo_phc');
+            for (const row of rows) {
+                const { error: insErr } = await this.supabase.from('gestao_compras').insert(row);
+                if (insErr) throw insErr;
+            }
+            this.closeAguardaCreacionCodigoPhcModal();
+            await this.loadProposals();
+            this.resetStatusSelects(proposalId);
+            this.showNotification(this.currentLanguage === 'es' ? 'Guardado. El pedido de creación de códigos aparecerá en Gestão de Encomendas.' : this.currentLanguage === 'pt' ? 'Guardado. O pedido de criação de códigos aparecerá na Gestão de Encomendas.' : 'Saved. The code creation order will appear in Order Management.', 'success');
+            if (typeof window.refreshUserBar === 'function') window.refreshUserBar();
+        } catch (e) {
+            console.error('saveAguardaCreacionCodigoPhc:', e);
+            this.showNotification(e?.message || 'Error al guardar', 'error');
         }
     }
 
@@ -5160,6 +5466,7 @@ class ProposalsManager {
                 'Estado atualizado com sucesso' :
                 'Status updated successfully';
             this.showNotification(message, 'success');
+            if (typeof window.refreshUserBar === 'function') window.refreshUserBar();
 
         } catch (error) {
             console.error('Error al actualizar estado:', error);
@@ -6177,6 +6484,7 @@ class ProposalsManager {
 
             // Mostrar mensaje de éxito
             this.showSuccessMessage(t.success);
+            if (typeof window.refreshUserBar === 'function') window.refreshUserBar();
 
         } catch (error) {
             console.error('Error al guardar comentarios:', error);
@@ -6482,6 +6790,7 @@ class ProposalsManager {
             
             // Mostrar notificación de éxito
             this.showSuccessMessage(t.success);
+            if (typeof window.refreshUserBar === 'function') window.refreshUserBar();
         } catch (error) {
             console.error('Error al guardar detalles adicionales:', error);
             this.showErrorMessage(t.error);
@@ -6542,6 +6851,7 @@ class ProposalsManager {
             this.cancelClientNameEdit(proposalId);
             const msg = this.currentLanguage === 'es' ? 'Nombre del cliente actualizado.' : this.currentLanguage === 'pt' ? 'Nome do cliente atualizado.' : 'Client name updated.';
             this.showNotification(msg, 'success');
+            if (typeof window.refreshUserBar === 'function') window.refreshUserBar();
         } catch (err) {
             console.error('Error al guardar nombre del cliente:', err);
             this.showNotification(err.message || 'Error al guardar', 'error');
@@ -6642,6 +6952,7 @@ class ProposalsManager {
             
             // Mostrar notificación de éxito
             this.showSuccessMessage(t.success);
+            if (typeof window.refreshUserBar === 'function') window.refreshUserBar();
         } catch (error) {
             console.error('Error al guardar detalles de procurement:', error);
             this.showErrorMessage(t.error);
@@ -6676,6 +6987,10 @@ class ProposalsManager {
         }
         messageDiv.innerHTML = `<i class="fas fa-check-circle"></i> ${message}`;
         messageDiv.style.display = 'flex';
+
+        if (typeof window.refreshUserBar === 'function') {
+            window.refreshUserBar();
+        }
 
         setTimeout(() => {
             messageDiv.style.display = 'none';
@@ -7186,6 +7501,7 @@ class ProposalsManager {
                         'Estado atualizado com sucesso' :
                         'Status updated successfully';
                     this.showNotification(message, 'success');
+                    if (typeof window.refreshUserBar === 'function') window.refreshUserBar();
                 }
             }
 
@@ -7336,6 +7652,7 @@ class ProposalsManager {
                     fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).catch(() => {});
                 }
             }
+            if (typeof window.refreshUserBar === 'function') window.refreshUserBar();
             this.closePropostaAdjudicadaModal();
             this.resetStatusSelects(proposalId);
         } catch (error) {
@@ -7532,6 +7849,10 @@ class ProposalsManager {
 
         notification.textContent = message;
         document.body.appendChild(notification);
+
+        if (type === 'success' && typeof window.refreshUserBar === 'function') {
+            window.refreshUserBar();
+        }
 
         setTimeout(() => {
             notification.style.animation = 'slideOut 0.3s ease';

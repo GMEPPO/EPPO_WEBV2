@@ -209,12 +209,10 @@ async function initUserBar() {
 
     if (isAuth) {
         try {
-            const name = (typeof localStorage !== 'undefined' && localStorage.getItem('commercial_name')) || null;
-            let displayName = (name && name.trim()) || '';
-            if (!displayName) {
-                const user = await window.authManager.getCurrentUser();
-                displayName = (user && user.email) || 'Usuario';
-            }
+            // Nombre siempre desde user_roles (usuario logueado), no desde localStorage,
+            // para que no cambie al guardar una propuesta o al elegir un comercial en carrito
+            let displayName = await window.authManager.getDisplayName();
+            if (!displayName) displayName = 'Usuario';
             const role = await getUserRole();
             const roleLabel = (role && String(role).trim()) ? String(role).toUpperCase() : '—';
             nameEl.textContent = displayName;
@@ -242,6 +240,15 @@ async function initUserBar() {
         logoutBtn.onclick = () => { window.location.href = loginPage; };
     }
 }
+
+// Exponer para que otras páginas puedan refrescar la barra tras guardar (evita que el nombre se cambie por error)
+window.refreshUserBar = initUserBar;
+
+// Exponer para que otras páginas puedan refrescar la barra tras guardar (evita que el nombre se cambie por error)
+window.refreshUserBar = initUserBar;
+
+// Re-refrescar la barra si se dispara el evento (p. ej. tras guardar propuesta)
+document.addEventListener('refresh-user-bar', () => { initUserBar(); });
 
 // Cerrar menú al hacer clic fuera
 document.addEventListener('DOMContentLoaded', () => {

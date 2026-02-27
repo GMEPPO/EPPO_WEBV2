@@ -1504,6 +1504,11 @@
         .pedido-encomenda-dropzone { border: 2px dashed var(--primary, #3b82f6); border-radius: 8px; padding: 10px 12px; min-height: 44px; background: rgba(59, 130, 246, 0.06); transition: border-color 0.15s, background 0.15s; }
         .pedido-encomenda-dropzone.drag-over { border-color: var(--primary, #3b82f6); background: rgba(59, 130, 246, 0.15); }
         .pedido-encomenda-dropzone-hint { display: block; font-size: 0.75rem; color: var(--text-secondary, #6b7280); margin-top: 6px; }
+        #changeStatusAguardaCreacionCodigoPhcModal .modal { display: flex; flex-direction: column; max-height: 90vh; overflow: hidden; width: 100%; }
+        #changeStatusAguardaCreacionCodigoPhcModal .modal-body { overflow: hidden; display: flex; flex-direction: column; min-height: 0; flex: 1; width: 100%; min-width: 0; }
+        #aguarda-codigo-phc-step-select { width: 100%; min-width: 0; flex: 1; display: flex; flex-direction: column; min-height: 0; }
+        #aguarda-codigo-phc-select-list { width: 100%; min-width: 0; flex: 1; min-height: 200px; max-height: 50vh; overflow-y: auto; overflow-x: hidden; padding-right: 4px; box-sizing: border-box; }
+        #aguarda-codigo-phc-products-list { width: 100%; box-sizing: border-box; }
     </style>
     <div class="modal-overlay" id="changeStatusPedidoEncomendaModal">
         <div class="modal" style="max-width: 900px;">
@@ -1537,6 +1542,40 @@
                         <button type="button" class="btn-secondary" onclick="window.proposalsManager.pedidoEncomendaBackToStep1()"><i class="fas fa-arrow-left"></i> <span id="pedido-encomenda-back-text">Voltar</span></button>
                         <button type="button" class="btn-primary" onclick="window.proposalsManager.savePedidoEncomendaGestaoCompras()">
                             <i class="fas fa-save"></i> <span id="pedido-encomenda-save-text">Guardar</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Aguarda Criação de Código PHC: seleccionar productos y rellenar datos (sin precios/descuento/transportes) -->
+    <div class="modal-overlay" id="changeStatusAguardaCreacionCodigoPhcModal">
+        <div class="modal" style="max-width: 900px;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="aguarda-codigo-phc-modal-title">Aguarda Criação de Código PHC</h3>
+                <button class="modal-close" onclick="window.proposalsManager.closeAguardaCreacionCodigoPhcModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="aguarda-codigo-phc-step-select" style="display: block;">
+                    <p id="aguarda-codigo-phc-subtitle-select" style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: var(--space-4);">Selecione os produtos da proposta que precisam de código PHC.</p>
+                    <div id="aguarda-codigo-phc-select-list"></div>
+                    <div class="modal-actions" style="margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--bg-gray-200);">
+                        <button type="button" class="btn-secondary" onclick="window.proposalsManager.closeAguardaCreacionCodigoPhcModal()">Cancelar</button>
+                        <button type="button" class="btn-primary" id="aguarda-codigo-phc-btn-continuar" onclick="window.proposalsManager.aguardaCreacionCodigoPhcGoToStep2()">
+                            <i class="fas fa-arrow-right"></i> <span id="aguarda-codigo-phc-continuar-text">Continuar</span>
+                        </button>
+                    </div>
+                </div>
+                <div id="aguarda-codigo-phc-step-forms" style="display: none;">
+                    <p id="aguarda-codigo-phc-subtitle" style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: var(--space-4);">Preencha os dados de cada produto (referência, designação, peso, etc.). Sem preços, descontos nem transportes.</p>
+                    <div id="aguarda-codigo-phc-products-list" style="max-height: 60vh; overflow-y: auto;"></div>
+                    <div class="modal-actions" style="margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--bg-gray-200);">
+                        <button type="button" class="btn-secondary" onclick="window.proposalsManager.aguardaCreacionCodigoPhcBackToStep1()"><i class="fas fa-arrow-left"></i> <span id="aguarda-codigo-phc-back-text">Voltar</span></button>
+                        <button type="button" class="btn-primary" onclick="window.proposalsManager.saveAguardaCreacionCodigoPhc()">
+                            <i class="fas fa-save"></i> <span id="aguarda-codigo-phc-save-text">Guardar</span>
                         </button>
                     </div>
                 </div>
