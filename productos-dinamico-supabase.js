@@ -2128,18 +2128,27 @@ class DynamicProductsPage {
         }
 
         try {
-            const productsHtml = products.map(product => this.createProductCard(product)).join('');
+            const productsHtml = products.map(product => {
+                try {
+                    return this.createProductCard(product);
+                } catch (err) {
+                    console.warn('Error creando tarjeta de producto:', product?.id || product?.nombre, err);
+                    return '';
+                }
+            }).filter(Boolean).join('');
             
             if (!productsContainer) {
                 return;
             }
             
-            productsContainer.innerHTML = productsHtml;
+            productsContainer.innerHTML = productsHtml || `<div class="no-products">${this.currentLanguage === 'es' ? 'No se pudieron mostrar los productos.' : this.currentLanguage === 'pt' ? 'Não foi possível exibir os produtos.' : 'Could not display products.'}</div>`;
             
-            // Configurar navegación de imágenes con flechas
             this.setupImageNavigation();
         } catch (error) {
-            // Error en displayProducts
+            console.error('Error en displayProducts:', error);
+            if (productsContainer) {
+                productsContainer.innerHTML = `<div class="no-products">${this.currentLanguage === 'es' ? 'Error al mostrar la lista. Revisa la consola.' : this.currentLanguage === 'pt' ? 'Erro ao exibir a lista. Verifique a consola.' : 'Error displaying list. Check console.'}</div>`;
+            }
         }
     }
     
@@ -2243,31 +2252,35 @@ class DynamicProductsPage {
             return null;
         }
         
-        // Si ya es una URL completa (http/https), usarla directamente
+        const SUPABASE_URL = (typeof window !== 'undefined' && window.SUPABASE_CONFIG && window.SUPABASE_CONFIG.url)
+            ? window.SUPABASE_CONFIG.url.replace(/\/$/, '')
+            : null;
+
+        // Si es una URL completa de Supabase Storage, reescribir al proyecto actual para evitar ERR_NAME_NOT_RESOLVED con dominios antiguos
+        if ((trimmedUrl.startsWith('http://') || trimmedUrl.startsWith('https://')) && trimmedUrl.includes('supabase.co/storage/')) {
+            const pathMatch = trimmedUrl.match(/^(?:https?:)?\/\/[^/]+(\/storage\/v1\/object\/public\/[^?]+)/);
+            if (pathMatch && pathMatch[1] && SUPABASE_URL) {
+                return SUPABASE_URL + pathMatch[1];
+            }
+            return trimmedUrl;
+        }
+
+        // Si ya es una URL completa (http/https) no Supabase, usarla directamente
         if (trimmedUrl.startsWith('http://') || trimmedUrl.startsWith('https://')) {
             return trimmedUrl;
         }
-        
+
         // Si es una ruta relativa de Supabase Storage, construir la URL completa
-        // Las URLs de Supabase Storage tienen el formato: https://[project].supabase.co/storage/v1/object/public/[bucket]/[path]
         if (trimmedUrl.startsWith('productos/') || trimmedUrl.includes('product-images')) {
-            // Usar la configuración de Supabase desde window.SUPABASE_CONFIG
-            const SUPABASE_URL = (typeof window !== 'undefined' && window.SUPABASE_CONFIG && window.SUPABASE_CONFIG.url) 
-                ? window.SUPABASE_CONFIG.url 
-                : null;
-            
             if (!SUPABASE_URL) {
                 console.error('Error: Configuración de Supabase no disponible');
-                return trimmedUrl; // Devolver URL original si no hay configuración
+                return trimmedUrl;
             }
-            
-            // Si la URL no incluye el dominio completo, construirla
             if (!trimmedUrl.includes('supabase.co')) {
                 return `${SUPABASE_URL}/storage/v1/object/public/product-images/${trimmedUrl}`;
             }
         }
-        
-        // Si no coincide con ningún patrón, devolver la URL original (pero validada)
+
         return trimmedUrl;
     }
 
