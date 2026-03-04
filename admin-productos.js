@@ -7937,7 +7937,9 @@ const CATEGORY_PHOTOS_BUCKET = 'category-photos';
 const CATEGORY_PHOTOS_FOLDER = 'categorias';
 
 /**
- * Subir imagen de categoría al bucket category-photos en Supabase
+ * Subir imagen de categoría al bucket category-photos en Supabase.
+ * Usa un cliente sin headers globales (Content-Type: application/json) para que el archivo
+ * se suba como imagen y no se guarde como application/json.
  * @param {File} file - Archivo de imagen
  * @returns {Promise<string>} URL pública de la imagen
  */
@@ -7949,33 +7951,39 @@ async function uploadCategoryPhotoToSupabase(file) {
             throw new Error('Cliente de Supabase no inicializado. Recarga la página.');
         }
     }
+    // Cliente específico para Storage SIN global.headers (el cliente universal usa Content-Type: application/json y corrompe la subida)
     let storageClient;
-    try {
-        if (typeof supabase !== 'undefined' && window.SUPABASE_CONFIG) {
-            storageClient = supabase.createClient(window.SUPABASE_CONFIG.url, window.SUPABASE_CONFIG.anonKey, {
-                auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
-            });
-            if (supabaseClient && supabaseClient.auth) {
-                const { data: { session } } = await supabaseClient.auth.getSession();
-                if (session) await storageClient.auth.setSession(session);
-            }
-        } else {
-            storageClient = supabaseClient;
-        }
-    } catch (e) {
-        storageClient = supabaseClient;
+    if (typeof supabase === 'undefined' || !window.SUPABASE_CONFIG) {
+        throw new Error('Configuración de Supabase no disponible. Recarga la página.');
     }
-    if (!file || !file.type.startsWith('image/')) {
+    storageClient = supabase.createClient(window.SUPABASE_CONFIG.url, window.SUPABASE_CONFIG.anonKey, {
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+        // NO incluir global.headers para que la subida use multipart/form-data y el archivo se guarde como imagen
+    });
+    if (supabaseClient && supabaseClient.auth) {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session) await storageClient.auth.setSession(session);
+    }
+    if (!file || !(file instanceof File)) {
         throw new Error('El archivo debe ser una imagen (JPG, PNG, GIF o WEBP).');
     }
+    const validImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif'];
+    const extensionMap = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp', avif: 'image/avif' };
+    let fileToUpload = file;
+    if (!file.type || !validImageTypes.includes(file.type)) {
+        const fileExt = (file.name.split('.').pop() || 'jpg').toLowerCase();
+        const mime = extensionMap[fileExt] || 'image/jpeg';
+        fileToUpload = new File([file], file.name, { type: mime });
+    }
     const maxSize = 5 * 1024 * 1024; // 5MB
-    if (file.size > maxSize) throw new Error('La imagen no puede superar 5 MB.');
-    const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-    const baseName = (file.name && file.name.trim()) ? file.name.trim() : `categoria.${fileExt}`;
+    if (fileToUpload.size > maxSize) throw new Error('La imagen no puede superar 5 MB.');
+    const fileExt = fileToUpload.name.split('.').pop()?.toLowerCase() || 'jpg';
+    const baseName = (fileToUpload.name && fileToUpload.name.trim()) ? fileToUpload.name.trim() : `categoria.${fileExt}`;
     const filePath = await getUniqueStorageFilePath(storageClient, CATEGORY_PHOTOS_BUCKET, CATEGORY_PHOTOS_FOLDER, baseName);
+    const contentType = fileToUpload.type || extensionMap[fileExt] || 'image/jpeg';
     const { data, error } = await storageClient.storage
         .from(CATEGORY_PHOTOS_BUCKET)
-        .upload(filePath, file, { cacheControl: '3600', upsert: false, contentType: file.type || 'image/jpeg' });
+        .upload(filePath, fileToUpload, { cacheControl: '3600', upsert: false, contentType: contentType });
     if (error) {
         if (error.message && (error.message.includes('Bucket not found') || error.message.includes('not found'))) {
             throw new Error('El bucket "category-photos" no existe. Ejecuta el script supabase-storage-bucket-category-photos.sql en Supabase.');

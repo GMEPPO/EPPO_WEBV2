@@ -692,15 +692,25 @@
         };
         
         async function uploadCategoryPhotoToSupabaseInSelector(file) {
-            const client = await initSupabase();
-            if (!client || !client.storage) throw new Error('No se pudo conectar con el almacenamiento.');
-            if (!file || !file.type.startsWith('image/')) throw new Error('El archivo debe ser una imagen (JPG, PNG, GIF o WEBP).');
+            const mainClient = await initSupabase();
+            if (!mainClient) throw new Error('No se pudo conectar con Supabase.');
+            if (!file || !(file instanceof File)) throw new Error('El archivo debe ser una imagen (JPG, PNG, GIF o WEBP).');
             if (file.size > 5 * 1024 * 1024) throw new Error('La imagen no puede superar 5 MB.');
             const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+            const mimeMap = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp' };
+            const contentType = (file.type && file.type.startsWith('image/')) ? file.type : (mimeMap[ext] || 'image/jpeg');
             const path = 'categorias/' + Date.now() + '-' + (file.name || 'img').replace(/[<>:"/\\|?*]/g, '_');
-            const { data, error } = await client.storage.from('category-photos').upload(path, file, { cacheControl: '3600', upsert: false, contentType: file.type || 'image/jpeg' });
+            let storageClient = mainClient;
+            if (typeof supabase !== 'undefined' && window.SUPABASE_CONFIG) {
+                storageClient = supabase.createClient(window.SUPABASE_CONFIG.url, window.SUPABASE_CONFIG.anonKey, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+                if (mainClient && mainClient.auth) {
+                    const { data: { session } } = await mainClient.auth.getSession();
+                    if (session) await storageClient.auth.setSession(session);
+                }
+            }
+            const { data, error } = await storageClient.storage.from('category-photos').upload(path, file, { cacheControl: '3600', upsert: false, contentType: contentType });
             if (error) throw new Error('Error al subir la imagen: ' + (error.message || ''));
-            const { data: urlData } = client.storage.from('category-photos').getPublicUrl(path);
+            const { data: urlData } = storageClient.storage.from('category-photos').getPublicUrl(path);
             return (urlData && urlData.publicUrl) ? urlData.publicUrl.trim() : null;
         }
         
