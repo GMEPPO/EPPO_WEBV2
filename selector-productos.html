@@ -341,18 +341,22 @@
                                        onblur="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';">
                             </div>
                             
-                            <!-- URL Foto -->
+                            <!-- Foto de categoría (subir desde PC) -->
                             <div style="grid-column: 1 / -1;">
-                                <label for="homeCategoryFoto" style="display: block; font-weight: 600; color: #1d3557; margin-bottom: 8px; font-size: 0.95rem;">
-                                    URL de la Foto <span style="color: #ef4444;">*</span>
+                                <label for="homeCategoryPhotoFile" style="display: block; font-weight: 600; color: #1d3557; margin-bottom: 8px; font-size: 0.95rem;">
+                                    Imagen de la categoría <span style="color: #ef4444;">*</span>
                                 </label>
-                                <input type="url" id="homeCategoryFoto" name="homeCategoryFoto" placeholder="https://ejemplo.com/imagen.jpg" 
-                                       style="width: 100%; padding: 12px 16px; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 15px; transition: all 0.2s; background: white;"
-                                       onfocus="this.style.borderColor='#1d3557'; this.style.boxShadow='0 0 0 3px rgba(29, 53, 87, 0.1)';" 
-                                       onblur="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';">
+                                <input type="file" id="homeCategoryPhotoFile" name="homeCategoryPhotoFile" accept="image/jpeg,image/png,image/gif,image/webp" 
+                                       style="width: 100%; padding: 12px 16px; border: 2px dashed #cbd5e1; border-radius: 8px; font-size: 15px; background: #f8fafc; cursor: pointer;"
+                                       onchange="window.handleCategoryPhotoFileChange && window.handleCategoryPhotoFileChange();">
+                                <input type="hidden" id="homeCategoryFoto" name="homeCategoryFoto" value="">
+                                <div id="homeCategoryPhotoPreviewWrap" style="margin-top: 12px; display: none;">
+                                    <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 6px;">Vista previa:</p>
+                                    <img id="homeCategoryPhotoPreview" alt="Vista previa" style="max-width: 200px; max-height: 150px; object-fit: contain; border-radius: 8px; border: 1px solid #e2e8f0;">
+                                </div>
                                 <small style="color: #64748b; font-size: 0.85rem; margin-top: 6px; display: block;">
-                                    <i class="fas fa-link" style="margin-right: 5px;"></i>
-                                    Ingresa la URL completa de la imagen
+                                    <i class="fas fa-upload" style="margin-right: 5px;"></i>
+                                    Selecciona una imagen desde tu PC (JPG, PNG, GIF o WEBP). Se guardará en el servidor.
                                 </small>
                             </div>
                             
@@ -672,6 +676,34 @@
         let categoryFieldsInForm = []; // Campos que se están agregando en el formulario de categoría
         let editingFieldId = null; // ID del filtro que se está editando (null = modo creación)
         
+        window.handleCategoryPhotoFileChange = function() {
+            const fileInput = document.getElementById('homeCategoryPhotoFile');
+            const previewWrap = document.getElementById('homeCategoryPhotoPreviewWrap');
+            const previewImg = document.getElementById('homeCategoryPhotoPreview');
+            if (!fileInput || !previewWrap || !previewImg) return;
+            const file = fileInput.files && fileInput.files[0];
+            if (file) {
+                previewImg.src = URL.createObjectURL(file);
+                previewWrap.style.display = 'block';
+            } else {
+                previewImg.src = '';
+                previewWrap.style.display = 'none';
+            }
+        };
+        
+        async function uploadCategoryPhotoToSupabaseInSelector(file) {
+            const client = await initSupabase();
+            if (!client || !client.storage) throw new Error('No se pudo conectar con el almacenamiento.');
+            if (!file || !file.type.startsWith('image/')) throw new Error('El archivo debe ser una imagen (JPG, PNG, GIF o WEBP).');
+            if (file.size > 5 * 1024 * 1024) throw new Error('La imagen no puede superar 5 MB.');
+            const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+            const path = 'categorias/' + Date.now() + '-' + (file.name || 'img').replace(/[<>:"/\\|?*]/g, '_');
+            const { data, error } = await client.storage.from('category-photos').upload(path, file, { cacheControl: '3600', upsert: false, contentType: file.type || 'image/jpeg' });
+            if (error) throw new Error('Error al subir la imagen: ' + (error.message || ''));
+            const { data: urlData } = client.storage.from('category-photos').getPublicUrl(path);
+            return (urlData && urlData.publicUrl) ? urlData.publicUrl.trim() : null;
+        }
+        
         // Función para generar automáticamente el ID del campo basado en la etiqueta
         window.autoGenerateFieldId = function() {
             // Solo generar si no estamos en modo edición
@@ -980,6 +1012,12 @@
             document.getElementById('homeCategoryNameEs').value = '';
             document.getElementById('homeCategoryNamePt').value = '';
             document.getElementById('homeCategoryFoto').value = '';
+            const pf = document.getElementById('homeCategoryPhotoFile');
+            if (pf) pf.value = '';
+            const pw = document.getElementById('homeCategoryPhotoPreviewWrap');
+            const pi = document.getElementById('homeCategoryPhotoPreview');
+            if (pw) pw.style.display = 'none';
+            if (pi) pi.src = '';
             document.getElementById('homeCategoryOrden').value = homeCategories.length;
             document.getElementById('homeCategoryActive').checked = true;
             document.getElementById('homeCategoryFormSection').style.display = 'block';
@@ -1123,11 +1161,22 @@
 
             const nombreEs = document.getElementById('homeCategoryNameEs').value.trim();
             const nombrePt = document.getElementById('homeCategoryNamePt').value.trim();
-            const foto = document.getElementById('homeCategoryFoto').value.trim();
             const orden = parseInt(document.getElementById('homeCategoryOrden').value) || 0;
             const isActive = document.getElementById('homeCategoryActive').checked;
+            const photoFileInput = document.getElementById('homeCategoryPhotoFile');
+            const file = photoFileInput && photoFileInput.files && photoFileInput.files[0];
+            const currentFotoUrl = (document.getElementById('homeCategoryFoto') && document.getElementById('homeCategoryFoto').value) || '';
+            let foto = currentFotoUrl.trim();
+            if (file) {
+                try {
+                    foto = await uploadCategoryPhotoToSupabaseInSelector(file);
+                } catch (err) {
+                    alert(err.message || 'Error al subir la imagen.');
+                    return;
+                }
+            }
             if (!nombreEs || !nombrePt || !foto) {
-                alert('Debes completar el nombre en ambos idiomas y la foto');
+                alert('Debes completar el nombre en ambos idiomas y seleccionar una imagen (o conservar la actual al editar).');
                 return;
             }
             

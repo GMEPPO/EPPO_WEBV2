@@ -5272,6 +5272,12 @@ function showCreateHomeCategoryForm() {
     document.getElementById('homeCategoryNameEs').value = '';
     document.getElementById('homeCategoryNamePt').value = '';
     document.getElementById('homeCategoryFoto').value = '';
+    const photoFileInput = document.getElementById('homeCategoryPhotoFile');
+    if (photoFileInput) { photoFileInput.value = ''; }
+    const previewWrap = document.getElementById('homeCategoryPhotoPreviewWrap');
+    const previewImg = document.getElementById('homeCategoryPhotoPreview');
+    if (previewWrap) previewWrap.style.display = 'none';
+    if (previewImg) previewImg.src = '';
     document.getElementById('homeCategoryOrden').value = homeCategories.length || 0;
     document.getElementById('homeCategoryActive').checked = true;
     
@@ -5313,6 +5319,12 @@ function showCreateHomeCategoryForm() {
     document.getElementById('homeCategoryNameEs').value = '';
     document.getElementById('homeCategoryNamePt').value = '';
     document.getElementById('homeCategoryFoto').value = '';
+    const photoFileInputInit = document.getElementById('homeCategoryPhotoFile');
+    if (photoFileInputInit) photoFileInputInit.value = '';
+    const previewWrapInit = document.getElementById('homeCategoryPhotoPreviewWrap');
+    const previewImgInit = document.getElementById('homeCategoryPhotoPreview');
+    if (previewWrapInit) previewWrapInit.style.display = 'none';
+    if (previewImgInit) previewImgInit.src = '';
     document.getElementById('homeCategoryOrden').value = homeCategories.length;
     document.getElementById('homeCategoryActive').checked = true;
     
@@ -5436,6 +5448,17 @@ async function editHomeCategory(categoryId) {
     document.getElementById('homeCategoryNameEs').value = cat.nombre_es || '';
     document.getElementById('homeCategoryNamePt').value = cat.nombre_pt || '';
     document.getElementById('homeCategoryFoto').value = cat.foto || '';
+    const photoFileInputEdit = document.getElementById('homeCategoryPhotoFile');
+    if (photoFileInputEdit) photoFileInputEdit.value = '';
+    const previewWrapEdit = document.getElementById('homeCategoryPhotoPreviewWrap');
+    const previewImgEdit = document.getElementById('homeCategoryPhotoPreview');
+    if (previewImgEdit && cat.foto) {
+        previewImgEdit.src = cat.foto;
+        if (previewWrapEdit) previewWrapEdit.style.display = 'block';
+    } else {
+        if (previewWrapEdit) previewWrapEdit.style.display = 'none';
+        if (previewImgEdit) previewImgEdit.src = '';
+    }
     document.getElementById('homeCategoryOrden').value = cat.orden || 0;
     document.getElementById('homeCategoryActive').checked = cat.is_active !== false;
     
@@ -5674,12 +5697,31 @@ async function saveHomeCategory() {
     
     const nombreEs = document.getElementById('homeCategoryNameEs').value.trim();
     const nombrePt = document.getElementById('homeCategoryNamePt').value.trim();
-    const foto = document.getElementById('homeCategoryFoto').value.trim();
     const orden = parseInt(document.getElementById('homeCategoryOrden').value) || 0;
     const isActive = document.getElementById('homeCategoryActive').checked;
     
+    const photoFileInput = document.getElementById('homeCategoryPhotoFile');
+    const file = photoFileInput && photoFileInput.files && photoFileInput.files[0];
+    const currentFotoUrl = (document.getElementById('homeCategoryFoto') && document.getElementById('homeCategoryFoto').value) || '';
+    
+    let foto = currentFotoUrl.trim();
+    
+    if (file) {
+        try {
+            foto = await uploadCategoryPhotoToSupabase(file);
+            console.log('📸 Imagen de categoría subida:', foto);
+            // Si estamos editando y la foto anterior era del bucket category-photos, eliminarla
+            if (editingHomeCategoryId && currentFotoUrl && extractCategoryPhotoPathFromUrl(currentFotoUrl)) {
+                await deleteCategoryPhotoFromStorage(currentFotoUrl);
+            }
+        } catch (err) {
+            alert(err.message || 'Error al subir la imagen.');
+            return;
+        }
+    }
+    
     if (!nombreEs || !nombrePt || !foto) {
-        alert('Debes completar el nombre en ambos idiomas y la foto');
+        alert('Debes completar el nombre en ambos idiomas y seleccionar una imagen (o conservar la actual al editar).');
         return;
     }
     
@@ -7888,6 +7930,124 @@ async function deleteImageFromStorage(fileUrl) {
         console.error('❌ Error al eliminar archivo del bucket:', error);
         return false;
     }
+}
+
+/** Bucket y carpeta para fotos de categorías del home */
+const CATEGORY_PHOTOS_BUCKET = 'category-photos';
+const CATEGORY_PHOTOS_FOLDER = 'categorias';
+
+/**
+ * Subir imagen de categoría al bucket category-photos en Supabase
+ * @param {File} file - Archivo de imagen
+ * @returns {Promise<string>} URL pública de la imagen
+ */
+async function uploadCategoryPhotoToSupabase(file) {
+    if (!supabaseClient) {
+        if (window.universalSupabase) {
+            supabaseClient = await window.universalSupabase.getClient();
+        } else {
+            throw new Error('Cliente de Supabase no inicializado. Recarga la página.');
+        }
+    }
+    let storageClient;
+    try {
+        if (typeof supabase !== 'undefined' && window.SUPABASE_CONFIG) {
+            storageClient = supabase.createClient(window.SUPABASE_CONFIG.url, window.SUPABASE_CONFIG.anonKey, {
+                auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+            });
+            if (supabaseClient && supabaseClient.auth) {
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                if (session) await storageClient.auth.setSession(session);
+            }
+        } else {
+            storageClient = supabaseClient;
+        }
+    } catch (e) {
+        storageClient = supabaseClient;
+    }
+    if (!file || !file.type.startsWith('image/')) {
+        throw new Error('El archivo debe ser una imagen (JPG, PNG, GIF o WEBP).');
+    }
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) throw new Error('La imagen no puede superar 5 MB.');
+    const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+    const baseName = (file.name && file.name.trim()) ? file.name.trim() : `categoria.${fileExt}`;
+    const filePath = await getUniqueStorageFilePath(storageClient, CATEGORY_PHOTOS_BUCKET, CATEGORY_PHOTOS_FOLDER, baseName);
+    const { data, error } = await storageClient.storage
+        .from(CATEGORY_PHOTOS_BUCKET)
+        .upload(filePath, file, { cacheControl: '3600', upsert: false, contentType: file.type || 'image/jpeg' });
+    if (error) {
+        if (error.message && (error.message.includes('Bucket not found') || error.message.includes('not found'))) {
+            throw new Error('El bucket "category-photos" no existe. Ejecuta el script supabase-storage-bucket-category-photos.sql en Supabase.');
+        }
+        throw new Error('Error al subir la imagen: ' + (error.message || ''));
+    }
+    const { data: urlData } = storageClient.storage.from(CATEGORY_PHOTOS_BUCKET).getPublicUrl(filePath);
+    const publicUrl = urlData && urlData.publicUrl ? urlData.publicUrl.trim() : null;
+    if (!publicUrl) throw new Error('No se pudo obtener la URL de la imagen.');
+    return publicUrl;
+}
+
+/**
+ * Extraer ruta en el bucket desde URL de category-photos
+ */
+function extractCategoryPhotoPathFromUrl(url) {
+    if (!url || typeof url !== 'string') return null;
+    const match = url.match(/\/storage\/v1\/object\/public\/category-photos\/(.+)$/);
+    if (match && match[1]) return decodeURIComponent(match[1]);
+    if (url.startsWith('categorias/')) return url;
+    return null;
+}
+
+/**
+ * Eliminar imagen de categoría del bucket category-photos
+ * @param {string} fileUrl - URL pública del archivo
+ * @returns {Promise<boolean>}
+ */
+async function deleteCategoryPhotoFromStorage(fileUrl) {
+    if (!fileUrl) return false;
+    const filePath = extractCategoryPhotoPathFromUrl(fileUrl);
+    if (!filePath) return false;
+    try {
+        let storageClient = supabaseClient;
+        if (typeof supabase !== 'undefined' && window.SUPABASE_CONFIG) {
+            storageClient = supabase.createClient(window.SUPABASE_CONFIG.url, window.SUPABASE_CONFIG.anonKey, {
+                auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+            });
+            if (supabaseClient && supabaseClient.auth) {
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                if (session) await storageClient.auth.setSession(session);
+            }
+        }
+        if (!storageClient?.storage) return false;
+        const { error } = await storageClient.storage.from(CATEGORY_PHOTOS_BUCKET).remove([filePath]);
+        if (error) { console.warn('Error eliminando foto de categoría:', error); return false; }
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
+/**
+ * Mostrar/ocultar preview al seleccionar archivo en el formulario de categoría
+ */
+function handleCategoryPhotoFileChange() {
+    const fileInput = document.getElementById('homeCategoryPhotoFile');
+    const previewWrap = document.getElementById('homeCategoryPhotoPreviewWrap');
+    const previewImg = document.getElementById('homeCategoryPhotoPreview');
+    if (!fileInput || !previewWrap || !previewImg) return;
+    const file = fileInput.files && fileInput.files[0];
+    if (file) {
+        previewImg.src = URL.createObjectURL(file);
+        previewWrap.style.display = 'block';
+    } else {
+        previewImg.src = '';
+        previewWrap.style.display = 'none';
+    }
+}
+
+if (typeof window !== 'undefined') {
+    window.handleCategoryPhotoFileChange = handleCategoryPhotoFileChange;
 }
 
 /**

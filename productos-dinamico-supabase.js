@@ -79,7 +79,7 @@ class DynamicProductsPage {
         this.selectedCategoryFromUrl = categoryParam ? (categoryMap[categoryParam] || categoryParam) : null;
         this.categoryFieldsConfig = categoryFieldsConfig;
         this.homeCategories = []; // Categorías cargadas desde home_categories
-        this.currentSort = 'default'; // Ordenamiento actual: default, price-asc, price-desc, category, name
+        this.currentSort = 'name-supplier'; // Ordenamiento: default, price-asc, price-desc, category, name, supplier, name-supplier
         this.dynamicFilterFields = new Map(); // Almacenar campos de filtros dinámicos para traducciones
         // NO llamar init() aquí - se llamará desde el listener de DOMContentLoaded
         // Esto evita inicializaciones múltiples
@@ -850,6 +850,37 @@ class DynamicProductsPage {
                     const catA = (a.categoria || '').toLowerCase();
                     const catB = (b.categoria || '').toLowerCase();
                     return catA.localeCompare(catB);
+                });
+                break;
+
+            case 'name':
+                // Por nombre del producto (agrupa visualmente variantes por nombre)
+                sortedProducts.sort((a, b) => {
+                    const nameA = (a.nombre || a.modelo || '').trim().toLowerCase();
+                    const nameB = (b.nombre || b.modelo || '').trim().toLowerCase();
+                    return nameA.localeCompare(nameB, undefined, { sensitivity: 'base' });
+                });
+                break;
+
+            case 'supplier':
+                // Por fornecedor/marca
+                sortedProducts.sort((a, b) => {
+                    const supplierA = (a.brand || a.marca || a.nombre_fornecedor || '').trim().toLowerCase();
+                    const supplierB = (b.brand || b.marca || b.nombre_fornecedor || '').trim().toLowerCase();
+                    return supplierA.localeCompare(supplierB, undefined, { sensitivity: 'base' });
+                });
+                break;
+
+            case 'name-supplier':
+                // Por fornecedor y luego por nombre: mismo proveedor junto y variantes del mismo modelo (nombre) juntas
+                sortedProducts.sort((a, b) => {
+                    const supplierA = (a.brand || a.marca || a.nombre_fornecedor || '').trim().toLowerCase();
+                    const supplierB = (b.brand || b.marca || b.nombre_fornecedor || '').trim().toLowerCase();
+                    const cmpSupplier = supplierA.localeCompare(supplierB, undefined, { sensitivity: 'base' });
+                    if (cmpSupplier !== 0) return cmpSupplier;
+                    const nameA = (a.nombre || a.modelo || '').trim().toLowerCase();
+                    const nameB = (b.nombre || b.modelo || '').trim().toLowerCase();
+                    return nameA.localeCompare(nameB, undefined, { sensitivity: 'base' });
                 });
                 break;
                 
@@ -2040,11 +2071,10 @@ class DynamicProductsPage {
             return true;
         });
 
-        // Si no hay categorías seleccionadas, ordenar por categoría automáticamente
+        // Si no hay categorías seleccionadas, ordenar por nome e fornecedor para mejor organización
         if (this.filters.categories.length === 0) {
-            this.currentSort = 'category';
-            // Actualizar el dropdown para mostrar "Categoria" como seleccionado
-            this.updateSortDropdownUI('category');
+            this.currentSort = 'name-supplier';
+            this.updateSortDropdownUI('name-supplier');
         }
         
         // Aplicar ordenamiento a los productos filtrados
@@ -2960,21 +2990,30 @@ class DynamicProductsPage {
                 sortDefault: 'Predefinido',
                 sortPriceAsc: 'Preço: menor a maior',
                 sortPriceDesc: 'Preço: maior a menor',
-                sortCategory: 'Categoria'
+                sortCategory: 'Categoria',
+                sortName: 'Nome',
+                sortSupplier: 'Fornecedor',
+                sortNameSupplier: 'Nome e fornecedor'
             },
             es: {
                 sortBtn: 'Ordenar',
                 sortDefault: 'Predeterminado',
                 sortPriceAsc: 'Precio: menor a mayor',
                 sortPriceDesc: 'Precio: mayor a menor',
-                sortCategory: 'Categoría'
+                sortCategory: 'Categoría',
+                sortName: 'Nombre',
+                sortSupplier: 'Proveedor',
+                sortNameSupplier: 'Nombre y proveedor'
             },
             en: {
                 sortBtn: 'Sort',
                 sortDefault: 'Default',
                 sortPriceAsc: 'Price: low to high',
                 sortPriceDesc: 'Price: high to low',
-                sortCategory: 'Category'
+                sortCategory: 'Category',
+                sortName: 'Name',
+                sortSupplier: 'Supplier',
+                sortNameSupplier: 'Name and supplier'
             }
         };
         
@@ -2998,6 +3037,15 @@ class DynamicProductsPage {
                         break;
                     case 'category':
                         span.textContent = t.sortCategory;
+                        break;
+                    case 'name':
+                        span.textContent = t.sortName;
+                        break;
+                    case 'supplier':
+                        span.textContent = t.sortSupplier;
+                        break;
+                    case 'name-supplier':
+                        span.textContent = t.sortNameSupplier;
                         break;
                 }
             }

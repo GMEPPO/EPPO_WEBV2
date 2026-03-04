@@ -119,7 +119,10 @@ class TranslationSystem {
                 sortDefault: { pt: 'Predefinido', es: 'Predeterminado', en: 'Default' },
                 sortPriceAsc: { pt: 'Preço: menor a maior', es: 'Precio: menor a mayor', en: 'Price: low to high' },
                 sortPriceDesc: { pt: 'Preço: maior a menor', es: 'Precio: mayor a menor', en: 'Price: high to low' },
-                sortCategory: { pt: 'Categoria', es: 'Categoría', en: 'Category' }
+                sortCategory: { pt: 'Categoria', es: 'Categoría', en: 'Category' },
+                sortName: { pt: 'Nome', es: 'Nombre', en: 'Name' },
+                sortSupplier: { pt: 'Fornecedor', es: 'Proveedor', en: 'Supplier' },
+                sortNameSupplier: { pt: 'Nome e fornecedor', es: 'Nombre y proveedor', en: 'Name and supplier' }
             }
         };
     }
