@@ -1014,20 +1014,24 @@ class CartManager {
                     if (!item.nombre_fornecedor && productFromDB.nombre_fornecedor) {
                         item.nombre_fornecedor = productFromDB.nombre_fornecedor;
                     }
-                    // Agregar price_tiers si no están
-                    if ((!item.price_tiers || item.price_tiers.length === 0) && productFromDB.price_tiers && productFromDB.price_tiers.length > 0) {
-                        item.price_tiers = productFromDB.price_tiers;
-                        // Recalcular precio según escalones
-                        const priceResult = this.getPriceForQuantity(item.price_tiers, item.quantity, item.basePrice || productFromDB.precio || item.price);
-                        item.price = priceResult.price;
-                        item.minQuantity = priceResult.minQuantity;
-                        item.isValidQuantity = priceResult.isValid;
-                    } else if (item.price_tiers && item.price_tiers.length > 0) {
-                        // Actualizar precio según escalones si existen
-                        const priceResult = this.getPriceForQuantity(item.price_tiers, item.quantity, item.basePrice || item.price);
-                        item.price = priceResult.price;
-                        item.minQuantity = priceResult.minQuantity;
-                        item.isValidQuantity = priceResult.isValid;
+                    // No recalcular precio si fue editado manualmente (sobre consulta) para que persista al volver al carrito
+                    if (item.manualPrice && item.price !== undefined && item.price !== null) {
+                        item.minQuantity = null;
+                        item.isValidQuantity = true;
+                    } else {
+                        // Agregar price_tiers si no están
+                        if ((!item.price_tiers || item.price_tiers.length === 0) && productFromDB.price_tiers && productFromDB.price_tiers.length > 0) {
+                            item.price_tiers = productFromDB.price_tiers;
+                            const priceResult = this.getPriceForQuantity(item.price_tiers, item.quantity, item.basePrice || productFromDB.precio || item.price);
+                            item.price = priceResult.price;
+                            item.minQuantity = priceResult.minQuantity;
+                            item.isValidQuantity = priceResult.isValid;
+                        } else if (item.price_tiers && item.price_tiers.length > 0) {
+                            const priceResult = this.getPriceForQuantity(item.price_tiers, item.quantity, item.basePrice || item.price);
+                            item.price = priceResult.price;
+                            item.minQuantity = priceResult.minQuantity;
+                            item.isValidQuantity = priceResult.isValid;
+                        }
                     }
                     // Actualizar descripción según idioma actual
                     item.description = this.currentLanguage === 'es' ? 
