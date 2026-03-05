@@ -4981,38 +4981,45 @@ function updatePriceOnQuantityChange(itemId, quantity) {
             }
         }
         
-        // Calcular precio según escalones (precio unitario) usando los price_tiers correctos
-        let newPrice = item.price || 0;
-        let minQty = null;
-        let isValid = true;
-        
-        if (priceTiersToUse && Array.isArray(priceTiersToUse) && priceTiersToUse.length > 0) {
-            const basePriceForCalc = item.basePrice !== undefined && item.basePrice !== null ? item.basePrice : (item.price || 0);
-            const priceResult = window.cartManager.getPriceForQuantity(priceTiersToUse, newQuantity, basePriceForCalc);
-            newPrice = priceResult.price;
-            minQty = priceResult.minQuantity;
-            isValid = priceResult.isValid;
-        } else if (item.basePrice !== undefined && item.basePrice !== null) {
-            newPrice = item.basePrice;
-            minQty = null;
-            isValid = true;
+        // Si el precio fue editado manualmente (sobre consulta), no recalcular al cambiar cantidad
+        if (item.manualPrice && item.price !== undefined && item.price !== null) {
+            // Mantener el precio manual; solo actualizar minQuantity/isValid si aplica
+            item.minQuantity = null;
+            item.isValidQuantity = true;
         } else {
-            // Si no hay precio base ni escalones, intentar obtenerlo de la BD
-            const productFromDB = window.cartManager.allProducts.find(p => {
-                return String(p.id) === String(item.id) || p.id === item.id;
-            });
-            if (productFromDB) {
-                newPrice = productFromDB.precio || 0;
-                item.basePrice = newPrice;
+            // Calcular precio según escalones (precio unitario) usando los price_tiers correctos
+            let newPrice = item.price || 0;
+            let minQty = null;
+            let isValid = true;
+            
+            if (priceTiersToUse && Array.isArray(priceTiersToUse) && priceTiersToUse.length > 0) {
+                const basePriceForCalc = item.basePrice !== undefined && item.basePrice !== null ? item.basePrice : (item.price || 0);
+                const priceResult = window.cartManager.getPriceForQuantity(priceTiersToUse, newQuantity, basePriceForCalc);
+                newPrice = priceResult.price;
+                minQty = priceResult.minQuantity;
+                isValid = priceResult.isValid;
+            } else if (item.basePrice !== undefined && item.basePrice !== null) {
+                newPrice = item.basePrice;
+                minQty = null;
+                isValid = true;
+            } else {
+                const productFromDB = window.cartManager.allProducts.find(p => {
+                    return String(p.id) === String(item.id) || p.id === item.id;
+                });
+                if (productFromDB) {
+                    newPrice = productFromDB.precio || 0;
+                    item.basePrice = newPrice;
+                }
             }
+            
+            item.price = newPrice;
+            item.minQuantity = minQty;
+            item.isValidQuantity = isValid;
         }
         
         // NO actualizar la cantidad en el item mientras el usuario escribe
         // Solo actualizar el precio para mostrar en tiempo real
         // La cantidad se actualizará cuando termine de editar (onblur)
-        item.price = newPrice;
-        item.minQuantity = minQty;
-        item.isValidQuantity = isValid;
         
         // NO guardar el carrito mientras el usuario escribe
         // Se guardará cuando termine de editar (onblur)
@@ -12703,22 +12710,25 @@ async function updateManualPrice(itemId, newPrice) {
             return;
         }
         
-        // Verificar que el precio actual es 0 (sobre consulta)
-        const currentPrice = item.price || 0;
-        if (currentPrice !== 0 && currentPrice !== null && currentPrice !== undefined) {
-            console.warn('⚠️ Solo se pueden editar precios de productos con precio 0 (sobre consulta)');
-            alert(window.cartManager.currentLanguage === 'pt' ? 
-                  'Apenas produtos com preço 0 (sobre consulta) podem ter preço editado manualmente.' :
-                  window.cartManager.currentLanguage === 'es' ?
-                  'Solo se pueden editar precios de productos con precio 0 (sobre consulta).' :
-                  'Only products with price 0 (on request) can have manually edited prices.');
-            
-            // Restaurar precio anterior
-            const priceInput = document.querySelector(`input.cart-item-price-input[onchange*="${itemId}"]`);
-            if (priceInput && item.price !== undefined && item.price !== null) {
-                priceInput.value = item.price.toFixed(4);
+        // Permitir editar si: precio base es 0 (sobre consulta) O ya tiene precio manual (para poder re-editar sin aviso)
+        const currentPrice = item.price ?? 0;
+        const baseIsZero = (item.basePrice === 0 || item.basePrice === null || item.basePrice === undefined);
+        const alreadyManual = item.manualPrice === true;
+        if (currentPrice !== 0 && !alreadyManual) {
+            // Solo bloquear si el producto no era "sobre consulta" (basePrice !== 0) y no tiene precio manual
+            if (!baseIsZero) {
+                console.warn('⚠️ Solo se pueden editar precios de productos con precio 0 (sobre consulta)');
+                alert(window.cartManager.currentLanguage === 'pt' ? 
+                      'Apenas produtos com preço 0 (sobre consulta) podem ter preço editado manualmente.' :
+                      window.cartManager.currentLanguage === 'es' ?
+                      'Solo se pueden editar precios de productos con precio 0 (sobre consulta).' :
+                      'Only products with price 0 (on request) can have manually edited prices.');
+                const priceInput = document.querySelector(`input.cart-item-price-input[onchange*="${itemId}"]`);
+                if (priceInput && item.price !== undefined && item.price !== null) {
+                    priceInput.value = item.price.toFixed(4);
+                }
+                return;
             }
-            return;
         }
         
         // Verificar si hay una variante personalizada seleccionada
