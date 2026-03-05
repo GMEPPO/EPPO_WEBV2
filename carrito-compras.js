@@ -11244,6 +11244,46 @@ async function sendProposalToSupabase() {
             } catch (e) { console.warn('Webhook producto especial:', e); }
         }
 
+        // Webhook: cuando un comercial guarda una propuesta con artículos a precio "sobre consulta" (precio 0)
+        const articulosSobreConsulta = (articulos || []).filter(a => Number(a.precio) === 0);
+        if (articulosSobreConsulta.length > 0 && presupuesto) {
+            try {
+                const role = window.cachedRole || await window.getUserRole?.();
+                if ((role || '').toString().toLowerCase() === 'comercial') {
+                    const nombreComercial = await window.cartManager.getCurrentUserName();
+                    const ed = window.cartManager && window.cartManager.editingProposalData;
+                    const codigoProp = (presupuesto.codigo_propuesta) || (ed && ed.codigo_propuesta) || '';
+                    const body = {
+                        tipo_alerta: 'pedido_artigo_laserbuild',
+                        evento: 'pedido_artigo_laserbuild',
+                        responsavel: nombreComercial || '',
+                        responsable_propuesta: (presupuesto.responsavel) || (ed && ed.responsavel) || '',
+                        numero_propuesta: codigoProp,
+                        codigo_propuesta: codigoProp,
+                        nombre_cliente: (presupuesto.nombre_cliente) || (ed && ed.nombre_cliente) || clientName || '',
+                        numero_cliente: (presupuesto.numero_cliente) || (ed && ed.numero_cliente) || clientNumber || '',
+                        presupuesto_id: (presupuesto && presupuesto.id) || null,
+                        nombre_comercial: (presupuesto.nombre_comercial) || (ed && ed.nombre_comercial) || '',
+                        artigos_sobre_consulta: articulosSobreConsulta.map(a => ({
+                            nombre_articulo: a.nombre_articulo || '',
+                            referencia_articulo: a.referencia_articulo || '',
+                            cantidad: a.cantidad != null ? Number(a.cantidad) : 0,
+                            precio: 0,
+                            observaciones: a.observaciones || null,
+                            tipo_personalizacion: a.tipo_personalizacion || null,
+                            color_seleccionado: a.color_seleccionado || null,
+                            plazo_entrega: a.plazo_entrega || null
+                        }))
+                    };
+                    const origin = typeof window !== 'undefined' && window.location && window.location.origin;
+                    const webhookUrl = origin && origin !== 'null' && !origin.startsWith('file') ? (origin + '/api/follow-up-webhook.json') : null;
+                    if (webhookUrl) {
+                        fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).catch(() => {});
+                    }
+                }
+            } catch (e) { console.warn('Webhook pedido artigo Laserbuild:', e); }
+        }
+
         // Si se editó una propuesta existente (se alteraron artículos), pasar de "Propuesta Enviada" a "Propuesta en Edición"
         if (window.cartManager.editingProposalId && window.cartManager.supabase) {
             try {

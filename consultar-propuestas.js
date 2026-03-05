@@ -3782,6 +3782,14 @@ class ProposalsManager {
             this.openPropostaAdjudicadaModal(proposal);
         } else if (normalizedStatus === 'aguarda_creacion_codigo_phc') {
             this.openAguardaCreacionCodigoPhcModal(proposal);
+        } else if (normalizedStatus === 'follow_up') {
+            const followUps = proposal.follow_ups || [];
+            if (followUps.length === 0) {
+                this.openFollowUpFirstTimeModal(proposal);
+            } else {
+                await this.updateProposalStatus(proposalId, normalizedStatus);
+                this.resetStatusSelects(proposalId);
+            }
         } else {
             // Para otros estados, cambiar directamente
             await this.updateProposalStatus(proposalId, normalizedStatus);
@@ -5446,11 +5454,13 @@ class ProposalsManager {
                 const followUps = proposal.follow_ups || [];
                 if (followUps.length === 0) {
                     const today = new Date().toISOString().split('T')[0];
+                    const observaciones = (additionalData && additionalData.firstFollowUpObservaciones) ? String(additionalData.firstFollowUpObservaciones).trim() || null : null;
+                    const fechaFuturo = (additionalData && additionalData.firstFollowUpFuturo) ? String(additionalData.firstFollowUpFuturo).trim() || null : null;
                     await this.supabase.from('presupuestos_follow_ups').insert({
                         presupuesto_id: proposalId,
                         fecha_follow_up: today,
-                        observaciones: null,
-                        fecha_follow_up_futuro: null
+                        observaciones: observaciones,
+                        fecha_follow_up_futuro: fechaFuturo || null
                     });
                 }
             }
@@ -7581,6 +7591,70 @@ class ProposalsManager {
         }
     }
 
+    openFollowUpFirstTimeModal(proposal) {
+        const modal = document.getElementById('changeStatusFollowUpFirstTimeModal');
+        if (!modal) return;
+        modal.setAttribute('data-proposal-id', proposal.id);
+        const observacoesEl = document.getElementById('follow-up-first-time-observacoes');
+        const fechaEl = document.getElementById('follow-up-first-time-fecha');
+        if (observacoesEl) observacoesEl.value = '';
+        if (fechaEl) fechaEl.value = '';
+        this.updateFollowUpFirstTimeTranslations();
+        modal.classList.add('active');
+    }
+
+    closeFollowUpFirstTimeModal() {
+        const modal = document.getElementById('changeStatusFollowUpFirstTimeModal');
+        if (modal) {
+            const proposalId = modal.getAttribute('data-proposal-id');
+            if (proposalId) this.resetStatusSelects(proposalId);
+            modal.classList.remove('active');
+        }
+    }
+
+    async saveFollowUpFirstTimeStatus() {
+        const modal = document.getElementById('changeStatusFollowUpFirstTimeModal');
+        if (!modal) return;
+        const proposalId = modal.getAttribute('data-proposal-id');
+        if (!proposalId) return;
+        const observacoesEl = document.getElementById('follow-up-first-time-observacoes');
+        const fechaEl = document.getElementById('follow-up-first-time-fecha');
+        const observaciones = observacoesEl ? (observacoesEl.value || '').trim() || null : null;
+        const fechaFuturo = fechaEl && fechaEl.value ? fechaEl.value : null;
+        try {
+            await this.updateProposalStatus(proposalId, 'follow_up', {
+                firstFollowUpObservaciones: observaciones,
+                firstFollowUpFuturo: fechaFuturo
+            });
+            this.closeFollowUpFirstTimeModal();
+            this.resetStatusSelects(proposalId);
+        } catch (e) {
+            console.error('Error guardando follow-up primera vez:', e);
+        }
+    }
+
+    updateFollowUpFirstTimeTranslations() {
+        const lang = this.currentLanguage || 'pt';
+        const t = {
+            pt: { title: 'Follow up', description: 'Opcional: indique observações e data de follow up futuro.', observacoes: 'Observações:', fecha: 'Data de follow up futuro:', cancel: 'Cancelar', save: 'Guardar' },
+            es: { title: 'Follow up', description: 'Opcional: indique observaciones y fecha de follow up futuro.', observacoes: 'Observaciones:', fecha: 'Fecha de follow up futuro:', cancel: 'Cancelar', save: 'Guardar' },
+            en: { title: 'Follow up', description: 'Optional: enter observations and future follow-up date.', observacoes: 'Observations:', fecha: 'Future follow-up date:', cancel: 'Cancel', save: 'Save' }
+        };
+        const L = t[lang] || t.pt;
+        const titleEl = document.getElementById('follow-up-first-time-modal-title');
+        const descEl = document.getElementById('follow-up-first-time-description');
+        const obsLabel = document.getElementById('follow-up-first-time-observacoes-label');
+        const fechaLabel = document.getElementById('follow-up-first-time-fecha-label');
+        const cancelBtn = document.getElementById('follow-up-first-time-cancel-btn');
+        const saveText = document.getElementById('follow-up-first-time-save-text');
+        if (titleEl) titleEl.textContent = L.title;
+        if (descEl) descEl.textContent = L.description;
+        if (obsLabel) obsLabel.textContent = L.observacoes;
+        if (fechaLabel) fechaLabel.textContent = L.fecha;
+        if (cancelBtn) cancelBtn.textContent = L.cancel;
+        if (saveText) saveText.textContent = L.save;
+    }
+
     openPropostaAdjudicadaModal(proposal) {
         const modal = document.getElementById('changeStatusPropostaAdjudicadaModal');
         if (!modal) return;
@@ -9589,6 +9663,18 @@ function saveEncomendadoStatus() {
 function saveRejeitadaStatus() {
     if (window.proposalsManager) {
         window.proposalsManager.saveRejeitadaStatus();
+    }
+}
+
+function closeFollowUpFirstTimeModal() {
+    if (window.proposalsManager) {
+        window.proposalsManager.closeFollowUpFirstTimeModal();
+    }
+}
+
+function saveFollowUpFirstTimeStatus() {
+    if (window.proposalsManager) {
+        window.proposalsManager.saveFollowUpFirstTimeStatus();
     }
 }
 

@@ -1651,6 +1651,35 @@
         </div>
     </div>
 
+    <!-- Modal Follow up (primera vez): observaciones y data follow-up futuro opcionales -->
+    <div class="modal-overlay" id="changeStatusFollowUpFirstTimeModal">
+        <div class="modal" style="max-width: 560px;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="follow-up-first-time-modal-title">Follow up</h3>
+                <button class="modal-close" onclick="closeFollowUpFirstTimeModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-description" id="follow-up-first-time-description" style="color: var(--text-secondary); margin-bottom: var(--space-4); font-size: 0.875rem;">Opcional: indique observações e data de follow up futuro.</p>
+                <div class="form-group">
+                    <label class="form-label" id="follow-up-first-time-observacoes-label">Observações:</label>
+                    <textarea class="form-input" id="follow-up-first-time-observacoes" rows="3" placeholder="" style="width: 100%; min-height: 80px; resize: vertical;" maxlength="2000"></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" id="follow-up-first-time-fecha-label">Data de follow up futuro:</label>
+                    <input type="date" id="follow-up-first-time-fecha" class="form-input" style="width: 100%; max-width: 220px;">
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeFollowUpFirstTimeModal()" id="follow-up-first-time-cancel-btn">Cancelar</button>
+                <button type="button" class="btn-primary" onclick="saveFollowUpFirstTimeStatus()" id="follow-up-first-time-save-btn">
+                    <i class="fas fa-save"></i> <span id="follow-up-first-time-save-text">Guardar</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal para cambiar estado a Proposta Adjudicada (comentario obligatorio) -->
     <div class="modal-overlay" id="changeStatusPropostaAdjudicadaModal">
         <div class="modal" style="max-width: 600px;">
