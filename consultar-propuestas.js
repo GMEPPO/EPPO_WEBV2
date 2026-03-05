@@ -5413,12 +5413,17 @@ class ProposalsManager {
             
             // Actualizar TODOS los artículos del presupuesto en la tabla única
             // (ya que cada artículo contiene la información del presupuesto)
+            // No incluir additionalData completo: firstFollowUpObservaciones/firstFollowUpFuturo son solo para presupuestos_follow_ups, no columnas de presupuestos
             const updateData = {
                 estado_propuesta: newStatus,
                 historial_modificaciones: nuevoHistorial,
-                fecha_ultima_actualizacion: fechaCambio,
-                ...additionalData
+                fecha_ultima_actualizacion: fechaCambio
             };
+            // Añadir solo campos de additionalData que sean columnas de la tabla presupuestos (p. ej. comentarios, fecha_envio_propuesta)
+            if (additionalData && typeof additionalData === 'object') {
+                const presupuestosKeys = ['comentarios', 'fecha_envio_propuesta'];
+                presupuestosKeys.forEach(k => { if (additionalData[k] !== undefined) updateData[k] = additionalData[k]; });
+            }
 
             // Solo guardar la fecha de envío la primera vez que se pone "Propuesta Enviada"
             if (isPropuestaEnviada && !proposal.fecha_envio_propuesta) {
