@@ -81,6 +81,8 @@ class DynamicProductsPage {
         this.homeCategories = []; // Categorías cargadas desde home_categories
         this.currentSort = 'name-supplier'; // Ordenamiento: default, price-asc, price-desc, category, name, supplier, name-supplier
         this.dynamicFilterFields = new Map(); // Almacenar campos de filtros dinámicos para traducciones
+        this.multiSelectMode = false; // Modo multi-selección para añadir varios productos con la misma cantidad
+        this.lastDisplayedProducts = []; // Copia de los productos actualmente mostrados (para multi-selección)
         // NO llamar init() aquí - se llamará desde el listener de DOMContentLoaded
         // Esto evita inicializaciones múltiples
     }
@@ -2118,19 +2120,23 @@ class DynamicProductsPage {
         }
 
         if (products.length === 0) {
+            this.lastDisplayedProducts = [];
             const translations = {
                 pt: 'Nenhum produto encontrado com os filtros aplicados.',
                 es: 'No se encontraron productos con los filtros aplicados.',
                 en: 'No products found with the applied filters.'
             };
             productsContainer.innerHTML = `<div class="no-products">${translations[this.currentLanguage] || translations.pt}</div>`;
+            this.setupMultiSelectBar();
             return;
         }
 
         try {
+            this.lastDisplayedProducts = products.slice(0);
+            const showMultiSelectCheckbox = !!this.multiSelectMode;
             const productsHtml = products.map(product => {
                 try {
-                    return this.createProductCard(product);
+                    return this.createProductCard(product, showMultiSelectCheckbox);
                 } catch (err) {
                     console.warn('Error creando tarjeta de producto:', product?.id || product?.nombre, err);
                     return '';
@@ -2144,6 +2150,7 @@ class DynamicProductsPage {
             productsContainer.innerHTML = productsHtml || `<div class="no-products">${this.currentLanguage === 'es' ? 'No se pudieron mostrar los productos.' : this.currentLanguage === 'pt' ? 'Não foi possível exibir os produtos.' : 'Could not display products.'}</div>`;
             
             this.setupImageNavigation();
+            this.setupMultiSelectBar();
         } catch (error) {
             console.error('Error en displayProducts:', error);
             if (productsContainer) {
@@ -2209,6 +2216,68 @@ class DynamicProductsPage {
             arrowsContainer.appendChild(leftArrow);
             arrowsContainer.appendChild(rightArrow);
         });
+    }
+
+    setupMultiSelectBar() {
+        const bar = document.getElementById('multiselect-bar');
+        const countEl = document.getElementById('multiselect-count');
+        const addBtn = document.getElementById('multiselect-add-btn');
+        const toggleBtn = document.getElementById('toggle-multiselect-btn');
+        const grid = document.getElementById('products-grid');
+        if (!bar || !countEl || !addBtn || !toggleBtn) return;
+
+        const updateCount = () => {
+            const checked = grid ? grid.querySelectorAll('.product-card-select:checked') : [];
+            const n = checked.length;
+            const lang = this.currentLanguage || 'pt';
+            const countText = lang === 'es' ? (n === 1 ? '1 seleccionado' : n + ' seleccionados') : lang === 'en' ? (n === 1 ? '1 selected' : n + ' selected') : (n === 1 ? '1 selecionado' : n + ' selecionados');
+            countEl.textContent = countText;
+            addBtn.disabled = n === 0;
+        };
+
+        if (this.multiSelectMode) {
+            bar.style.display = 'flex';
+            updateCount();
+        } else {
+            bar.style.display = 'none';
+        }
+
+        if (grid && !grid.dataset.multiselectListener) {
+            grid.dataset.multiselectListener = 'true';
+            grid.addEventListener('change', (e) => {
+                if (e.target && e.target.classList && e.target.classList.contains('product-card-select')) updateCount();
+            });
+        }
+
+        if (!addBtn.dataset.bound) {
+            addBtn.dataset.bound = 'true';
+            addBtn.addEventListener('click', () => {
+                const checked = grid ? grid.querySelectorAll('.product-card-select:checked') : [];
+                if (checked.length === 0) return;
+                const ids = Array.from(checked).map(cb => cb.getAttribute('data-product-id'));
+                const products = this.lastDisplayedProducts.filter(p => ids.some(id => String(p.id) === String(id)));
+                if (products.length > 0 && typeof window.askQuantityAndAddMultipleToCart === 'function') {
+                    window.askQuantityAndAddMultipleToCart(products);
+                }
+            });
+        }
+
+        if (!toggleBtn.dataset.bound) {
+            toggleBtn.dataset.bound = 'true';
+            toggleBtn.addEventListener('click', () => this.toggleMultiSelectMode());
+        }
+
+        const toggleText = document.getElementById('toggle-multiselect-text');
+        const addText = document.getElementById('multiselect-add-text');
+        if (toggleText) toggleText.textContent = this.multiSelectMode ? (this.currentLanguage === 'es' ? 'Salir de selección' : this.currentLanguage === 'en' ? 'Exit selection' : 'Sair da seleção') : (this.currentLanguage === 'es' ? 'Seleccionar varios' : this.currentLanguage === 'en' ? 'Select multiple' : 'Seleccionar vários');
+        if (addText) addText.textContent = this.currentLanguage === 'es' ? 'Añadir al carrito' : this.currentLanguage === 'en' ? 'Add to cart' : 'Adicionar ao carrinho';
+    }
+
+    toggleMultiSelectMode() {
+        this.multiSelectMode = !this.multiSelectMode;
+        if (this.lastDisplayedProducts && this.lastDisplayedProducts.length > 0) {
+            this.displayProducts(this.lastDisplayedProducts);
+        }
     }
     
     navigateImage(img, direction) {
@@ -2284,7 +2353,7 @@ class DynamicProductsPage {
         return trimmedUrl;
     }
 
-    createProductCard(product) {
+    createProductCard(product, showMultiSelectCheckbox = false) {
         // Obtener el badge desde badge_pt (donde se guarda) y traducirlo según el idioma
         const badgeValue = product.badge_pt || null;
         let badgeText = null;
@@ -2357,8 +2426,14 @@ class DynamicProductsPage {
                 <i class="fas fa-image" style="font-size:3rem;"></i>
             </div>`;
 
+        const multiSelectCheckboxHtml = showMultiSelectCheckbox ? `
+            <div class="product-card-multiselect-wrap" style="position:absolute;top:8px;left:8px;z-index:50;" onclick="event.stopPropagation();">
+                <input type="checkbox" class="product-card-select" data-product-id="${product.id}" style="width:20px;height:20px;cursor:pointer;accent-color:var(--primary-500,#3b82f6);" title="">
+            </div>
+        ` : '';
         return `
-            <article class="card product-card" data-product-id="${product.id}">
+            <article class="card product-card" data-product-id="${product.id}" style="position:relative;">
+                ${multiSelectCheckboxHtml}
                 <div class="media" onclick="window.location.href='producto-detalle.html?id=${product.id}'" style="cursor: pointer; position: relative;">
                     ${imageHtml}
                     ${badgeHtml}

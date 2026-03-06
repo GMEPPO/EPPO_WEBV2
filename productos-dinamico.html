@@ -381,7 +381,8 @@
                     </div>
                 </div>
 
-                <!-- Botón de ordenamiento -->
+                <!-- Barra: ordenamiento + multi-selección -->
+                <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 16px;">
                 <div class="sort-dropdown-container">
                     <button class="sort-dropdown-btn" id="sort-dropdown-btn" title="Ordenar productos">
                         <i class="fas fa-sort"></i>
@@ -426,6 +427,17 @@
                         </button>
                     </div>
                 </div>
+                <button type="button" id="toggle-multiselect-btn" class="sort-dropdown-btn" style="display: inline-flex; align-items: center; gap: 8px;" title="">
+                    <i class="fas fa-check-double"></i>
+                    <span id="toggle-multiselect-text">Seleccionar varios</span>
+                </button>
+                <div id="multiselect-bar" style="display: none; align-items: center; gap: 12px; padding: 10px 16px; background: var(--bg-gray-100, #f3f4f6); border-radius: 8px; flex: 1; min-width: 200px;">
+                    <span id="multiselect-count" style="font-weight: 600; color: var(--text-primary);">0 seleccionados</span>
+                    <button type="button" id="multiselect-add-btn" style="padding: 8px 16px; background: var(--primary-500, #3b82f6); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; white-space: nowrap;">
+                        <i class="fas fa-cart-plus"></i> <span id="multiselect-add-text">Añadir al carrito</span>
+                    </button>
+                </div>
+                </div>
 
                 <div class="products-grid" id="products-grid">
                     <!-- Los productos se cargarán dinámicamente aquí -->
@@ -469,6 +481,10 @@
             
             const t = translations[currentLang] || translations.pt;
             
+            // Usar última cantidad guardada como valor por defecto (misma cantidad para varios productos)
+            const lastQty = parseInt(localStorage.getItem('eppo_last_cart_quantity'), 10);
+            const defaultQty = (lastQty >= 1 && lastQty <= 50000) ? lastQty : 1;
+            
             // Crear modal para pedir cantidad
             const modal = document.createElement('div');
             modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 10000;';
@@ -480,7 +496,7 @@
                 <h2 style="margin: 0 0 20px 0; color: var(--text-primary, #333); font-size: 1.5rem;">${t.title}</h2>
                 <p style="margin: 0 0 10px 0; color: var(--text-secondary, #666);">${product.nombre || product.modelo || 'Producto'}</p>
                 <label style="display: block; margin: 20px 0 10px 0; color: var(--text-primary, #333); font-weight: 600;">${t.message}</label>
-                <input type="number" id="quantityModalInput" min="1" max="50000" value="1" style="width: 100%; padding: 12px; border: 2px solid var(--border-color, #ddd); border-radius: 8px; font-size: 1rem; margin-bottom: 20px;" autofocus>
+                <input type="number" id="quantityModalInput" min="1" max="50000" value="${defaultQty}" style="width: 100%; padding: 12px; border: 2px solid var(--border-color, #ddd); border-radius: 8px; font-size: 1rem; margin-bottom: 20px;" autofocus>
                 <div style="display: flex; gap: 10px; justify-content: flex-end;">
                     <button id="cancelQuantityBtn" style="padding: 10px 20px; background: var(--bg-gray-200, #e5e7eb); color: var(--text-primary, #333); border: none; border-radius: 8px; cursor: pointer; font-size: 1rem;">${t.cancel}</button>
                     <button id="confirmQuantityBtn" style="padding: 10px 20px; background: var(--primary-500, #3b82f6); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: 600;">${t.confirm}</button>
@@ -511,6 +527,9 @@
                 
                 // Cerrar modal primero
                 closeModal();
+                
+                // Guardar cantidad para próximas veces (mismo valor por defecto)
+                try { localStorage.setItem('eppo_last_cart_quantity', String(quantity)); } catch (_) {}
                 
                 // Agregar al carrito con la cantidad especificada
                 try {
@@ -586,8 +605,57 @@
             quantityInput.select();
         }
         
-        // Hacer función global
+        // Añadir varios productos al carrito con la misma cantidad (multi-selección)
+        function askQuantityAndAddMultipleToCart(products) {
+            if (!products || products.length === 0) return;
+            const currentLang = localStorage.getItem('language') || 'pt';
+            const translations = {
+                pt: { title: 'Adicionar ao Orçamento', message: 'Quantidade (igual para todos):', confirm: 'Adicionar', cancel: 'Cancelar', invalid: 'Por favor, insira uma quantidade válida (1-50000)', count: 'produtos selecionados' },
+                es: { title: 'Agregar al Presupuesto', message: 'Cantidad (igual para todos):', confirm: 'Agregar', cancel: 'Cancelar', invalid: 'Por favor, ingrese una cantidad válida (1-50000)', count: 'productos seleccionados' },
+                en: { title: 'Add to Budget', message: 'Quantity (same for all):', confirm: 'Add', cancel: 'Cancel', invalid: 'Please enter a valid quantity (1-50000)', count: 'products selected' }
+            };
+            const t = translations[currentLang] || translations.pt;
+            const lastQty = parseInt(localStorage.getItem('eppo_last_cart_quantity'), 10);
+            const defaultQty = (lastQty >= 1 && lastQty <= 50000) ? lastQty : 1;
+            
+            const modal = document.createElement('div');
+            modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 10000;';
+            const modalContent = document.createElement('div');
+            modalContent.style.cssText = 'background: var(--bg-white, #fff); padding: 30px; border-radius: 12px; max-width: 400px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.3);';
+            modalContent.innerHTML = `
+                <h2 style="margin: 0 0 20px 0; color: var(--text-primary, #333); font-size: 1.5rem;">${t.title}</h2>
+                <p style="margin: 0 0 10px 0; color: var(--text-secondary, #666);">${products.length} ${t.count}</p>
+                <label style="display: block; margin: 20px 0 10px 0; color: var(--text-primary, #333); font-weight: 600;">${t.message}</label>
+                <input type="number" id="quantityModalInputMulti" min="1" max="50000" value="${defaultQty}" style="width: 100%; padding: 12px; border: 2px solid var(--border-color, #ddd); border-radius: 8px; font-size: 1rem; margin-bottom: 20px;" autofocus>
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button id="cancelQuantityBtnMulti" style="padding: 10px 20px; background: var(--bg-gray-200, #e5e7eb); color: var(--text-primary, #333); border: none; border-radius: 8px; cursor: pointer; font-size: 1rem;">${t.cancel}</button>
+                    <button id="confirmQuantityBtnMulti" style="padding: 10px 20px; background: var(--primary-500, #3b82f6); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: 600;">${t.confirm}</button>
+                </div>
+            `;
+            modal.appendChild(modalContent);
+            document.body.appendChild(modal);
+            const quantityInput = modalContent.querySelector('#quantityModalInputMulti');
+            const closeModal = () => document.body.removeChild(modal);
+            const confirmAdd = () => {
+                const quantity = parseInt(quantityInput.value, 10);
+                if (isNaN(quantity) || quantity < 1 || quantity > 50000) { alert(t.invalid); quantityInput.focus(); return; }
+                closeModal();
+                try { localStorage.setItem('eppo_last_cart_quantity', String(quantity)); } catch (_) {}
+                products.forEach(function(p) {
+                    if (window.addToCart) window.addToCart(p, quantity);
+                });
+                if (typeof window.updateCartBadge === 'function') window.updateCartBadge();
+            };
+            modalContent.querySelector('#confirmQuantityBtnMulti').addEventListener('click', confirmAdd);
+            modalContent.querySelector('#cancelQuantityBtnMulti').addEventListener('click', closeModal);
+            modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+            quantityInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') confirmAdd(); });
+            quantityInput.focus();
+            quantityInput.select();
+        }
+        
         window.askQuantityAndAddToCart = askQuantityAndAddToCart;
+        window.askQuantityAndAddMultipleToCart = askQuantityAndAddMultipleToCart;
     </script>
     
     <script>
