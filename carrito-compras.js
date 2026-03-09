@@ -41,6 +41,8 @@ class CartManager {
         // Cargar clientes para la barra de cliente y productos orçamentados anteriormente
         if (typeof loadExistingClients === 'function') loadExistingClients();
         if (typeof setupProposalClientBar === 'function') setupProposalClientBar();
+        
+        this.setupMarginCalculator();
     }
 
     async checkIfEditingProposal() {
@@ -3422,6 +3424,52 @@ class CartManager {
     }
 
     /**
+     * Calculadora de margen bruto: solo visible para administradores.
+     * Muestra botón y panel; al introducir valor y margen %, calcula precio = valor / (1 - margen/100).
+     */
+    setupMarginCalculator() {
+        const btn = document.getElementById('toggleMarginCalculatorBtn');
+        const panel = document.getElementById('margin-calculator-panel');
+        if (!btn || !panel) return;
+        (async () => {
+            const role = window.cachedRole || await window.getUserRole?.();
+            if ((role || '').toString().toLowerCase() !== 'admin') {
+                btn.style.display = 'none';
+                panel.style.display = 'none';
+                return;
+            }
+            btn.style.display = 'inline-flex';
+            const lang = this.currentLanguage || (localStorage.getItem('language') || 'pt');
+            const t = { pt: { btn: 'Calculadora margem', title: 'Calculadora margem bruto', valor: 'Valor (custo)', margen: 'Margem bruto (%)', result: 'Preço com margem', close: 'Fechar' }, es: { btn: 'Calculadora margen', title: 'Calculadora margen bruto', valor: 'Valor (costo)', margen: 'Margen bruto (%)', result: 'Precio con margen', close: 'Cerrar' }, en: { btn: 'Margin calculator', title: 'Gross margin calculator', valor: 'Value (cost)', margen: 'Gross margin (%)', result: 'Price with margin', close: 'Close' } };
+            const L = t[lang] || t.pt;
+            const btnText = document.getElementById('margin-calc-btn-text');
+            const titleEl = document.getElementById('margin-calculator-title');
+            const resultLabel = document.getElementById('margin-calculator-result-label');
+            if (btnText) btnText.textContent = L.btn;
+            if (titleEl) titleEl.textContent = L.title;
+            if (resultLabel) resultLabel.textContent = L.result;
+            const runCalc = () => {
+                const valorEl = document.getElementById('marginCalcValor');
+                const margenEl = document.getElementById('marginCalcMargen');
+                const resultEl = document.getElementById('marginCalcResult');
+                if (!valorEl || !margenEl || !resultEl) return;
+                const valor = parseFloat(valorEl.value);
+                const margen = parseFloat(margenEl.value);
+                if (isNaN(valor) || valor < 0 || isNaN(margen) || margen < 0 || margen >= 100) {
+                    resultEl.textContent = '—';
+                    return;
+                }
+                const precio = valor / (1 - margen / 100);
+                resultEl.textContent = typeof Intl !== 'undefined' && Intl.NumberFormat ? new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(precio) : precio.toFixed(2);
+            };
+            const valorInput = document.getElementById('marginCalcValor');
+            const margenInput = document.getElementById('marginCalcMargen');
+            if (valorInput) { valorInput.addEventListener('input', runCalc); valorInput.addEventListener('change', runCalc); }
+            if (margenInput) { margenInput.addEventListener('input', runCalc); margenInput.addEventListener('change', runCalc); }
+        })();
+    }
+
+    /**
      * Configurar drag and drop para reordenar items del carrito y triple clic para duplicar módulo
      */
     setupDragAndDrop() {
@@ -6516,6 +6564,17 @@ window.simpleRemove = simpleRemove;
 document.addEventListener('DOMContentLoaded', () => {
     window.cartManager = new CartManager();
 });
+
+/**
+ * Abrir/cerrar el panel de calculadora de margen bruto (solo administradores).
+ */
+function toggleMarginCalculator() {
+    const panel = document.getElementById('margin-calculator-panel');
+    if (!panel) return;
+    const isOpen = panel.getAttribute('aria-hidden') === 'false';
+    panel.setAttribute('aria-hidden', isOpen ? 'true' : 'false');
+}
+window.toggleMarginCalculator = toggleMarginCalculator;
 
 // Función para agregar producto desde otras páginas
 window.addToCart = function(product, quantity = 1) {

@@ -211,10 +211,98 @@
     </style>
     <style>
         /* Estilos específicos para el carrito */
+        .cart-layout-wrapper {
+            display: flex;
+            width: 100%;
+            max-width: 100%;
+            gap: 0;
+            position: relative;
+        }
         .cart-container {
+            flex: 1;
+            min-width: 0;
             max-width: 1200px;
             margin: 0 auto;
             padding: var(--space-8) var(--space-6);
+        }
+        /* Calculadora margen bruto (solo admin) */
+        .margin-calculator-panel {
+            width: 0;
+            overflow: hidden;
+            flex-shrink: 0;
+            background: var(--bg-gray-100, #f3f4f6);
+            border-left: 1px solid var(--bg-gray-200, #e5e7eb);
+            transition: width 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: none;
+        }
+        .margin-calculator-panel[aria-hidden="false"] {
+            width: 320px;
+            box-shadow: -4px 0 20px rgba(0,0,0,0.08);
+        }
+        [data-theme="dark"] .margin-calculator-panel {
+            background: var(--bg-secondary, #1f2937);
+            border-left-color: var(--border-color, #374151);
+        }
+        .margin-calculator-inner {
+            width: 320px;
+            min-height: 100%;
+            padding: var(--space-4);
+            display: flex;
+            flex-direction: column;
+        }
+        .margin-calculator-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--space-4);
+            padding-bottom: var(--space-3);
+            border-bottom: 1px solid var(--bg-gray-200, #e5e7eb);
+        }
+        .margin-calculator-title {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .margin-calculator-close {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: var(--space-2);
+            border-radius: var(--radius-md);
+            transition: background 0.2s, color 0.2s;
+        }
+        .margin-calculator-close:hover {
+            background: var(--bg-gray-200, #e5e7eb);
+            color: var(--text-primary);
+        }
+        .margin-calculator-body .form-group {
+            margin-bottom: var(--space-4);
+        }
+        .margin-calculator-result-wrap {
+            margin-top: var(--space-4);
+            padding: var(--space-4);
+            background: var(--bg-white, #fff);
+            border: 2px solid var(--brand-gold, #C6A15B);
+            border-radius: var(--radius-md);
+        }
+        [data-theme="dark"] .margin-calculator-result-wrap {
+            background: var(--bg-tertiary, #111827);
+            border-color: var(--brand-gold, #C6A15B);
+        }
+        .margin-calculator-result-label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: var(--space-2);
+        }
+        .margin-calculator-result {
+            display: block;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
         }
 
         .cart-header {
@@ -1365,6 +1453,7 @@
 
     <!-- Main Content -->
     <main class="main-content">
+        <div class="cart-layout-wrapper">
         <div class="cart-container">
             <!-- Header del carrito -->
             <div class="cart-header">
@@ -1380,6 +1469,9 @@
                     </button>
                     <button class="btn-primary" onclick="addEmptyModule()" style="background: #8b5cf6;">
                         <i class="fas fa-plus-square"></i> <span id="add-new-module-text">Novo módulo</span>
+                    </button>
+                    <button type="button" class="btn-primary" id="toggleMarginCalculatorBtn" onclick="toggleMarginCalculator()" style="display: none; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);" title="">
+                        <i class="fas fa-calculator"></i> <span id="margin-calc-btn-text">Calculadora margen</span>
                     </button>
                     <button class="btn-mode-200" id="mode200Btn" onclick="toggleMode200()" style="
                         background: var(--bg-gray-200);
@@ -1459,6 +1551,32 @@
                     <!-- Los items se cargarán dinámicamente aquí -->
                 </div>
             </div>
+        </div>
+        <!-- Calculadora margen bruto (solo administradores) -->
+        <aside id="margin-calculator-panel" class="margin-calculator-panel" aria-hidden="true">
+            <div class="margin-calculator-inner">
+                <div class="margin-calculator-header">
+                    <h3 id="margin-calculator-title" class="margin-calculator-title">Calculadora margen bruto</h3>
+                    <button type="button" class="margin-calculator-close" id="marginCalculatorCloseBtn" onclick="toggleMarginCalculator()" aria-label="Cerrar">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="margin-calculator-body">
+                    <div class="form-group">
+                        <label class="form-label" for="marginCalcValor">Valor (custo)</label>
+                        <input type="number" id="marginCalcValor" class="form-input" min="0" step="0.01" placeholder="0" inputmode="decimal">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="marginCalcMargen">Margem bruto (%)</label>
+                        <input type="number" id="marginCalcMargen" class="form-input" min="0" max="100" step="0.1" placeholder="0" inputmode="decimal">
+                    </div>
+                    <div class="margin-calculator-result-wrap">
+                        <span id="margin-calculator-result-label" class="margin-calculator-result-label">Preço com margem</span>
+                        <output id="marginCalcResult" class="margin-calculator-result" for="marginCalcValor marginCalcMargen">—</output>
+                    </div>
+                </div>
+            </div>
+        </aside>
         </div>
     </main>
 
