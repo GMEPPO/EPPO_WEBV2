@@ -624,9 +624,9 @@ class CartManager {
                     precioProducto: precioProducto
                 });
                 
-                // Solo fijar precio (manual) cuando la propuesta se guardó con modo 200+ activo.
-                // Si no es modo 200+, el precio puede recalcularse al cambiar la cantidad.
-                const esPrecioManual = !!(this.modo200 || (this.editingProposalData && (this.editingProposalData.modo_200_plus || this.editingProposalData.modo_200)));
+                // Precio manual: cuando la propuesta se guardó con modo 200+, O cuando el producto es "sobre consulta"
+                // (precio base 0) y en la propuesta se guardó un precio > 0 — así al editar se muestra y mantiene ese precio.
+                const esPrecioManual = !!(this.modo200 || (this.editingProposalData && (this.editingProposalData.modo_200_plus || this.editingProposalData.modo_200)) || (precioProducto === 0 && precioGuardado > 0));
                 
                 // Obtener el orden del artículo (si existe en la BD, sino usar el índice)
                 const orden = articulo.orden !== undefined && articulo.orden !== null ? articulo.orden : index;
@@ -2863,35 +2863,28 @@ class CartManager {
                             // Verificar rol del usuario (usar caché si está disponible)
                             const userRole = window.cachedRole || null;
                             
-                            // Solo mostrar input editable si:
-                            // 1. El precio es 0 (sobre consulta)
-                            // 2. NO hay variante personalizada seleccionada
-                            if (precioActualEsCero && !tieneVarianteSeleccionada) {
-                                if (userRole === 'comercial') {
-                                    // Para comerciales, mostrar "Sobre consulta" en lugar del precio 0
-                                    const translations = {
-                                        'pt': 'Sobre consulta',
-                                        'es': 'Sobre consulta',
-                                        'en': 'On request'
-                                    };
-                                    const currentLang = this.currentLanguage || localStorage.getItem('language') || 'pt';
-                                    const textoConsulta = translations[currentLang] || translations['pt'];
-                                    return `<div class="cart-item-total" style="font-weight: 600; color: var(--text-secondary, #6b7280); font-style: italic;">${textoConsulta}</div>`;
-                                } else {
-                                    // Para admin, mostrar input editable
-                            return `<input type="number" 
+                            // Mostrar input editable si: (precio 0 o precio manual guardado) y sin variante, y usuario admin
+                            // Así al editar una propuesta el admin ve y puede editar el precio que se guardó (sobre consulta)
+                            const mostrarInputPrecio = (precioActualEsCero || isManualPrice) && !tieneVarianteSeleccionada && userRole === 'admin';
+                            if (precioActualEsCero && !tieneVarianteSeleccionada && userRole === 'comercial') {
+                                const translations = { 'pt': 'Sobre consulta', 'es': 'Sobre consulta', 'en': 'On request' };
+                                const currentLang = this.currentLanguage || localStorage.getItem('language') || 'pt';
+                                const textoConsulta = translations[currentLang] || translations['pt'];
+                                return `<div class="cart-item-total" style="font-weight: 600; color: var(--text-secondary, #6b7280); font-style: italic;">${textoConsulta}</div>`;
+                            }
+                            if (mostrarInputPrecio) {
+                                const displayPrice = (unitPrice !== undefined && unitPrice !== null && !isNaN(unitPrice)) ? Number(unitPrice) : 0;
+                                return `<input type="number" 
                                     class="cart-item-price-input" 
-                                    value="${unitPrice.toFixed(4)}" 
+                                    value="${displayPrice.toFixed(4)}" 
                                     step="0.0001" 
                                     min="0"
                                     style="width: 100px; padding: 4px 8px; border: 1px solid var(--bg-gray-300); border-radius: 6px; text-align: right; font-size: 0.9rem; font-weight: 600;"
                                     onchange="updateManualPrice('${String(itemIdentifier).replace(/'/g, "\\'")}', this.value)"
                                     onblur="updateManualPrice('${String(itemIdentifier).replace(/'/g, "\\'")}', this.value)">`;
-                                }
-                            } else {
-                                // Precio normal (clickeable para ver escalones)
-                                return `<div class="cart-item-total" style="cursor: pointer; transition: opacity 0.2s;" onclick="showPriceTiersModal('${String(itemIdentifier).replace(/'/g, "\\'")}', '${productName.replace(/'/g, "\\'")}')" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">€${this.formatUnitPrice(unitPrice)}</div>`;
                             }
+                            // Precio normal (clickeable para ver escalones)
+                            return `<div class="cart-item-total" style="cursor: pointer; transition: opacity 0.2s;" onclick="showPriceTiersModal('${String(itemIdentifier).replace(/'/g, "\\'")}', '${productName.replace(/'/g, "\\'")}')" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">€${this.formatUnitPrice(unitPrice)}</div>`;
                         } else {
                             // Precio normal (clickeable para ver escalones)
                             return `<div class="cart-item-total" style="cursor: pointer; transition: opacity 0.2s;" onclick="showPriceTiersModal('${String(itemIdentifier).replace(/'/g, "\\'")}', '${productName.replace(/'/g, "\\'")}')" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">€${this.formatUnitPrice(unitPrice)}</div>`;
