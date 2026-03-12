@@ -1829,6 +1829,7 @@ class CartManager {
                     // Mostrar el plazo de la variante directamente, sin consultar stock
                     element.innerHTML = '';
                     const span = document.createElement('span');
+                    span.className = 'delivery-time-text';
                     span.textContent = variantDeliveryTime;
                     element.appendChild(span);
                     // Actualizar también el atributo data-quantity
@@ -1882,10 +1883,11 @@ class CartManager {
                 
                 // Si no hay registro en BD (null), mantener plazo normal (no actualizar)
                 if (stockDisponible === null) {
-                    // Aun así mostrar que el plazo está sujeto a confirmación de stock
+                    const tNull = this.getStockTranslations();
                     element.innerHTML = '';
                     const span = document.createElement('span');
-                    span.textContent = plazoNormal ? `${plazoNormal} (sujeto a confirmación de stock)` : t.plazoEntrega;
+                    span.className = 'delivery-time-text';
+                    span.textContent = plazoNormal ? `${plazoNormal} ${tNull.sujetoConfirmacion}` : tNull.plazoEntrega;
                     element.appendChild(span);
                     continue;
                 }
@@ -1911,27 +1913,29 @@ class CartManager {
                 // Si tiene stock suficiente (stock >= cantidad solicitada)
                 if (stockDisponible >= quantityToUse) {
                     const span = document.createElement('span');
-                    // Verde solo si el stock es superior al doble de la cantidad; si no, amarillo (stock justo o escaso)
+                    span.className = 'delivery-time-text';
                     const stockSuperiorAlDoble = stockDisponible > 2 * quantityToUse;
                     span.style.color = stockSuperiorAlDoble ? '#10b981' : '#eab308';
                     span.style.fontWeight = '600';
                     span.style.display = 'block';
-                    span.innerHTML = `${t.enStock}<br><span style="font-size: 0.85em; font-weight: 400;">${t.sujetoConfirmacion}</span>`;
+                    span.innerHTML = `${t.enStock}<br><span style="font-weight: 400;">${t.sujetoConfirmacion}</span>`;
                     element.appendChild(span);
                 }
                 // Si tiene stock parcial (stock > 0 pero < cantidad solicitada)
                 else if (stockDisponible > 0) {
                     const span = document.createElement('span');
+                    span.className = 'delivery-time-text';
                     span.style.color = '#f59e0b';
                     span.style.fontWeight = '600';
                     const restantes = quantityToUse - stockDisponible;
-                    span.textContent = `${stockDisponible.toLocaleString()} en stock, restantes ${restantes.toLocaleString()} ${t.plazoEntrega} ${plazoNormal} (sujeto a confirmación de stock)`;
+                    span.textContent = `${stockDisponible.toLocaleString()} en stock, restantes ${restantes.toLocaleString()} ${t.plazoEntrega} ${plazoNormal} ${t.sujetoConfirmacion}`;
                     element.appendChild(span);
                 }
-                // Si no tiene stock (stock = 0), mostrar plazo normal
+                // Si no tiene stock (stock = 0): mostrar plazo + sujeito a confirmação no momento da adjudicação
                 else {
                     const span = document.createElement('span');
-                    span.textContent = plazoNormal ? `${plazoNormal} (sujeto a confirmación de stock)` : t.plazoEntrega;
+                    span.className = 'delivery-time-text';
+                    span.textContent = plazoNormal ? `${plazoNormal} ${t.sujetoConfirmacion}` : t.plazoEntrega;
                     element.appendChild(span);
                 }
             } catch (error) {
@@ -2908,11 +2912,12 @@ class CartManager {
                                 }
                             }
                         }
-                        // Si no es variante y hay plazo, marcar sujeto a confirmación de stock
+                        // Si no es variante y hay plazo, añadir texto "sujeito a confirmação no momento da adjudicação"
                         if (!isVariant && deliveryTimeToShow) {
-                            deliveryTimeToShow = `${deliveryTimeToShow} (sujeto a confirmación de stock)`;
+                            const tDelivery = this.getStockTranslations();
+                            deliveryTimeToShow = `${deliveryTimeToShow} ${tDelivery.sujetoConfirmacion}`;
                         }
-                        return deliveryTimeToShow ? `<div class="delivery-time" data-item-id="${itemIdentifier}" data-phc-ref="${item.phc_ref || ''}" data-quantity="${item.quantity || 1}">${deliveryTimeToShow}</div>` : '<div class="delivery-time" style="color: var(--text-secondary); font-style: italic;">Sin plazo</div>';
+                        return deliveryTimeToShow ? `<div class="delivery-time" data-item-id="${itemIdentifier}" data-phc-ref="${item.phc_ref || ''}" data-quantity="${item.quantity || 1}"><span class="delivery-time-text">${deliveryTimeToShow}</span></div>` : '<div class="delivery-time" style="color: var(--text-secondary); font-style: italic;"><span class="delivery-time-text">Sin plazo</span></div>';
                     })()}
                 </div>
                 

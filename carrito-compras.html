@@ -609,13 +609,23 @@
         }
 
         .delivery-time {
-            font-size: 0.875rem;
+            font-size: 0.8rem;
+            line-height: 1.35;
             color: var(--text-primary);
             font-weight: 500;
             padding: var(--space-2) var(--space-3);
             background: var(--bg-gray-100);
             border-radius: var(--radius-md);
             text-align: center;
+            overflow-wrap: break-word;
+            word-wrap: break-word;
+            word-break: normal;
+            min-width: 0;
+        }
+
+        .delivery-time .delivery-time-text {
+            font-size: inherit;
+            display: block;
         }
 
         /* Estilos para drag and drop */

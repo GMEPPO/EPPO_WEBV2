@@ -2771,18 +2771,31 @@
             // Columna de referencia PHC (ej. "Referência PHC")
             const refCol = headers.findIndex(h => /refer[eê]ncia\s*phc|referencia\s*phc/i.test(h));
             const refColIdx = refCol >= 0 ? refCol : 0;
-            // Columna de cantidad: "Total Disponível sem Cativos" / "DISPONIVEL SEM CATIVOS"
-            const qtyCol = headers.findIndex(h => /dispon[ií]vel\s+sem\s+cativos|total\s+dispon[ií]vel\s+sem\s+cativos|sem\s+cativos/i.test(h));
-            const qtyColIdx = qtyCol >= 0 ? qtyCol : (headers.length > 4 ? 4 : 1);
+            // Stock disponível (col. B): base para el cálculo; no se usa "Pendentes em proforma"
+            const stockDispCol = headers.findIndex(h => /stock\s+dispon[ií]vel|stock disponivel/i.test(h));
+            const stockDispIdx = stockDispCol >= 0 ? stockDispCol : 1;
+            // Total Disponível (col. D) — solo la que no incluye "sem Cativos"
+            const totalDispCol = headers.findIndex(h => /total\s+dispon[ií]vel\s*$/i.test(h.trim()) || (/total\s+dispon[ií]vel/i.test(h) && !/sem\s+cativos|cativos/i.test(h)));
+            const totalDispIdx = totalDispCol >= 0 ? totalDispCol : 3;
+            // Total Disponivel sem Cativos (col. E)
+            const totalSemCativosCol = headers.findIndex(h => /dispon[ií]vel\s+sem\s+cativos|total\s+dispon[ií]vel\s+sem\s+cativos|sem\s+cativos/i.test(h));
+            const totalSemCativosIdx = totalSemCativosCol >= 0 ? totalSemCativosCol : 4;
             
             stockData = [];
             for (let i = 1; i < jsonData.length; i++) {
                 const row = jsonData[i];
                 const referencia = row[refColIdx] ? String(row[refColIdx]).trim() : '';
                 if (!referencia) continue;
-                let rawStock = parseInt(row[qtyColIdx], 10);
-                if (isNaN(rawStock)) rawStock = 0;
-                const stock = Math.max(0, rawStock);
+                const stockDisponivel = parseInt(row[stockDispIdx], 10);
+                const totalDisponivel = parseInt(row[totalDispIdx], 10);
+                const totalSemCativos = parseInt(row[totalSemCativosIdx], 10);
+                const stockDisponivelVal = isNaN(stockDisponivel) ? 0 : stockDisponivel;
+                const totalD = isNaN(totalDisponivel) ? 0 : totalDisponivel;
+                const totalSC = isNaN(totalSemCativos) ? 0 : totalSemCativos;
+                // Cativos = Total Disponível - Total Disponivel sem Cativos (ej. -83 - (-90) = 7)
+                const cativos = totalD - totalSC;
+                // Stock disponible = Stock disponível - cativos (sin usar proforma); mínimo 0
+                const stock = Math.max(0, stockDisponivelVal - cativos);
                 stockData.push({ referencia_phc: referencia, stock_disponible: stock });
             }
             
