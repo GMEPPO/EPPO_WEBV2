@@ -8434,6 +8434,16 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     }
 
+    /** Formatea importes para el PDF: separador de miles (.) y decimales con coma (ej. 309750.00 → 309.750,00). */
+    function formatMoneyForPdf(value) {
+        const n = Number(value);
+        if (!Number.isFinite(n)) return '0,00';
+        const fixed = n.toFixed(2);
+        const [intPart, decPart] = fixed.split('.');
+        const intWithDots = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        return decPart ? `${intWithDots},${decPart}` : intWithDots;
+    }
+
     /** Quitar Peso y Qtd/caixa de las observaciones para no imprimirlos en la propuesta PDF */
     function stripPesoAndQtdCaixaFromObservations(observations) {
         if (!observations || typeof observations !== 'string') return '';
@@ -9243,8 +9253,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             const currentLang = selectedLanguage || window.cartManager?.currentLanguage || localStorage.getItem('language') || 'pt';
             precioParaMostrar = translations[currentLang] || translations['pt'];
         } else {
-        const formattedUnitPrice = window.cartManager ? window.cartManager.formatUnitPrice(unitPrice) : unitPrice.toFixed(2);
-            precioParaMostrar = `€${formattedUnitPrice}`;
+            precioParaMostrar = `€${formatMoneyForPdf(unitPrice)}`;
         }
         drawCell(colPositions.unitPrice, currentY, colWidths.unitPrice, calculatedRowHeight, precioParaMostrar, { align: 'center', fontSize: 8, noWrap: true });
         // Formatear total: si el precio unitario es 0, mostrar "Sobre consulta" en lugar del total
@@ -9258,8 +9267,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             const currentLang = selectedLanguage || window.cartManager?.currentLanguage || localStorage.getItem('language') || 'pt';
             totalParaMostrar = translations[currentLang] || translations['pt'];
         } else {
-        const formattedTotal = window.cartManager ? window.cartManager.formatTotal(total) : total.toFixed(2);
-            totalParaMostrar = `€${formattedTotal}`;
+            totalParaMostrar = `€${formatMoneyForPdf(total)}`;
         }
         drawCell(colPositions.total, currentY, colWidths.total, calculatedRowHeight, totalParaMostrar, { align: 'center', bold: true, fontSize: 8, noWrap: true });
         drawCell(colPositions.deliveryTime, currentY, colWidths.deliveryTime, calculatedRowHeight, deliveryText, { align: 'center', fontSize: 6 });
@@ -9483,8 +9491,8 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     // Celda combinada (nombre hasta precio unitario)
     drawCell(colPositions.name, currentY, combinedCellWidth, baseRowHeight, t.totalProposal, { align: 'center', bold: true, fontSize: 9, textColor: whiteColor, border: true });
     
-    // Celda del total - siempre 2 decimales
-    const formattedTotalProposal = window.cartManager ? window.cartManager.formatTotal(totalProposal) : totalProposal.toFixed(2);
+    // Celda del total - con separador de miles (ej. 309.750,00)
+    const formattedTotalProposal = formatMoneyForPdf(totalProposal);
     drawCell(colPositions.total, currentY, colWidths.total, baseRowHeight, `€${formattedTotalProposal}`, { align: 'center', bold: true, fontSize: 9, noWrap: true, textColor: whiteColor, border: true });
     
     // Celda de plazo de entrega (vacía en la fila del total)
