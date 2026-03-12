@@ -8911,9 +8911,12 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             }
         }
         
-        // Calcular altura de otras celdas que pueden tener múltiples líneas
+        // Calcular altura de la celda de plazo con fuente más pequeña para que el texto quepa sin cortar palabras
+        const deliveryFontSize = 6;
+        doc.setFontSize(deliveryFontSize);
         const deliveryLines = doc.splitTextToSize(deliveryText, colWidths.deliveryTime - (padding * 2));
-        const deliveryHeight = Math.max(deliveryLines.length * lineHeight, minRowHeight);
+        const deliveryLineHeight = deliveryFontSize * 0.4;
+        const deliveryHeight = Math.max(deliveryLines.length * deliveryLineHeight, minRowHeight);
         
         // La altura de la fila es la máxima entre todas las celdas
         // IMPORTANTE: Asegurar que la descripción tenga suficiente espacio
@@ -9144,7 +9147,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             totalParaMostrar = `€${formattedTotal}`;
         }
         drawCell(colPositions.total, currentY, colWidths.total, calculatedRowHeight, totalParaMostrar, { align: 'center', bold: true, fontSize: 8, noWrap: true });
-        drawCell(colPositions.deliveryTime, currentY, colWidths.deliveryTime, calculatedRowHeight, deliveryText, { align: 'center', fontSize: 7 });
+        drawCell(colPositions.deliveryTime, currentY, colWidths.deliveryTime, calculatedRowHeight, deliveryText, { align: 'center', fontSize: 6 });
         
         // Dibujar logo si existe
         console.log(`🔄 Item ${i + 1}: Verificando logo (hasLogos: ${hasLogos}, logoUrl: ${item.logoUrl ? 'existe' : 'no existe'})...`);
