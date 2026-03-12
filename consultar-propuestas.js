@@ -28,6 +28,12 @@ async function uploadFileAsBinary(supabaseClient, bucket, fileName, file, conten
     });
 }
 
+/** Nombre para mostrar: quita los puntos que envuelven un fragmento (.palabra. → palabra). */
+function getDisplayNameConsultar(name) {
+    if (!name || typeof name !== 'string') return name || '';
+    return name.replace(/\.([^.]*?)\./g, '$1');
+}
+
 async function getUniqueStorageFilePathConsultar(storageClient, bucket, folderPrefix, fileName) {
     // Sanitizar: caracteres prohibidos en rutas + espacios (evitan 400 al cargar la URL en Storage)
     let sanitized = (fileName || 'file').replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').trim() || 'file';
@@ -2080,7 +2086,7 @@ class ProposalsManager {
                                     return `
                                 <tr style="border-bottom: 1px solid var(--bg-gray-200, #e5e7eb);">
                                     <td style="padding: 12px; color: var(--text-primary, #111827);">
-                                        <strong>${articulo.nombre_articulo || '-'}</strong>
+                                        <strong>${getDisplayNameConsultar(articulo.nombre_articulo) || '-'}</strong>
                                         ${articulo.referencia_articulo ? `<br><span style="font-size: 0.75rem; color: var(--text-secondary, #6b7280);">Ref: ${articulo.referencia_articulo}</span>` : ''}
                                     </td>
                                     <td style="padding: 12px; color: var(--text-primary, #111827); font-weight: 500; text-align: center;">${articulo.cantidad_encomendada || articulo.cantidad || 0}</td>
@@ -2261,7 +2267,7 @@ class ProposalsManager {
                                     border-radius: 16px;
                                     font-size: 0.875rem;
                                     font-weight: 500;
-                                ">${articulo.nombre_articulo || 'Artículo'}</span>
+                                ">${getDisplayNameConsultar(articulo.nombre_articulo) || 'Artículo'}</span>
                             ` : '';
                         }).filter(Boolean).join('')}
                     </div>
@@ -2317,7 +2323,7 @@ class ProposalsManager {
                             <tr style="color: var(--text-primary, #f9fafb);">
                                 <td style="text-align: center;">
                                     ${fotoUrl ? 
-                                        `<img src="${fotoUrl}" alt="${articulo.nombre_articulo}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                        `<img src="${fotoUrl}" alt="${getDisplayNameConsultar(articulo.nombre_articulo)}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                                         <div style="width: 50px; height: 50px; background: var(--bg-gray-200, #374151); border-radius: 6px; display: none; align-items: center; justify-content: center; margin: 0 auto;">
                                             <i class="fas fa-image" style="color: var(--text-muted, #6b7280); font-size: 1rem;"></i>
                                         </div>` :
@@ -2326,7 +2332,7 @@ class ProposalsManager {
                                         </div>`
                                     }
                                 </td>
-                                <td style="color: var(--text-primary, #f9fafb); font-weight: 500;">${articulo.nombre_articulo || '-'}</td>
+                                <td style="color: var(--text-primary, #f9fafb); font-weight: 500;">${getDisplayNameConsultar(articulo.nombre_articulo) || '-'}</td>
                                 <td style="color: var(--text-primary, #f9fafb); text-align: center;">${articulo.cantidad || 0}</td>
                                 <td style="color: var(--text-primary, #f9fafb);">${(() => {
                                     const precio = parseFloat(articulo.precio) || 0;
@@ -4049,7 +4055,7 @@ class ProposalsManager {
             item.innerHTML = `
                 <input type="checkbox" id="product-${proposal.id}-${index}" value="${articuloId}" data-articulo-id="${articuloId}" ${isChecked ? 'checked' : ''}>
                 <label for="product-${proposal.id}-${index}" style="flex: 1; cursor: pointer;">
-                    <strong>${articulo.nombre_articulo || '-'}</strong> 
+                    <strong>${getDisplayNameConsultar(articulo.nombre_articulo) || '-'}</strong> 
                     (Ref: ${articulo.referencia_articulo || '-'}) - 
                     ${this.currentLanguage === 'es' ? 'Cantidad' : this.currentLanguage === 'pt' ? 'Quantidade' : 'Quantity'}: ${articulo.cantidad || 0}
                 </label>
@@ -4180,7 +4186,7 @@ class ProposalsManager {
             const fornecedor = (product && product.nombre_fornecedor) ? String(product.nombre_fornecedor) : '-';
             const fotoUrl = (product && product.foto) ? product.foto : '';
             const articuloId = (articulo.id || `art-${index}`).toString().replace(/"/g, '');
-            const nomeArtRaw = articulo.nombre_articulo || articulo.referencia_articulo || ('Producto ' + (index + 1));
+            const nomeArtRaw = getDisplayNameConsultar(articulo.nombre_articulo) || articulo.referencia_articulo || ('Producto ' + (index + 1));
             const nomeArt = String(nomeArtRaw).replace(/</g, '&lt;').replace(/"/g, '&quot;');
             const qtyProposta = articulo.cantidad || 1;
             const metaLine = (hasPhc ? 'Nº PHC: ' + phcRef : (lang === 'es' ? 'Sin PHC' : lang === 'en' ? 'No PHC' : 'Sem PHC')) + ' · ' + (fornecedor || '-') + ' · ' + (lang === 'es' ? 'Cant.' : lang === 'en' ? 'Qty' : 'Qtd') + ': ' + qtyProposta;
@@ -4300,7 +4306,7 @@ class ProposalsManager {
             const refFornecedor = (product && product.referencia_fornecedor) ? String(product.referencia_fornecedor).replace(/"/g, '&quot;') : '';
             const fotoUrl = (product && product.foto) ? product.foto : '';
             const articuloId = (articulo.id || `art-${index}`).toString().replace(/"/g, '');
-            const nomeArt = (articulo.nombre_articulo || '-').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+            const nomeArt = (getDisplayNameConsultar(articulo.nombre_articulo) || '-').replace(/</g, '&lt;').replace(/"/g, '&quot;');
 
             const extraFields = !hasPhc ? `
                 <div class="pedido-encomenda-extra" style="margin-top: 10px; padding: 10px; background: var(--bg-gray-100); border-radius: 8px; display: grid; gap: 8px; grid-template-columns: 1fr 1fr;">
@@ -4878,7 +4884,7 @@ class ProposalsManager {
             const fornecedor = (product && product.nombre_fornecedor) ? String(product.nombre_fornecedor) : '-';
             const fotoUrl = (product && product.foto) ? product.foto : '';
             const articuloId = (articulo.id || `art-${index}`).toString().replace(/"/g, '');
-            const nomeArt = String(articulo.nombre_articulo || articulo.referencia_articulo || ('Producto ' + (index + 1))).replace(/</g, '&lt;').replace(/"/g, '&quot;');
+            const nomeArt = String(getDisplayNameConsultar(articulo.nombre_articulo) || articulo.referencia_articulo || ('Producto ' + (index + 1))).replace(/</g, '&lt;').replace(/"/g, '&quot;');
             const row = document.createElement('div');
             row.className = 'pedido-encomenda-select-row';
             const imgBlock = fotoUrl ? `<img src="${fotoUrl.replace(/"/g, '&quot;')}" alt="" class="pedido-select-img">` : `<div class="pedido-select-img-wrap"><i class="fas fa-image"></i></div>`;
@@ -4967,7 +4973,7 @@ class ProposalsManager {
             const fornecedor = (product && product.nombre_fornecedor) ? String(product.nombre_fornecedor) : '';
             const fotoUrl = (product && product.foto) ? product.foto : '';
             const articuloId = (articulo.id || `art-${index}`).toString().replace(/"/g, '');
-            const nomeArt = (articulo.nombre_articulo || '-').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+            const nomeArt = (getDisplayNameConsultar(articulo.nombre_articulo) || '-').replace(/</g, '&lt;').replace(/"/g, '&quot;');
 
             const row = document.createElement('div');
             row.className = 'pedido-encomenda-row';
@@ -5158,7 +5164,7 @@ class ProposalsManager {
             item.innerHTML = `
                 <input type="checkbox" id="concluida-product-${proposal.id}-${index}" value="${articuloId}" data-articulo-id="${articuloId}" ${isChecked ? 'checked' : ''}>
                 <label for="concluida-product-${proposal.id}-${index}" style="flex: 1; cursor: pointer;">
-                    <strong>${articulo.nombre_articulo || '-'}</strong> 
+                    <strong>${getDisplayNameConsultar(articulo.nombre_articulo) || '-'}</strong> 
                     (Ref: ${articulo.referencia_articulo || '-'}) - 
                     ${this.currentLanguage === 'es' ? 'Cantidad' : this.currentLanguage === 'pt' ? 'Quantidade' : 'Quantity'}: ${articulo.cantidad || 0}
                 </label>
@@ -8095,7 +8101,7 @@ class ProposalsManager {
                     item.innerHTML = `
                         <input type="checkbox" id="amostra-product-${proposal.id}-${index}" value="${articuloId}" data-articulo-id="${articuloId}">
                         <label for="amostra-product-${proposal.id}-${index}" style="flex: 1; cursor: pointer;">
-                            <strong>${articulo.nombre_articulo || '-'}</strong> 
+                            <strong>${getDisplayNameConsultar(articulo.nombre_articulo) || '-'}</strong> 
                             (Ref: ${articulo.referencia_articulo || '-'}) - 
                             ${this.currentLanguage === 'es' ? 'Cantidad' : this.currentLanguage === 'pt' ? 'Quantidade' : 'Quantity'}: ${articulo.cantidad || 0}
                         </label>
@@ -8303,7 +8309,7 @@ class ProposalsManager {
                 item.innerHTML = `
                     <input type="checkbox" id="amostra-product-${proposal.id}-${index}" value="${articuloId}" data-articulo-id="${articuloId}" style="cursor: pointer;">
                     <label for="amostra-product-${proposal.id}-${index}" style="flex: 1; cursor: pointer; margin: 0;">
-                        <strong>${articulo.nombre_articulo || '-'}</strong> 
+                        <strong>${getDisplayNameConsultar(articulo.nombre_articulo) || '-'}</strong> 
                         ${articulo.referencia_articulo ? `(Ref: ${articulo.referencia_articulo})` : ''} - 
                         ${this.currentLanguage === 'es' ? 'Cantidad' : this.currentLanguage === 'pt' ? 'Quantidade' : 'Quantity'}: ${articulo.cantidad || 1}
                     </label>
@@ -9084,7 +9090,7 @@ class ProposalsManager {
                 item.innerHTML = `
                     <input type="checkbox" id="encomenda-curso-product-${proposal.id}-${index}" value="${articuloId}" data-articulo-id="${articuloId}" data-fornecedor="${fornecedor}" ${isChecked ? 'checked' : ''} onchange="window.proposalsManager.toggleEncomendaProduct('${proposal.id}', ${index}, '${fornecedor}')">
                     <label for="encomenda-curso-product-${proposal.id}-${index}" style="flex: 1; cursor: pointer;">
-                        <strong>${articulo.nombre_articulo || '-'}</strong> 
+                        <strong>${getDisplayNameConsultar(articulo.nombre_articulo) || '-'}</strong> 
                         (Ref: ${articulo.referencia_articulo || '-'}) - 
                         ${this.currentLanguage === 'es' ? 'Cantidad' : this.currentLanguage === 'pt' ? 'Quantidade' : 'Quantity'}: 
                         <input type="number" min="1" value="${articulo.cantidad || 1}" data-articulo-id="${articuloId}" style="width: 60px; padding: 4px; margin-left: 5px;" onchange="window.proposalsManager.updateEncomendaQuantity('${proposal.id}', '${articuloId}', this.value)">
@@ -9575,7 +9581,7 @@ class ProposalsManager {
                 item.style.background = 'white';
                 item.style.borderRadius = '4px';
                 item.innerHTML = `
-                    <strong>${articulo.nombre_articulo || '-'}</strong> 
+                    <strong>${getDisplayNameConsultar(articulo.nombre_articulo) || '-'}</strong> 
                     (Ref: ${articulo.referencia_articulo || '-'}) - 
                     ${this.currentLanguage === 'es' ? 'Cantidad' : this.currentLanguage === 'pt' ? 'Quantidade' : 'Quantity'}: ${encomendado?.quantidade || articulo.cantidad || 0}
                     ${encomendado?.fornecedor ? ` - Fornecedor: ${encomendado.fornecedor}` : ''}
@@ -9604,7 +9610,7 @@ class ProposalsManager {
                 item.innerHTML = `
                     <input type="checkbox" id="concluida-product-${proposal.id}-${index}" value="${articuloId}" data-articulo-id="${articuloId}" ${isChecked ? 'checked' : ''}>
                     <label for="concluida-product-${proposal.id}-${index}" style="flex: 1; cursor: pointer;">
-                        <strong>${articulo.nombre_articulo || '-'}</strong> 
+                        <strong>${getDisplayNameConsultar(articulo.nombre_articulo) || '-'}</strong> 
                         (Ref: ${articulo.referencia_articulo || '-'}) - 
                         ${this.currentLanguage === 'es' ? 'Cantidad' : this.currentLanguage === 'pt' ? 'Quantidade' : 'Quantity'}: 
                         <input type="number" min="1" value="${articulo.cantidad || 1}" data-articulo-id="${articuloId}" style="width: 60px; padding: 4px; margin-left: 5px;">

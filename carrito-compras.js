@@ -1720,6 +1720,27 @@ class CartManager {
     }
 
     /**
+     * Indica si el texto de plazo es tipo "6/8 Semanas" (plazo en semanas) y debe llevar la frase de sujeito a confirmação.
+     * @param {string} text - Texto del plazo (ej. "6/8 Semanas", "4/6 Weeks")
+     * @returns {boolean}
+     */
+    isPlazoSemanas(text) {
+        if (!text || typeof text !== 'string') return false;
+        return /\d+\s*\/\s*\d+/.test(text.trim());
+    }
+
+    /**
+     * Nombre para mostrar en la web: quita los puntos que envuelven un fragmento (.palabra. → palabra).
+     * En creación/edición de productos se muestra el nombre con puntos; en el resto de la web sin puntos.
+     * @param {string} name - Nombre del producto (puede contener .fragmento.)
+     * @returns {string}
+     */
+    getDisplayName(name) {
+        if (!name || typeof name !== 'string') return name || '';
+        return name.replace(/\.([^.]*?)\./g, '$1');
+    }
+
+    /**
      * Actualizar plazos de entrega según stock (después de renderizar)
      * @param {string} specificItemId - Opcional: ID del item específico a actualizar. Si no se proporciona, actualiza todos.
      */
@@ -1826,11 +1847,12 @@ class CartManager {
                         item.variantDeliveryTime = variantDeliveryTime;
                         this.saveCart();
                     }
-                    // Mostrar el plazo de la variante directamente, sin consultar stock
+                    // Mostrar el plazo de la variante; siempre añadir sujeito a confirmação cuando hay plazo de entrega
                     element.innerHTML = '';
                     const span = document.createElement('span');
                     span.className = 'delivery-time-text';
-                    span.textContent = variantDeliveryTime;
+                    const tVar = this.getStockTranslations();
+                    span.textContent = `${variantDeliveryTime} ${tVar.sujetoConfirmacion}`;
                     element.appendChild(span);
                     // Actualizar también el atributo data-quantity
                     element.setAttribute('data-quantity', quantityToUse);
@@ -2469,8 +2491,8 @@ class CartManager {
             description = item.notes || '';
         }
         
-        // Nombre del producto
-        const productName = item.name || '';
+        // Nombre del producto (sin puntos .palabra. para mostrar en la web)
+        const productName = this.getDisplayName(item.name || '');
         
         // Plazo de entrega
         let plazoEntrega = item.plazoEntrega || item.plazo_entrega || '';
@@ -2825,7 +2847,7 @@ class CartManager {
                                 onmouseout="this.style.background='var(--bg-white)'">
                             <i class="fas fa-minus"></i>
                         </button>
-                        <input type="number" class="quantity-input" value="${item.quantity}" min="1" max="50000" 
+                        <input type="number" class="quantity-input" value="${item.quantity}" min="1" max="250000" 
                                readonly style="width: 80px; text-align: center; cursor: not-allowed; background: var(--bg-gray-50);">
                         <button class="quantity-btn-increase" onclick="if(window.simpleIncrease){window.simpleIncrease('${String(itemIdentifier).replace(/'/g, "\\'")}')}else{console.error('simpleIncrease no disponible')}" 
                                 style="width: 32px; height: 32px; border: 1px solid var(--bg-gray-300); border-radius: 6px; background: var(--bg-white); color: var(--text-primary); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: 600; transition: all 0.2s;"
@@ -2835,7 +2857,7 @@ class CartManager {
                         </button>
                     </div>` :
                     // Si no tiene box_size, mostrar input editable normal
-                    `<input type="number" class="quantity-input" value="${item.quantity}" min="1" max="50000" 
+                    `<input type="number" class="quantity-input" value="${item.quantity}" min="1" max="250000" 
                            oninput="window.updatePriceOnQuantityChange('${String(itemIdentifier).replace(/'/g, "\\'")}', this.value)" 
                            onblur="simpleSetQuantity('${String(itemIdentifier).replace(/'/g, "\\'")}', this.value)">`
                 }
@@ -2912,10 +2934,13 @@ class CartManager {
                                 }
                             }
                         }
-                        // Si no es variante y hay plazo, añadir texto "sujeito a confirmação no momento da adjudicação"
-                        if (!isVariant && deliveryTimeToShow) {
+                        // Siempre que haya plazo de entrega, añadir "sujeito a confirmação no momento da adjudicação"
+                        if (deliveryTimeToShow) {
                             const tDelivery = this.getStockTranslations();
-                            deliveryTimeToShow = `${deliveryTimeToShow} ${tDelivery.sujetoConfirmacion}`;
+                            const yaTieneFrase = /adjudicação|adjudicación|award/i.test(deliveryTimeToShow);
+                            if (!yaTieneFrase) {
+                                deliveryTimeToShow = `${deliveryTimeToShow} ${tDelivery.sujetoConfirmacion}`;
+                            }
                         }
                         return deliveryTimeToShow ? `<div class="delivery-time" data-item-id="${itemIdentifier}" data-phc-ref="${item.phc_ref || ''}" data-quantity="${item.quantity || 1}"><span class="delivery-time-text">${deliveryTimeToShow}</span></div>` : '<div class="delivery-time" style="color: var(--text-secondary); font-style: italic;"><span class="delivery-time-text">Sin plazo</span></div>';
                     })()}
@@ -2980,7 +3005,7 @@ class CartManager {
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <button type="button" class="quantity-btn-decrease" onclick="if(window.simpleDecrease){window.simpleDecrease('${safeId}')}" style="width: 32px; height: 32px; border: 1px solid var(--bg-gray-300); border-radius: 6px; background: var(--bg-white); color: var(--text-primary); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: 600;"><i class="fas fa-minus"></i></button>
-                    <input type="number" class="quantity-input module-editable-field" value="${item.quantity || 1}" min="1" max="50000" onchange="simpleSetQuantity('${safeId}', this.value)" onblur="simpleSetQuantity('${safeId}', this.value)" style="width: 80px; text-align: center;">
+                    <input type="number" class="quantity-input module-editable-field" value="${item.quantity || 1}" min="1" max="250000" onchange="simpleSetQuantity('${safeId}', this.value)" onblur="simpleSetQuantity('${safeId}', this.value)" style="width: 80px; text-align: center;">
                     <button type="button" class="quantity-btn-increase" onclick="if(window.simpleIncrease){window.simpleIncrease('${safeId}')}" style="width: 32px; height: 32px; border: 1px solid var(--bg-gray-300); border-radius: 6px; background: var(--bg-white); color: var(--text-primary); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: 600;"><i class="fas fa-plus"></i></button>
                 </div>
                 <div class="cart-item-price">
@@ -4150,13 +4175,13 @@ function openAddProductModal() {
                     return `
                         <div class="product-search-item" onclick="window.selectProduct('${productId}')" style="cursor: pointer; background: var(--bg-white); border: 1px solid var(--brand-gold, #C6A15B);">
                             ${product.foto ? 
-                                `<img src="${product.foto}" alt="${product.nombre}" class="product-search-item-image" onerror="this.style.display='none'">` :
+                                `<img src="${product.foto}" alt="${(window.cartManager && window.cartManager.getDisplayName ? window.cartManager.getDisplayName(product.nombre) : product.nombre) || ''}" class="product-search-item-image" onerror="this.style.display='none'">` :
                                 `<div style="width:60px;height:60px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;border-radius:8px;">
                                     <i class="fas fa-image" style="font-size:1.2rem;color:#9ca3af;"></i>
                                 </div>`
                             }
                             <div class="product-search-item-info">
-                                <h4 class="product-search-item-name">${product.nombre}</h4>
+                                <h4 class="product-search-item-name">${window.cartManager && typeof window.cartManager.getDisplayName === 'function' ? window.cartManager.getDisplayName(product.nombre) : (product.nombre || '')}</h4>
                                 <p class="product-search-item-ref">Ref: ${product.id || product.referencia} | ${product.marca || 'Sin marca'}</p>
                                 <span style="font-weight: 700; color: var(--brand-gold, #C6A15B); font-size: 0.95rem;">${precioFormateado.includes('Sobre consulta') || precioFormateado.includes('On request') ? precioFormateado : precioFormateado + ' €'}</span>
                             </div>
@@ -4371,13 +4396,13 @@ async function loadExclusiveProducts(clienteNombre) {
             return `
                 <div class="product-search-item" onclick="window.selectExclusiveProduct('${productId}')" style="cursor: pointer; background: var(--bg-white); border: 2px solid var(--brand-gold, #C6A15B); border-radius: var(--radius-md); margin-bottom: var(--space-2); padding: var(--space-3);">
                     ${product.foto ? 
-                        `<img src="${product.foto}" alt="${product.nombre}" class="product-search-item-image" onerror="this.style.display='none'">` :
+                        `<img src="${product.foto}" alt="${(window.cartManager && window.cartManager.getDisplayName ? window.cartManager.getDisplayName(product.nombre) : product.nombre) || ''}" class="product-search-item-image" onerror="this.style.display='none'">` :
                         `<div style="width:60px;height:60px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;border-radius:8px;">
                             <i class="fas fa-image" style="font-size:1.2rem;color:#9ca3af;"></i>
                         </div>`
                     }
                     <div class="product-search-item-info">
-                        <h4 class="product-search-item-name">${product.nombre}</h4>
+                        <h4 class="product-search-item-name">${window.cartManager && typeof window.cartManager.getDisplayName === 'function' ? window.cartManager.getDisplayName(product.nombre) : (product.nombre || '')}</h4>
                         <p class="product-search-item-ref">Ref: ${product.id || product.referencia} | ${product.marca || 'Sin marca'}</p>
                         <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px; flex-wrap: wrap;">
                             <span class="product-search-item-category">${categoryName}</span>
@@ -4432,11 +4457,11 @@ window.selectExclusiveProduct = function(productId) {
     
     if (selectedImage) {
         selectedImage.src = product.foto || '';
-        selectedImage.alt = product.nombre || '';
+        selectedImage.alt = (window.cartManager && window.cartManager.getDisplayName ? window.cartManager.getDisplayName(product.nombre) : product.nombre) || '';
     }
     
     if (selectedName) {
-        selectedName.textContent = product.nombre || 'Sin nombre';
+        selectedName.textContent = (window.cartManager && window.cartManager.getDisplayName ? window.cartManager.getDisplayName(product.nombre) : product.nombre) || 'Sin nombre';
     }
     
     if (selectedRef) {
@@ -4775,13 +4800,13 @@ function handleProductSearch(e) {
             return `
                 <div class="product-search-item" onclick="window.selectProduct('${productId}')" style="cursor: pointer;">
                     ${product.foto ? 
-                        `<img src="${product.foto}" alt="${product.nombre}" class="product-search-item-image" onerror="this.style.display='none'">` :
+                        `<img src="${product.foto}" alt="${(window.cartManager && window.cartManager.getDisplayName ? window.cartManager.getDisplayName(product.nombre) : product.nombre) || ''}" class="product-search-item-image" onerror="this.style.display='none'">` :
                         `<div style="width:60px;height:60px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;border-radius:8px;">
                             <i class="fas fa-image" style="font-size:1.2rem;color:#9ca3af;"></i>
                         </div>`
                     }
                     <div class="product-search-item-info">
-                        <h4 class="product-search-item-name">${product.nombre}</h4>
+                        <h4 class="product-search-item-name">${window.cartManager && typeof window.cartManager.getDisplayName === 'function' ? window.cartManager.getDisplayName(product.nombre) : (product.nombre || '')}</h4>
                         <p class="product-search-item-ref">Ref: ${product.id || product.referencia} | ${product.marca || 'Sin marca'}</p>
                         <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px; flex-wrap: wrap;">
                         <span class="product-search-item-category">${categoryDisplay}</span>
@@ -4838,8 +4863,8 @@ function selectProduct(productId) {
         } else {
             selectedImage.style.display = 'none';
         }
-        selectedImage.alt = product.nombre;
-        selectedName.textContent = product.nombre;
+        selectedImage.alt = (window.cartManager && window.cartManager.getDisplayName ? window.cartManager.getDisplayName(product.nombre) : product.nombre) || '';
+        selectedName.textContent = (window.cartManager && window.cartManager.getDisplayName ? window.cartManager.getDisplayName(product.nombre) : product.nombre) || '';
         selectedRef.textContent = `Ref: ${product.id || product.referencia} | ${product.marca || 'Sin marca'}`;
         selectedSection.style.display = 'block';
     }
@@ -4875,12 +4900,12 @@ function addSelectedProductToCart() {
     const quantityInput = document.getElementById('productQuantityInput');
     const quantity = parseInt(quantityInput?.value || 1);
     
-    if (quantity < 1 || quantity > 50000) {
+    if (quantity < 1 || quantity > 250000) {
         const message = window.cartManager?.currentLanguage === 'es' ? 
-            'La cantidad debe estar entre 1 y 50000' : 
+            'La cantidad debe estar entre 1 y 250000' : 
             window.cartManager?.currentLanguage === 'pt' ?
-            'A quantidade deve estar entre 1 e 50000' :
-            'Quantity must be between 1 and 50000';
+            'A quantidade deve estar entre 1 e 250000' :
+            'Quantity must be between 1 and 250000';
         window.cartManager?.showNotification(message, 'error');
         return;
     }
@@ -4989,7 +5014,7 @@ function updatePriceOnQuantityChange(itemId, quantity) {
         }
         
         let requestedQuantity = parseInt(quantity) || 1;
-        if (requestedQuantity < 1 || requestedQuantity > 50000) {
+        if (requestedQuantity < 1 || requestedQuantity > 250000) {
             return;
         }
         
@@ -5375,12 +5400,15 @@ function changeProductVariant(itemId, variantIndex) {
             // Si hay un plazo de entrega de variante, actualizarlo directamente sin consultar stock
             if (variantDeliveryTime) {
                 const cartItem = document.querySelector(`.cart-item[data-item-id="${itemIdentifier}"]`);
-                if (cartItem) {
+                if (cartItem && window.cartManager) {
                     const deliveryElement = cartItem.querySelector('.delivery-time[data-phc-ref]');
                     if (deliveryElement) {
                         deliveryElement.innerHTML = '';
                         const span = document.createElement('span');
-                        span.textContent = variantDeliveryTime;
+                        span.className = 'delivery-time-text';
+                        const tV = window.cartManager.getStockTranslations();
+                        const textToShow = `${variantDeliveryTime} ${tV.sujetoConfirmacion}`;
+                        span.textContent = textToShow;
                         deliveryElement.appendChild(span);
                     }
                 }
@@ -5659,12 +5687,12 @@ async function addSpecialOrderToCart() {
         return;
     }
     
-    if (quantity < 1 || quantity > 50000) {
+    if (quantity < 1 || quantity > 250000) {
         const message = lang === 'es' ? 
-            'La cantidad debe estar entre 1 y 50000' : 
+            'La cantidad debe estar entre 1 y 250000' : 
             lang === 'pt' ?
-            'A quantidade deve estar entre 1 e 50000' :
-            'Quantity must be between 1 and 50000';
+            'A quantidade deve estar entre 1 e 250000' :
+            'Quantity must be between 1 and 250000';
         window.cartManager?.showNotification(message, 'error');
         return;
     }
@@ -6204,8 +6232,8 @@ function simpleSetQuantity(itemId, quantity) {
         if (!Number.isFinite(requestedQuantity) || requestedQuantity < 1) {
             requestedQuantity = 1;
         }
-        if (requestedQuantity > 50000) {
-            requestedQuantity = 50000;
+        if (requestedQuantity > 250000) {
+            requestedQuantity = 250000;
         }
         
         // Normalizar cantidad según boxSize si es un producto
@@ -8324,6 +8352,88 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             .trim();
     }
 
+    /**
+     * Parsea nombre con formato .palabra. para PDF: devuelve segmentos { text, bold }.
+     * El texto no incluye los puntos (solo el contenido para mostrar).
+     */
+    function parseNameForBold(name) {
+        if (!name || typeof name !== 'string') return [{ text: name || '', bold: false }];
+        const parts = [];
+        const re = /\.([^.]*?)\./g;
+        let lastIndex = 0;
+        let m;
+        while ((m = re.exec(name)) !== null) {
+            if (m.index > lastIndex) {
+                parts.push({ text: name.slice(lastIndex, m.index), bold: false });
+            }
+            parts.push({ text: m[1], bold: true });
+            lastIndex = m.index + m[0].length;
+        }
+        if (lastIndex < name.length) {
+            parts.push({ text: name.slice(lastIndex), bold: false });
+        }
+        return parts.length ? parts : [{ text: name, bold: false }];
+    }
+
+    /**
+     * Dibuja la celda del nombre del producto con partes en negrita (.palabra. en el nombre).
+     * Los puntos no se muestran; la parte entre puntos se dibuja en negrita.
+     */
+    function drawCellWithBoldName(x, y, width, height, name, options = {}) {
+        doc.setDrawColor(0, 0, 0);
+        doc.rect(x, y, width, height);
+        const { fontSize = 7, align = 'center' } = options;
+        doc.setFontSize(fontSize);
+        doc.setTextColor(0, 0, 0);
+        const padding = 2;
+        const availableWidth = width - (padding * 2);
+        const lineHeight = fontSize * 0.4;
+        const segments = parseNameForBold(name);
+        const displayName = segments.map(s => s.text).join('');
+        if (!displayName || !displayName.trim()) {
+            drawCell(x, y, width, height, '-', { align: 'center', fontSize, border: false });
+            return;
+        }
+        doc.setFont('helvetica', 'normal');
+        const lines = doc.splitTextToSize(displayName, availableWidth);
+        let segStart = 0;
+        const segsWithIndex = segments.map(s => {
+            const start = segStart;
+            segStart += s.text.length;
+            return { ...s, start, end: segStart };
+        });
+        const lineStarts = [];
+        let acc = 0;
+        for (const line of lines) {
+            lineStarts.push(acc);
+            acc += line.length;
+        }
+        const startY = y + (height - lines.length * lineHeight) / 2 + lineHeight;
+        const leftX = x + padding;
+        const maxX = x + width - padding;
+        lines.forEach((line, lineIndex) => {
+            const lineStart = lineStarts[lineIndex];
+            const lineEnd = lineStart + line.length;
+            let currentX = leftX;
+            for (const seg of segsWithIndex) {
+                const overlapStart = Math.max(seg.start, lineStart);
+                const overlapEnd = Math.min(seg.end, lineEnd);
+                if (overlapStart >= overlapEnd) continue;
+                const textToDraw = displayName.slice(overlapStart, overlapEnd);
+                doc.setFont('helvetica', seg.bold ? 'bold' : 'normal');
+                const tw = doc.getTextWidth(textToDraw);
+                doc.text(textToDraw, currentX, startY + lineIndex * lineHeight);
+                currentX += tw;
+            }
+        });
+    }
+
+    /** Formatea cantidades con separador de miles para el PDF (ej. 50000 → 50.000). */
+    function formatQuantityForPdf(value) {
+        const n = Number(value) || 0;
+        return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
+
     /** Quitar Peso y Qtd/caixa de las observaciones para no imprimirlos en la propuesta PDF */
     function stripPesoAndQtdCaixaFromObservations(observations) {
         if (!observations || typeof observations !== 'string') return '';
@@ -8880,6 +8990,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             if (selectedVariant && (selectedVariant.plazo_entrega_personalizado || selectedVariant.plazoEntrega || selectedVariant.plazo_entrega || selectedVariant.deliveryTime)) {
                 deliveryText = selectedVariant.plazo_entrega_personalizado || selectedVariant.plazoEntrega || selectedVariant.plazo_entrega || selectedVariant.deliveryTime;
                 hasVariantDeliveryTime = true; // Marcar que tiene plazo de variante, no consultar stock
+                deliveryText = `${deliveryText} ${t.sujetoConfirmacion}`;
             }
         }
         
@@ -8909,6 +9020,10 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                 }
                 // Si stockDisponible === 0, mantener el plazo normal (ya está asignado arriba)
             }
+        }
+        // Siempre que haya un plazo de entrega (no "Em stock" ni vacío), añadir sujeito a confirmação si no está ya
+        if (deliveryText && deliveryText !== '-' && !/adjudicação|adjudicación|award/i.test(deliveryText)) {
+            deliveryText = `${deliveryText} ${t.sujetoConfirmacion}`;
         }
         
         // Calcular altura de la celda de plazo con fuente más pequeña para que el texto quepa sin cortar palabras
@@ -8976,9 +9091,8 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         }
 
         // Dibujar fila con altura calculada
-        // Nombre del producto
-        const productName = item.name || '';
-        drawCell(colPositions.name, currentY, colWidths.name, calculatedRowHeight, productName, { fontSize: 7, align: 'center', border: true });
+        // Nombre del producto (con .palabra. en negrita en el PDF; los puntos no se muestran)
+        drawCellWithBoldName(colPositions.name, currentY, colWidths.name, calculatedRowHeight, item.name || '', { fontSize: 7, align: 'center' });
         
         // Foto
         drawCell(colPositions.photo, currentY, colWidths.photo, calculatedRowHeight, '', { border: true });
@@ -9110,7 +9224,8 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         
         console.log(`🔄 Item ${i + 1}: Dibujando cantidad...`);
         try {
-            drawCell(colPositions.quantity, currentY, colWidths.quantity, calculatedRowHeight, quantity.toString(), { align: 'center', fontSize: 8, noWrap: true });
+            const quantityText = formatQuantityForPdf(quantity);
+            drawCell(colPositions.quantity, currentY, colWidths.quantity, calculatedRowHeight, quantityText, { align: 'center', fontSize: 8, noWrap: true });
             console.log(`✅ Item ${i + 1}: Cantidad dibujada`);
         } catch (cellError) {
             console.error(`❌ ERROR dibujando cantidad item ${i + 1}:`, cellError);

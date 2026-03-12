@@ -88,6 +88,15 @@ class DynamicProductsPage {
     }
 
     /**
+     * Nombre para mostrar: quita los puntos que envuelven un fragmento (.palabra. → palabra).
+     * Solo en creación/edición de productos se muestran los puntos; en el resto de la web no.
+     */
+    getDisplayName(name) {
+        if (!name || typeof name !== 'string') return name || '';
+        return name.replace(/\.([^.]*?)\./g, '$1');
+    }
+
+    /**
      * Indica si un producto pertenece a una categoría (categoria principal o categorias adicionales).
      */
     productHasCategory(product, categorySlug) {
@@ -2420,8 +2429,9 @@ class DynamicProductsPage {
         const productJson = JSON.stringify(product).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
         // Si no hay imagen, mostrar un placeholder o ocultar
+        const displayNombre = this.getDisplayName(product.nombre || product.modelo || '');
         const imageHtml = mainImageUrl ? 
-            `<img id="${imageId}" src="${mainImageUrl}" alt="${product.nombre}" ${imageDataAttr} onerror="this.style.display='none'">` :
+            `<img id="${imageId}" src="${mainImageUrl}" alt="${displayNombre}" ${imageDataAttr} onerror="this.style.display='none'">` :
             `<div style="width:100%;height:200px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;color:#9ca3af;">
                 <i class="fas fa-image" style="font-size:3rem;"></i>
             </div>`;
@@ -2440,7 +2450,7 @@ class DynamicProductsPage {
                 </div>
 
                 <div style="padding:12px; display:flex; flex-direction:column; flex:1;">
-                    <h3 class="title" onclick="window.location.href='producto-detalle.html?id=${product.id}'" style="cursor: pointer; text-align: center;">${product.nombre || product.modelo || '—'}</h3>
+                    <h3 class="title" onclick="window.location.href='producto-detalle.html?id=${product.id}'" style="cursor: pointer; text-align: center;">${displayNombre || '—'}</h3>
                     <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px; flex:1;">
                         ${relevantFields.map(field => `
                             <div style="display:flex;justify-content:space-between;gap:16px;">

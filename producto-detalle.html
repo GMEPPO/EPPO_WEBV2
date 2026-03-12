@@ -1164,8 +1164,9 @@
                 const product = this.product;
                 const contentDiv = document.getElementById('product-detail-content');
                 const description = this.getProductDescription(product);
-                // Obtener el nombre del producto - el campo "modelo" del formulario se guarda como "nombre" en la BD
-                const productTitle = product.nombre || product.modelo || product['Nombre del Producto'] || '';
+                // Obtener el nombre del producto para mostrar (sin puntos .palabra.; solo visibles en creación/edición)
+                const getDisplayName = (n) => (n || '').replace(/\.([^.]*?)\./g, '$1');
+                const productTitle = getDisplayName(product.nombre || product.modelo || product['Nombre del Producto'] || '');
                 const availableColors = Array.isArray(product.available_colors) ? product.available_colors : [];
                 const referenceVariants = Array.isArray(product.variantes_referencias) ? product.variantes_referencias : [];
                 // Colores a mostrar: combinación de colores declarados + variantes de referencias
@@ -1188,7 +1189,7 @@
                                 <div class="carousel-container">
                                     ${productImages.length > 0 ? 
                                         `<div class="square-image-frame">
-                                            <img src="${productImages[0]}" alt="${product.nombre}" class="product-main-image" onclick="openImageModal(0)" onerror="this.style.display='none'">
+                                            <img src="${productImages[0]}" alt="${productTitle}" class="product-main-image" onclick="openImageModal(0)" onerror="this.style.display='none'">
                                         </div>` :
                                         `<div class="square-image-frame" style="background:#f3f4f6;color:#9ca3af;">
                                             <i class="fas fa-image" style="font-size:4rem;"></i>
