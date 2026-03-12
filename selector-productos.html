@@ -2767,20 +2767,28 @@
             const sheetName = workbook.SheetNames[0];
             const worksheet = workbook.Sheets[sheetName];
             const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            const headers = (jsonData[0] || []).map(h => String(h || '').trim());
+            // Columna de referencia PHC (ej. "Referência PHC")
+            const refCol = headers.findIndex(h => /refer[eê]ncia\s*phc|referencia\s*phc/i.test(h));
+            const refColIdx = refCol >= 0 ? refCol : 0;
+            // Columna de cantidad: "Total Disponível sem Cativos" / "DISPONIVEL SEM CATIVOS"
+            const qtyCol = headers.findIndex(h => /dispon[ií]vel\s+sem\s+cativos|total\s+dispon[ií]vel\s+sem\s+cativos|sem\s+cativos/i.test(h));
+            const qtyColIdx = qtyCol >= 0 ? qtyCol : (headers.length > 4 ? 4 : 1);
             
             stockData = [];
             for (let i = 1; i < jsonData.length; i++) {
                 const row = jsonData[i];
-                if (row[0]) {
-                    const referencia = String(row[0]).trim();
-                    const stock = parseInt(row[1]) || 0;
-                    stockData.push({ referencia_phc: referencia, stock_disponible: stock });
-                }
+                const referencia = row[refColIdx] ? String(row[refColIdx]).trim() : '';
+                if (!referencia) continue;
+                let rawStock = parseInt(row[qtyColIdx], 10);
+                if (isNaN(rawStock)) rawStock = 0;
+                const stock = Math.max(0, rawStock);
+                stockData.push({ referencia_phc: referencia, stock_disponible: stock });
             }
             
             const withStock = stockData.filter(d => d.stock_disponible > 0).length;
             const zeroStock = stockData.filter(d => d.stock_disponible === 0).length;
-            const negative = stockData.filter(d => d.stock_disponible < 0).length;
+            const negative = 0;
             
             document.getElementById('stockStatRows').textContent = stockData.length.toLocaleString();
             document.getElementById('stockStatWithStock').textContent = withStock.toLocaleString();
@@ -2831,11 +2839,15 @@
             
             try {
                 // Preparar datos para upsert (el trigger actualizará fecha_actualizacion automáticamente)
-                const upsertData = batch.map(item => ({
-                    referencia_phc: String(item.referencia_phc).trim().toUpperCase(), // Normalizar referencia
-                    stock_disponible: parseInt(item.stock_disponible) || 0
-                    // No incluir fecha_actualizacion - el trigger la actualiza automáticamente
-                }));
+                const upsertData = batch.map(item => {
+                    let stock = parseInt(item.stock_disponible, 10);
+                    if (isNaN(stock)) stock = 0;
+                    stock = Math.max(0, stock);
+                    return {
+                        referencia_phc: String(item.referencia_phc).trim().toUpperCase(),
+                        stock_disponible: stock
+                    };
+                });
                 
                 const { data, error } = await client
                     .from('stock_productos')
