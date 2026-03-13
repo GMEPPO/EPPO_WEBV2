@@ -1569,6 +1569,13 @@ class CartManager {
         this.renderCart();
         this.updateSummary();
         this.showNotification('Producto agregado al carrito', 'success');
+
+        // Webhook cuando un comercial agrega un artículo especial (producto exclusivo) a la propuesta
+        const isSpecialProduct = product.categoria === 'pedido-especial' || product.is_custom === true;
+        if (isSpecialProduct && this.cart.length > 0) {
+            const lastItem = this.cart[this.cart.length - 1];
+            this.sendWebhookPropuestaProductoEspecialSiComercial([lastItem]);
+        }
         
         // Actualizar plazos de entrega según stock (después de renderizar, sin bloquear)
         // Solo actualizar el producto que se acaba de agregar
@@ -1576,6 +1583,51 @@ class CartManager {
         setTimeout(() => {
             this.updateDeliveryTimesFromStock(cartItemId);
         }, 100);
+    }
+
+    /**
+     * Envía webhook tipo_alerta propuesta_producto_especial si el usuario es comercial (al agregar artículo desde módulo o producto exclusivo).
+     * @param {Array} items - Uno o más ítems del carrito (type 'special' o isEmptyModule, o producto pedido-especial)
+     */
+    async sendWebhookPropuestaProductoEspecialSiComercial(items) {
+        if (!items || items.length === 0) return;
+        try {
+            const role = (window.cachedRole || await window.getUserRole?.() || '').toString().toLowerCase();
+            if (role !== 'comercial') return;
+            const quienEdito = await this.getCurrentUserName();
+            const ed = this.editingProposalData;
+            const clientNameInput = document.getElementById('clientNameInput');
+            const clientNumberInput = document.getElementById('clientNumberInput');
+            const codigoProp = (ed && ed.codigo_propuesta) || '';
+            const nombreCliente = (ed && ed.nombre_cliente) || (clientNameInput && clientNameInput.value) || '';
+            const numeroCliente = (ed && ed.numero_cliente) || (clientNumberInput && clientNumberInput.value) || '';
+            const artigosEspeciais = items.map(it => ({
+                nome: (it.name || '').trim() || 'Produto especial',
+                descricao: it.description || null,
+                preco: it.price != null ? Number(it.price) : null,
+                quantidade: it.quantity != null ? Number(it.quantity) : 1,
+                observacoes: (it.observations || it.observations_text || '').trim() || null,
+                prazo_entrega: (it.plazoEntrega || it.plazo_entrega || '').trim() || null,
+                imagem_url: it.image || null
+            }));
+            const origin = typeof window !== 'undefined' && window.location && window.location.origin;
+            const webhookUrl = origin && origin !== 'null' && !origin.startsWith('file') ? (origin + '/api/follow-up-webhook.json') : null;
+            if (webhookUrl) {
+                const body = {
+                    tipo_alerta: 'propuesta_producto_especial',
+                    evento: 'propuesta_producto_especial',
+                    responsavel: quienEdito || '',
+                    responsable_propuesta: (ed && ed.responsavel) || '',
+                    numero_propuesta: codigoProp,
+                    codigo_propuesta: codigoProp,
+                    nombre_cliente: nombreCliente,
+                    numero_cliente: numeroCliente,
+                    presupuesto_id: (ed && ed.id) || null,
+                    artigos_especiais: artigosEspeciais
+                };
+                fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).catch(() => {});
+            }
+        } catch (e) { console.warn('Webhook producto especial al agregar:', e); }
     }
 
     /**
@@ -5885,6 +5937,10 @@ function addEmptyModule() {
     window.cartManager.saveCart();
     window.cartManager.renderCart();
     window.cartManager.updateSummary();
+    // Webhook cuando un comercial agrega un artículo desde módulo (propuesta_producto_especial)
+    if (window.cartManager.sendWebhookPropuestaProductoEspecialSiComercial) {
+        window.cartManager.sendWebhookPropuestaProductoEspecialSiComercial([newItem]);
+    }
     const msg = window.cartManager.currentLanguage === 'es' ? 'Módulo añadido. Rellene los campos.' :
         window.cartManager.currentLanguage === 'pt' ? 'Módulo adicionado. Preencha os campos.' : 'Module added. Fill in the fields.';
     window.cartManager.showNotification(msg, 'success');
@@ -11444,9 +11500,17 @@ async function sendProposalToSupabase() {
             } catch (e) { console.warn('Webhook producto especial:', e); }
         }
 
-        // Webhook: cuando un comercial guarda una propuesta con artículos a precio "sobre consulta" (precio 0)
-        const articulosSobreConsulta = (articulos || []).filter(a => Number(a.precio) === 0);
-        if (articulosSobreConsulta.length > 0 && presupuesto) {
+        // Webhook pedido_artigo_laserbuild: solo cuando un comercial guarda una propuesta con artículos a precio "sobre consulta" (precio 0) DEL FORNECEDOR LASER BUILD
+        const cartForWebhook = window.cartManager.cart || [];
+        const articulosLaserBuildSobreConsulta = cartForWebhook
+            .filter(it => it.type === 'product' && (Number(it.price) === 0 || Number(it.basePrice) === 0))
+            .filter(it => {
+                const product = window.cartManager.allProducts.find(p => String(p.id) === String(it.id));
+                const fornecedor = (it.nombre_fornecedor || (product && product.nombre_fornecedor) || '').toString().trim().toUpperCase();
+                const marca = (product && (product.marca || product.brand || '')).toString().trim().toUpperCase();
+                return fornecedor.includes('LASER BUILD') || marca.includes('LASER BUILD');
+            });
+        if (articulosLaserBuildSobreConsulta.length > 0 && presupuesto) {
             try {
                 const role = window.cachedRole || await window.getUserRole?.();
                 if ((role || '').toString().toLowerCase() === 'comercial') {
@@ -11464,16 +11528,23 @@ async function sendProposalToSupabase() {
                         numero_cliente: (presupuesto.numero_cliente) || (ed && ed.numero_cliente) || clientNumber || '',
                         presupuesto_id: (presupuesto && presupuesto.id) || null,
                         nombre_comercial: (presupuesto.nombre_comercial) || (ed && ed.nombre_comercial) || '',
-                        artigos_sobre_consulta: articulosSobreConsulta.map(a => ({
-                            nombre_articulo: a.nombre_articulo || '',
-                            referencia_articulo: a.referencia_articulo || '',
-                            cantidad: a.cantidad != null ? Number(a.cantidad) : 0,
-                            precio: 0,
-                            observaciones: a.observaciones || null,
-                            tipo_personalizacion: a.tipo_personalizacion || null,
-                            color_seleccionado: a.color_seleccionado || null,
-                            plazo_entrega: a.plazo_entrega || null
-                        }))
+                        artigos_sobre_consulta: articulosLaserBuildSobreConsulta.map(it => {
+                            let colorSel = it.colorSeleccionadoGuardado || null;
+                            if (colorSel == null && it.variantes_referencias && Array.isArray(it.variantes_referencias) && it.selectedReferenceVariant != null) {
+                                const v = it.variantes_referencias[it.selectedReferenceVariant];
+                                colorSel = v && v.color ? v.color : null;
+                            }
+                            return {
+                                nombre_articulo: it.name || '',
+                                referencia_articulo: it.referencia || it.id || '',
+                                cantidad: it.quantity != null ? Number(it.quantity) : 0,
+                                precio: 0,
+                                observaciones: it.observations || it.observations_text || null,
+                                tipo_personalizacion: (it.variants && it.variants[it.selectedVariant]) ? it.variants[it.selectedVariant].name : null,
+                                color_seleccionado: colorSel,
+                                plazo_entrega: it.plazoEntrega || it.plazo_entrega || null
+                            };
+                        })
                     };
                     const origin = typeof window !== 'undefined' && window.location && window.location.origin;
                     const webhookUrl = origin && origin !== 'null' && !origin.startsWith('file') ? (origin + '/api/follow-up-webhook.json') : null;
