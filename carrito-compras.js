@@ -1569,13 +1569,6 @@ class CartManager {
         this.renderCart();
         this.updateSummary();
         this.showNotification('Producto agregado al carrito', 'success');
-
-        // Webhook cuando un comercial agrega un artículo especial (producto exclusivo) a la propuesta
-        const isSpecialProduct = product.categoria === 'pedido-especial' || product.is_custom === true;
-        if (isSpecialProduct && this.cart.length > 0) {
-            const lastItem = this.cart[this.cart.length - 1];
-            this.sendWebhookPropuestaProductoEspecialSiComercial([lastItem]);
-        }
         
         // Actualizar plazos de entrega según stock (después de renderizar, sin bloquear)
         // Solo actualizar el producto que se acaba de agregar
@@ -1583,51 +1576,6 @@ class CartManager {
         setTimeout(() => {
             this.updateDeliveryTimesFromStock(cartItemId);
         }, 100);
-    }
-
-    /**
-     * Envía webhook tipo_alerta propuesta_producto_especial si el usuario es comercial (al agregar artículo desde módulo o producto exclusivo).
-     * @param {Array} items - Uno o más ítems del carrito (type 'special' o isEmptyModule, o producto pedido-especial)
-     */
-    async sendWebhookPropuestaProductoEspecialSiComercial(items) {
-        if (!items || items.length === 0) return;
-        try {
-            const role = (window.cachedRole || await window.getUserRole?.() || '').toString().toLowerCase();
-            if (role !== 'comercial') return;
-            const quienEdito = await this.getCurrentUserName();
-            const ed = this.editingProposalData;
-            const clientNameInput = document.getElementById('clientNameInput');
-            const clientNumberInput = document.getElementById('clientNumberInput');
-            const codigoProp = (ed && ed.codigo_propuesta) || '';
-            const nombreCliente = (ed && ed.nombre_cliente) || (clientNameInput && clientNameInput.value) || '';
-            const numeroCliente = (ed && ed.numero_cliente) || (clientNumberInput && clientNumberInput.value) || '';
-            const artigosEspeciais = items.map(it => ({
-                nome: (it.name || '').trim() || 'Produto especial',
-                descricao: it.description || null,
-                preco: it.price != null ? Number(it.price) : null,
-                quantidade: it.quantity != null ? Number(it.quantity) : 1,
-                observacoes: (it.observations || it.observations_text || '').trim() || null,
-                prazo_entrega: (it.plazoEntrega || it.plazo_entrega || '').trim() || null,
-                imagem_url: it.image || null
-            }));
-            const origin = typeof window !== 'undefined' && window.location && window.location.origin;
-            const webhookUrl = origin && origin !== 'null' && !origin.startsWith('file') ? (origin + '/api/follow-up-webhook.json') : null;
-            if (webhookUrl) {
-                const body = {
-                    tipo_alerta: 'propuesta_producto_especial',
-                    evento: 'propuesta_producto_especial',
-                    responsavel: quienEdito || '',
-                    responsable_propuesta: (ed && ed.responsavel) || '',
-                    numero_propuesta: codigoProp,
-                    codigo_propuesta: codigoProp,
-                    nombre_cliente: nombreCliente,
-                    numero_cliente: numeroCliente,
-                    presupuesto_id: (ed && ed.id) || null,
-                    artigos_especiais: artigosEspeciais
-                };
-                fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).catch(() => {});
-            }
-        } catch (e) { console.warn('Webhook producto especial al agregar:', e); }
     }
 
     /**
@@ -5937,10 +5885,6 @@ function addEmptyModule() {
     window.cartManager.saveCart();
     window.cartManager.renderCart();
     window.cartManager.updateSummary();
-    // Webhook cuando un comercial agrega un artículo desde módulo (propuesta_producto_especial)
-    if (window.cartManager.sendWebhookPropuestaProductoEspecialSiComercial) {
-        window.cartManager.sendWebhookPropuestaProductoEspecialSiComercial([newItem]);
-    }
     const msg = window.cartManager.currentLanguage === 'es' ? 'Módulo añadido. Rellene los campos.' :
         window.cartManager.currentLanguage === 'pt' ? 'Módulo adicionado. Preencha os campos.' : 'Module added. Fill in the fields.';
     window.cartManager.showNotification(msg, 'success');
