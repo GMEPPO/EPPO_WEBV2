@@ -103,16 +103,24 @@ class CartManager {
                 throw proposalError;
             }
 
-            // Cargar artículos ordenados por el campo 'orden' (si existe)
-            const { data: articulos, error: articulosError } = await this.supabase
+            // Cargar artículos (orden por created_at para no depender de columna 'orden')
+            const { data: articulosRaw, error: articulosError } = await this.supabase
                 .from('presupuestos_articulos')
                 .select('*')
                 .eq('presupuesto_id', proposalId)
-                .order('orden', { ascending: true, nullsFirst: false });
+                .order('created_at', { ascending: true });
 
             if (articulosError) {
                 throw articulosError;
             }
+
+            // Ordenar por 'orden' si existe, para mantener el orden de drag-and-drop
+            const articulos = (articulosRaw || []).slice().sort((a, b) => {
+                const ordenA = a.orden != null && a.orden !== '' ? Number(a.orden) : 999999;
+                const ordenB = b.orden != null && b.orden !== '' ? Number(b.orden) : 999999;
+                if (ordenA !== ordenB) return ordenA - ordenB;
+                return (a.created_at || '').localeCompare(b.created_at || '');
+            });
             
             // DEBUG: Verificar qué precios están llegando desde Supabase
             console.log('📦 Artículos cargados desde Supabase:', articulos?.length || 0);
@@ -541,13 +549,17 @@ class CartManager {
         this.cart = [];
         this.saveCart();
 
-        // Cargar cada artículo en el carrito
-        for (const articulo of this.editingProposalData.articulos) {
+        // Cargar cada artículo en el carrito (incluye módulos y productos con precio especial)
+        const articulosList = this.editingProposalData.articulos || [];
+        for (let index = 0; index < articulosList.length; index++) {
+            const articulo = articulosList[index];
+            // Cantidad: en BD puede ser 'cantidad' o 'cantidad_encomendada'
+            const cantidadArticulo = articulo.cantidad ?? articulo.cantidad_encomendada ?? 1;
             console.log('🔄 Cargando artículo al carrito:', {
                 nombre: articulo.nombre_articulo,
                 referencia: articulo.referencia_articulo,
                 precio: articulo.precio,
-                cantidad: articulo.cantidad
+                cantidad: cantidadArticulo
             });
             
             // Buscar el producto en la base de datos con múltiples criterios
@@ -576,7 +588,7 @@ class CartManager {
 
             if (product) {
                 // Normalizar cantidad según boxSize si existe
-                let quantity = parseInt(articulo.cantidad) || 1;
+                let quantity = parseInt(cantidadArticulo, 10) || 1;
                 if (product.box_size) {
                     const productForNormalization = {
                         id: product.id,
@@ -753,7 +765,7 @@ class CartManager {
                 console.log('📦 Agregando como pedido especial / módulo:', {
                     nombre: articulo.nombre_articulo,
                     precio: precioGuardado,
-                    cantidad: articulo.cantidad,
+                    cantidad: cantidadArticulo,
                     tieneFoto: !!foto,
                     isFromModule
                 });
@@ -769,7 +781,7 @@ class CartManager {
                     category: 'otros',
                     price: precioGuardado,
                     basePrice: precioGuardado,
-                    quantity: parseInt(articulo.cantidad) || 1,
+                    quantity: parseInt(cantidadArticulo, 10) || 1,
                     referencia: articulo.referencia_articulo || '',
                     plazoEntrega: articulo.plazo_entrega || '',
                     observations: articulo.observaciones || '',
@@ -7200,13 +7212,22 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
             throw new Error('No se pudieron cargar los artículos desde Supabase');
         }
 
-        // Convertir artículos a formato de carrito
+        // Convertir artículos a formato de carrito (incluye módulos y productos con precio especial)
         const cartItems = [];
-        for (const articulo of articulos || []) {
-            // Buscar el producto en allProducts si existe
-            const product = window.cartManager.allProducts.find(p => 
+        const articulosListPdf = articulos || [];
+        for (const articulo of articulosListPdf) {
+            const qtyArt = articulo.cantidad ?? articulo.cantidad_encomendada ?? 1;
+            // Buscar el producto en allProducts si existe (por id o por nombre para exclusivos/módulos)
+            let product = window.cartManager.allProducts.find(p => 
                 String(p.id) === String(articulo.referencia_articulo)
             );
+            if (!product && articulo.nombre_articulo) {
+                const nombreBusca = (articulo.nombre_articulo || '').trim().toLowerCase();
+                product = window.cartManager.allProducts.find(p => {
+                    const n = (p.nombre || '').trim().toLowerCase();
+                    return n === nombreBusca || n.includes(nombreBusca) || nombreBusca.includes(n);
+                });
+            }
 
             if (product) {
                 // Obtener variante de referencia (color) seleccionada
@@ -7235,7 +7256,7 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
                     name: articulo.nombre_articulo,
                     category: product.categoria || product.category || '', // Agregar categoría del producto
                     categoria: product.categoria || product.category || '', // También en español
-                    quantity: articulo.cantidad,
+                    quantity: qtyArt,
                     price: articulo.precio,
                     observations: articulo.observaciones || '',
                     referencia: articulo.referencia_articulo,
@@ -7300,7 +7321,7 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
                     id: articulo.referencia_articulo || `special_${articulo.id}`,
                     type: 'special',
                     name: articulo.nombre_articulo,
-                    quantity: articulo.cantidad,
+                    quantity: qtyArt,
                     price: articulo.precio,
                     observations: articulo.observaciones || '',
                     notes: articulo.observaciones || '',
