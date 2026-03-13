@@ -379,19 +379,21 @@ class ProposalsManager {
                 // Crear sets para búsqueda rápida (solo para concluidos, encomendados ahora viene de la columna)
                 const concluidosSet = new Set((articulosConcluidos || []).map(a => a.articulo_id));
 
-                // Agrupar artículos por presupuesto y marcar estados
+                // Agrupar artículos por presupuesto y marcar estados (clave normalizada para evitar fallos por formato UUID)
                 const articulosPorPresupuesto = {};
+                const normId = (id) => (id == null ? '' : String(id).toLowerCase().trim());
                 if (articulos) {
                     articulos.forEach(articulo => {
-                        if (!articulosPorPresupuesto[articulo.presupuesto_id]) {
-                            articulosPorPresupuesto[articulo.presupuesto_id] = [];
+                        const pid = normId(articulo.presupuesto_id);
+                        if (!articulosPorPresupuesto[pid]) {
+                            articulosPorPresupuesto[pid] = [];
                         }
                         // Agregar información de estado (encomendado ahora viene directamente de la columna)
                         // Asegurar que el ID esté presente
                         if (!articulo.id) {
                             console.warn('⚠️ Artículo sin ID:', articulo);
                         }
-                        articulosPorPresupuesto[articulo.presupuesto_id].push({
+                        articulosPorPresupuesto[pid].push({
                             ...articulo,
                             encomendado: articulo.encomendado === true || articulo.encomendado === 'true',
                             concluido: concluidosSet.has(articulo.id)
@@ -472,14 +474,19 @@ class ProposalsManager {
                         }
                     }
 
-                    // Obtener categorías únicas de los artículos de esta propuesta
-                    const categorias = this.getCategoriasFromArticulos(articulosPorPresupuesto[presupuesto.id] || []);
+                    // Obtener categorías únicas de los artículos de esta propuesta (misma clave normalizada)
+                    const articulosPresupuesto = articulosPorPresupuesto[normId(presupuesto.id)] || [];
+                    let categorias = this.getCategoriasFromArticulos(articulosPresupuesto);
+                    // Si tiene artículos pero no se obtuvo ninguna categoría (p. ej. solo módulos/pedidos especiales no encontrados en catálogo), mostrar al menos "Pedido especial"
+                    if (articulosPresupuesto.length > 0 && (!categorias || categorias.length === 0)) {
+                        categorias = ['pedido-especial'];
+                    }
 
                     return {
                     ...presupuesto,
                         historial_modificaciones: historialModificaciones,
-                    articulos: articulosPorPresupuesto[presupuesto.id] || [],
-                    total: (articulosPorPresupuesto[presupuesto.id] || []).reduce((sum, art) => {
+                    articulos: articulosPresupuesto,
+                    total: articulosPresupuesto.reduce((sum, art) => {
                         return sum + (parseFloat(art.precio) || 0) * (parseInt(art.cantidad) || 0);
                     }, 0),
                     dossier_documentos: documentosUrls,
