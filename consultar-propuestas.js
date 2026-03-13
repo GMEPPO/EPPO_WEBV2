@@ -557,6 +557,7 @@ class ProposalsManager {
                 'papeleras': 'Papeleiras',
                 'paraguas': 'Guardas-chuva',
                 'pedido-especial': 'Pedido especial',
+                'outros': 'Outros',
                 'perchas': 'Cabides',
                 'silla-para-bebe': 'Cadeira para bebé',
                 'tendedero': 'Estendal'
@@ -584,6 +585,7 @@ class ProposalsManager {
                 'papeleras': 'Papeleras',
                 'paraguas': 'Paraguas',
                 'pedido-especial': 'Pedido especial',
+                'outros': 'Otros',
                 'perchas': 'Perchas',
                 'silla-para-bebe': 'Silla para bebé',
                 'tendedero': 'Tendedero'
@@ -611,6 +613,7 @@ class ProposalsManager {
                 'papeleras': 'Wastebaskets',
                 'paraguas': 'Umbrellas',
                 'pedido-especial': 'Special Order',
+                'outros': 'Others',
                 'perchas': 'Hangers',
                 'silla-para-bebe': 'Baby Chair',
                 'tendedero': 'Clothesline'
@@ -640,50 +643,41 @@ class ProposalsManager {
             return [];
         }
         
-        if (!this.allProducts || this.allProducts.length === 0) {
-            console.warn('⚠️ No hay productos cargados para buscar categorías');
-            return [];
-        }
-        
         const categoriasSet = new Set();
+        const allProducts = this.allProducts || [];
         
         articulos.forEach(articulo => {
             let producto = null;
             
-            // Primero intentar buscar por referencia_articulo (que puede ser el ID del producto como string)
-            if (articulo.referencia_articulo) {
-                producto = this.allProducts.find(p => {
-                    // Comparar ID como string (el referencia_articulo suele ser el ID del producto)
-                    return String(p.id) === String(articulo.referencia_articulo);
-                });
-            }
-            
-            // Si no se encontró por referencia, buscar por nombre
-            if (!producto && articulo.nombre_articulo) {
-                const nombreArticuloLower = articulo.nombre_articulo.toLowerCase().trim();
-                producto = this.allProducts.find(p => {
-                    if (!p.nombre) return false;
-                    const nombreProductoLower = p.nombre.toLowerCase().trim();
-                    // Comparación exacta (case-insensitive)
-                    if (nombreProductoLower === nombreArticuloLower) {
-                        return true;
-                    }
-                    // Comparación parcial (por si hay diferencias menores como espacios extra)
-                    // Solo usar comparación parcial si ambos nombres tienen al menos 5 caracteres
-                    if (nombreArticuloLower.length >= 5 && nombreProductoLower.length >= 5) {
-                        return nombreProductoLower.includes(nombreArticuloLower) ||
-                               nombreArticuloLower.includes(nombreProductoLower);
-                    }
-                    return false;
-                });
+            if (allProducts.length > 0) {
+                // Buscar por referencia_articulo (ID del producto)
+                if (articulo.referencia_articulo) {
+                    producto = allProducts.find(p => String(p.id) === String(articulo.referencia_articulo));
+                }
+                // Si no se encontró por referencia, buscar por nombre
+                if (!producto && articulo.nombre_articulo) {
+                    const nombreArticuloLower = articulo.nombre_articulo.toLowerCase().trim();
+                    producto = allProducts.find(p => {
+                        if (!p.nombre) return false;
+                        const nombreProductoLower = p.nombre.toLowerCase().trim();
+                        if (nombreProductoLower === nombreArticuloLower) return true;
+                        if (nombreArticuloLower.length >= 5 && nombreProductoLower.length >= 5) {
+                            return nombreProductoLower.includes(nombreArticuloLower) ||
+                                   nombreArticuloLower.includes(nombreProductoLower);
+                        }
+                        return false;
+                    });
+                }
             }
             
             if (producto) {
                 if (producto.categoria) categoriasSet.add(producto.categoria);
                 if (Array.isArray(producto.categorias)) producto.categorias.forEach(c => categoriasSet.add(c));
-            } else if (articulo.nombre_articulo) {
-                // Solo mostrar warning si realmente hay un nombre de artículo
-                console.warn(`⚠️ No se encontró producto para artículo: "${articulo.nombre_articulo}" (referencia: ${articulo.referencia_articulo || 'N/A'})`);
+            } else {
+                // Artículo no encontrado en catálogo: pedido especial o módulo (producto exclusivo o creado al guardar).
+                // Añadir categoría para que aparezca en el historial (CATEGORIAS).
+                const esPedidoEspecial = articulo.tipo_personalizacion === 'Pedido Especial' || articulo.precio_personalizado === true;
+                categoriasSet.add(esPedidoEspecial ? 'pedido-especial' : 'outros');
             }
         });
         
