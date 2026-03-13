@@ -1440,6 +1440,23 @@ class ProposalsManager {
             }
         }
 
+        // Cargar historial de comentarios (presupuestos_comentarios) para mostrar en la sección Comentários
+        proposal.comentarios_historico = [];
+        if (this.supabase) {
+            try {
+                const { data: historicoComentarios, error: errHist } = await this.supabase
+                    .from('presupuestos_comentarios')
+                    .select('id, comentario, nombre_usuario, rol_usuario, created_at')
+                    .eq('presupuesto_id', proposalId)
+                    .order('created_at', { ascending: true });
+                if (!errHist && historicoComentarios && Array.isArray(historicoComentarios)) {
+                    proposal.comentarios_historico = historicoComentarios;
+                }
+            } catch (e) {
+                console.warn('No se pudo cargar historial de comentarios:', e);
+            }
+        }
+
         // Cargar rol del usuario para mostrar precios correctamente
         if (!window.cachedRole) {
             try {
@@ -2156,19 +2173,31 @@ class ProposalsManager {
                         gap: 6px;
                         transition: all 0.2s;
                     " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(59,130,246,0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
-                        <i class="fas fa-edit"></i>
-                        <span id="edit-comments-text">${detailLabels.editComments}</span>
+                        <i class="fas fa-plus"></i>
+                        <span id="edit-comments-text">${detailLabels.addComment || 'Añadir comentario'}</span>
                     </button>
                 </div>
                 <div id="comments-display-${proposal.id}" style="display: block;">
-                    <p style="color: var(--text-primary, #111827); white-space: pre-wrap; word-wrap: break-word; min-height: 40px; padding: var(--space-2);">
-                        ${proposal.comentarios ? proposal.comentarios : `<span style="color: var(--text-secondary, #6b7280); font-style: italic;">${detailLabels.noComments}</span>`}
-                    </p>
+                    <div id="comments-historial-${proposal.id}" style="margin-bottom: var(--space-4);">
+                        ${(proposal.comentarios_historico && proposal.comentarios_historico.length > 0) ? proposal.comentarios_historico.map(c => {
+                            const fecha = c.created_at ? new Date(c.created_at) : null;
+                            const fechaStr = fecha ? fecha.toLocaleString(this.currentLanguage === 'es' ? 'es-ES' : this.currentLanguage === 'pt' ? 'pt-PT' : 'en-US', { dateStyle: 'short', timeStyle: 'short' }) : '-';
+                            const nombre = (c.nombre_usuario || '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+                            const rol = (c.rol_usuario || '').replace(/</g, '&lt;');
+                            const texto = (c.comentario || '').replace(/</g, '&lt;').replace(/\n/g, '<br>');
+                            return `<div style="padding: var(--space-3); margin-bottom: var(--space-2); background: white; border-radius: 8px; border-left: 4px solid var(--primary-500, #3b82f6);">
+                                <div style="font-size: 0.8125rem; color: var(--text-secondary, #6b7280); margin-bottom: 4px;">
+                                    <strong>${nombre}</strong>${rol ? ` · ${rol}` : ''} · ${fechaStr}
+                                </div>
+                                <div style="color: var(--text-primary, #111827); white-space: pre-wrap; word-wrap: break-word;">${texto}</div>
+                            </div>`;
+                        }).join('') : `<p style="color: var(--text-secondary, #6b7280); font-style: italic; padding: var(--space-2);">${detailLabels.noComments}</p>`}
+                    </div>
                 </div>
                 <div id="comments-edit-${proposal.id}" style="display: none;">
                     <textarea id="comments-textarea-${proposal.id}" style="
                         width: 100%;
-                        min-height: 120px;
+                        min-height: 100px;
                         padding: var(--space-3);
                         border: 2px solid var(--bg-gray-300, #d1d5db);
                         border-radius: var(--radius-md, 8px);
@@ -2178,7 +2207,7 @@ class ProposalsManager {
                         background: white;
                         resize: vertical;
                         transition: border-color 0.2s;
-                    " onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d1d5db';" placeholder="${detailLabels.commentsPlaceholder}">${proposal.comentarios || ''}</textarea>
+                    " onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d1d5db';" placeholder="${detailLabels.commentsPlaceholder}"></textarea>
                     <div style="display: flex; gap: 8px; margin-top: var(--space-3); justify-content: flex-end;">
                         <button onclick="window.proposalsManager.cancelCommentsEdit('${proposal.id}')" style="
                             background: var(--bg-gray-200, #e5e7eb);
@@ -3681,6 +3710,7 @@ class ProposalsManager {
                 observations: 'Observações',
                 comments: 'Comentários',
                 editComments: 'Editar',
+                addComment: 'Adicionar comentário',
                 noComments: 'Nenhum comentário adicionado ainda.',
                 commentsPlaceholder: 'Adicione comentários ou observações sobre esta proposta...',
                 save: 'Guardar',
@@ -3721,6 +3751,7 @@ class ProposalsManager {
                 observations: 'Observaciones',
                 comments: 'Comentarios',
                 editComments: 'Editar',
+                addComment: 'Añadir comentario',
                 noComments: 'No se han agregado comentarios aún.',
                 commentsPlaceholder: 'Agregue comentarios u observaciones sobre esta propuesta...',
                 save: 'Guardar',
@@ -3761,6 +3792,7 @@ class ProposalsManager {
                 observations: 'Observations',
                 comments: 'Comments',
                 editComments: 'Edit',
+                addComment: 'Add comment',
                 noComments: 'No comments added yet.',
                 commentsPlaceholder: 'Add comments or observations about this proposal...',
                 save: 'Save',
@@ -6397,7 +6429,7 @@ class ProposalsManager {
     }
 
     /**
-     * Cancelar edición de comentarios
+     * Cancelar edición / añadir comentario
      */
     cancelCommentsEdit(proposalId) {
         const displayDiv = document.getElementById(`comments-display-${proposalId}`);
@@ -6405,18 +6437,14 @@ class ProposalsManager {
         const textarea = document.getElementById(`comments-textarea-${proposalId}`);
         
         if (displayDiv && editDiv && textarea) {
-            // Restaurar el valor original
-            const proposal = this.allProposals.find(p => p.id === proposalId);
-            if (proposal) {
-                textarea.value = proposal.comentarios || '';
-            }
+            textarea.value = '';
             displayDiv.style.display = 'block';
             editDiv.style.display = 'none';
         }
     }
 
     /**
-     * Guardar comentarios
+     * Guardar nuevo comentario en el historial (presupuestos_comentarios) y enviar webhook
      */
     async saveComments(proposalId) {
         const textarea = document.getElementById(`comments-textarea-${proposalId}`);
@@ -6425,116 +6453,102 @@ class ProposalsManager {
             return;
         }
 
-        const newComments = textarea.value.trim();
+        const comentarioTexto = textarea.value.trim();
+        if (!comentarioTexto) {
+            this.showErrorMessage(this.currentLanguage === 'es' ? 'Escriba un comentario.' : this.currentLanguage === 'pt' ? 'Escreva um comentário.' : 'Write a comment.');
+            return;
+        }
 
         if (!this.supabase) {
             await this.initializeSupabase();
         }
 
         const translations = {
-            es: {
-                success: 'Comentarios guardados correctamente',
-                error: 'Error al guardar los comentarios'
-            },
-            pt: {
-                success: 'Comentários guardados com sucesso',
-                error: 'Erro ao guardar os comentários'
-            },
-            en: {
-                success: 'Comments saved successfully',
-                error: 'Error saving comments'
-            }
+            es: { success: 'Comentario guardado correctamente', error: 'Error al guardar el comentario' },
+            pt: { success: 'Comentário guardado com sucesso', error: 'Erro ao guardar o comentário' },
+            en: { success: 'Comment saved successfully', error: 'Error saving comment' }
         };
-
         const t = translations[this.currentLanguage] || translations.es;
 
         try {
-            const { data: row } = await this.supabase.from('presupuestos').select('historial_modificaciones').eq('id', proposalId).single();
-            let historialActual = row?.historial_modificaciones;
-            if (typeof historialActual === 'string') {
-                try { historialActual = JSON.parse(historialActual); } catch (e) { historialActual = []; }
-            }
-            if (!Array.isArray(historialActual)) historialActual = [];
-            const descComentario = this.currentLanguage === 'pt' ? 'Comentários adicionados ou alterados na proposta.' : this.currentLanguage === 'en' ? 'Comments added or updated on the proposal.' : 'Comentarios añadidos o modificados en la propuesta.';
-            const nuevoRegistro = {
-                fecha: new Date().toISOString(),
-                tipo: 'comentario_agregado',
-                descripcion: descComentario,
-                usuario: localStorage.getItem('commercial_name') || 'Sistema'
-            };
-            const nuevoHistorial = [...historialActual, nuevoRegistro];
+            const nombreUsuario = await this.getCurrentUserName();
+            const rolUsuario = (window.cachedRole || await window.getUserRole?.() || '').toString().trim() || null;
 
-            let error = (await this.supabase
-                .from('presupuestos')
-                .update({ comentarios: newComments || null, historial_modificaciones: nuevoHistorial })
-                .eq('id', proposalId)).error;
+            const { error: insertError } = await this.supabase
+                .from('presupuestos_comentarios')
+                .insert({
+                    presupuesto_id: proposalId,
+                    comentario: comentarioTexto,
+                    nombre_usuario: nombreUsuario || 'Sistema',
+                    rol_usuario: rolUsuario
+                });
 
-            if (error) {
-                const soloComentarios = (await this.supabase
-                    .from('presupuestos')
-                    .update({ comentarios: newComments || null })
-                    .eq('id', proposalId)).error;
-                if (soloComentarios) throw error;
-            }
+            if (insertError) throw insertError;
 
-            // Actualizar la propuesta en memoria
+            // Actualizar historial en memoria y en el DOM
             const proposal = this.allProposals.find(p => p.id === proposalId);
+            const nuevoItem = {
+                id: null,
+                comentario: comentarioTexto,
+                nombre_usuario: nombreUsuario || 'Sistema',
+                rol_usuario: rolUsuario,
+                created_at: new Date().toISOString()
+            };
             if (proposal) {
-                proposal.comentarios = newComments || null;
+                proposal.comentarios_historico = proposal.comentarios_historico || [];
+                proposal.comentarios_historico.push(nuevoItem);
             }
 
-            // Actualizar la visualización
             const displayDiv = document.getElementById(`comments-display-${proposalId}`);
+            const historialContainer = document.getElementById(`comments-historial-${proposalId}`);
             const editDiv = document.getElementById(`comments-edit-${proposalId}`);
-            
-            if (displayDiv) {
+
+            if (historialContainer && proposal && proposal.comentarios_historico && proposal.comentarios_historico.length > 0) {
                 const detailLabels = this.getDetailLabels();
-                displayDiv.innerHTML = `
-                    <p style="color: var(--text-primary, #111827); white-space: pre-wrap; word-wrap: break-word; min-height: 40px; padding: var(--space-2);">
-                        ${newComments || `<span style="color: var(--text-secondary, #6b7280); font-style: italic;">${detailLabels.noComments}</span>`}
-                    </p>
-                `;
+                const lang = this.currentLanguage === 'es' ? 'es-ES' : this.currentLanguage === 'pt' ? 'pt-PT' : 'en-US';
+                historialContainer.innerHTML = proposal.comentarios_historico.map(c => {
+                    const fecha = c.created_at ? new Date(c.created_at) : null;
+                    const fechaStr = fecha ? fecha.toLocaleString(lang, { dateStyle: 'short', timeStyle: 'short' }) : '-';
+                    const nombre = (c.nombre_usuario || '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+                    const rol = (c.rol_usuario || '').replace(/</g, '&lt;');
+                    const texto = (c.comentario || '').replace(/</g, '&lt;').replace(/\n/g, '<br>');
+                    return `<div style="padding: var(--space-3); margin-bottom: var(--space-2); background: white; border-radius: 8px; border-left: 4px solid var(--primary-500, #3b82f6);">
+                        <div style="font-size: 0.8125rem; color: var(--text-secondary, #6b7280); margin-bottom: 4px;">
+                            <strong>${nombre}</strong>${rol ? ` · ${rol}` : ''} · ${fechaStr}
+                        </div>
+                        <div style="color: var(--text-primary, #111827); white-space: pre-wrap; word-wrap: break-word;">${texto}</div>
+                    </div>`;
+                }).join('');
             }
 
-            if (editDiv) {
-                editDiv.style.display = 'none';
-            }
-            if (displayDiv) {
-                displayDiv.style.display = 'block';
-            }
+            textarea.value = '';
+            if (editDiv) editDiv.style.display = 'none';
+            if (displayDiv) displayDiv.style.display = 'block';
 
-            // Webhook n8n: observaciones/comentarios guardados en detalles (solo para perfiles comerciales; quien editó = usuario actual)
+            // Webhook: nombre, rol y comentario (cada vez que se guarda un comentario)
             try {
-                const role = window.cachedRole || await window.getUserRole?.();
-                if ((role || '').toString().toLowerCase() === 'comercial') {
+                const origin = typeof window !== 'undefined' && window.location && window.location.origin;
+                const webhookUrl = origin && origin !== 'null' && !origin.startsWith('file') ? (origin + '/api/follow-up-webhook.json') : null;
+                if (webhookUrl) {
                     const proposal = this.allProposals.find(p => p.id === proposalId);
-                    const origin = typeof window !== 'undefined' && window.location && window.location.origin;
-                    const webhookUrl = origin && origin !== 'null' && !origin.startsWith('file') ? (origin + '/api/follow-up-webhook.json') : null;
-                    if (webhookUrl && proposal) {
-                        const quienEdito = await this.getCurrentUserName();
-                        const body = {
-                            tipo_alerta: 'observaciones_propuesta',
-                            evento: 'observaciones_propuesta',
-                            responsavel: quienEdito || nuevoRegistro.usuario || 'Sistema',
-                            responsable_propuesta: proposal.responsavel || '',
-                            numero_propuesta: proposal.codigo_propuesta || '',
-                            codigo_propuesta: proposal.codigo_propuesta || '',
-                            nombre_cliente: proposal.nombre_cliente || '',
-                            numero_cliente: proposal.numero_cliente || '',
-                            contenido_observaciones: newComments || '',
-                            presupuesto_id: proposalId
-                        };
-                        fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).catch(() => {});
-                    }
+                    const body = {
+                        tipo_alerta: 'comentario_propuesta',
+                        evento: 'comentario_propuesta',
+                        responsavel: nombreUsuario || 'Sistema',
+                        rol: rolUsuario || '',
+                        comentario: comentarioTexto,
+                        codigo_propuesta: proposal?.codigo_propuesta || '',
+                        nombre_cliente: proposal?.nombre_cliente || '',
+                        presupuesto_id: proposalId
+                    };
+                    fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).catch(() => {});
                 }
-            } catch (e) { console.warn('Webhook observaciones:', e); }
+            } catch (e) { console.warn('Webhook comentario:', e); }
 
-            // Mostrar mensaje de éxito
             this.showSuccessMessage(t.success);
             if (typeof window.refreshUserBar === 'function') window.refreshUserBar();
-
         } catch (error) {
-            console.error('Error al guardar comentarios:', error);
+            console.error('Error al guardar comentario:', error);
             this.showErrorMessage(t.error);
         }
     }
