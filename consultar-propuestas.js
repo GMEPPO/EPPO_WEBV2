@@ -1414,6 +1414,32 @@ class ProposalsManager {
         }
         const currentLang = this.currentLanguage || 'pt';
 
+        // Cargar artículos desde Supabase al abrir detalles (para incluir módulos y precio especial que pueden no estar en la lista cacheada)
+        if (this.supabase) {
+            try {
+                const { data: articulosRaw, error: artError } = await this.supabase
+                    .from('presupuestos_articulos')
+                    .select('*, encomendado, fecha_encomenda, numero_encomenda, cantidad_encomendada, fecha_prevista_entrega')
+                    .eq('presupuesto_id', proposalId)
+                    .order('created_at', { ascending: true });
+                const articulosActualizados = (articulosRaw || []).slice().sort((a, b) => {
+                    const oA = a.orden != null && a.orden !== '' ? Number(a.orden) : 999999;
+                    const oB = b.orden != null && b.orden !== '' ? Number(b.orden) : 999999;
+                    if (oA !== oB) return oA - oB;
+                    return (a.created_at || '').localeCompare(b.created_at || '');
+                });
+                if (!artError && articulosActualizados && articulosActualizados.length >= 0) {
+                    proposal.articulos = articulosActualizados.map(a => ({
+                        ...a,
+                        encomendado: a.encomendado === true || a.encomendado === 'true',
+                        cantidad: a.cantidad ?? a.cantidad_encomendada ?? 1
+                    }));
+                }
+            } catch (e) {
+                console.warn('No se pudieron refrescar los artículos al abrir detalles:', e);
+            }
+        }
+
         // Cargar rol del usuario para mostrar precios correctamente
         if (!window.cachedRole) {
             try {

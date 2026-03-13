@@ -2060,9 +2060,8 @@ class CartManager {
     async renderCart(skipStockUpdate = false) {
         const cartItemsContainer = document.getElementById('cartItems');
         
-        // Verificar que el contenedor existe antes de usarlo
+        // Si no existe el contenedor (p. ej. estamos en consultar-propuestas), salir sin error
         if (!cartItemsContainer) {
-            console.error('❌ ERROR: No se encontró el contenedor cartItems en el DOM');
             return;
         }
         
