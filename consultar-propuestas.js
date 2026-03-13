@@ -344,23 +344,37 @@ class ProposalsManager {
                 }
             }
 
-            // Cargar artículos para cada presupuesto
+            // Cargar artículos para cada presupuesto (paginado por si el proyecto limita a 1000 filas)
+            let articulos = [];
             if (filteredPresupuestos && filteredPresupuestos.length > 0) {
                 const presupuestoIds = filteredPresupuestos.map(p => p.id);
                 console.log('🔄 Cargando artículos para', presupuestoIds.length, 'presupuestos...');
                 
-                const { data: articulos, error: articulosError } = await this.supabase
-                    .from('presupuestos_articulos')
-                    .select('*, encomendado, fecha_encomenda, numero_encomenda, cantidad_encomendada, fecha_prevista_entrega')
-                    .in('presupuesto_id', presupuestoIds)
-                    .limit(10000);
+                const pageSize = 1000;
+                let from = 0;
+                let hasMore = true;
+                while (hasMore) {
+                    const { data: page, error: articulosError } = await this.supabase
+                        .from('presupuestos_articulos')
+                        .select('*, encomendado, fecha_encomenda, numero_encomenda, cantidad_encomendada, fecha_prevista_entrega')
+                        .in('presupuesto_id', presupuestoIds)
+                        .range(from, from + pageSize - 1);
 
-                if (articulosError) {
-                    console.error('❌ Error al cargar artículos:', articulosError);
-                    // Continuar aunque haya error, pero con artículos vacíos
-                } else {
-                    console.log('📦 Artículos cargados:', articulos ? articulos.length : 0);
+                    if (articulosError) {
+                        console.error('❌ Error al cargar artículos:', articulosError);
+                        hasMore = false;
+                        break;
+                    }
+                    if (!page || page.length === 0) {
+                        hasMore = false;
+                        break;
+                    }
+                    articulos = articulos.concat(page);
+                    if (page.length < pageSize) hasMore = false;
+                    else from += pageSize;
                 }
+                console.log('📦 Artículos cargados:', articulos.length);
+            }
 
                 // Los artículos encomendados ahora se obtienen directamente de la columna 'encomendado' en presupuestos_articulos
                 // No necesitamos cargar desde una tabla separada
@@ -392,7 +406,6 @@ class ProposalsManager {
                             articulosPorPresupuesto[pid] = [];
                         }
                         // Agregar información de estado (encomendado ahora viene directamente de la columna)
-                        // Asegurar que el ID esté presente
                         if (!articulo.id) {
                             console.warn('⚠️ Artículo sin ID:', articulo);
                         }
@@ -402,6 +415,28 @@ class ProposalsManager {
                             concluido: concluidosSet.has(articulo.id)
                         });
                     });
+                }
+
+                // Segundo intento: propuestas que quedaron sin artículos (p. ej. por RLS o orden) — cargar por presupuesto_id
+                for (const presupuestoId of presupuestoIds) {
+                    const pid = normId(presupuestoId);
+                    if (articulosPorPresupuesto[pid] && articulosPorPresupuesto[pid].length > 0) continue;
+                    try {
+                        const { data: artSingle, error: errSingle } = await this.supabase
+                            .from('presupuestos_articulos')
+                            .select('*, encomendado, fecha_encomenda, numero_encomenda, cantidad_encomendada, fecha_prevista_entrega')
+                            .eq('presupuesto_id', presupuestoId);
+                        if (!errSingle && artSingle && artSingle.length > 0) {
+                            if (!articulosPorPresupuesto[pid]) articulosPorPresupuesto[pid] = [];
+                            artSingle.forEach(articulo => {
+                                articulosPorPresupuesto[pid].push({
+                                    ...articulo,
+                                    encomendado: articulo.encomendado === true || articulo.encomendado === 'true',
+                                    concluido: concluidosSet.has(articulo.id)
+                                });
+                            });
+                        }
+                    } catch (_) { /* ignorar */ }
                 }
 
                 // Cargar dossiers para cada presupuesto
