@@ -474,10 +474,18 @@ class ProposalsManager {
                         }
                     }
 
-                    // Obtener categorías únicas de los artículos de esta propuesta (misma clave normalizada)
-                    const articulosPresupuesto = articulosPorPresupuesto[normId(presupuesto.id)] || [];
+                    // Obtener artículos de esta propuesta (clave normalizada; fallback por si hay desajuste de formato UUID)
+                    let articulosPresupuesto = articulosPorPresupuesto[normId(presupuesto.id)] || [];
+                    if (articulosPresupuesto.length === 0 && articulos && articulos.length > 0) {
+                        const filtered = articulos.filter(a => normId(a.presupuesto_id) === normId(presupuesto.id));
+                        articulosPresupuesto = filtered.map(articulo => ({
+                            ...articulo,
+                            encomendado: articulo.encomendado === true || articulo.encomendado === 'true',
+                            concluido: concluidosSet.has(articulo.id)
+                        }));
+                    }
                     let categorias = this.getCategoriasFromArticulos(articulosPresupuesto);
-                    // Si tiene artículos pero no se obtuvo ninguna categoría (p. ej. solo módulos/pedidos especiales no encontrados en catálogo), mostrar al menos "Pedido especial"
+                    // Si tiene artículos pero no se obtuvo ninguna categoría (módulos, pedidos especiales, Laser Build, etc.), mostrar al menos una
                     if (articulosPresupuesto.length > 0 && (!categorias || categorias.length === 0)) {
                         categorias = ['pedido-especial'];
                     }
@@ -680,10 +688,16 @@ class ProposalsManager {
             if (producto) {
                 if (producto.categoria) categoriasSet.add(producto.categoria);
                 if (Array.isArray(producto.categorias)) producto.categorias.forEach(c => categoriasSet.add(c));
+                // Producto en catálogo pero sin categoría (p. ej. Laser Build): mostrar al menos "Outros"
+                if (!producto.categoria && (!Array.isArray(producto.categorias) || producto.categorias.length === 0)) {
+                    categoriasSet.add('outros');
+                }
             } else {
-                // Artículo no encontrado en catálogo: pedido especial o módulo (producto exclusivo o creado al guardar).
+                // Artículo no encontrado en catálogo: pedido especial, módulo o Laser Build (precio sobre consulta).
                 // Añadir categoría para que aparezca en el historial (CATEGORIAS).
-                const esPedidoEspecial = articulo.tipo_personalizacion === 'Pedido Especial' || articulo.precio_personalizado === true;
+                const nombreArt = (articulo.nombre_articulo || '').toLowerCase();
+                const esLaserBuild = nombreArt.startsWith('lb-') || nombreArt.includes('laser');
+                const esPedidoEspecial = articulo.tipo_personalizacion === 'Pedido Especial' || articulo.precio_personalizado === true || esLaserBuild;
                 categoriasSet.add(esPedidoEspecial ? 'pedido-especial' : 'outros');
             }
         });
