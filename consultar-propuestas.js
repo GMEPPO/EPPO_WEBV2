@@ -2155,7 +2155,7 @@ class ProposalsManager {
 
             <div class="comments-section" style="margin: var(--space-6) 0; padding: var(--space-4); background: var(--bg-gray-50, #f9fafb); border-radius: var(--radius-lg, 12px); border: 1px solid var(--bg-gray-200, #e5e7eb);">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-3);">
-                    <h4 style="font-size: 1.125rem; font-weight: 600; color: var(--text-primary, #111827); display: flex; align-items: center; gap: 8px;">
+                    <h4 style="font-size: 1.125rem; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
                         <i class="fas fa-comments"></i>
                         <span id="comments-title">${detailLabels.comments}</span>
                     </h4>
@@ -2185,17 +2185,17 @@ class ProposalsManager {
                             const nombre = (c.nombre_usuario || '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
                             const rol = (c.rol_usuario || '').replace(/</g, '&lt;');
                             const texto = (c.comentario || '').replace(/</g, '&lt;').replace(/\n/g, '<br>');
-                            return `<div style="padding: var(--space-3); margin-bottom: var(--space-2); background: white; border-radius: 8px; border-left: 4px solid var(--primary-500, #3b82f6);">
-                                <div style="font-size: 0.8125rem; color: var(--text-secondary, #6b7280); margin-bottom: 4px;">
+                            return `<div class="comment-item" style="padding: var(--space-3); margin-bottom: var(--space-2); background: var(--bg-white); color: var(--text-primary); border-radius: 8px; border-left: 4px solid var(--primary-500, #3b82f6);">
+                                <div class="comment-item-meta" style="font-size: 0.8125rem; color: var(--text-secondary); margin-bottom: 4px;">
                                     <strong>${nombre}</strong>${rol ? ` · ${rol}` : ''} · ${fechaStr}
                                 </div>
-                                <div style="color: var(--text-primary, #111827); white-space: pre-wrap; word-wrap: break-word;">${texto}</div>
+                                <div class="comment-item-text" style="color: var(--text-primary); white-space: pre-wrap; word-wrap: break-word;">${texto}</div>
                             </div>`;
                         }).join('') : `<p style="color: var(--text-secondary, #6b7280); font-style: italic; padding: var(--space-2);">${detailLabels.noComments}</p>`}
                     </div>
                 </div>
                 <div id="comments-edit-${proposal.id}" style="display: none;">
-                    <textarea id="comments-textarea-${proposal.id}" style="
+                    <textarea id="comments-textarea-${proposal.id}" class="comments-textarea-input" style="
                         width: 100%;
                         min-height: 100px;
                         padding: var(--space-3);
@@ -2203,8 +2203,8 @@ class ProposalsManager {
                         border-radius: var(--radius-md, 8px);
                         font-family: inherit;
                         font-size: 0.9375rem;
-                        color: #111827;
-                        background: white;
+                        color: var(--text-primary);
+                        background: var(--bg-white);
                         resize: vertical;
                         transition: border-color 0.2s;
                     " onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d1d5db';" placeholder="${detailLabels.commentsPlaceholder}"></textarea>
@@ -6512,11 +6512,11 @@ class ProposalsManager {
                     const nombre = (c.nombre_usuario || '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
                     const rol = (c.rol_usuario || '').replace(/</g, '&lt;');
                     const texto = (c.comentario || '').replace(/</g, '&lt;').replace(/\n/g, '<br>');
-                    return `<div style="padding: var(--space-3); margin-bottom: var(--space-2); background: white; border-radius: 8px; border-left: 4px solid var(--primary-500, #3b82f6);">
-                        <div style="font-size: 0.8125rem; color: var(--text-secondary, #6b7280); margin-bottom: 4px;">
+                    return `<div class="comment-item" style="padding: var(--space-3); margin-bottom: var(--space-2); background: var(--bg-white); color: var(--text-primary); border-radius: 8px; border-left: 4px solid var(--primary-500, #3b82f6);">
+                        <div class="comment-item-meta" style="font-size: 0.8125rem; color: var(--text-secondary); margin-bottom: 4px;">
                             <strong>${nombre}</strong>${rol ? ` · ${rol}` : ''} · ${fechaStr}
                         </div>
-                        <div style="color: var(--text-primary, #111827); white-space: pre-wrap; word-wrap: break-word;">${texto}</div>
+                        <div class="comment-item-text" style="color: var(--text-primary); white-space: pre-wrap; word-wrap: break-word;">${texto}</div>
                     </div>`;
                 }).join('');
             }
