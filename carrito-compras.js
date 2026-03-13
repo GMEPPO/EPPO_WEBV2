@@ -52,27 +52,24 @@ class CartManager {
         
         if (editId) {
             this.editingProposalId = editId;
-            
-            // Cargar datos de la propuesta desde localStorage o desde Supabase
-            const savedData = localStorage.getItem('editing_proposal');
-            if (savedData) {
-                try {
-                    this.editingProposalData = JSON.parse(savedData);
-                    // Sincronizar modo200 con la propuesta guardada (para saber si bloquear precio al cambiar cantidad)
-                    this.modo200 = !!(this.editingProposalData.modo_200_plus || this.editingProposalData.modo_200);
-                    await this.loadProposalIntoCart();
-                    // Mostrar indicador de edición después de cargar datos
-                    this.showEditingIndicator();
-                } catch (error) {
-                    await this.loadProposalFromSupabase(editId);
-                    // Mostrar indicador de edición después de cargar datos
-                    this.showEditingIndicator();
-                }
-            } else {
+            // Siempre cargar desde Supabase para tener todos los artículos (módulos, precio especial, etc.).
+            // El PDF/imprimir ya usa Supabase y muestra todo; localStorage puede tener datos antiguos o incompletos.
+            try {
                 await this.loadProposalFromSupabase(editId);
-                // Mostrar indicador de edición después de cargar datos
-                this.showEditingIndicator();
+            } catch (err) {
+                console.warn('No se pudo cargar la propuesta desde Supabase, intentando localStorage:', err);
+                const savedData = localStorage.getItem('editing_proposal');
+                if (savedData) {
+                    try {
+                        this.editingProposalData = JSON.parse(savedData);
+                        this.modo200 = !!(this.editingProposalData.modo_200_plus || this.editingProposalData.modo_200);
+                        await this.loadAllProducts();
+                        await this.loadClientExclusiveProducts(this.editingProposalData.nombre_cliente);
+                        await this.loadProposalIntoCart();
+                    } catch (_) {}
+                }
             }
+            this.showEditingIndicator();
         } else {
             // No estamos editando: si quedó datos de una edición anterior (salimos sin guardar o guardamos y volvimos), vaciar carrito
             if (localStorage.getItem('editing_proposal')) {
