@@ -374,7 +374,6 @@ class ProposalsManager {
                     else from += pageSize;
                 }
                 console.log('📦 Artículos cargados:', articulos.length);
-            }
 
                 // Los artículos encomendados ahora se obtienen directamente de la columna 'encomendado' en presupuestos_articulos
                 // No necesitamos cargar desde una tabla separada
