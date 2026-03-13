@@ -319,26 +319,28 @@ class ProposalsManager {
                 }
             }
 
-            // Cargar productos para obtener categorías
-            if (!this.allProducts || this.allProducts.length === 0) {
+            // Cargar productos para obtener categorías (lista completa, sin filtro mercado; usada solo para categorías en historial)
+            const productosParaCategorias = this.allProductsForCategories || this.allProducts;
+            if (!productosParaCategorias || productosParaCategorias.length === 0) {
                 console.log('🔄 Cargando productos para obtener categorías...');
                 const { data: products, error: productsError } = await this.supabase
                     .from('products')
-                    .select('id, nombre, categoria');
+                    .select('id, nombre, categoria, categorias')
+                    .limit(10000);
                 
                 if (!productsError && products) {
-                    this.allProducts = products.map(p => ({
+                    const list = products.map(p => ({
                         id: p.id,
                         nombre: p.nombre || '',
-                        categoria: p.categoria || ''
+                        categoria: (p.categoria != null && p.categoria !== '') ? String(p.categoria) : (p.category != null && p.category !== '') ? String(p.category) : '',
+                        categorias: Array.isArray(p.categorias) ? p.categorias : (p.categorias && typeof p.categorias === 'string' ? (() => { try { return JSON.parse(p.categorias); } catch (_) { return []; } })() : [])
                     }));
-                    console.log('✅ Productos cargados para categorías:', this.allProducts.length);
-                    if (this.allProducts.length > 0) {
-                        console.log('📋 Ejemplo de producto:', this.allProducts[0]);
-                    }
+                    this.allProductsForCategories = list;
+                    if (!this.allProducts || this.allProducts.length === 0) this.allProducts = list;
+                    console.log('✅ Productos cargados para categorías:', list.length);
                 } else {
                     console.warn('⚠️ No se pudieron cargar productos:', productsError);
-                    this.allProducts = [];
+                    this.allProductsForCategories = this.allProductsForCategories || [];
                 }
             }
 
@@ -350,7 +352,8 @@ class ProposalsManager {
                 const { data: articulos, error: articulosError } = await this.supabase
                     .from('presupuestos_articulos')
                     .select('*, encomendado, fecha_encomenda, numero_encomenda, cantidad_encomendada, fecha_prevista_entrega')
-                    .in('presupuesto_id', presupuestoIds);
+                    .in('presupuesto_id', presupuestoIds)
+                    .limit(10000);
 
                 if (articulosError) {
                     console.error('❌ Error al cargar artículos:', articulosError);
@@ -659,7 +662,8 @@ class ProposalsManager {
         }
         
         const categoriasSet = new Set();
-        const allProducts = this.allProducts || [];
+        // Usar lista dedicada para categorías (completa); si no existe, allProducts (puede estar filtrada por mercado)
+        const allProducts = this.allProductsForCategories || this.allProducts || [];
         
         articulos.forEach(articulo => {
             let producto = null;
