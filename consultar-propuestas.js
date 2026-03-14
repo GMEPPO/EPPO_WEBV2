@@ -4734,13 +4734,14 @@ class ProposalsManager {
                 row.personalizado = personalizadoEl ? personalizadoEl.value === 'true' : false;
                 row.personalizado_observacoes = obsEl ? obsEl.value.trim() || null : null;
 
+                const temClicheEl = document.getElementById(`ge-tem-cliche-${articuloId}`);
+                const precoClicheEl = document.getElementById(`ge-preco-cliche-${articuloId}`);
+                row.tem_cliche = temClicheEl ? temClicheEl.value === 'true' : false;
+                const precoClicheRaw = precoClicheEl ? precoClicheEl.value.trim() : '';
+                row.preco_cliche = precoClicheRaw === '' ? null : (parseFloat(precoClicheRaw.replace(',', '.')) || null);
+
                 if (row.personalizado) {
-                    const temClicheEl = document.getElementById(`ge-tem-cliche-${articuloId}`);
-                    const precoClicheEl = document.getElementById(`ge-preco-cliche-${articuloId}`);
                     const urlEl = document.getElementById(`ge-personalizado-url-${articuloId}`);
-                    row.tem_cliche = temClicheEl ? temClicheEl.value === 'true' : false;
-                    const precoClicheRaw = precoClicheEl ? precoClicheEl.value.trim() : '';
-                    row.preco_cliche = precoClicheRaw === '' ? null : (parseFloat(precoClicheRaw.replace(',', '.')) || null);
                     row.personalizado_url = urlEl ? urlEl.value.trim() || null : null;
                     row.personalizado_anexos_urls = [];
                     const selectedPropostaDocs = [];
@@ -4849,10 +4850,10 @@ class ProposalsManager {
                 fecha_precio: now,
                 valor_transportes: (() => { const v = getNum('transportes', NaN); return (!isNaN(v) && v >= 0) ? v : null; })()
             };
+            extRowData.tem_cliche = document.getElementById(`ge-${extId}-tem-cliche`)?.value === 'true';
+            const precoClicheRawExt = document.getElementById(`ge-${extId}-preco-cliche`)?.value?.trim() || '';
+            extRowData.preco_cliche = precoClicheRawExt === '' ? null : (parseFloat(precoClicheRawExt.replace(',', '.')) || null);
             if (personalizado) {
-                extRowData.tem_cliche = document.getElementById(`ge-${extId}-tem-cliche`)?.value === 'true';
-                const precoClicheRaw = document.getElementById(`ge-${extId}-preco-cliche`)?.value?.trim() || '';
-                extRowData.preco_cliche = precoClicheRaw === '' ? null : (parseFloat(precoClicheRaw.replace(',', '.')) || null);
                 extRowData.personalizado_url = document.getElementById(`ge-${extId}-personalizado-url`)?.value?.trim() || null;
                 extRowData.personalizado_anexos_urls = [];
                 extRowData.historico_emails_url = null;
@@ -4926,6 +4927,8 @@ class ProposalsManager {
             }
             if (!('personalizado_anexos_urls' in clean)) clean.personalizado_anexos_urls = [];
             if (!('historico_emails_url' in clean)) clean.historico_emails_url = null;
+            if (!('tem_cliche' in clean)) clean.tem_cliche = false;
+            if (!('preco_cliche' in clean)) clean.preco_cliche = null;
             return clean;
         });
 

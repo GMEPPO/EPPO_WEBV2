@@ -121,6 +121,7 @@
             <div id="ge-list-view" class="ge-list-view">
                 <div class="ge-header">
                     <h1 class="ge-title" id="ge-page-title">Gestão de Encomendas</h1>
+                    <p class="ge-subtitle" id="ge-page-subtitle" style="margin: 0 0 1rem 0; font-size: 0.9rem; color: var(--text-secondary, #94a3b8);">Um mesmo orçamento (Nº Proposta) pode ter várias linhas — uma por fornecedor. Use o Nº Proposta para identificar o orçamento.</p>
                 </div>
                 <div class="ge-tabs">
                     <button type="button" class="ge-tab ge-tab-active" data-tab="pendientes" id="ge-tab-pendientes">
@@ -143,11 +144,12 @@
                     <table class="ge-table" id="ge-table" style="display: none;">
                         <thead>
                             <tr>
+                                <th id="ge-th-numprop">Nº Proposta</th>
                                 <th id="ge-th-tipo">Tipo</th>
                                 <th id="ge-th-resp">Responsável</th>
                                 <th id="ge-th-forn">Fornecedores</th>
                                 <th id="ge-th-numenc" style="display: none;">Nº Encomenda</th>
-                                <th></th>
+                                <th>Ações</th>
                             </tr>
                         </thead>
                         <tbody id="ge-tbody"></tbody>

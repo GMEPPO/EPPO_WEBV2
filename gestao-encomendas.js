@@ -612,10 +612,12 @@
     }
 
     function updateTableHeaderForTab() {
+        const thNumProp = document.getElementById('ge-th-numprop');
         const thTipo = document.getElementById('ge-th-tipo');
         const thResp = document.getElementById('ge-th-resp');
         const thForn = document.getElementById('ge-th-forn');
         const thNumEnc = document.getElementById('ge-th-numenc');
+        if (thNumProp) thNumProp.textContent = t('numPropuesta');
         if (thTipo) thTipo.textContent = t('tipo');
         if (!thResp || !thForn) return;
         if (thNumEnc) thNumEnc.style.display = 'none';
@@ -644,6 +646,7 @@
             rows.forEach(row => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
+                    <td><strong style="color: var(--primary-500);">${escapeHtml(row.codigo_propuesta || '-')}</strong></td>
                     <td>${escapeHtml(row.tipoLabel || '')}</td>
                     <td>${escapeHtml(row.fornecedor)}</td>
                     <td>${escapeHtml(row.responsavel)}</td>
@@ -662,7 +665,9 @@
                 const tagsHtml = (row.fornecedores || []).map(f => `<span class="ge-tag">${escapeHtml(f)}</span>`).join('');
                 const isContacto = row.source === 'contacto_fornecedores';
                 const btnData = isContacto ? `data-contacto-id="${row.contacto_id}"` : `data-presupuesto-id="${row.presupuesto_id}"`;
+                const numProposta = row.codigo_propuesta || '-';
                 tr.innerHTML = `
+                    <td><strong style="color: var(--primary-500);">${escapeHtml(numProposta)}</strong></td>
                     <td>${escapeHtml(row.tipoLabel || '')}</td>
                     <td>${escapeHtml(row.responsavel)}</td>
                     <td><div class="ge-tags">${tagsHtml || '<span class="ge-tag">-</span>'}</div></td>
@@ -684,7 +689,9 @@
                 const tagsHtml = (row.fornecedores || []).map(f => `<span class="ge-tag">${escapeHtml(f)}</span>`).join('');
                 const isContacto = row.source === 'contacto_fornecedores';
                 const btnData = isContacto ? `data-contacto-id="${row.contacto_id}"` : `data-presupuesto-id="${row.presupuesto_id}"`;
+                const numProposta = row.codigo_propuesta || '-';
                 tr.innerHTML = `
+                    <td><strong style="color: var(--primary-500);">${escapeHtml(numProposta)}</strong></td>
                     <td>${escapeHtml(row.tipoLabel || '')}</td>
                     <td>${escapeHtml(row.responsavel)}</td>
                     <td><div class="ge-tags">${tagsHtml || '<span class="ge-tag">-</span>'}</div></td>
@@ -1466,9 +1473,10 @@
                     const vt = Number(gc.valor_transportes);
                     if (!isNaN(vt)) { infoHtml += `<span><strong>${t('valorTransportes')}:</strong></span><span>${formatNumber(vt)}</span>`; }
                 }
-                if (gc.tem_cliche != null) {
-                    infoHtml += `<span><strong>${t('temCliche')}:</strong></span><span>${gc.tem_cliche ? t('sim') : t('nao')}</span>`;
-                    if (gc.tem_cliche) {
+                if (gc.tem_cliche != null || gc.personalizado) {
+                    const temClicheVal = gc.tem_cliche === true;
+                    infoHtml += `<span><strong>${t('temCliche')}:</strong></span><span>${temClicheVal ? t('sim') : t('nao')}</span>`;
+                    if (temClicheVal) {
                         const pc = (gc.preco_cliche != null && gc.preco_cliche !== '') ? Number(gc.preco_cliche) : NaN;
                         const desc = (gc.porcentaje_descuento != null && gc.porcentaje_descuento !== '') ? Number(gc.porcentaje_descuento) : NaN;
                         const hasPc = !isNaN(pc);
@@ -1488,9 +1496,10 @@
                 const vt = Number(gc.valor_transportes);
                 if (!isNaN(vt)) infoHtml += `<div style="margin-top: 4px; font-size: 0.85rem; color: var(--text-secondary);"><strong>${t('valorTransportes')}:</strong> ${formatNumber(vt)}</div>`;
             }
-            if (gc.tem_cliche != null) {
-                infoHtml += `<div style="font-size: 0.85rem; color: var(--text-secondary);"><strong>${t('temCliche')}:</strong> ${gc.tem_cliche ? t('sim') : t('nao')}</div>`;
-                if (gc.tem_cliche) {
+            if (gc.tem_cliche != null || gc.personalizado) {
+                const temClicheVal = gc.tem_cliche === true;
+                infoHtml += `<div style="font-size: 0.85rem; color: var(--text-secondary);"><strong>${t('temCliche')}:</strong> ${temClicheVal ? t('sim') : t('nao')}</div>`;
+                if (temClicheVal) {
                     const pc = (gc.preco_cliche != null && gc.preco_cliche !== '') ? Number(gc.preco_cliche) : NaN;
                     const desc = (gc.porcentaje_descuento != null && gc.porcentaje_descuento !== '') ? Number(gc.porcentaje_descuento) : NaN;
                     const hasPc = !isNaN(pc);
