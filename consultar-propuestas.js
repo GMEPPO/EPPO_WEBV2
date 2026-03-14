@@ -3909,10 +3909,7 @@ class ProposalsManager {
         } else if (normalizedStatus === 'proposta_adjudicada') {
             this.openPropostaAdjudicadaModal(proposal);
         } else if (normalizedStatus === 'aguarda_creacion_codigo_phc') {
-            await this.updateProposalStatus(proposalId, normalizedStatus);
-            this.resetStatusSelects(proposalId);
-            window.location.href = 'gestao-encomendas.html';
-            return;
+            this.openAguardaCreacionCodigoPhcModal(proposal);
         } else if (normalizedStatus === 'follow_up') {
             const followUps = proposal.follow_ups || [];
             if (followUps.length === 0) {
@@ -5276,8 +5273,9 @@ class ProposalsManager {
             this.closeAguardaCreacionCodigoPhcModal();
             await this.loadProposals();
             this.resetStatusSelects(proposalId);
-            this.showNotification(this.currentLanguage === 'es' ? 'Guardado. El pedido de creación de códigos aparecerá en Gestão de Encomendas.' : this.currentLanguage === 'pt' ? 'Guardado. O pedido de criação de códigos aparecerá na Gestão de Encomendas.' : 'Saved. The code creation order will appear in Order Management.', 'success');
+            this.showNotification(this.currentLanguage === 'es' ? 'Guardado. Redirigiendo a Gestão de Encomendas.' : this.currentLanguage === 'pt' ? 'Guardado. A redirecionar para Gestão de Encomendas.' : 'Saved. Redirecting to Order Management.', 'success');
             if (typeof window.refreshUserBar === 'function') window.refreshUserBar();
+            window.location.href = 'gestao-encomendas.html';
         } catch (e) {
             console.error('saveAguardaCreacionCodigoPhc:', e);
             this.showNotification(e?.message || 'Error al guardar', 'error');
