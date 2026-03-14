@@ -445,6 +445,19 @@
             });
 
             await syncEstadoEncursoOnLoad(client, listData);
+            // Tras el sync, las propuestas con isEnCurso ya pueden tener estado_pedido = 'em_curso' en BD;
+            // emCursoKeysSet se construyó con la carga inicial, así que añadimos las que tienen isEnCurso
+            // para que aparezcan en la pestaña "Pedidos em curso".
+            (listData || []).forEach(p => {
+                if (p.source !== 'presupuesto' || !p.isEnCurso) return;
+                const pidNorm = (p.presupuesto_id != null ? String(p.presupuesto_id).toLowerCase().trim() : '') || '';
+                if (!pidNorm) return;
+                (p.fornecedores || []).forEach(fn => {
+                    const name = (fn || '').trim();
+                    if (name) emCursoKeysSet.add(pidNorm + '|' + name);
+                });
+                if (!p.fornecedores || p.fornecedores.length === 0) emCursoKeysSet.add(pidNorm + '|-');
+            });
             }
 
             const presupuestoIdsSet = new Set(presupuestoIds || []);
