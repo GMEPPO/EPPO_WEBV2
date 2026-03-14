@@ -3909,7 +3909,10 @@ class ProposalsManager {
         } else if (normalizedStatus === 'proposta_adjudicada') {
             this.openPropostaAdjudicadaModal(proposal);
         } else if (normalizedStatus === 'aguarda_creacion_codigo_phc') {
-            this.openAguardaCreacionCodigoPhcModal(proposal);
+            await this.updateProposalStatus(proposalId, normalizedStatus);
+            this.resetStatusSelects(proposalId);
+            window.location.href = 'gestao-encomendas.html';
+            return;
         } else if (normalizedStatus === 'follow_up') {
             const followUps = proposal.follow_ups || [];
             if (followUps.length === 0) {

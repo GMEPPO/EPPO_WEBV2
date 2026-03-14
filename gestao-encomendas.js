@@ -411,7 +411,7 @@
             const { data: presupuestosPendientes, error: errPend } = await client
                 .from('presupuestos')
                 .select('id, codigo_propuesta, responsavel, estado_propuesta, tipo_registro_directo')
-                .or('estado_propuesta.eq.pedido_de_encomenda,estado_propuesta.eq.encomenda_en_curso');
+                .or('estado_propuesta.eq.pedido_de_encomenda,estado_propuesta.eq.encomenda_en_curso,estado_propuesta.eq.aguarda_creacion_codigo_phc');
             if (!errPend && presupuestosPendientes && presupuestosPendientes.length > 0) {
                 const idsSinGc = presupuestosPendientes.filter(pp => !presupuestoIdsSet.has(pp.id)).map(pp => pp.id);
                 if (idsSinGc.length > 0) {
