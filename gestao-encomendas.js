@@ -517,6 +517,8 @@
         setLoading(true);
         try {
             historicoListData = [];
+            const idsInHistorico = new Set();
+
             const { data: presupuestosConcluidos, error: errPres } = await client
                 .from('presupuestos')
                 .select('id, codigo_propuesta, responsavel, estado_propuesta')
@@ -539,6 +541,7 @@
                 });
                 presupuestosConcluidos.forEach(p => {
                     if (!presupuestoIdsComGestao.has(p.id)) return;
+                    idsInHistorico.add(p.id);
                     historicoListData.push({
                         source: 'presupuesto',
                         presupuesto_id: p.id,
@@ -548,6 +551,42 @@
                         tipoLabel: tipoByPresupuesto[p.id] || (lang === 'es' ? 'Encomenda Concluída' : lang === 'en' ? 'Order Completed' : 'Encomenda Concluída')
                     });
                 });
+            }
+
+            const { data: gcConcluidos, error: errGc } = await client
+                .from('gestao_compras')
+                .select('presupuesto_id, nome_fornecedor, tipo')
+                .eq('estado_pedido', 'concluido');
+            if (!errGc && gcConcluidos && gcConcluidos.length > 0) {
+                const norm = (x) => (x != null ? String(x).toLowerCase().trim() : null);
+                const rawIds = [...new Set((gcConcluidos || []).map(r => r.presupuesto_id).filter(Boolean))];
+                const historicoNorm = new Set([...idsInHistorico].map(norm));
+                const idsToFetch = rawIds.filter(id => !historicoNorm.has(norm(id)));
+                if (idsToFetch.length > 0) {
+                    const { data: presupuestosFromGc } = await client.from('presupuestos').select('id, codigo_propuesta, responsavel').in('id', idsToFetch);
+                    const tipoByP = {};
+                    const fornecedoresByP = {};
+                    (gcConcluidos || []).forEach(r => {
+                        const pid = r.presupuesto_id;
+                        if (!pid || !idsToFetch.includes(pid)) return;
+                        if (r.tipo && (r.tipo || '').trim() !== '' && !tipoByP[pid]) tipoByP[pid] = r.tipo.trim();
+                        if (r.nome_fornecedor) {
+                            if (!fornecedoresByP[pid]) fornecedoresByP[pid] = [];
+                            const fn = (r.nome_fornecedor || '').trim();
+                            if (fn && !fornecedoresByP[pid].includes(fn)) fornecedoresByP[pid].push(fn);
+                        }
+                    });
+                    (presupuestosFromGc || []).forEach(p => {
+                        historicoListData.push({
+                            source: 'presupuesto',
+                            presupuesto_id: p.id,
+                            codigo_propuesta: p.codigo_propuesta || '-',
+                            responsavel: p.responsavel || '-',
+                            fornecedores: fornecedoresByP[p.id] || [],
+                            tipoLabel: tipoByP[p.id] || (lang === 'es' ? 'Tarea concluída' : lang === 'en' ? 'Task completed' : 'Tarefa concluída')
+                        });
+                    });
+                }
             }
             const { data: contactosFinalizados, error: errCf } = await client
                 .from('contacto_nuevos_proveedores')
