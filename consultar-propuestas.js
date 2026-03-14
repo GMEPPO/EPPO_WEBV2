@@ -34,18 +34,25 @@ function getDisplayNameConsultar(name) {
     return name.replace(/\.([^.]*?)\./g, '$1');
 }
 
+/** Genera un nombre único para subidas a gestao-compras (anexos/histórico). No usa el nombre original del archivo. */
+function getUniqueFileNameGestaoCompras(prefix, file) {
+    const ext = (file && file.name && file.name.split('.').length > 1)
+        ? file.name.split('.').pop().toLowerCase().replace(/[^a-z0-9]/g, '') || 'bin'
+        : 'bin';
+    const uuid = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '') : Date.now().toString(36) + Math.random().toString(36).slice(2);
+    return prefix + '_' + uuid + '.' + ext;
+}
+
 async function getUniqueStorageFilePathConsultar(storageClient, bucket, folderPrefix, fileName) {
-    // Sanitizar: caracteres prohibidos en rutas/keys de Supabase Storage (evitan 400 Invalid key)
-    let sanitized = (fileName || 'file')
-        .replace(/[<>:"/\\|?*\x00-\x1f]/g, '_')
-        .replace(/[''`]/g, '_')
-        .replace(/\s+/g, '_')
-        .replace(/[()[\]{};#@&%=+,]/g, '_')
-        .trim() || 'file';
-    const lastDot = sanitized.lastIndexOf('.');
-    const base = lastDot > 0 ? sanitized.slice(0, lastDot) : sanitized;
-    const ext = lastDot > 0 ? sanitized.slice(lastDot + 1) : '';
-    const extPart = ext ? '.' + ext : '';
+    // Sanitizar: solo caracteres seguros para keys de Supabase Storage (evitan 400 Invalid key)
+    let raw = (fileName || 'file').trim() || 'file';
+    const lastDot = raw.lastIndexOf('.');
+    const basePart = lastDot > 0 ? raw.slice(0, lastDot) : raw;
+    const extPart = lastDot > 0 ? raw.slice(lastDot + 1) : '';
+    const safeBase = basePart.replace(/[^a-zA-Z0-9._-]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '') || 'file';
+    const safeExt = extPart.replace(/[^a-zA-Z0-9]/g, '').toLowerCase() || '';
+    let sanitized = safeExt ? safeBase + '.' + safeExt : safeBase;
+    const extPartFinal = safeExt ? '.' + safeExt : '';
     let existingNames = [];
     try {
         const { data } = await storageClient.storage.from(bucket).list(folderPrefix, { limit: 2000 });
@@ -53,10 +60,10 @@ async function getUniqueStorageFilePathConsultar(storageClient, bucket, folderPr
     } catch (_) {
         existingNames = [];
     }
-    let candidate = base + extPart;
+    let candidate = sanitized;
     let n = 1;
     while (existingNames.includes(candidate)) {
-        candidate = base + '_' + n + extPart;
+        candidate = safeBase + '_' + n + extPartFinal;
         n++;
     }
     return folderPrefix ? folderPrefix + '/' + candidate : candidate;
@@ -4766,10 +4773,7 @@ class ProposalsManager {
                         const files = Array.from(anexosInput.files).slice(0, 4);
                         for (const file of files) {
                             try {
-                                const ext = (file.name.split('.').pop() || 'file').toLowerCase().replace(/[^a-z0-9]/g, '') || 'file';
-                                let baseName = (file.name && file.name.trim()) ? file.name.trim() : `anexo_${Date.now()}.${ext}`;
-                                baseName = baseName.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/[''`]/g, '_').replace(/\s+/g, '_').trim() || `anexo_${Date.now()}.${ext}`;
-                                const fileName = await getUniqueStorageFilePathConsultar(this.supabase, bucketGE, subfolder, baseName);
+                                const fileName = subfolder + '/' + getUniqueFileNameGestaoCompras('anexo', file);
                                 const contentType = getSafeContentType(file);
                                 const { error: upErr } = await uploadFileAsBinary(this.supabase, bucketGE, fileName, file, contentType);
                                 if (!upErr && row.personalizado_anexos_urls.length < 4) {
@@ -4784,13 +4788,10 @@ class ProposalsManager {
                     if (historicoInput?.files?.length) {
                         try {
                             const file = historicoInput.files[0];
-                            const ext = (file.name.split('.').pop() || 'file').toLowerCase().replace(/[^a-z0-9]/g, '') || 'file';
-                            let baseName = (file.name && file.name.trim()) ? file.name.trim() : `historico_${Date.now()}.${ext}`;
-                            baseName = baseName.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/[''`]/g, '_').replace(/\s+/g, '_').trim() || `historico_${Date.now()}.${ext}`;
-                            const fileName = await getUniqueStorageFilePathConsultar(this.supabase, bucketGE, subfolder, baseName);
-                                const contentType = getSafeContentType(file);
-                                const { error: upErr } = await uploadFileAsBinary(this.supabase, bucketGE, fileName, file, contentType);
-                                if (!upErr) {
+                            const fileName = subfolder + '/' + getUniqueFileNameGestaoCompras('historico', file);
+                            const contentType = getSafeContentType(file);
+                            const { error: upErr } = await uploadFileAsBinary(this.supabase, bucketGE, fileName, file, contentType);
+                            if (!upErr) {
                                 const { data: urlData } = this.supabase.storage.from(bucketGE).getPublicUrl(fileName);
                                 if (urlData?.publicUrl) row.historico_emails_url = urlData.publicUrl;
                             } else {
@@ -4869,10 +4870,7 @@ class ProposalsManager {
                     const files = Array.from(anexosInput.files).slice(0, 4);
                     for (const file of files) {
                         try {
-                            const ext = (file.name.split('.').pop() || 'file').toLowerCase().replace(/[^a-z0-9]/g, '') || 'file';
-                            let baseName = (file.name && file.name.trim()) ? file.name.trim() : `anexo_${Date.now()}.${ext}`;
-                            baseName = baseName.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/[''`]/g, '_').replace(/\s+/g, '_').trim() || `anexo_${Date.now()}.${ext}`;
-                            const fileName = await getUniqueStorageFilePathConsultar(this.supabase, bucketGEExt, subfolderExt, baseName);
+                            const fileName = subfolderExt + '/' + getUniqueFileNameGestaoCompras('anexo', file);
                             const contentType = getSafeContentType(file);
                             const { error: upErr } = await uploadFileAsBinary(this.supabase, bucketGEExt, fileName, file, contentType);
                             if (!upErr) {
@@ -4887,10 +4885,7 @@ class ProposalsManager {
                 if (historicoInput?.files?.length) {
                     try {
                         const file = historicoInput.files[0];
-                        const ext = (file.name.split('.').pop() || 'file').toLowerCase().replace(/[^a-z0-9]/g, '') || 'file';
-                        let baseName = (file.name && file.name.trim()) ? file.name.trim() : `historico_${Date.now()}.${ext}`;
-                        baseName = baseName.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/[''`]/g, '_').replace(/\s+/g, '_').trim() || `historico_${Date.now()}.${ext}`;
-                        const fileName = await getUniqueStorageFilePathConsultar(this.supabase, bucketGEExt, subfolderExt, baseName);
+                        const fileName = subfolderExt + '/' + getUniqueFileNameGestaoCompras('historico', file);
                         const contentType = getSafeContentType(file);
                         const { error: upErr } = await uploadFileAsBinary(this.supabase, bucketGEExt, fileName, file, contentType);
                         if (!upErr) {
@@ -5241,13 +5236,10 @@ class ProposalsManager {
                 if (anexosInput?.files?.length) {
                     for (const file of Array.from(anexosInput.files).slice(0, 4)) {
                         try {
-                            const ext = (file.name.split('.').pop() || 'file').toLowerCase().replace(/[^a-z0-9]/g, '') || 'file';
-                            let baseName = (file.name && file.name.trim()) ? file.name.trim() : `anexo_${Date.now()}.${ext}`;
-                            baseName = baseName.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/[''`]/g, '_').replace(/\s+/g, '_').trim() || `anexo_${Date.now()}.${ext}`;
-                            const fileName = await getUniqueStorageFilePathConsultar(this.supabase, bucketGE, subfolder, baseName);
-                                const contentType = getSafeContentType(file);
-                                const { error: upErr } = await uploadFileAsBinary(this.supabase, bucketGE, fileName, file, contentType);
-                                if (!upErr && row.personalizado_anexos_urls.length < 4) {
+                            const fileName = subfolder + '/' + getUniqueFileNameGestaoCompras('anexo', file);
+                            const contentType = getSafeContentType(file);
+                            const { error: upErr } = await uploadFileAsBinary(this.supabase, bucketGE, fileName, file, contentType);
+                            if (!upErr && row.personalizado_anexos_urls.length < 4) {
                                 const { data: urlData } = this.supabase.storage.from(bucketGE).getPublicUrl(fileName);
                                 if (urlData?.publicUrl) row.personalizado_anexos_urls.push(urlData.publicUrl);
                             }
@@ -5258,10 +5250,7 @@ class ProposalsManager {
                 if (historicoInput?.files?.length) {
                     try {
                         const file = historicoInput.files[0];
-                        const ext = (file.name.split('.').pop() || 'file').toLowerCase().replace(/[^a-z0-9]/g, '') || 'file';
-                        let baseName = (file.name && file.name.trim()) ? file.name.trim() : `historico_${Date.now()}.${ext}`;
-                        baseName = baseName.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/[''`]/g, '_').replace(/\s+/g, '_').trim() || `historico_${Date.now()}.${ext}`;
-                        const fileName = await getUniqueStorageFilePathConsultar(this.supabase, bucketGE, `gestao-compras/${proposalId}/${articuloId}`, baseName);
+                        const fileName = subfolder + '/' + getUniqueFileNameGestaoCompras('historico', file);
                         const contentType = getSafeContentType(file);
                         const { error: upErr } = await uploadFileAsBinary(this.supabase, bucketGE, fileName, file, contentType);
                         if (!upErr) {
