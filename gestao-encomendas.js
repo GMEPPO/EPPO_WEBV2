@@ -1455,15 +1455,17 @@
         const faltaBadge = faltaCriarCodigo ? ` <span class="ge-badge-falta" style="display:inline-block;margin-left:6px;padding:2px 8px;font-size:0.7rem;background:var(--danger-500);color:var(--text-white);border-radius:4px;">${t('faltaCriarCodigo')}</span>` : '';
         let infoHtml = `<div class="ge-product-info" style="font-size: 0.95rem;">`;
         infoHtml += `<div style="font-weight: 600; margin-bottom: 4px; font-size: 1rem;">${escapeHtml(gc.nome_articulo || gc.designacao || refFornecedor || '-')}${faltaBadge}</div>`;
-        infoHtml += `<div style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 2px;">${t('refFornecedor')}: ${escapeHtml(refFornecedor)}</div>`;
+        if (!hasPhc) infoHtml += `<div style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 2px;">${t('refFornecedor')}: ${escapeHtml(refFornecedor)}</div>`;
         infoHtml += `<div style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 4px;">${t('refPhc')}: ${hasPhc ? escapeHtml(phcLabel) : `<span style="color: var(--accent-500);">${escapeHtml(phcLabel)}</span>`}</div>`;
         if (isSemPhc || soloCreacaoCodigos) {
             infoHtml += `<div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--bg-gray-200); font-size: 0.85rem; color: var(--text-secondary); display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; align-items: baseline;">`;
-            infoHtml += `<span><strong>${t('designacao')}:</strong></span><span>${escapeHtml((gc.designacao || '').trim() || '-')}</span>`;
-            infoHtml += `<span><strong>${t('peso')}:</strong></span><span>${escapeHtml((gc.peso || '').trim() || '-')}</span>`;
-            infoHtml += `<span><strong>${t('qtyCaixa')}:</strong></span><span>${gc.quantidade_por_caixa != null ? escapeHtml(String(gc.quantidade_por_caixa)) : '-'}</span>`;
+            if (!hasPhc) {
+                infoHtml += `<span><strong>${t('designacao')}:</strong></span><span>${escapeHtml((gc.designacao || '').trim() || '-')}</span>`;
+                infoHtml += `<span><strong>${t('peso')}:</strong></span><span>${escapeHtml((gc.peso || '').trim() || '-')}</span>`;
+                infoHtml += `<span><strong>${t('qtyCaixa')}:</strong></span><span>${gc.quantidade_por_caixa != null ? escapeHtml(String(gc.quantidade_por_caixa)) : '-'}</span>`;
+            }
             const highlightCliche = !!(gc.personalizado && gc.tem_cliche === true);
-            infoHtml += `<span><strong>${t('personalizado')}:</strong></span><span${highlightCliche ? ' class="ge-cliche-highlight"' : ''}>${gc.personalizado ? t('sim') : t('nao')}</span>`;
+            if (gc.personalizado) infoHtml += `<span><strong>${t('personalizado')}:</strong></span><span class="ge-cliche-highlight">${t('sim')}</span>`;
             if (gc.personalizado && (gc.personalizado_observacoes || '').trim()) {
                 infoHtml += `<span style="grid-column: 1 / -1; margin-top: 4px;"><strong>${t('nomeHotel')}:</strong> ${escapeHtml((gc.personalizado_observacoes || '').trim())}</span>`;
             } else if (!soloCreacaoCodigos && (gc.personalizado_observacoes || '').trim()) {
@@ -1474,10 +1476,10 @@
                 if (!isNaN(vt)) { infoHtml += `<span><strong>${t('valorTransportes')}:</strong></span><span class="ge-cliche-highlight">${formatNumber(vt)}</span>`; }
             }
             if (!soloCreacaoCodigos) {
-                if (gc.tem_cliche != null || gc.personalizado) {
-                    const temClicheVal = gc.tem_cliche === true;
-                    infoHtml += `<span><strong>${t('temCliche')}:</strong></span><span${highlightCliche ? ' class="ge-cliche-highlight"' : ''}>${temClicheVal ? t('sim') : t('nao')}</span>`;
-                    if (temClicheVal) {
+                if (gc.tem_cliche === true) {
+                    const temClicheVal = true;
+                    infoHtml += `<span><strong>${t('temCliche')}:</strong></span><span${highlightCliche ? ' class="ge-cliche-highlight"' : ''}>${t('sim')}</span>`;
+                    {
                         const pc = (gc.preco_cliche != null && gc.preco_cliche !== '') ? Number(gc.preco_cliche) : NaN;
                         const desc = (gc.porcentaje_descuento != null && gc.porcentaje_descuento !== '') ? Number(gc.porcentaje_descuento) : NaN;
                         const hasPc = !isNaN(pc);
@@ -1493,15 +1495,14 @@
         } else {
             const highlightClicheElse = !!(gc.personalizado && gc.tem_cliche === true);
             infoHtml += `<div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--bg-gray-200); font-size: 0.85rem; color: var(--text-secondary);">`;
-            infoHtml += `<div style="margin-bottom: 2px;"${gc.personalizado ? ' class="ge-cliche-highlight"' : ''}><strong>${t('personalizado')}:</strong> ${gc.personalizado ? t('sim') : t('nao')}</div>`;
+            if (gc.personalizado) infoHtml += `<div style="margin-bottom: 2px;" class="ge-cliche-highlight"><strong>${t('personalizado')}:</strong> ${t('sim')}</div>`;
             if (gc.valor_transportes != null && gc.valor_transportes !== '') {
                 const vt = Number(gc.valor_transportes);
                 if (!isNaN(vt)) infoHtml += `<div style="margin-top: 2px;" class="ge-cliche-highlight"><strong>${t('valorTransportes')}:</strong> ${formatNumber(vt)}</div>`;
             }
-            if (gc.tem_cliche != null || gc.personalizado) {
-                const temClicheVal = gc.tem_cliche === true;
-                infoHtml += `<div style="margin-top: 2px;"${highlightClicheElse ? ' class="ge-cliche-highlight"' : ''}><strong>${t('temCliche')}:</strong> ${temClicheVal ? t('sim') : t('nao')}</div>`;
-                if (temClicheVal) {
+            if (gc.tem_cliche === true) {
+                infoHtml += `<div style="margin-top: 2px;"${highlightClicheElse ? ' class="ge-cliche-highlight"' : ''}><strong>${t('temCliche')}:</strong> ${t('sim')}</div>`;
+                {
                     const pc = (gc.preco_cliche != null && gc.preco_cliche !== '') ? Number(gc.preco_cliche) : NaN;
                     const desc = (gc.porcentaje_descuento != null && gc.porcentaje_descuento !== '') ? Number(gc.porcentaje_descuento) : NaN;
                     const hasPc = !isNaN(pc);
