@@ -5097,20 +5097,6 @@ class ProposalsManager {
         listEl.innerHTML = '';
         const productMap = {};
         if (this.allProducts && this.allProducts.length > 0) this.allProducts.forEach(p => { if (p.id) productMap[p.id] = p; if (p.phc_ref) productMap[p.phc_ref] = p; });
-        const existingDocsFromProposal = [];
-        if (proposal.dossier_documentos && Array.isArray(proposal.dossier_documentos)) proposal.dossier_documentos.forEach(u => { if (u && String(u).trim()) existingDocsFromProposal.push(String(u).trim()); });
-        else if (proposal.dossier_documentos && typeof proposal.dossier_documentos === 'string') { try { const arr = JSON.parse(proposal.dossier_documentos); if (Array.isArray(arr)) arr.forEach(u => { if (u && String(u).trim()) existingDocsFromProposal.push(String(u).trim()); }); } catch (_) { if (proposal.dossier_documentos.trim()) existingDocsFromProposal.push(proposal.dossier_documentos.trim()); } }
-        (proposal.articulos || []).forEach(a => { if (a.logo_url && String(a.logo_url).trim() !== '') existingDocsFromProposal.push(String(a.logo_url).trim()); });
-        const uniquePropostaDocs = [...new Set(existingDocsFromProposal)];
-
-        function buildPropostaDocPreview(url) {
-            const path = (url || '').split('?')[0].toLowerCase();
-            const isImg = /\.(png|jpg|jpeg|gif|webp|bmp|svg)(\?|$)/.test(path);
-            const safe = (url || '').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-            if (isImg) return '<div style="width:56px;height:56px;border-radius:6px;overflow:hidden;background:#334155;flex-shrink:0;"><img src="' + safe + '" alt="" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\'"></div>';
-            const isPdf = /\.pdf(\?|$)/.test(path);
-            return '<div style="width:56px;height:56px;border-radius:6px;background:#334155;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fas fa-file-pdf" style="color:#ef4444;"></i></div>';
-        }
 
         const articulosFiltered = proposal.articulos.filter((a, idx) => selectedArticuloIds.some(sid => String(sid) === String(a.id != null ? a.id : `art-${idx}`)));
         articulosFiltered.forEach((articulo, index) => {
@@ -5136,25 +5122,10 @@ class ProposalsManager {
                         <div><label style="font-size:0.75rem;color:var(--text-secondary);">${L.qtyCaixa} *</label><input type="number" id="aguarda-codigo-qtycaixa-${articuloId}" class="form-input" style="width:100%;padding:6px;" min="0" required></div>
                         <div style="grid-column:1/-1;"><label style="font-size:0.75rem;color:var(--text-secondary);">${L.personalizado}</label><select id="aguarda-codigo-personalizado-${articuloId}" class="form-input" style="width:100%;padding:6px;"><option value="false">${L.personalizadoNao}</option><option value="true">${L.personalizadoSim}</option></select></div>
                         <div style="grid-column:1/-1;"><label style="font-size:0.75rem;color:var(--text-secondary);">${L.observacoes}</label><textarea id="aguarda-codigo-obs-${articuloId}" class="form-input" style="width:100%;padding:6px;min-height:50px;"></textarea></div>
-                        <div id="aguarda-codigo-personalizado-detalhes-${articuloId}" style="grid-column:1/-1;display:none;margin-top:8px;padding:12px;background:var(--bg-white);border-radius:8px;border:1px solid var(--primary);">
-                            <div style="font-size:0.8rem;font-weight:600;color:var(--primary);margin-bottom:8px;">${L.anexosLogotipoArte}</div>
-                            ${uniquePropostaDocs.length > 0 ? '<div style="margin-bottom:8px;"><div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:4px;">' + L.docsDaProposta + '</div><div style="display:flex;flex-direction:column;gap:6px;">' + uniquePropostaDocs.slice(0, 8).map((url, i) => { const safeUrl = (url || '').replace(/"/g, '&quot;').replace(/</g, '&lt;'); const name = (url || '').split('/').pop() || ('Doc ' + (i + 1)); return '<label style="display:flex;align-items:center;gap:8px;padding:6px;background:var(--bg-gray-100);border-radius:6px;cursor:pointer;"><input type="checkbox" class="aguarda-codigo-proposta-doc-cb" id="aguarda-codigo-doc-' + articuloId + '-' + i + '" data-doc-url="' + safeUrl + '">' + buildPropostaDocPreview(url) + '<span style="font-size:0.8rem;flex:1;overflow:hidden;text-overflow:ellipsis;">' + (name || '').replace(/</g, '&lt;') + '</span><a href="' + safeUrl + '" target="_blank" rel="noopener" style="font-size:0.75rem;">' + L.ver + '</a></label>'; }).join('') + '</div></div>' : ''}
-                            <div style="display:grid;gap:8px;grid-template-columns:1fr 1fr;"><div><label style="font-size:0.75rem;">${L.temCliche}</label><select id="aguarda-codigo-tem-cliche-${articuloId}" class="form-input" style="width:100%;padding:6px;"><option value="false">${L.temClicheNao}</option><option value="true">${L.temClicheSim}</option></select></div><div><label style="font-size:0.75rem;">${L.precoCliche}</label><input type="number" id="aguarda-codigo-preco-cliche-${articuloId}" class="form-input" min="0" step="0.01" style="width:100%;padding:6px;"></div></div>
-                            <div style="margin-top:8px;"><label style="font-size:0.75rem;">${L.anexosLogotipoArte}</label><input type="file" id="aguarda-codigo-anexos-${articuloId}" class="form-input" accept="image/*,.pdf,.doc,.docx,.msg,.eml" multiple style="width:100%;padding:6px;"></div>
-                            <div style="margin-top:8px;"><label style="font-size:0.75rem;">${L.historicoEmailsOutlook}</label><input type="file" id="aguarda-codigo-historico-${articuloId}" class="form-input" accept=".msg,.eml,application/octet-stream,*/*" style="width:100%;padding:6px;"></div>
-                        </div>
                     </div>
                 </div>
             `;
             listEl.appendChild(row);
-            const personalizadoSel = document.getElementById(`aguarda-codigo-personalizado-${articuloId}`);
-            const detalhesEl = document.getElementById(`aguarda-codigo-personalizado-detalhes-${articuloId}`);
-            const toggleDetalhes = () => { if (detalhesEl) detalhesEl.style.display = personalizadoSel && personalizadoSel.value === 'true' ? 'block' : 'none'; };
-            if (personalizadoSel) personalizadoSel.addEventListener('change', toggleDetalhes);
-            const anexosInput = document.getElementById(`aguarda-codigo-anexos-${articuloId}`);
-            const historicoInput = document.getElementById(`aguarda-codigo-historico-${articuloId}`);
-            if (anexosInput && typeof this._setupPedidoEncomendaDropzone === 'function') this._setupPedidoEncomendaDropzone(anexosInput, 4);
-            if (historicoInput && typeof this._setupPedidoEncomendaDropzone === 'function') this._setupPedidoEncomendaDropzone(historicoInput, 1);
         });
     }
 
@@ -5219,48 +5190,6 @@ class ProposalsManager {
                 historico_emails_url: null
             };
 
-            if (personalizado) {
-                const temClicheEl = document.getElementById(`aguarda-codigo-tem-cliche-${articuloId}`);
-                const precoClicheEl = document.getElementById(`aguarda-codigo-preco-cliche-${articuloId}`);
-                row.tem_cliche = temClicheEl ? temClicheEl.value === 'true' : false;
-                const pc = precoClicheEl ? precoClicheEl.value.trim() : '';
-                row.preco_cliche = pc === '' ? null : (parseFloat(pc.replace(',', '.')) || null);
-                document.querySelectorAll('.aguarda-codigo-proposta-doc-cb[data-doc-url]').forEach(cb => {
-                    if (cb.id && cb.id.startsWith('aguarda-codigo-doc-' + articuloId + '-') && cb.checked) {
-                        const u = cb.getAttribute('data-doc-url');
-                        if (u && row.personalizado_anexos_urls.length < 4) row.personalizado_anexos_urls.push(u);
-                    }
-                });
-                const subfolder = `gestao-compras/${proposalId}/${articuloId}`;
-                const anexosInput = document.getElementById(`aguarda-codigo-anexos-${articuloId}`);
-                if (anexosInput?.files?.length) {
-                    for (const file of Array.from(anexosInput.files).slice(0, 4)) {
-                        try {
-                            const fileName = subfolder + '/' + getUniqueFileNameGestaoCompras('anexo', file);
-                            const contentType = getSafeContentType(file);
-                            const { error: upErr } = await uploadFileAsBinary(this.supabase, bucketGE, fileName, file, contentType);
-                            if (!upErr && row.personalizado_anexos_urls.length < 4) {
-                                const { data: urlData } = this.supabase.storage.from(bucketGE).getPublicUrl(fileName);
-                                if (urlData?.publicUrl) row.personalizado_anexos_urls.push(urlData.publicUrl);
-                            }
-                        } catch (e) { console.error('Upload anexo aguarda codigo:', e); }
-                    }
-                }
-                const historicoInput = document.getElementById(`aguarda-codigo-historico-${articuloId}`);
-                if (historicoInput?.files?.length) {
-                    try {
-                        const file = historicoInput.files[0];
-                        const fileName = subfolder + '/' + getUniqueFileNameGestaoCompras('historico', file);
-                        const contentType = getSafeContentType(file);
-                        const { error: upErr } = await uploadFileAsBinary(this.supabase, bucketGE, fileName, file, contentType);
-                        if (!upErr) {
-                            const { data: urlData } = this.supabase.storage.from(bucketGE).getPublicUrl(fileName);
-                            if (urlData?.publicUrl) row.historico_emails_url = urlData.publicUrl;
-                        }
-                    } catch (e) { console.error('Upload histórico aguarda codigo:', e); }
-                }
-            }
-
             rows.push(row);
         }
 
@@ -5273,9 +5202,8 @@ class ProposalsManager {
             this.closeAguardaCreacionCodigoPhcModal();
             await this.loadProposals();
             this.resetStatusSelects(proposalId);
-            this.showNotification(this.currentLanguage === 'es' ? 'Guardado. Redirigiendo a Gestão de Encomendas.' : this.currentLanguage === 'pt' ? 'Guardado. A redirecionar para Gestão de Encomendas.' : 'Saved. Redirecting to Order Management.', 'success');
+            this.showNotification(this.currentLanguage === 'es' ? 'Guardado. El pedido de creación de códigos aparecerá en Gestão de Encomendas (pestaña Pedidos pendentes).' : this.currentLanguage === 'pt' ? 'Guardado. O pedido de criação de códigos aparecerá na Gestão de Encomendas (aba Pedidos pendentes).' : 'Saved. The code creation order will appear in Order Management (Pending orders tab).', 'success');
             if (typeof window.refreshUserBar === 'function') window.refreshUserBar();
-            window.location.href = 'gestao-encomendas.html';
         } catch (e) {
             console.error('saveAguardaCreacionCodigoPhc:', e);
             this.showNotification(e?.message || 'Error al guardar', 'error');
