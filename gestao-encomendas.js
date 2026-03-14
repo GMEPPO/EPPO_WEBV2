@@ -1402,15 +1402,6 @@
                 return;
             }
 
-            const { error } = await client
-                .from('presupuestos')
-                .update({
-                    estado_propuesta: 'encomenda_concluida',
-                    fecha_ultima_actualizacion: new Date().toISOString()
-                })
-                .eq('id', presupuestoId);
-            if (error) throw error;
-
             await client.from('gestao_compras').update({ estado_pedido: 'concluido' }).eq('presupuesto_id', presupuestoId);
 
             if (isCreacaoCodigos && gcRows && gcRows.length > 0) {
@@ -1441,7 +1432,7 @@
             backToList();
             await loadList();
             await loadHistorico();
-            showNotification(lang === 'es' ? 'Encomienda marcada como concluida. Aparecerá en Histórico.' : lang === 'en' ? 'Order marked as completed. It will appear in History.' : 'Encomenda marcada como concluída. Aparecerá no Histórico.', 'success');
+            showNotification(lang === 'es' ? 'Tarea concluida. El estado de la propuesta en el Histórico no se modifica.' : lang === 'en' ? 'Task completed. The proposal status in History is not changed.' : 'Tarefa concluída. O estado da proposta no Histórico não é alterado.', 'success');
         } catch (e) {
             console.error('concluirEncomendaEnCurso:', e);
             showNotification(e.message || t('error'), 'error');
