@@ -1469,11 +1469,11 @@
             } else if (!soloCreacaoCodigos && (gc.personalizado_observacoes || '').trim()) {
                 infoHtml += `<span style="grid-column: 1 / -1; margin-top: 4px;"><strong>${t('observaciones')}:</strong> ${escapeHtml((gc.personalizado_observacoes || '').trim())}</span>`;
             }
+            if (gc.valor_transportes != null && gc.valor_transportes !== '') {
+                const vt = Number(gc.valor_transportes);
+                if (!isNaN(vt)) { infoHtml += `<span><strong>${t('valorTransportes')}:</strong></span><span class="ge-cliche-highlight">${formatNumber(vt)}</span>`; }
+            }
             if (!soloCreacaoCodigos) {
-                if (gc.valor_transportes != null && gc.valor_transportes !== '') {
-                    const vt = Number(gc.valor_transportes);
-                    if (!isNaN(vt)) { infoHtml += `<span><strong>${t('valorTransportes')}:</strong></span><span>${formatNumber(vt)}</span>`; }
-                }
                 if (gc.tem_cliche != null || gc.personalizado) {
                     const temClicheVal = gc.tem_cliche === true;
                     infoHtml += `<span><strong>${t('temCliche')}:</strong></span><span${highlightCliche ? ' class="ge-cliche-highlight"' : ''}>${temClicheVal ? t('sim') : t('nao')}</span>`;
@@ -1496,7 +1496,7 @@
             const highlightClicheElse = !!(gc.personalizado && gc.tem_cliche === true);
             if (gc.valor_transportes != null && gc.valor_transportes !== '') {
                 const vt = Number(gc.valor_transportes);
-                if (!isNaN(vt)) infoHtml += `<div style="margin-top: 4px; font-size: 0.85rem; color: var(--text-secondary);"><strong>${t('valorTransportes')}:</strong> ${formatNumber(vt)}</div>`;
+                if (!isNaN(vt)) infoHtml += `<div style="margin-top: 4px; font-size: 0.85rem;" class="ge-cliche-highlight"><strong>${t('valorTransportes')}:</strong> ${formatNumber(vt)}</div>`;
             }
             if (gc.tem_cliche != null || gc.personalizado) {
                 const temClicheVal = gc.tem_cliche === true;
