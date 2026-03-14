@@ -239,6 +239,7 @@
     let listData = []; // { source: 'presupuesto'|'contacto_fornecedores', presupuesto_id?, contacto_id?, codigo_propuesta, responsavel, fornecedores: string[], tipoLabel, isEnCurso: boolean }
     let historicoListData = []; // { source: 'presupuesto'|'contacto_fornecedores', presupuesto_id?, contacto_id?, codigo_propuesta, responsavel, fornecedores: string[], tipoLabel, dataConclusao? }
     let enComendaNumeroMap = {}; // key: presupuesto_id + '|' + fornecedor -> numero_encomenda (para vista en curso)
+    let emCursoKeysSet = new Set(); // keys "presupuestoId|fornecedor" que tienen al menos una fila em_curso (para mostrar solo esos en la pestaña em curso)
     let currentTab = 'pendientes'; // 'pendientes' | 'encurso' | 'historico'
     let listSearchQuery = '';
     let geReadOnly = false; // true para admin: solo ver, no editar
@@ -314,12 +315,12 @@
         setLoading(true);
 
         try {
+            emCursoKeysSet = new Set();
             const { data: rows, error } = await client
                 .from('gestao_compras')
                 .select('presupuesto_id, nome_fornecedor, presupuesto_articulo_id, tipo, estado_pedido');
 
             if (error) throw error;
-
             const byPresupuesto = {};
             const tipoByPresupuesto = {};
             const estadoByPresupuesto = {}; // 'pendente' | 'em_curso' | 'concluido' (peor estado del pedido para mostrar en lista)
@@ -327,6 +328,10 @@
                 const rawId = r.presupuesto_id;
                 const id = rawId != null ? String(rawId).toLowerCase().trim() : null;
                 if (!id) return;
+                if ((r.estado_pedido || '').toLowerCase() === 'em_curso') {
+                    const fnEm = (r.nome_fornecedor || '').trim();
+                    if (fnEm) emCursoKeysSet.add(id + '|' + fnEm);
+                }
                 if (!byPresupuesto[id]) {
                     byPresupuesto[id] = { presupuesto_id: id, fornecedores: [], articuloIds: new Set() };
                 }
@@ -632,18 +637,21 @@
             (row.fornecedores || []).forEach(fornecedor => {
                 const name = (fornecedor || '').trim();
                 if (name) {
-                    const key = row.presupuesto_id + '|' + name;
+                    const key = (row.presupuesto_id != null ? String(row.presupuesto_id).toLowerCase().trim() : '') + '|' + name;
+                    if (!emCursoKeysSet.has(key)) return; // solo mostrar (proposta, fornecedor) que siguen em_curso
                     rows.push({
                         fornecedor: name,
                         codigo_propuesta: row.codigo_propuesta,
                         responsavel: row.responsavel,
                         presupuesto_id: row.presupuesto_id,
-                        numero_encomenda: enComendaNumeroMap[key] || '-',
+                        numero_encomenda: enComendaNumeroMap[key] || enComendaNumeroMap[(row.presupuesto_id || '') + '|' + name] || '-',
                         tipoLabel: row.tipoLabel || t('tipoPropostaNormal')
                     });
                 }
             });
             if (!row.fornecedores || row.fornecedores.length === 0) {
+                const key = (row.presupuesto_id != null ? String(row.presupuesto_id).toLowerCase().trim() : '') + '|-';
+                if (!emCursoKeysSet.has(key)) return;
                 rows.push({
                     fornecedor: '-',
                     codigo_propuesta: row.codigo_propuesta,
@@ -1382,7 +1390,7 @@
                 blocksEl.appendChild(block);
             });
             const concluirBtn = document.getElementById('ge-btn-concluir-encurso');
-            if (concluirBtn && !geReadOnly) concluirBtn.addEventListener('click', () => concluirEncomendaEnCurso(presupuestoId));
+            if (concluirBtn && !geReadOnly) concluirBtn.addEventListener('click', () => concluirEncomendaEnCurso(presupuestoId, fornecedorFiltro));
         } catch (e) {
             console.error('showDetailsEnCurso:', e);
             blocksEl.innerHTML = '<div style="color: var(--danger-500);">' + escapeHtml(e.message || t('errorCarga')) + '</div>';
@@ -1423,7 +1431,7 @@
         }
     }
 
-    async function concluirEncomendaEnCurso(presupuestoId) {
+    async function concluirEncomendaEnCurso(presupuestoId, fornecedorFiltro) {
         if (!presupuestoId) return;
         if (!confirm(t('confirmarConcluir'))) return;
         const client = await getClient();
@@ -1438,7 +1446,9 @@
                 await client.from('gestao_compras').update({ phc_ref: phcRef }).eq('id', gcId);
             }
 
-            const { data: gcRows } = await client.from('gestao_compras').select('tipo, phc_ref, nome_articulo, nome_fornecedor').eq('presupuesto_id', presupuestoId);
+            let query = client.from('gestao_compras').select('tipo, phc_ref, nome_articulo, nome_fornecedor').eq('presupuesto_id', presupuestoId);
+            if (fornecedorFiltro) query = query.eq('nome_fornecedor', fornecedorFiltro);
+            const { data: gcRows } = await query;
             const isCreacaoCodigos = (gcRows || []).some(r => (r.tipo || '').toLowerCase().includes('criacao') || (r.tipo || '').toLowerCase() === 'criacao_codigos');
             const withPhc = (gcRows || []).filter(r => (r.phc_ref || '').trim() !== '');
             if (isCreacaoCodigos && gcRows && gcRows.length > 0 && withPhc.length === 0) {
@@ -1446,7 +1456,11 @@
                 return;
             }
 
-            await client.from('gestao_compras').update({ estado_pedido: 'concluido' }).eq('presupuesto_id', presupuestoId);
+            if (fornecedorFiltro) {
+                await client.from('gestao_compras').update({ estado_pedido: 'concluido' }).eq('presupuesto_id', presupuestoId).eq('nome_fornecedor', fornecedorFiltro);
+            } else {
+                await client.from('gestao_compras').update({ estado_pedido: 'concluido' }).eq('presupuesto_id', presupuestoId);
+            }
 
             if (isCreacaoCodigos && gcRows && gcRows.length > 0) {
                 if (withPhc.length > 0) {
