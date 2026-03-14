@@ -623,7 +623,12 @@
     }
 
     function updateTabCounts() {
-        const pendientesCount = listData.filter(r => r.source === 'contacto_fornecedores' || !r.isEnCurso).length;
+        const pendientesCount = listData.filter(r => {
+            if (r.source === 'contacto_fornecedores') return true;
+            if (r.isEnCurso) return false;
+            if ((r.estado_pedido || '').toLowerCase() === 'concluido') return false;
+            return true;
+        }).length;
         const enCursoCount = getEnCursoRowsByFornecedor().length;
         const elP = document.getElementById('ge-tab-pendientes-count');
         const elE = document.getElementById('ge-tab-encurso-count');
@@ -715,8 +720,13 @@
             });
             setEmpty(historicoFiltered.length === 0);
         } else {
-            // Solo pendientes: contactos + propuestas que aún no tienen todos los nº encomenda (no isEnCurso)
-            let filtered = listData.filter(row => row.source === 'contacto_fornecedores' || !row.isEnCurso);
+            // Solo pendientes: contactos + propuestas no en curso y no concluidas (estado_pedido !== 'concluido')
+            let filtered = listData.filter(row => {
+                if (row.source === 'contacto_fornecedores') return true;
+                if (row.isEnCurso) return false;
+                if ((row.estado_pedido || '').toLowerCase() === 'concluido') return false;
+                return true;
+            });
             filtered = filtered.filter(row => matchesListSearch(row, false));
             tbody.innerHTML = '';
             filtered.forEach(row => {
