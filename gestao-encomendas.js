@@ -1337,9 +1337,12 @@
                 if (!byFornecedor[fn]) byFornecedor[fn] = [];
                 byFornecedor[fn].push(gc);
             });
+            let idsConcluirEsteFornecedor = []; // IDs de gestao_compras a marcar concluidos (solo cuando hay filtro por fornecedor)
             if (fornecedorFiltro) {
                 const key = Object.keys(byFornecedor).find(k => (k || '').toLowerCase() === fornecedorFiltro.toLowerCase());
                 byFornecedor = key ? { [key]: byFornecedor[key] } : {};
+                const rowsFiltradas = key ? (byFornecedor[key] || []) : [];
+                idsConcluirEsteFornecedor = rowsFiltradas.map(gc => (gc.id != null ? String(gc.id).trim() : '')).filter(Boolean);
             }
 
             const isCreacaoCodigosView = (gcRows || []).some(gc => ((gc.tipo || '').toLowerCase().includes('criacao') || (gc.tipo || '').toLowerCase() === 'criacao_codigos'));
@@ -1348,7 +1351,8 @@
             const numeroPropostaBlockEc = '<div class="ge-fornecedor-block" style="margin-bottom:1rem;"><div style="display:grid;grid-template-columns:auto 1fr;gap:1rem;align-items:center;"><div><span style="font-size:0.8rem;color:var(--text-secondary);">' + t('numPropuesta') + '</span><div style="font-weight:600;color:var(--text-primary);font-size:1.1rem;">' + escapeHtml(codigoPropuestaEc) + '</div></div><div><span style="font-size:0.8rem;color:var(--text-secondary);">' + t('responsable') + '</span><div style="font-weight:600;color:var(--text-primary);">' + escapeHtml(responsavelEc) + '</div></div></div></div>';
 
             const concluirBtnDataFornecedor = (fornecedorFiltro && fornecedorFiltro.length > 0) ? (' data-fornecedor-filtro="' + escapeAttr(fornecedorFiltro) + '"') : '';
-            const concluirBlockHtml = geReadOnly ? '' : ('<div class="ge-fornecedor-block" style="margin-bottom:1.5rem;"><button type="button" class="ge-btn ge-btn-success" id="ge-btn-concluir-encurso" data-presupuesto-id="' + escapeAttr(presupuestoId) + '"' + concluirBtnDataFornecedor + '><i class="fas fa-check-circle"></i> <span id="ge-btn-concluir-text">' + escapeHtml(t('concluirTarefa')) + '</span></button></div>');
+            const concluirBtnDataGcIds = (idsConcluirEsteFornecedor.length > 0) ? (' data-gc-ids="' + escapeAttr(idsConcluirEsteFornecedor.join(',')) + '"') : '';
+            const concluirBlockHtml = geReadOnly ? '' : ('<div class="ge-fornecedor-block" style="margin-bottom:1.5rem;"><button type="button" class="ge-btn ge-btn-success" id="ge-btn-concluir-encurso" data-presupuesto-id="' + escapeAttr(presupuestoId) + '"' + concluirBtnDataFornecedor + concluirBtnDataGcIds + '><i class="fas fa-check-circle"></i> <span id="ge-btn-concluir-text">' + escapeHtml(t('concluirTarefa')) + '</span></button></div>');
             blocksEl.innerHTML = numeroPropostaBlockEc + concluirBlockHtml;
             Object.keys(byFornecedor).sort().forEach(fornecedorName => {
                 const rows = byFornecedor[fornecedorName];
@@ -1412,7 +1416,9 @@
             if (concluirBtn && !geReadOnly) concluirBtn.addEventListener('click', function () {
                 const pid = concluirBtn.getAttribute('data-presupuesto-id') || presupuestoId;
                 const forn = (concluirBtn.getAttribute('data-fornecedor-filtro') || '').trim() || (fornecedorFiltro && fornecedorFiltro.trim()) || undefined;
-                concluirEncomendaEnCurso(pid, forn);
+                const gcIdsRaw = (concluirBtn.getAttribute('data-gc-ids') || '').trim();
+                const gcIds = gcIdsRaw ? gcIdsRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
+                concluirEncomendaEnCurso(pid, forn, gcIds);
             });
         } catch (e) {
             console.error('showDetailsEnCurso:', e);
@@ -1454,7 +1460,7 @@
         }
     }
 
-    async function concluirEncomendaEnCurso(presupuestoId, fornecedorFiltro) {
+    async function concluirEncomendaEnCurso(presupuestoId, fornecedorFiltro, gcIds) {
         if (!presupuestoId) return;
         if (!confirm(t('confirmarConcluir'))) return;
         const client = await getClient();
@@ -1469,9 +1475,16 @@
                 await client.from('gestao_compras').update({ phc_ref: phcRef }).eq('id', gcId);
             }
 
-            let query = client.from('gestao_compras').select('tipo, phc_ref, nome_articulo, nome_fornecedor').eq('presupuesto_id', presupuestoId);
-            if (fornecedorFiltro) query = query.eq('nome_fornecedor', fornecedorFiltro);
-            const { data: gcRows } = await query;
+            let gcRows = [];
+            if (Array.isArray(gcIds) && gcIds.length > 0) {
+                const { data } = await client.from('gestao_compras').select('id, tipo, phc_ref, nome_articulo, nome_fornecedor').in('id', gcIds);
+                gcRows = data || [];
+            } else {
+                let query = client.from('gestao_compras').select('tipo, phc_ref, nome_articulo, nome_fornecedor').eq('presupuesto_id', presupuestoId);
+                if (fornecedorFiltro) query = query.eq('nome_fornecedor', fornecedorFiltro);
+                const { data } = await query;
+                gcRows = data || [];
+            }
             const isCreacaoCodigos = (gcRows || []).some(r => (r.tipo || '').toLowerCase().includes('criacao') || (r.tipo || '').toLowerCase() === 'criacao_codigos');
             const withPhc = (gcRows || []).filter(r => (r.phc_ref || '').trim() !== '');
             if (isCreacaoCodigos && gcRows && gcRows.length > 0 && withPhc.length === 0) {
@@ -1479,14 +1492,19 @@
                 return;
             }
 
-            // Solo actualizar las filas del fornecedor actual; usar valor exacto de la BD cuando hay filtro para evitar actualizar todos
-            const nomeFornecedorParaUpdate = (fornecedorFiltro && gcRows && gcRows.length > 0 && gcRows[0].nome_fornecedor != null)
-                ? gcRows[0].nome_fornecedor
-                : fornecedorFiltro;
-            if (nomeFornecedorParaUpdate) {
-                await client.from('gestao_compras').update({ estado_pedido: 'concluido' }).eq('presupuesto_id', presupuestoId).eq('nome_fornecedor', nomeFornecedorParaUpdate);
+            // Actualizar solo las filas del fornecedor: por IDs explícitos (fiable) o por presupuesto_id + nome_fornecedor
+            if (Array.isArray(gcIds) && gcIds.length > 0) {
+                const { error } = await client.from('gestao_compras').update({ estado_pedido: 'concluido' }).in('id', gcIds);
+                if (error) throw error;
             } else {
-                await client.from('gestao_compras').update({ estado_pedido: 'concluido' }).eq('presupuesto_id', presupuestoId);
+                const nomeFornecedorParaUpdate = (fornecedorFiltro && gcRows.length > 0 && gcRows[0].nome_fornecedor != null)
+                    ? gcRows[0].nome_fornecedor
+                    : fornecedorFiltro;
+                if (nomeFornecedorParaUpdate) {
+                    await client.from('gestao_compras').update({ estado_pedido: 'concluido' }).eq('presupuesto_id', presupuestoId).eq('nome_fornecedor', nomeFornecedorParaUpdate);
+                } else {
+                    await client.from('gestao_compras').update({ estado_pedido: 'concluido' }).eq('presupuesto_id', presupuestoId);
+                }
             }
 
             if (isCreacaoCodigos && gcRows && gcRows.length > 0) {
