@@ -35,9 +35,13 @@ function getDisplayNameConsultar(name) {
 }
 
 async function getUniqueStorageFilePathConsultar(storageClient, bucket, folderPrefix, fileName) {
-    // Sanitizar: caracteres prohibidos en rutas + espacios (evitan 400 al cargar la URL en Storage)
-    let sanitized = (fileName || 'file').replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').trim() || 'file';
-    sanitized = sanitized.replace(/\s+/g, '_');
+    // Sanitizar: caracteres prohibidos en rutas/keys de Supabase Storage (evitan 400 Invalid key)
+    let sanitized = (fileName || 'file')
+        .replace(/[<>:"/\\|?*\x00-\x1f]/g, '_')
+        .replace(/[''`]/g, '_')
+        .replace(/\s+/g, '_')
+        .replace(/[()[\]{};#@&%=+,]/g, '_')
+        .trim() || 'file';
     const lastDot = sanitized.lastIndexOf('.');
     const base = lastDot > 0 ? sanitized.slice(0, lastDot) : sanitized;
     const ext = lastDot > 0 ? sanitized.slice(lastDot + 1) : '';
@@ -4764,7 +4768,7 @@ class ProposalsManager {
                             try {
                                 const ext = (file.name.split('.').pop() || 'file').toLowerCase().replace(/[^a-z0-9]/g, '') || 'file';
                                 let baseName = (file.name && file.name.trim()) ? file.name.trim() : `anexo_${Date.now()}.${ext}`;
-                                baseName = baseName.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/\s+/g, '_').trim() || `anexo_${Date.now()}.${ext}`;
+                                baseName = baseName.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/[''`]/g, '_').replace(/\s+/g, '_').trim() || `anexo_${Date.now()}.${ext}`;
                                 const fileName = await getUniqueStorageFilePathConsultar(this.supabase, bucketGE, subfolder, baseName);
                                 const contentType = getSafeContentType(file);
                                 const { error: upErr } = await uploadFileAsBinary(this.supabase, bucketGE, fileName, file, contentType);
@@ -4782,11 +4786,11 @@ class ProposalsManager {
                             const file = historicoInput.files[0];
                             const ext = (file.name.split('.').pop() || 'file').toLowerCase().replace(/[^a-z0-9]/g, '') || 'file';
                             let baseName = (file.name && file.name.trim()) ? file.name.trim() : `historico_${Date.now()}.${ext}`;
-                            baseName = baseName.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/\s+/g, '_').trim() || `historico_${Date.now()}.${ext}`;
+                            baseName = baseName.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/[''`]/g, '_').replace(/\s+/g, '_').trim() || `historico_${Date.now()}.${ext}`;
                             const fileName = await getUniqueStorageFilePathConsultar(this.supabase, bucketGE, subfolder, baseName);
-                            const contentType = getSafeContentType(file);
-                            const { error: upErr } = await uploadFileAsBinary(this.supabase, bucketGE, fileName, file, contentType);
-                            if (!upErr) {
+                                const contentType = getSafeContentType(file);
+                                const { error: upErr } = await uploadFileAsBinary(this.supabase, bucketGE, fileName, file, contentType);
+                                if (!upErr) {
                                 const { data: urlData } = this.supabase.storage.from(bucketGE).getPublicUrl(fileName);
                                 if (urlData?.publicUrl) row.historico_emails_url = urlData.publicUrl;
                             } else {
@@ -4867,7 +4871,7 @@ class ProposalsManager {
                         try {
                             const ext = (file.name.split('.').pop() || 'file').toLowerCase().replace(/[^a-z0-9]/g, '') || 'file';
                             let baseName = (file.name && file.name.trim()) ? file.name.trim() : `anexo_${Date.now()}.${ext}`;
-                            baseName = baseName.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/\s+/g, '_').trim() || `anexo_${Date.now()}.${ext}`;
+                            baseName = baseName.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/[''`]/g, '_').replace(/\s+/g, '_').trim() || `anexo_${Date.now()}.${ext}`;
                             const fileName = await getUniqueStorageFilePathConsultar(this.supabase, bucketGEExt, subfolderExt, baseName);
                             const contentType = getSafeContentType(file);
                             const { error: upErr } = await uploadFileAsBinary(this.supabase, bucketGEExt, fileName, file, contentType);
@@ -4885,7 +4889,7 @@ class ProposalsManager {
                         const file = historicoInput.files[0];
                         const ext = (file.name.split('.').pop() || 'file').toLowerCase().replace(/[^a-z0-9]/g, '') || 'file';
                         let baseName = (file.name && file.name.trim()) ? file.name.trim() : `historico_${Date.now()}.${ext}`;
-                        baseName = baseName.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/\s+/g, '_').trim() || `historico_${Date.now()}.${ext}`;
+                        baseName = baseName.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/[''`]/g, '_').replace(/\s+/g, '_').trim() || `historico_${Date.now()}.${ext}`;
                         const fileName = await getUniqueStorageFilePathConsultar(this.supabase, bucketGEExt, subfolderExt, baseName);
                         const contentType = getSafeContentType(file);
                         const { error: upErr } = await uploadFileAsBinary(this.supabase, bucketGEExt, fileName, file, contentType);
@@ -5239,11 +5243,11 @@ class ProposalsManager {
                         try {
                             const ext = (file.name.split('.').pop() || 'file').toLowerCase().replace(/[^a-z0-9]/g, '') || 'file';
                             let baseName = (file.name && file.name.trim()) ? file.name.trim() : `anexo_${Date.now()}.${ext}`;
-                            baseName = baseName.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/\s+/g, '_').trim() || `anexo_${Date.now()}.${ext}`;
+                            baseName = baseName.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/[''`]/g, '_').replace(/\s+/g, '_').trim() || `anexo_${Date.now()}.${ext}`;
                             const fileName = await getUniqueStorageFilePathConsultar(this.supabase, bucketGE, subfolder, baseName);
-                            const contentType = getSafeContentType(file);
-                            const { error: upErr } = await uploadFileAsBinary(this.supabase, bucketGE, fileName, file, contentType);
-                            if (!upErr && row.personalizado_anexos_urls.length < 4) {
+                                const contentType = getSafeContentType(file);
+                                const { error: upErr } = await uploadFileAsBinary(this.supabase, bucketGE, fileName, file, contentType);
+                                if (!upErr && row.personalizado_anexos_urls.length < 4) {
                                 const { data: urlData } = this.supabase.storage.from(bucketGE).getPublicUrl(fileName);
                                 if (urlData?.publicUrl) row.personalizado_anexos_urls.push(urlData.publicUrl);
                             }
@@ -5256,7 +5260,7 @@ class ProposalsManager {
                         const file = historicoInput.files[0];
                         const ext = (file.name.split('.').pop() || 'file').toLowerCase().replace(/[^a-z0-9]/g, '') || 'file';
                         let baseName = (file.name && file.name.trim()) ? file.name.trim() : `historico_${Date.now()}.${ext}`;
-                        baseName = baseName.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/\s+/g, '_').trim() || `historico_${Date.now()}.${ext}`;
+                        baseName = baseName.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/[''`]/g, '_').replace(/\s+/g, '_').trim() || `historico_${Date.now()}.${ext}`;
                         const fileName = await getUniqueStorageFilePathConsultar(this.supabase, bucketGE, `gestao-compras/${proposalId}/${articuloId}`, baseName);
                         const contentType = getSafeContentType(file);
                         const { error: upErr } = await uploadFileAsBinary(this.supabase, bucketGE, fileName, file, contentType);
