@@ -4908,7 +4908,7 @@ class ProposalsManager {
         // Tipo: "encomenda a fornecedor" o "encomenda a fornecedor e criação de codigos" si falta código PHC en algún artículo
         const algumSemPhc = rows.some(r => (r.phc_ref || '').toString().trim() === '');
         const tipoPedido = algumSemPhc ? 'encomenda a fornecedor e criação de codigos' : 'encomenda a fornecedor';
-        rows.forEach(r => { r.tipo = tipoPedido; });
+        rows.forEach(r => { r.tipo = tipoPedido; r.estado_pedido = 'pendente'; });
 
         // Normalizar payload para Supabase: evitar undefined y asegurar tipos correctos (evita 400)
         const rowsToInsert = rows.map(r => {
@@ -5180,6 +5180,7 @@ class ProposalsManager {
                 personalizado: personalizado,
                 personalizado_observacoes: observacoes,
                 tipo: 'criacao_codigos',
+                estado_pedido: 'pendente',
                 phc_ref: null,
                 precio_custo: null,
                 porcentaje_descuento: null,

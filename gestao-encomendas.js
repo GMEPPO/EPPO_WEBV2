@@ -316,14 +316,17 @@
         try {
             const { data: rows, error } = await client
                 .from('gestao_compras')
-                .select('presupuesto_id, nome_fornecedor, presupuesto_articulo_id, tipo');
+                .select('presupuesto_id, nome_fornecedor, presupuesto_articulo_id, tipo, estado_pedido');
 
             if (error) throw error;
 
             const byPresupuesto = {};
             const tipoByPresupuesto = {};
+            const estadoByPresupuesto = {}; // 'pendente' | 'em_curso' | 'concluido' (peor estado del pedido para mostrar en lista)
             (rows || []).forEach(r => {
-                const id = r.presupuesto_id;
+                const rawId = r.presupuesto_id;
+                const id = rawId != null ? String(rawId).toLowerCase().trim() : null;
+                if (!id) return;
                 if (!byPresupuesto[id]) {
                     byPresupuesto[id] = { presupuesto_id: id, fornecedores: [], articuloIds: new Set() };
                 }
@@ -332,9 +335,15 @@
                     byPresupuesto[id].fornecedores.push(fn);
                 }
                 if (r.presupuesto_articulo_id) byPresupuesto[id].articuloIds.add(r.presupuesto_articulo_id);
-                if (id && r.tipo && typeof r.tipo === 'string' && r.tipo.trim() !== '' && !tipoByPresupuesto[id]) {
-                    tipoByPresupuesto[id] = r.tipo.trim();
+                if (r.tipo && typeof r.tipo === 'string' && r.tipo.trim() !== '') {
+                    const tipo = r.tipo.trim();
+                    if (!tipoByPresupuesto[id]) tipoByPresupuesto[id] = tipo;
+                    else if (tipo.toLowerCase() === 'criacao_codigos') tipoByPresupuesto[id] = tipo; // preferir criacao_codigos si existe
                 }
+                const est = (r.estado_pedido || 'pendente').toLowerCase();
+                if (!estadoByPresupuesto[id]) estadoByPresupuesto[id] = est;
+                else if (est === 'pendente') estadoByPresupuesto[id] = 'pendente'; // si alguna fila es pendente, el pedido queda pendente
+                else if (est === 'em_curso' && estadoByPresupuesto[id] !== 'pendente') estadoByPresupuesto[id] = 'em_curso';
             });
 
             const presupuestoIds = Object.keys(byPresupuesto);
@@ -378,12 +387,14 @@
                 }
             });
 
+            const idsInPresupuestosActivos = new Set((presupuestosActivos || []).map(p => (p.id || '').toString().trim()).filter(Boolean));
             listData = (presupuestosActivos || []).map(p => {
-                const info = byPresupuesto[p.id] || { fornecedores: [], articuloIds: new Set() };
+                const pid = p.id != null ? String(p.id).toLowerCase().trim() : null;
+                const info = (pid && byPresupuesto[pid]) ? byPresupuesto[pid] : { fornecedores: [], articuloIds: new Set() };
                 const articuloIds = Array.from(info.articuloIds || []);
                 const totalArticulos = articulosCountByPresupuesto[p.id] || 0;
                 const hasArticulosPendientes = totalArticulos > articuloIds.length;
-                const tipoFromGestao = tipoByPresupuesto[p.id];
+                const tipoFromGestao = pid ? (tipoByPresupuesto[pid] || '') : '';
                 const isSoloCreacaoCodigos = (tipoFromGestao || '').toLowerCase() === 'criacao_codigos';
                 const isEnCurso = isSoloCreacaoCodigos
                     ? false
@@ -391,6 +402,7 @@
                 const tipoLabel = (tipoFromGestao && (tipoFromGestao || '').trim() !== '')
                     ? tipoFromGestao.trim()
                     : getTipoLabelPresupuesto(p.tipo_registro_directo);
+                const estadoPedido = (pid && estadoByPresupuesto[pid]) ? estadoByPresupuesto[pid] : 'pendente';
                 return {
                     source: 'presupuesto',
                     presupuesto_id: p.id,
@@ -400,8 +412,31 @@
                     tipoLabel: tipoLabel,
                     isEnCurso: !!isEnCurso,
                     hasArticulosPendientes: !!hasArticulosPendientes,
-                    estado_propuesta: p.estado_propuesta || ''
+                    estado_propuesta: p.estado_propuesta || '',
+                    estado_pedido: estadoPedido
                 };
+            });
+            // Incluir pedidos que están en gestao_compras pero no vinieron en presupuestos (p. ej. RLS o estado distinto)
+            (presupuestoIds || []).forEach(pid => {
+                const idStr = (pid || '').toString().trim();
+                if (!idStr || idsInPresupuestosActivos.has(idStr)) return;
+                const info = byPresupuesto[pid] || byPresupuesto[idStr] || { fornecedores: [], articuloIds: new Set() };
+                const tipoFromGestao = tipoByPresupuesto[pid] || tipoByPresupuesto[idStr];
+                const tipoLabel = (tipoFromGestao && (tipoFromGestao || '').trim() !== '')
+                    ? tipoFromGestao.trim()
+                    : t('tipoCriacaoCodigos');
+                const isSoloCreacaoCodigos = (tipoFromGestao || '').toLowerCase() === 'criacao_codigos';
+                listData.push({
+                    source: 'presupuesto',
+                    presupuesto_id: pid,
+                    codigo_propuesta: '-',
+                    responsavel: '-',
+                    fornecedores: info.fornecedores || [],
+                    tipoLabel: tipoLabel,
+                    isEnCurso: isSoloCreacaoCodigos ? false : false,
+                    hasArticulosPendientes: true,
+                    estado_propuesta: 'aguarda_creacion_codigo_phc'
+                });
             });
 
             await syncEstadoEncursoOnLoad(client, listData);
