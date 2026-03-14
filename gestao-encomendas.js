@@ -732,7 +732,7 @@
                     <td>${escapeHtml(row.numero_encomenda || '-')}</td>
                     <td><button type="button" class="ge-btn ge-btn-primary" data-presupuesto-id="${row.presupuesto_id}">${t('detalles')}</button></td>
                 `;
-                tr.querySelector('button').addEventListener('click', () => showDetails(row.presupuesto_id));
+                tr.querySelector('button').addEventListener('click', () => showDetails(row.presupuesto_id, { fornecedor: row.fornecedor }));
                 tbody.appendChild(tr);
             });
             setEmpty(rows.length === 0);
@@ -892,10 +892,11 @@
         if (overlay) overlay.style.display = 'none';
     }
 
-    async function showDetails(presupuestoId) {
+    async function showDetails(presupuestoId, options) {
         const proposal = listData.find(p => p.presupuesto_id === presupuestoId);
+        const fornecedorFiltro = (options && options.fornecedor) ? String(options.fornecedor).trim() : null;
         if (proposal && proposal.isEnCurso) {
-            showDetailsEnCurso(presupuestoId);
+            showDetailsEnCurso(presupuestoId, fornecedorFiltro || undefined);
             return;
         }
         showDetailsPendientes(presupuestoId);
@@ -1271,7 +1272,7 @@
         }
     }
 
-    async function showDetailsEnCurso(presupuestoId) {
+    async function showDetailsEnCurso(presupuestoId, fornecedorFiltro) {
         const client = await getClient();
         if (!client) return;
 
@@ -1282,7 +1283,7 @@
 
         const proposal = listData.find(p => p.presupuesto_id === presupuestoId);
         const titleEl = document.getElementById('ge-detail-title');
-        if (titleEl) titleEl.textContent = (proposal ? proposal.codigo_propuesta : presupuestoId) + ' – ' + t('detalles');
+        if (titleEl) titleEl.textContent = (proposal ? proposal.codigo_propuesta : presupuestoId) + (fornecedorFiltro ? ' – ' + fornecedorFiltro : '') + ' – ' + t('detalles');
 
         const blocksEl = document.getElementById('ge-detail-blocks');
         if (!blocksEl) return;
@@ -1304,12 +1305,16 @@
             const articuloMap = {};
             (articulos || []).forEach(a => { articuloMap[a.id] = a; });
 
-            const byFornecedor = {};
+            let byFornecedor = {};
             (gcRows || []).forEach(gc => {
                 const fn = (gc.nome_fornecedor || '').trim() || '-';
                 if (!byFornecedor[fn]) byFornecedor[fn] = [];
                 byFornecedor[fn].push(gc);
             });
+            if (fornecedorFiltro) {
+                const key = Object.keys(byFornecedor).find(k => (k || '').toLowerCase() === fornecedorFiltro.toLowerCase());
+                byFornecedor = key ? { [key]: byFornecedor[key] } : {};
+            }
 
             const isCreacaoCodigosView = (gcRows || []).some(gc => ((gc.tipo || '').toLowerCase().includes('criacao') || (gc.tipo || '').toLowerCase() === 'criacao_codigos'));
             const codigoPropuestaEc = (proposal && proposal.codigo_propuesta) ? proposal.codigo_propuesta : (presupuestoId ? String(presupuestoId).substring(0, 8) : '-');
