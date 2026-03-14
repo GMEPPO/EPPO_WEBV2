@@ -4421,11 +4421,13 @@ class ProposalsManager {
 
             const extraFields = !hasPhc ? `
                 <div class="pedido-encomenda-extra" style="margin-top: 10px; padding: 10px; background: var(--bg-gray-100); border-radius: 8px; display: grid; gap: 8px; grid-template-columns: 1fr 1fr;">
-                    <div style="grid-column: 1 / -1;"><label style="font-size: 0.8rem; color: var(--text-secondary);">${L.refPhcOpcional}</label><input type="text" id="ge-phc-ref-${articuloId}" class="form-input" style="width:100%;padding:8px;" placeholder="" title="${(L.refPhcOpcionalHint || '').replace(/"/g, '&quot;')}"><div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 2px;">${L.refPhcOpcionalHint || ''}</div></div>
-                    <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.ref} <span style="color: var(--danger-500,#c00);">*</span></label><input type="text" id="ge-ref-${articuloId}" class="form-input" style="width:100%;padding:6px;" value="${refFornecedor}" placeholder="" required></div>
-                    <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.designacao} <span style="color: var(--danger-500,#c00);">*</span></label><input type="text" id="ge-designacao-${articuloId}" class="form-input" style="width:100%;padding:6px;" value="${nomeArt}" placeholder="" required></div>
-                    <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.peso} <span style="color: var(--danger-500,#c00);">*</span></label><input type="text" id="ge-peso-${articuloId}" class="form-input" style="width:100%;padding:6px;" placeholder="" required></div>
-                    <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.qtyCaixa} <span style="color: var(--danger-500,#c00);">*</span></label><input type="number" id="ge-qtycaixa-${articuloId}" class="form-input" style="width:100%;padding:6px;" min="0" placeholder="" required></div>
+                    <div style="grid-column: 1 / -1;"><label style="font-size: 0.8rem; color: var(--text-secondary);">${L.refPhcOpcional}</label><input type="text" id="ge-phc-ref-${articuloId}" class="form-input ge-phc-ref-input-toggle" data-articulo-id="${articuloId}" style="width:100%;padding:8px;" placeholder="" title="${(L.refPhcOpcionalHint || '').replace(/"/g, '&quot;')}"><div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 2px;">${L.refPhcOpcionalHint || ''}</div></div>
+                    <div id="ge-campos-sem-phc-wrap-${articuloId}" class="ge-campos-sem-phc-wrap" style="grid-column: 1 / -1; display: grid; gap: 8px; grid-template-columns: 1fr 1fr;">
+                        <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.ref} <span class="ge-required-asterisk" style="color: var(--danger-500,#c00);">*</span></label><input type="text" id="ge-ref-${articuloId}" class="form-input ge-campo-sem-phc" style="width:100%;padding:6px;" value="${refFornecedor}" placeholder="" required></div>
+                        <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.designacao} <span class="ge-required-asterisk" style="color: var(--danger-500,#c00);">*</span></label><input type="text" id="ge-designacao-${articuloId}" class="form-input ge-campo-sem-phc" style="width:100%;padding:6px;" value="${nomeArt}" placeholder="" required></div>
+                        <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.peso} <span class="ge-required-asterisk" style="color: var(--danger-500,#c00);">*</span></label><input type="text" id="ge-peso-${articuloId}" class="form-input ge-campo-sem-phc" style="width:100%;padding:6px;" placeholder="" required></div>
+                        <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.qtyCaixa} <span class="ge-required-asterisk" style="color: var(--danger-500,#c00);">*</span></label><input type="number" id="ge-qtycaixa-${articuloId}" class="form-input ge-campo-sem-phc" style="width:100%;padding:6px;" min="0" placeholder="" required></div>
+                    </div>
                     <div style="grid-column: 1 / -1;"><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.personalizado}</label><select id="ge-personalizado-${articuloId}" class="form-input" style="width:100%;padding:6px;"><option value="false">${L.personalizadoNao}</option><option value="true">${L.personalizadoSim}</option></select></div>
                     <div style="grid-column: 1 / -1;"><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.observacoes}</label><textarea id="ge-obs-${articuloId}" class="form-input" style="width:100%;padding:6px;min-height:60px;" placeholder=""></textarea></div>
                     <div id="ge-personalizado-detalhes-${articuloId}" style="grid-column: 1 / -1; display: none; margin-top: 8px; padding: 12px; background: var(--bg-white,#fff); border-radius: 8px; border: 1px solid var(--primary, #3b82f6);">
@@ -4476,6 +4478,19 @@ class ProposalsManager {
             `;
             listEl.appendChild(row);
             if (!hasPhc) {
+                const phcRefInput = document.getElementById(`ge-phc-ref-${articuloId}`);
+                const wrapCampos = document.getElementById(`ge-campos-sem-phc-wrap-${articuloId}`);
+                const camposSemPhc = wrapCampos ? wrapCampos.querySelectorAll('.ge-campo-sem-phc') : [];
+                const toggleCamposPorPhc = () => {
+                    const temPhc = phcRefInput && (phcRefInput.value || '').trim() !== '';
+                    if (wrapCampos) wrapCampos.style.display = temPhc ? 'none' : 'grid';
+                    camposSemPhc.forEach(el => { el.removeAttribute('required'); if (!temPhc) el.setAttribute('required', 'required'); });
+                };
+                if (phcRefInput) {
+                    phcRefInput.addEventListener('input', toggleCamposPorPhc);
+                    phcRefInput.addEventListener('blur', toggleCamposPorPhc);
+                    toggleCamposPorPhc();
+                }
                 const personalizadoSel = document.getElementById(`ge-personalizado-${articuloId}`);
                 const detalhesEl = document.getElementById(`ge-personalizado-detalhes-${articuloId}`);
                 const togglePersonalizadoDetalhes = () => {
@@ -4542,11 +4557,13 @@ class ProposalsManager {
                 </div>
                 <div class="pedido-encomenda-extra" style="margin-top: 10px; padding: 10px; background: var(--bg-gray-100); border-radius: 8px; display: grid; gap: 8px; grid-template-columns: 1fr 1fr;">
                     <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.fornecedor} <span style="color: var(--danger-500,#c00);">*</span></label><input type="text" id="ge-${extId}-fornecedor" class="form-input" style="width:100%;padding:6px;" placeholder="" required></div>
-                    <div style="grid-column: 1 / -1;"><label style="font-size: 0.8rem; color: var(--text-secondary);">${L.refPhcOpcional}</label><input type="text" id="ge-${extId}-phc-ref" class="form-input" style="width:100%;padding:8px;"><div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 2px;">${L.refPhcOpcionalHint || ''}</div></div>
-                    <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.ref} <span style="color: var(--danger-500,#c00);">*</span></label><input type="text" id="ge-${extId}-ref" class="form-input" style="width:100%;padding:6px;" placeholder="" required></div>
-                    <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.designacao} <span style="color: var(--danger-500,#c00);">*</span></label><input type="text" id="ge-${extId}-designacao" class="form-input" style="width:100%;padding:6px;" placeholder="" required></div>
-                    <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.peso} <span style="color: var(--danger-500,#c00);">*</span></label><input type="text" id="ge-${extId}-peso" class="form-input" style="width:100%;padding:6px;" placeholder="" required></div>
-                    <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.qtyCaixa} <span style="color: var(--danger-500,#c00);">*</span></label><input type="number" id="ge-${extId}-qtycaixa" class="form-input" style="width:100%;padding:6px;" min="0" placeholder="" required></div>
+                    <div style="grid-column: 1 / -1;"><label style="font-size: 0.8rem; color: var(--text-secondary);">${L.refPhcOpcional}</label><input type="text" id="ge-${extId}-phc-ref" class="form-input ge-phc-ref-input-toggle-ext" data-ext-id="${extId}" style="width:100%;padding:8px;"><div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 2px;">${L.refPhcOpcionalHint || ''}</div></div>
+                    <div id="ge-campos-sem-phc-wrap-ext-${extId}" class="ge-campos-sem-phc-wrap" style="grid-column: 1 / -1; display: grid; gap: 8px; grid-template-columns: 1fr 1fr;">
+                        <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.ref} <span class="ge-required-asterisk" style="color: var(--danger-500,#c00);">*</span></label><input type="text" id="ge-${extId}-ref" class="form-input ge-campo-sem-phc-ext" style="width:100%;padding:6px;" placeholder="" required></div>
+                        <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.designacao} <span class="ge-required-asterisk" style="color: var(--danger-500,#c00);">*</span></label><input type="text" id="ge-${extId}-designacao" class="form-input ge-campo-sem-phc-ext" style="width:100%;padding:6px;" placeholder="" required></div>
+                        <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.peso} <span class="ge-required-asterisk" style="color: var(--danger-500,#c00);">*</span></label><input type="text" id="ge-${extId}-peso" class="form-input ge-campo-sem-phc-ext" style="width:100%;padding:6px;" placeholder="" required></div>
+                        <div><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.qtyCaixa} <span class="ge-required-asterisk" style="color: var(--danger-500,#c00);">*</span></label><input type="number" id="ge-${extId}-qtycaixa" class="form-input ge-campo-sem-phc-ext" style="width:100%;padding:6px;" min="0" placeholder="" required></div>
+                    </div>
                     <div style="grid-column: 1 / -1;"><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.personalizado}</label><select id="ge-${extId}-personalizado" class="form-input" style="width:100%;padding:6px;"><option value="false">${L.personalizadoNao}</option><option value="true">${L.personalizadoSim}</option></select></div>
                     <div style="grid-column: 1 / -1;"><label style="font-size: 0.75rem; color: var(--text-secondary);">${L.observacoes}</label><textarea id="ge-${extId}-obs" class="form-input" style="width:100%;padding:6px;min-height:60px;"></textarea></div>
                     <div id="ge-personalizado-detalhes-${extId}" style="grid-column: 1 / -1; display: none; margin-top: 8px; padding: 12px; background: var(--bg-white,#fff); border-radius: 8px; border: 1px solid var(--primary, #3b82f6);">
@@ -4563,6 +4580,19 @@ class ProposalsManager {
             </div>
         `;
         listExt.appendChild(row);
+        const phcRefInputExt = document.getElementById(`ge-${extId}-phc-ref`);
+        const wrapCamposExt = document.getElementById(`ge-campos-sem-phc-wrap-ext-${extId}`);
+        const camposSemPhcExt = wrapCamposExt ? wrapCamposExt.querySelectorAll('.ge-campo-sem-phc-ext') : [];
+        const toggleCamposExtPorPhc = () => {
+            const temPhc = phcRefInputExt && (phcRefInputExt.value || '').trim() !== '';
+            if (wrapCamposExt) wrapCamposExt.style.display = temPhc ? 'none' : 'grid';
+            camposSemPhcExt.forEach(el => { el.removeAttribute('required'); if (!temPhc) el.setAttribute('required', 'required'); });
+        };
+        if (phcRefInputExt) {
+            phcRefInputExt.addEventListener('input', toggleCamposExtPorPhc);
+            phcRefInputExt.addEventListener('blur', toggleCamposExtPorPhc);
+            toggleCamposExtPorPhc();
+        }
         const personalizadoSel = document.getElementById(`ge-${extId}-personalizado`);
         const detalhesEl = document.getElementById(`ge-personalizado-detalhes-${extId}`);
         if (personalizadoSel && detalhesEl) {
@@ -4695,11 +4725,12 @@ class ProposalsManager {
                 const designacao = designacaoEl ? designacaoEl.value.trim() : '';
                 const peso = pesoEl ? pesoEl.value.trim() : '';
                 const qtyCaixa = qtyCaixaEl && qtyCaixaEl.value !== '' ? parseInt(qtyCaixaEl.value, 10) : null;
-                if (!ref || !designacao || !peso || qtyCaixa == null || qtyCaixa < 0) continue;
+                const comPhcPreenchido = (phcRefFromForm || '').trim() !== '';
+                if (!comPhcPreenchido && (!ref || !designacao || !peso || qtyCaixa == null || qtyCaixa < 0)) continue;
                 row.referencia = ref || null;
                 row.designacao = designacao || null;
                 row.peso = peso || null;
-                row.quantidade_por_caixa = qtyCaixa;
+                row.quantidade_por_caixa = qtyCaixa != null && qtyCaixa >= 0 ? qtyCaixa : null;
                 row.personalizado = personalizadoEl ? personalizadoEl.value === 'true' : false;
                 row.personalizado_observacoes = obsEl ? obsEl.value.trim() || null : null;
 
@@ -4793,20 +4824,22 @@ class ProposalsManager {
             if (quantidade < 1) continue;
             if (isNaN(precoCusto) || precoCusto < 0) continue;
             if (isNaN(porcentajeDescuento) || porcentajeDescuento < 0 || porcentajeDescuento > 100) continue;
-            if (!nomeFornecedor || !ref || !designacao || !peso || qtyCaixa < 0) continue;
+            if (!nomeFornecedor) continue;
+            const comPhcExt = (phcRef || '').trim() !== '';
+            if (!comPhcExt && (!ref || !designacao || !peso || qtyCaixa < 0)) continue;
 
             const extRowData = {
                 presupuesto_id: proposalId,
                 presupuesto_articulo_id: null,
-                phc_ref: phcRef,
+                phc_ref: phcRef || null,
                 nome_fornecedor: nomeFornecedor,
                 foto_url: null,
                 quantidade_encomendar: quantidade,
-                nome_articulo: designacao,
-                referencia: ref,
-                designacao: designacao,
-                peso: peso,
-                quantidade_por_caixa: qtyCaixa,
+                nome_articulo: designacao || null,
+                referencia: ref || null,
+                designacao: designacao || null,
+                peso: peso || null,
+                quantidade_por_caixa: (qtyCaixa >= 0 ? qtyCaixa : null),
                 personalizado: personalizado,
                 personalizado_observacoes: obs,
                 presupuesto_dossier_id: null,
