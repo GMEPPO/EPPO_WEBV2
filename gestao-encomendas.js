@@ -900,8 +900,13 @@
         if (overlay) overlay.style.display = 'none';
     }
 
+    function normPresupuestoId(id) {
+        return (id != null ? String(id).toLowerCase().trim() : '') || '';
+    }
+
     async function showDetails(presupuestoId, options) {
-        const proposal = listData.find(p => p.presupuesto_id === presupuestoId);
+        const pidNorm = normPresupuestoId(presupuestoId);
+        const proposal = listData.find(p => normPresupuestoId(p.presupuesto_id) === pidNorm);
         const fornecedorFiltro = (options && options.fornecedor) ? String(options.fornecedor).trim() : null;
         if (proposal && proposal.isEnCurso) {
             showDetailsEnCurso(presupuestoId, fornecedorFiltro || undefined);
@@ -1329,7 +1334,8 @@
             const responsavelEc = (proposal && proposal.responsavel) ? proposal.responsavel : '-';
             const numeroPropostaBlockEc = '<div class="ge-fornecedor-block" style="margin-bottom:1rem;"><div style="display:grid;grid-template-columns:auto 1fr;gap:1rem;align-items:center;"><div><span style="font-size:0.8rem;color:var(--text-secondary);">' + t('numPropuesta') + '</span><div style="font-weight:600;color:var(--text-primary);font-size:1.1rem;">' + escapeHtml(codigoPropuestaEc) + '</div></div><div><span style="font-size:0.8rem;color:var(--text-secondary);">' + t('responsable') + '</span><div style="font-weight:600;color:var(--text-primary);">' + escapeHtml(responsavelEc) + '</div></div></div></div>';
 
-            const concluirBlockHtml = geReadOnly ? '' : ('<div class="ge-fornecedor-block" style="margin-bottom:1.5rem;"><button type="button" class="ge-btn ge-btn-success" id="ge-btn-concluir-encurso"><i class="fas fa-check-circle"></i> <span id="ge-btn-concluir-text">' + escapeHtml(t('concluirTarefa')) + '</span></button></div>');
+            const concluirBtnDataFornecedor = (fornecedorFiltro && fornecedorFiltro.length > 0) ? (' data-fornecedor-filtro="' + escapeAttr(fornecedorFiltro) + '"') : '';
+            const concluirBlockHtml = geReadOnly ? '' : ('<div class="ge-fornecedor-block" style="margin-bottom:1.5rem;"><button type="button" class="ge-btn ge-btn-success" id="ge-btn-concluir-encurso" data-presupuesto-id="' + escapeAttr(presupuestoId) + '"' + concluirBtnDataFornecedor + '><i class="fas fa-check-circle"></i> <span id="ge-btn-concluir-text">' + escapeHtml(t('concluirTarefa')) + '</span></button></div>');
             blocksEl.innerHTML = numeroPropostaBlockEc + concluirBlockHtml;
             Object.keys(byFornecedor).sort().forEach(fornecedorName => {
                 const rows = byFornecedor[fornecedorName];
@@ -1390,7 +1396,11 @@
                 blocksEl.appendChild(block);
             });
             const concluirBtn = document.getElementById('ge-btn-concluir-encurso');
-            if (concluirBtn && !geReadOnly) concluirBtn.addEventListener('click', () => concluirEncomendaEnCurso(presupuestoId, fornecedorFiltro));
+            if (concluirBtn && !geReadOnly) concluirBtn.addEventListener('click', function () {
+                const pid = concluirBtn.getAttribute('data-presupuesto-id') || presupuestoId;
+                const forn = (concluirBtn.getAttribute('data-fornecedor-filtro') || '').trim() || (fornecedorFiltro && fornecedorFiltro.trim()) || undefined;
+                concluirEncomendaEnCurso(pid, forn);
+            });
         } catch (e) {
             console.error('showDetailsEnCurso:', e);
             blocksEl.innerHTML = '<div style="color: var(--danger-500);">' + escapeHtml(e.message || t('errorCarga')) + '</div>';
@@ -1456,8 +1466,12 @@
                 return;
             }
 
-            if (fornecedorFiltro) {
-                await client.from('gestao_compras').update({ estado_pedido: 'concluido' }).eq('presupuesto_id', presupuestoId).eq('nome_fornecedor', fornecedorFiltro);
+            // Solo actualizar las filas del fornecedor actual; usar valor exacto de la BD cuando hay filtro para evitar actualizar todos
+            const nomeFornecedorParaUpdate = (fornecedorFiltro && gcRows && gcRows.length > 0 && gcRows[0].nome_fornecedor != null)
+                ? gcRows[0].nome_fornecedor
+                : fornecedorFiltro;
+            if (nomeFornecedorParaUpdate) {
+                await client.from('gestao_compras').update({ estado_pedido: 'concluido' }).eq('presupuesto_id', presupuestoId).eq('nome_fornecedor', nomeFornecedorParaUpdate);
             } else {
                 await client.from('gestao_compras').update({ estado_pedido: 'concluido' }).eq('presupuesto_id', presupuestoId);
             }
