@@ -1482,38 +1482,38 @@
                         const desc = (gc.porcentaje_descuento != null && gc.porcentaje_descuento !== '') ? Number(gc.porcentaje_descuento) : NaN;
                         const hasPc = !isNaN(pc);
                         const hasDesc = !isNaN(desc) && desc > 0;
-                        if (hasPc || hasDesc) {
-                            infoHtml += `<span style="grid-column: 1 / -1; margin-left: 0.5rem; font-size: 0.8rem;"${highlightCliche ? ' class="ge-cliche-highlight"' : ''}>`;
-                            if (hasPc) infoHtml += `${t('precoCliche')}: ${formatNumber(pc)}`;
-                            if (hasDesc) infoHtml += (hasPc ? ' · ' : '') + `${t('desconto')}: ${formatNumber(desc)}%`;
-                            infoHtml += `</span>`;
-                        }
+                        infoHtml += `<span style="grid-column: 1 / -1; margin-left: 0.5rem; font-size: 0.8rem;"${highlightCliche ? ' class="ge-cliche-highlight"' : ''}>`;
+                        infoHtml += hasPc ? `${t('precoCliche')}: ${formatNumber(pc)}` : `${t('precoCliche')}: -`;
+                        if (hasDesc) infoHtml += (hasPc ? ' · ' : ' ') + `${t('desconto')}: ${formatNumber(desc)}%`;
+                        infoHtml += `</span>`;
                     }
                 }
             }
             infoHtml += `</div>`;
         } else {
             const highlightClicheElse = !!(gc.personalizado && gc.tem_cliche === true);
+            infoHtml += `<div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--bg-gray-200); font-size: 0.85rem; color: var(--text-secondary);">`;
+            infoHtml += `<div style="margin-bottom: 2px;"${gc.personalizado ? ' class="ge-cliche-highlight"' : ''}><strong>${t('personalizado')}:</strong> ${gc.personalizado ? t('sim') : t('nao')}</div>`;
             if (gc.valor_transportes != null && gc.valor_transportes !== '') {
                 const vt = Number(gc.valor_transportes);
-                if (!isNaN(vt)) infoHtml += `<div style="margin-top: 4px; font-size: 0.85rem;" class="ge-cliche-highlight"><strong>${t('valorTransportes')}:</strong> ${formatNumber(vt)}</div>`;
+                if (!isNaN(vt)) infoHtml += `<div style="margin-top: 2px;" class="ge-cliche-highlight"><strong>${t('valorTransportes')}:</strong> ${formatNumber(vt)}</div>`;
             }
             if (gc.tem_cliche != null || gc.personalizado) {
                 const temClicheVal = gc.tem_cliche === true;
-                infoHtml += `<div style="font-size: 0.85rem; color: var(--text-secondary);"${highlightClicheElse ? ' class="ge-cliche-highlight"' : ''}><strong>${t('temCliche')}:</strong> ${temClicheVal ? t('sim') : t('nao')}</div>`;
+                infoHtml += `<div style="margin-top: 2px;"${highlightClicheElse ? ' class="ge-cliche-highlight"' : ''}><strong>${t('temCliche')}:</strong> ${temClicheVal ? t('sim') : t('nao')}</div>`;
                 if (temClicheVal) {
                     const pc = (gc.preco_cliche != null && gc.preco_cliche !== '') ? Number(gc.preco_cliche) : NaN;
                     const desc = (gc.porcentaje_descuento != null && gc.porcentaje_descuento !== '') ? Number(gc.porcentaje_descuento) : NaN;
                     const hasPc = !isNaN(pc);
                     const hasDesc = !isNaN(desc) && desc > 0;
-                    if (hasPc || hasDesc) {
-                        infoHtml += `<div style="font-size: 0.8rem; margin-left: 0.5rem; margin-top: 2px; ${highlightClicheElse ? '' : 'color: var(--text-secondary);'}"${highlightClicheElse ? ' class="ge-cliche-highlight"' : ''}>`;
-                        if (hasPc) infoHtml += `${t('precoCliche')}: ${formatNumber(pc)}`;
-                        if (hasDesc) infoHtml += (hasPc ? ' · ' : '') + `${t('desconto')}: ${formatNumber(desc)}%`;
-                        infoHtml += `</div>`;
-                    }
+                    infoHtml += `<div style="font-size: 0.8rem; margin-left: 0.5rem; margin-top: 2px; ${highlightClicheElse ? '' : 'color: var(--text-secondary);'}"${highlightClicheElse ? ' class="ge-cliche-highlight"' : ''}>`;
+                    if (hasPc) infoHtml += `${t('precoCliche')}: ${formatNumber(pc)}`;
+                    else infoHtml += `${t('precoCliche')}: -`;
+                    if (hasDesc) infoHtml += (hasPc ? ' · ' : ' ') + `${t('desconto')}: ${formatNumber(desc)}%`;
+                    infoHtml += `</div>`;
                 }
             }
+            infoHtml += `</div>`;
         }
         infoHtml += `</div>`;
         const anexosHtml = soloCreacaoCodigos ? '' : buildAnexosLinksForProduct(gc);
