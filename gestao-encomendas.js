@@ -1160,6 +1160,7 @@
                 .update({ estado_propuesta: 'encomenda_en_curso' })
                 .eq('id', presupuestoId);
             if (updateErr) return false;
+            await client.from('gestao_compras').update({ estado_pedido: 'em_curso' }).eq('presupuesto_id', presupuestoId);
             if (notify) window.dispatchEvent(new CustomEvent('gestao-encomendas-estado-actualizado', { detail: { presupuestoId } }));
             if (reload && window.gestaoEncomendasReload) window.gestaoEncomendasReload();
             return true;
@@ -1399,6 +1400,8 @@
                 })
                 .eq('id', presupuestoId);
             if (error) throw error;
+
+            await client.from('gestao_compras').update({ estado_pedido: 'concluido' }).eq('presupuesto_id', presupuestoId);
 
             if (isCreacaoCodigos && gcRows && gcRows.length > 0) {
                 if (withPhc.length > 0) {
