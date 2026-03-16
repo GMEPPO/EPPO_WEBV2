@@ -240,6 +240,7 @@
     let historicoListData = []; // { source: 'presupuesto'|'contacto_fornecedores', presupuesto_id?, contacto_id?, codigo_propuesta, responsavel, fornecedores: string[], tipoLabel, dataConclusao? }
     let enComendaNumeroMap = {}; // key: presupuesto_id + '|' + fornecedor -> numero_encomenda (para vista en curso)
     let emCursoKeysSet = new Set(); // keys "presupuestoId|fornecedor" que tienen al menos una fila em_curso (para mostrar solo esos en la pestaña em curso)
+    let enCursoRowsCache = []; // filas para "Pedidos em curso": solo grupos (presupuesto_id, fornecedor) con al menos em_curso y no todos concluido
     let currentTab = 'pendientes'; // 'pendientes' | 'encurso' | 'historico'
     let listSearchQuery = '';
     let geReadOnly = false; // true para admin: solo ver, no editar
@@ -445,18 +446,37 @@
             });
 
             await syncEstadoEncursoOnLoad(client, listData);
-            // Tras el sync, las propuestas con isEnCurso ya pueden tener estado_pedido = 'em_curso' en BD;
-            // emCursoKeysSet se construyó con la carga inicial, así que añadimos las que tienen isEnCurso
-            // para que aparezcan en la pestaña "Pedidos em curso".
-            (listData || []).forEach(p => {
-                if (p.source !== 'presupuesto' || !p.isEnCurso) return;
-                const pidNorm = (p.presupuesto_id != null ? String(p.presupuesto_id).toLowerCase().trim() : '') || '';
-                if (!pidNorm) return;
-                (p.fornecedores || []).forEach(fn => {
-                    const name = (fn || '').trim();
-                    if (name) emCursoKeysSet.add(pidNorm + '|' + name);
+
+            // "Pedidos em curso": solo grupos (presupuesto_id, fornecedor) con al menos una fila em_curso y NO todos concluido
+            enCursoRowsCache = [];
+            const gruposPorFornecedor = {};
+            (rows || []).forEach(r => {
+                const pid = r.presupuesto_id;
+                const fn = (r.nome_fornecedor || '').trim() || '-';
+                const estado = (r.estado_pedido || 'pendente').toLowerCase();
+                if (!pid) return;
+                const key = String(pid).toLowerCase().trim() + '|' + fn;
+                if (!gruposPorFornecedor[key]) {
+                    gruposPorFornecedor[key] = { presupuesto_id: pid, fornecedor: fn, estados: [], tipo: (r.tipo || '').trim() };
+                }
+                gruposPorFornecedor[key].estados.push(estado);
+            });
+            Object.values(gruposPorFornecedor).forEach(g => {
+                const estados = g.estados;
+                const tieneEmCurso = estados.includes('em_curso');
+                const todosConcluidos = estados.length > 0 && estados.every(e => e === 'concluido');
+                if (!tieneEmCurso || todosConcluidos) return;
+                const pidNorm = (g.presupuesto_id != null ? String(g.presupuesto_id).toLowerCase().trim() : '') || '';
+                const p = (listData || []).find(row => row.source === 'presupuesto' && (row.presupuesto_id != null ? String(row.presupuesto_id).toLowerCase().trim() : '') === pidNorm);
+                const mapKey = pidNorm + '|' + (g.fornecedor === '-' ? '-' : g.fornecedor);
+                enCursoRowsCache.push({
+                    presupuesto_id: g.presupuesto_id,
+                    fornecedor: g.fornecedor,
+                    codigo_propuesta: (p && p.codigo_propuesta) ? p.codigo_propuesta : '-',
+                    responsavel: (p && p.responsavel) ? p.responsavel : '-',
+                    numero_encomenda: enComendaNumeroMap[mapKey] || enComendaNumeroMap[g.presupuesto_id + '|' + g.fornecedor] || '-',
+                    tipoLabel: (p && p.tipoLabel) ? p.tipoLabel : (g.tipo || t('tipoPropostaNormal'))
                 });
-                if (!p.fornecedores || p.fornecedores.length === 0) emCursoKeysSet.add(pidNorm + '|-');
             });
             }
 
@@ -641,40 +661,17 @@
 
     /**
      * Para "Encomendas em curso": una fila por (fornecedor, propuesta), ordenado por fornecedor.
-     * Así el Nº Proposta y el Responsável quedan asociados a cada línea por fornecedor.
+     * Solo incluye grupos con al menos una fila em_curso y no todos concluido (enCursoRowsCache).
      */
     function getEnCursoRowsByFornecedor() {
-        const enCurso = listData.filter(row => row.source === 'presupuesto' && row.isEnCurso);
-        const rows = [];
-        enCurso.forEach(row => {
-            (row.fornecedores || []).forEach(fornecedor => {
-                const name = (fornecedor || '').trim();
-                if (name) {
-                    const key = (row.presupuesto_id != null ? String(row.presupuesto_id).toLowerCase().trim() : '') + '|' + name;
-                    if (!emCursoKeysSet.has(key)) return; // solo mostrar (proposta, fornecedor) que siguen em_curso
-                    rows.push({
-                        fornecedor: name,
-                        codigo_propuesta: row.codigo_propuesta,
-                        responsavel: row.responsavel,
-                        presupuesto_id: row.presupuesto_id,
-                        numero_encomenda: enComendaNumeroMap[key] || enComendaNumeroMap[(row.presupuesto_id || '') + '|' + name] || '-',
-                        tipoLabel: row.tipoLabel || t('tipoPropostaNormal')
-                    });
-                }
-            });
-            if (!row.fornecedores || row.fornecedores.length === 0) {
-                const key = (row.presupuesto_id != null ? String(row.presupuesto_id).toLowerCase().trim() : '') + '|-';
-                if (!emCursoKeysSet.has(key)) return;
-                rows.push({
-                    fornecedor: '-',
-                    codigo_propuesta: row.codigo_propuesta,
-                    responsavel: row.responsavel,
-                    presupuesto_id: row.presupuesto_id,
-                    numero_encomenda: enComendaNumeroMap[row.presupuesto_id + '|-'] || '-',
-                    tipoLabel: row.tipoLabel || t('tipoPropostaNormal')
-                });
-            }
-        });
+        const rows = (enCursoRowsCache || []).map(r => ({
+            fornecedor: r.fornecedor,
+            codigo_propuesta: r.codigo_propuesta,
+            responsavel: r.responsavel,
+            presupuesto_id: r.presupuesto_id,
+            numero_encomenda: r.numero_encomenda,
+            tipoLabel: r.tipoLabel || t('tipoPropostaNormal')
+        }));
         rows.sort((a, b) => {
             const c = (a.fornecedor || '').localeCompare(b.fornecedor || '', undefined, { sensitivity: 'base' });
             return c !== 0 ? c : (a.codigo_propuesta || '').localeCompare(b.codigo_propuesta || '');
