@@ -764,7 +764,10 @@
                 const tr = document.createElement('tr');
                 const tagsHtml = (row.fornecedores || []).map(f => `<span class="ge-tag">${escapeHtml(f)}</span>`).join('');
                 const isContacto = row.source === 'contacto_fornecedores';
-                const btnData = isContacto ? `data-contacto-id="${row.contacto_id}"` : `data-presupuesto-id="${row.presupuesto_id}"`;
+                const fornecedorPrincipal = (row.fornecedores && row.fornecedores.length > 0) ? row.fornecedores[0] : '';
+                const btnData = isContacto
+                    ? `data-contacto-id="${row.contacto_id}"`
+                    : `data-presupuesto-id="${row.presupuesto_id}" data-fornecedor="${escapeAttr(fornecedorPrincipal)}"`;
                 const numProposta = row.codigo_propuesta || '-';
                 tr.innerHTML = `
                     <td><strong style="color: var(--primary-500);">${escapeHtml(numProposta)}</strong></td>
@@ -775,7 +778,7 @@
                 `;
                 const btn = tr.querySelector('button');
                 if (isContacto) btn.addEventListener('click', () => showDetailsContactoFornecedores(row.contacto_id));
-                else btn.addEventListener('click', () => showDetailsHistoricoPresupuesto(row.presupuesto_id));
+                else btn.addEventListener('click', () => showDetailsHistoricoPresupuesto(row.presupuesto_id, fornecedorPrincipal));
                 tbody.appendChild(tr);
             });
             setEmpty(historicoFiltered.length === 0);
@@ -1003,11 +1006,11 @@
         }
     }
 
-    async function showDetailsHistoricoPresupuesto(presupuestoId) {
-        await showDetailsPendientes(presupuestoId);
+    async function showDetailsHistoricoPresupuesto(presupuestoId, fornecedorFiltro) {
+        await showDetailsPendientes(presupuestoId, fornecedorFiltro);
     }
 
-    async function showDetailsPendientes(presupuestoId) {
+    async function showDetailsPendientes(presupuestoId, fornecedorFiltro) {
         const client = await getClient();
         if (!client) return;
 
@@ -1049,12 +1052,18 @@
             (articulos || []).forEach(a => { articuloMap[a.id] = a; });
 
             // Agrupar por fornecedor: Nº Encomenda y Fecha Encomenda compartidos; Previsão Entrega por artículo
-            const byFornecedor = {};
+            let byFornecedor = {};
             (gcRows || []).forEach(gc => {
                 const fn = (gc.nome_fornecedor || '').trim() || '-';
                 if (!byFornecedor[fn]) byFornecedor[fn] = [];
                 byFornecedor[fn].push(gc);
             });
+
+            // Si venimos desde Histórico o desde uma linha específica, podemos filtrar por fornecedor concreto
+            if (fornecedorFiltro) {
+                const key = Object.keys(byFornecedor).find(k => (k || '').toLowerCase() === fornecedorFiltro.toLowerCase());
+                byFornecedor = key ? { [key]: byFornecedor[key] } : {};
+            }
 
             const codigoPropuesta = (proposal && proposal.codigo_propuesta) ? proposal.codigo_propuesta : (presupuestoId ? String(presupuestoId).substring(0, 8) : '-');
             const responsavelVal = (proposal && proposal.responsavel) ? proposal.responsavel : '-';
