@@ -447,7 +447,8 @@
 
             await syncEstadoEncursoOnLoad(client, listData);
 
-            // "Pedidos em curso": solo grupos (presupuesto_id, fornecedor) con al menos una fila em_curso y NO todos concluido
+            // "Pedidos em curso": grupos (presupuesto_id, fornecedor) que NO están todos concluidos (pendente o em_curso)
+            // Así Metalcarrelli (pendente) sigue visible; solo desaparecen cuando todo el grupo está concluido (ej. FIRED UP)
             enCursoRowsCache = [];
             const gruposPorFornecedor = {};
             (rows || []).forEach(r => {
@@ -463,9 +464,8 @@
             });
             Object.values(gruposPorFornecedor).forEach(g => {
                 const estados = g.estados;
-                const tieneEmCurso = estados.includes('em_curso');
                 const todosConcluidos = estados.length > 0 && estados.every(e => e === 'concluido');
-                if (!tieneEmCurso || todosConcluidos) return;
+                if (todosConcluidos) return; // solo excluir los que están 100% concluidos
                 const pidNorm = (g.presupuesto_id != null ? String(g.presupuesto_id).toLowerCase().trim() : '') || '';
                 const p = (listData || []).find(row => row.source === 'presupuesto' && (row.presupuesto_id != null ? String(row.presupuesto_id).toLowerCase().trim() : '') === pidNorm);
                 const mapKey = pidNorm + '|' + (g.fornecedor === '-' ? '-' : g.fornecedor);
