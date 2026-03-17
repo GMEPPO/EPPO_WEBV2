@@ -559,28 +559,15 @@ class CartManager {
                 cantidad: cantidadArticulo
             });
             
-            // Buscar el producto en la base de datos con múltiples criterios
+            // Buscar el producto SOLO por ID (referencia_articulo). No buscar por nombre: productos
+            // de módulo o exclusivos no deben resolverse a otro producto similar del catálogo.
             let product = null;
-            
-            // Primero intentar por ID/referencia
-            if (articulo.referencia_articulo) {
-                product = this.allProducts.find(p => 
-                String(p.id) === String(articulo.referencia_articulo) || 
+            if (articulo.referencia_articulo && this.allProducts) {
+                product = this.allProducts.find(p =>
+                    String(p.id) === String(articulo.referencia_articulo) ||
                     String(p.id) === String(articulo.referencia_articulo).trim()
                 );
             }
-            
-            // Si no se encuentra, intentar por nombre (comparación más flexible)
-            if (!product && articulo.nombre_articulo) {
-                const nombreArticulo = articulo.nombre_articulo.trim().toLowerCase();
-                product = this.allProducts.find(p => {
-                    const nombreProducto = (p.nombre || '').trim().toLowerCase();
-                    return nombreProducto === nombreArticulo || 
-                           nombreProducto.includes(nombreArticulo) ||
-                           nombreArticulo.includes(nombreProducto);
-                });
-            }
-            
             console.log('🔍 Resultado de búsqueda:', product ? 'Producto encontrado' : 'Producto NO encontrado, agregando como pedido especial');
 
             if (product) {
@@ -7213,17 +7200,13 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
         const articulosListPdf = articulos || [];
         for (const articulo of articulosListPdf) {
             const qtyArt = articulo.cantidad ?? articulo.cantidad_encomendada ?? 1;
-            // Buscar el producto en allProducts si existe (por id o por nombre para exclusivos/módulos)
-            let product = window.cartManager.allProducts.find(p => 
-                String(p.id) === String(articulo.referencia_articulo)
-            );
-            if (!product && articulo.nombre_articulo) {
-                const nombreBusca = (articulo.nombre_articulo || '').trim().toLowerCase();
-                product = window.cartManager.allProducts.find(p => {
-                    const n = (p.nombre || '').trim().toLowerCase();
-                    return n === nombreBusca || n.includes(nombreBusca) || nombreBusca.includes(n);
-                });
-            }
+            // Buscar el producto SOLO por ID (referencia_articulo). No buscar por nombre: los productos
+            // de módulo o exclusivos tienen nombre propio y no deben heredar imagen/descripción de otro
+            // producto similar del catálogo (evita que "VV-Individual Retangular 55×35" tome la foto
+            // y descripción de "Individual Rectangular" del catálogo).
+            const product = (articulo.referencia_articulo && window.cartManager.allProducts)
+                ? window.cartManager.allProducts.find(p => String(p.id) === String(articulo.referencia_articulo))
+                : null;
 
             if (product) {
                 // Obtener variante de referencia (color) seleccionada
