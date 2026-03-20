@@ -7743,26 +7743,40 @@ class ProposalsManager {
             const aid = art.id || `tmp-${idx}`;
             const qty = Number(art.cantidad ?? art.cantidad_encomendada ?? 0) || 0;
             const row = document.createElement('div');
-            row.className = 'product-checkbox-item';
-            row.style.display = 'grid';
-            row.style.gridTemplateColumns = '1fr 140px';
-            row.style.gap = '12px';
-            row.style.alignItems = 'center';
-            row.style.marginBottom = '10px';
+            row.className = 'partial-adj-card';
             row.innerHTML = `
-                <div>
-                    <div><strong>${getDisplayNameConsultar(art.nombre_articulo) || '-'}</strong></div>
-                    <div style="font-size:0.82rem; color: var(--text-secondary);">
-                        Ref: ${art.referencia_articulo || '-'} · ${this.currentLanguage === 'es' ? 'Cantidad original' : this.currentLanguage === 'pt' ? 'Quantidade original' : 'Original quantity'}: ${qty}
+                <div class="partial-adj-main">
+                    <label class="partial-adj-checkline">
+                        <input type="checkbox" class="partial-adj-check" data-articulo-id="${aid}">
+                        <span class="partial-adj-check-text">${this.currentLanguage === 'es' ? 'Seleccionar artículo' : this.currentLanguage === 'pt' ? 'Selecionar artigo' : 'Select product'}</span>
+                    </label>
+                    <div class="partial-adj-name"><strong>${getDisplayNameConsultar(art.nombre_articulo) || '-'}</strong></div>
+                    <div class="partial-adj-meta">
+                        Ref: ${art.referencia_articulo || '-'} · ${this.currentLanguage === 'es' ? 'Cantidad original' : this.currentLanguage === 'pt' ? 'Quantidade original' : 'Original quantity'}: <span class="partial-adj-badge">${qty}</span>
                     </div>
                 </div>
-                <div>
-                    <label style="font-size:0.78rem; color: var(--text-secondary); display:block; margin-bottom:4px;">
+                <div class="partial-adj-qty-wrap">
+                    <label class="partial-adj-qty-label">
                         ${this.currentLanguage === 'es' ? 'Cantidad adjudicada' : this.currentLanguage === 'pt' ? 'Quantidade adjudicada' : 'Awarded qty'}
                     </label>
-                    <input type="number" min="0" step="1" class="form-input partial-adj-qty" data-articulo-id="${aid}" data-original-qty="${qty}" value="0" />
+                    <input type="number" min="0" step="1" class="form-input partial-adj-qty" data-articulo-id="${aid}" data-original-qty="${qty}" value="0" disabled />
                 </div>
             `;
+            const check = row.querySelector('.partial-adj-check');
+            const qtyInput = row.querySelector('.partial-adj-qty');
+            if (check && qtyInput) {
+                check.addEventListener('change', () => {
+                    const selected = !!check.checked;
+                    qtyInput.disabled = !selected;
+                    if (!selected) {
+                        qtyInput.value = '0';
+                        row.classList.remove('selected');
+                    } else {
+                        row.classList.add('selected');
+                        if ((Number(qtyInput.value) || 0) === 0) qtyInput.value = String(qty);
+                    }
+                });
+            }
             listEl.appendChild(row);
         });
         const commentsEl = document.getElementById('proposta-parcial-comentario');
@@ -7830,10 +7844,23 @@ class ProposalsManager {
         if (!proposal) return;
 
         const qtyInputs = Array.from(modal.querySelectorAll('.partial-adj-qty'));
+        const selectedIdsSet = new Set(
+            Array.from(modal.querySelectorAll('.partial-adj-check:checked'))
+                .map(el => el.getAttribute('data-articulo-id'))
+                .filter(Boolean)
+        );
+        if (selectedIdsSet.size === 0) {
+            this.showNotification(this.currentLanguage === 'es' ? 'Seleccione al menos un artículo en el checklist.' : this.currentLanguage === 'pt' ? 'Selecione pelo menos um artigo no checklist.' : 'Select at least one product in the checklist.', 'error');
+            return;
+        }
         const qtyByArticuloId = {};
         let hasAnyAwarded = false;
         for (const input of qtyInputs) {
             const aid = input.getAttribute('data-articulo-id');
+            if (!selectedIdsSet.has(aid)) {
+                qtyByArticuloId[aid] = 0;
+                continue;
+            }
             const val = Number(input.value);
             if (!Number.isFinite(val) || val < 0) {
                 this.showNotification(this.currentLanguage === 'es' ? 'Las cantidades adjudicadas deben ser numéricas y >= 0.' : this.currentLanguage === 'pt' ? 'As quantidades adjudicadas devem ser numéricas e >= 0.' : 'Awarded quantities must be numeric and >= 0.', 'error');
