@@ -1078,6 +1078,7 @@
 
                 const block = document.createElement('div');
                 block.className = 'ge-fornecedor-block';
+                block.setAttribute('data-fornecedor-name', fornecedorName);
                 if (isSoloCreacaoCodigos) block.setAttribute('data-solo-creacao-codigos', '1');
                 const formHtml = isSoloCreacaoCodigos
                     ? ''
@@ -1149,7 +1150,7 @@
                     tbody.appendChild(tr);
                 });
                 const saveBtn = block.querySelector('.ge-save-fornecedor');
-                if (saveBtn && !geReadOnly) saveBtn.addEventListener('click', () => saveFornecedorGroup(block, articuloIds, presupuestoId));
+                if (saveBtn && !geReadOnly) saveBtn.addEventListener('click', () => saveFornecedorGroup(block, articuloIds, presupuestoId, fornecedorName));
                 blocksEl.appendChild(block);
             });
             const concluirBtnPendientes = document.getElementById('ge-btn-concluir-pendientes');
@@ -1160,7 +1161,7 @@
         }
     }
 
-    async function saveFornecedorGroup(block, articuloIds, presupuestoId) {
+    async function saveFornecedorGroup(block, articuloIds, presupuestoId, fornecedorName) {
         if (!articuloIds || articuloIds.length === 0) {
             showNotification(t('error'), 'error');
             return;
@@ -1221,7 +1222,7 @@
             showNotification(t('guardado'), 'success');
 
             if (presupuestoId && !soloCreacaoCodigos) {
-                await tryMoveProposalToEncomendaEnCurso(client, presupuestoId);
+                await tryMoveProposalToEncomendaEnCurso(client, presupuestoId, fornecedorName, articuloIds);
             }
         } catch (e) {
             console.error('saveFornecedorGroup:', e);
@@ -1235,14 +1236,26 @@
     }
 
     async function updatePresupuestoToEncomendaEnCurso(client, presupuestoId, options) {
-        const { notify = true, reload = true } = options || {};
+        const { notify = true, reload = true, fornecedor = null, gcIds = null } = options || {};
         try {
             const { error: updateErr } = await client
                 .from('presupuestos')
                 .update({ estado_propuesta: 'encomenda_en_curso' })
                 .eq('id', presupuestoId);
             if (updateErr) return false;
-            await client.from('gestao_compras').update({ estado_pedido: 'em_curso' }).eq('presupuesto_id', presupuestoId);
+
+            // IMPORTANTE: no sobreescribir filas concluidas ni de otros fornecedores.
+            let gcUpdateQuery = client.from('gestao_compras').update({ estado_pedido: 'em_curso' });
+            if (Array.isArray(gcIds) && gcIds.length > 0) {
+                gcUpdateQuery = gcUpdateQuery.in('id', gcIds);
+            } else {
+                gcUpdateQuery = gcUpdateQuery.eq('presupuesto_id', presupuestoId);
+                if (fornecedor) gcUpdateQuery = gcUpdateQuery.eq('nome_fornecedor', fornecedor);
+            }
+            gcUpdateQuery = gcUpdateQuery.neq('estado_pedido', 'concluido');
+            const { error: gcUpdateErr } = await gcUpdateQuery;
+            if (gcUpdateErr) return false;
+
             if (notify) window.dispatchEvent(new CustomEvent('gestao-encomendas-estado-actualizado', { detail: { presupuestoId } }));
             if (reload && window.gestaoEncomendasReload) window.gestaoEncomendasReload();
             return true;
@@ -1252,17 +1265,26 @@
         }
     }
 
-    async function tryMoveProposalToEncomendaEnCurso(client, presupuestoId) {
+    async function tryMoveProposalToEncomendaEnCurso(client, presupuestoId, fornecedorName, articuloIdsScope) {
         try {
             const { data: gcRows, error: gcErr } = await client
                 .from('gestao_compras')
-                .select('id, presupuesto_articulo_id, referencia, designacao, phc_ref')
+                .select('id, presupuesto_articulo_id, referencia, designacao, phc_ref, nome_fornecedor')
                 .eq('presupuesto_id', presupuestoId);
             if (gcErr || !gcRows || gcRows.length === 0) return;
-            const articuloIds = [...new Set((gcRows || []).map(r => r.presupuesto_articulo_id).filter(Boolean))];
+
+            const rowsScope = (fornecedorName && fornecedorName.trim())
+                ? (gcRows || []).filter(r => ((r.nome_fornecedor || '').trim() === fornecedorName.trim()))
+                : (gcRows || []);
+            if (!rowsScope || rowsScope.length === 0) return;
+
+            const articuloIdsScopedFromRows = [...new Set((rowsScope || []).map(r => r.presupuesto_articulo_id).filter(Boolean))];
+            const articuloIds = (Array.isArray(articuloIdsScope) && articuloIdsScope.length > 0)
+                ? articuloIdsScope.filter(Boolean)
+                : articuloIdsScopedFromRows;
             if (articuloIds.length === 0) return;
 
-            const semPhcWithoutRef = (gcRows || []).filter(gc => {
+            const semPhcWithoutRef = (rowsScope || []).filter(gc => {
                 const isSemPhc = !!((gc.referencia || '').trim() || (gc.designacao || '').trim());
                 const hasPhc = ((gc.phc_ref || '').trim() !== '');
                 return isSemPhc && !hasPhc;
@@ -1285,7 +1307,7 @@
             if (presErr || !presupuesto) return;
             if (!isEstadoPedidoEncomenda(presupuesto.estado_propuesta)) return;
 
-            await updatePresupuestoToEncomendaEnCurso(client, presupuestoId);
+            await updatePresupuestoToEncomendaEnCurso(client, presupuestoId, { fornecedor: fornecedorName || null });
         } catch (e) {
             console.warn('tryMoveProposalToEncomendaEnCurso:', e);
         }
