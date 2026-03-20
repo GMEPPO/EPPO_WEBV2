@@ -9394,14 +9394,10 @@ class ProposalsManager {
         if (proposal.articulos && proposal.articulos.length > 0) {
             proposal.articulos.forEach((articulo, index) => {
                 const item = document.createElement('div');
-                item.className = 'product-checkbox-item';
-                item.style.display = 'flex';
-                item.style.alignItems = 'center';
-                item.style.gap = '10px';
-                item.style.marginBottom = '10px';
                 
                 const articuloId = articulo.id || `temp-${index}`;
                 const isChecked = articulo.encomendado === true || articulo.encomendado === 'true';
+                item.className = `encomenda-curso-card ${isChecked ? 'selected' : ''}`;
                 
                 // Buscar fornecedor del producto
                 // Buscar por ID, phc_ref o referencia_fornecedor
@@ -9413,18 +9409,23 @@ class ProposalsManager {
                 const fornecedor = product?.nombre_fornecedor || 'Sin fornecedor';
                 
                 item.innerHTML = `
-                    <input type="checkbox" id="encomenda-curso-product-${proposal.id}-${index}" value="${articuloId}" data-articulo-id="${articuloId}" data-fornecedor="${fornecedor}" ${isChecked ? 'checked' : ''} onchange="window.proposalsManager.toggleEncomendaProduct('${proposal.id}', ${index}, '${fornecedor}')">
-                    <label for="encomenda-curso-product-${proposal.id}-${index}" style="flex: 1; cursor: pointer;">
-                        <strong>${getDisplayNameConsultar(articulo.nombre_articulo) || '-'}</strong> 
-                        (Ref: ${articulo.referencia_articulo || '-'}) - 
-                        ${this.currentLanguage === 'es' ? 'Cantidad' : this.currentLanguage === 'pt' ? 'Quantidade' : 'Quantity'}: 
-                        <input type="number" min="1" value="${articulo.cantidad || 1}" data-articulo-id="${articuloId}" style="width: 60px; padding: 4px; margin-left: 5px;" onchange="window.proposalsManager.updateEncomendaQuantity('${proposal.id}', '${articuloId}', this.value)">
-                    </label>
-                    <span style="color: var(--text-secondary); font-size: 0.875rem;">Fornecedor: ${fornecedor}</span>
+                    <div class="encomenda-curso-main">
+                        <label class="encomenda-curso-checkline">
+                            <input type="checkbox" class="encomenda-curso-check" id="encomenda-curso-product-${proposal.id}-${index}" value="${articuloId}" data-articulo-id="${articuloId}" data-fornecedor="${fornecedor}" ${isChecked ? 'checked' : ''} onchange="window.proposalsManager.toggleEncomendaProduct('${proposal.id}', ${index}, '${fornecedor}')">
+                            <span>${this.currentLanguage === 'es' ? 'Seleccionar artículo' : this.currentLanguage === 'pt' ? 'Selecionar artigo' : 'Select product'}</span>
+                        </label>
+                        <div class="encomenda-curso-name"><strong>${getDisplayNameConsultar(articulo.nombre_articulo) || '-'}</strong></div>
+                        <div class="encomenda-curso-meta">Ref: ${articulo.referencia_articulo || '-'} · ${this.currentLanguage === 'es' ? 'Fornecedor' : this.currentLanguage === 'pt' ? 'Fornecedor' : 'Supplier'}: <span class="encomenda-curso-badge">${fornecedor}</span></div>
+                    </div>
+                    <div class="encomenda-curso-qty-wrap">
+                        <label class="encomenda-curso-qty-label">${this.currentLanguage === 'es' ? 'Cantidad' : this.currentLanguage === 'pt' ? 'Quantidade' : 'Quantity'}</label>
+                        <input type="number" min="1" value="${articulo.cantidad || 1}" data-articulo-id="${articuloId}" class="form-input encomenda-curso-qty" ${isChecked ? '' : 'disabled'} onchange="window.proposalsManager.updateEncomendaQuantity('${proposal.id}', '${articuloId}', this.value)">
+                    </div>
                 `;
                 if (productsList) {
                     productsList.appendChild(item);
                 }
+                if (isChecked) this.toggleEncomendaProduct(proposal.id, index, fornecedor);
             });
         }
 
@@ -9444,25 +9445,41 @@ class ProposalsManager {
         const fornecedoresContainer = document.getElementById('encomenda-en-curso-fornecedores');
         
         if (!checkbox || !fornecedoresContainer) return;
+        const card = checkbox.closest('.encomenda-curso-card');
+        const qtyInput = card ? card.querySelector('.encomenda-curso-qty') : null;
+        if (qtyInput) qtyInput.disabled = !checkbox.checked;
+        if (card) {
+            if (checkbox.checked) card.classList.add('selected');
+            else card.classList.remove('selected');
+        }
+
+        const fornecedorKey = String(fornecedor || '').trim();
+        const fornecedorId = `fornecedor-${fornecedorKey.replace(/\s+/g, '-').toLowerCase()}`;
 
         if (checkbox.checked) {
             // Agregar campo de número de encomienda para este fornecedor si no existe
-            const fornecedorId = `fornecedor-${fornecedor.replace(/\s+/g, '-').toLowerCase()}`;
             if (!document.getElementById(fornecedorId)) {
                 const fornecedorDiv = document.createElement('div');
                 fornecedorDiv.id = fornecedorId;
-                fornecedorDiv.style.marginBottom = '15px';
+                fornecedorDiv.className = 'fornecedor-encomenda-card';
                 fornecedorDiv.innerHTML = `
-                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">
+                    <label class="fornecedor-encomenda-label">
                         ${this.currentLanguage === 'es' ? 'Número de Encomienda' : this.currentLanguage === 'pt' ? 'Número de Encomenda' : 'Order Number'} - ${fornecedor}:
                     </label>
-                    <input type="text" class="fornecedor-encomenda-number" data-fornecedor="${fornecedor}" placeholder="${this.currentLanguage === 'es' ? 'Número de encomienda...' : this.currentLanguage === 'pt' ? 'Número de encomenda...' : 'Order number...'}" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 10px;">
-                    <label style="display: block; margin-bottom: 5px; margin-top: 10px; font-weight: 600;">
+                    <input type="text" class="fornecedor-encomenda-number form-input" data-fornecedor="${fornecedor}" placeholder="${this.currentLanguage === 'es' ? 'Número de encomienda...' : this.currentLanguage === 'pt' ? 'Número de encomenda...' : 'Order number...'}" style="margin-bottom: 10px;">
+                    <label class="fornecedor-encomenda-label">
                         ${this.currentLanguage === 'es' ? 'Fecha de Encomenda' : this.currentLanguage === 'pt' ? 'Data de Encomenda' : 'Order Date'} - ${fornecedor}:
                     </label>
-                    <input type="date" class="fornecedor-encomenda-date" data-fornecedor="${fornecedor}" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px;">
+                    <input type="date" class="fornecedor-encomenda-date form-input" data-fornecedor="${fornecedor}">
                 `;
                 fornecedoresContainer.appendChild(fornecedorDiv);
+            }
+        } else {
+            const stillCheckedForFornecedor = Array.from(document.querySelectorAll('#encomenda-en-curso-products-list .encomenda-curso-check:checked'))
+                .some(cb => (cb.getAttribute('data-fornecedor') || '') === fornecedorKey);
+            if (!stillCheckedForFornecedor) {
+                const existing = document.getElementById(fornecedorId);
+                if (existing) existing.remove();
             }
         }
     }
