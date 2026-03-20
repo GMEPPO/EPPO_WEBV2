@@ -8003,6 +8003,7 @@ class ProposalsManager {
                         presupuesto_id: proposalId,
                         codigo_propuesta: currentProposalRow?.codigo_propuesta || proposal?.codigo_propuesta || '',
                         numero_propuesta: currentProposalRow?.codigo_propuesta || proposal?.codigo_propuesta || '',
+                        nombre_cliente: currentProposalRow?.nombre_cliente || proposal?.nombre_cliente || '',
                         responsable_propuesta: currentProposalRow?.responsavel || proposal?.responsavel || '',
                         comercial: userName || '',
                         comentario: comentarioManual || '',
