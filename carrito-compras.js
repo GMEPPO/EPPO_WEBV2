@@ -3641,13 +3641,44 @@ class CartManager {
                             this.showNotification(msg, 'success');
                             console.log('✅ Módulo duplicado con Ctrl+arrastrar');
                         } else {
-                            // Reordenar: intercambiar los valores de 'order'
-                            const tempOrder = draggedCartItem.order;
-                            draggedCartItem.order = targetCartItem.order;
-                            targetCartItem.order = tempOrder;
+                            // Reordenar por inserción (no swap), usando IDs en orden actual para evitar ambigüedades.
+                            const getItemKey = (it) => String(it?.cartItemId || it?.id || '');
+                            const orderSnapshot = this.cart
+                                .slice()
+                                .sort((a, b) => {
+                                    const oa = a.order != null ? Number(a.order) : 999999;
+                                    const ob = b.order != null ? Number(b.order) : 999999;
+                                    return oa - ob;
+                                });
+                            const orderedKeys = orderSnapshot.map(getItemKey);
+
+                            const draggedKey = String(draggedItemId || '');
+                            const targetKey = String(targetItemId || '');
+                            const fromIndex = orderedKeys.indexOf(draggedKey);
+                            let toIndex = orderedKeys.indexOf(targetKey);
+                            if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return;
+
+                            // Si se suelta en la mitad inferior del target, insertar después del target.
+                            const targetRect = item.getBoundingClientRect();
+                            const dropY = e.clientY - targetRect.top;
+                            const dropAfterTarget = dropY > (targetRect.height / 2);
+                            if (dropAfterTarget) toIndex += 1;
+
+                            // Mover en el snapshot ordenado
+                            const [movedItem] = orderSnapshot.splice(fromIndex, 1);
+                            if (fromIndex < toIndex) toIndex -= 1;
+                            if (toIndex < 0) toIndex = 0;
+                            if (toIndex > orderSnapshot.length) toIndex = orderSnapshot.length;
+                            orderSnapshot.splice(toIndex, 0, movedItem);
+
+                            // Aplicar el nuevo orden al array real y normalizar field order
+                            this.cart = orderSnapshot;
+
+                            // Recalcular order secuencial para persistir correctamente
+                            this.cart.forEach((it, i) => { it.order = i; });
                             this.saveCart();
                             this.renderCart(true);
-                            console.log('✅ Items reordenados:', { dragged: draggedCartItem.name, target: targetCartItem.name });
+                            console.log('✅ Items reordenados (insert):', { moved: draggedCartItem.name, target: targetCartItem.name, fromIndex, toIndex });
                         }
                     }
                 }
