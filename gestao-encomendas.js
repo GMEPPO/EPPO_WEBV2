@@ -441,14 +441,14 @@
                     tipoLabel: tipoLabel,
                     isEnCurso: isSoloCreacaoCodigos ? false : false,
                     hasArticulosPendientes: true,
-                    estado_propuesta: 'aguarda_creacion_codigo_phc'
+                    estado_propuesta: 'aguarda_creacion_codigo_phc',
+                    estado_pedido: 'pendente'
                 });
             });
 
             await syncEstadoEncursoOnLoad(client, listData);
 
-            // "Pedidos em curso": grupos (presupuesto_id, fornecedor) que NO están todos concluidos (pendente o em_curso)
-            // Así Metalcarrelli (pendente) sigue visible; solo desaparecen cuando todo el grupo está concluido (ej. FIRED UP)
+            // "Pedidos em curso": SOLO grupos (presupuesto_id, fornecedor) con al menos una fila em_curso.
             enCursoRowsCache = [];
             const gruposPorFornecedor = {};
             (rows || []).forEach(r => {
@@ -464,8 +464,8 @@
             });
             Object.values(gruposPorFornecedor).forEach(g => {
                 const estados = g.estados;
-                const todosConcluidos = estados.length > 0 && estados.every(e => e === 'concluido');
-                if (todosConcluidos) return; // solo excluir los que están 100% concluidos
+                const tieneEmCurso = estados.includes('em_curso');
+                if (!tieneEmCurso) return;
                 const pidNorm = (g.presupuesto_id != null ? String(g.presupuesto_id).toLowerCase().trim() : '') || '';
                 const p = (listData || []).find(row => row.source === 'presupuesto' && (row.presupuesto_id != null ? String(row.presupuesto_id).toLowerCase().trim() : '') === pidNorm);
                 const mapKey = pidNorm + '|' + (g.fornecedor === '-' ? '-' : g.fornecedor);
@@ -511,7 +511,8 @@
                                     tipoLabel: getTipoLabelPresupuesto(pp.tipo_registro_directo),
                                     isEnCurso: false,
                                     hasArticulosPendientes: true,
-                                    estado_propuesta: pp.estado_propuesta || ''
+                                    estado_propuesta: pp.estado_propuesta || '',
+                                    estado_pedido: 'pendente'
                                 });
                             }
                         }
@@ -682,9 +683,7 @@
     function updateTabCounts() {
         const pendientesCount = listData.filter(r => {
             if (r.source === 'contacto_fornecedores') return true;
-            if (r.isEnCurso) return false;
-            if ((r.estado_pedido || '').toLowerCase() === 'concluido') return false;
-            return true;
+            return (r.estado_pedido || '').toLowerCase() === 'pendente';
         }).length;
         const enCursoCount = getEnCursoRowsByFornecedor().length;
         const elP = document.getElementById('ge-tab-pendientes-count');
@@ -750,7 +749,7 @@
                     <td>${escapeHtml(row.numero_encomenda || '-')}</td>
                     <td><button type="button" class="ge-btn ge-btn-primary" data-presupuesto-id="${row.presupuesto_id}">${t('detalles')}</button></td>
                 `;
-                tr.querySelector('button').addEventListener('click', () => showDetails(row.presupuesto_id, { fornecedor: row.fornecedor }));
+                tr.querySelector('button').addEventListener('click', () => showDetails(row.presupuesto_id, { fornecedor: row.fornecedor, forceEnCurso: true }));
                 tbody.appendChild(tr);
             });
             setEmpty(rows.length === 0);
@@ -780,12 +779,10 @@
             });
             setEmpty(historicoFiltered.length === 0);
         } else {
-            // Solo pendientes: contactos + propuestas no en curso y no concluidas (estado_pedido !== 'concluido')
+            // Solo pendientes: contactos + propuestas con estado_pedido = 'pendente'
             let filtered = listData.filter(row => {
                 if (row.source === 'contacto_fornecedores') return true;
-                if (row.isEnCurso) return false;
-                if ((row.estado_pedido || '').toLowerCase() === 'concluido') return false;
-                return true;
+                return (row.estado_pedido || '').toLowerCase() === 'pendente';
             });
             filtered = filtered.filter(row => matchesListSearch(row, false));
             tbody.innerHTML = '';
@@ -804,7 +801,7 @@
                 `;
                 const btn = tr.querySelector('button');
                 if (isContacto) btn.addEventListener('click', () => showDetailsContactoFornecedores(row.contacto_id));
-                else btn.addEventListener('click', () => showDetails(row.presupuesto_id));
+                else btn.addEventListener('click', () => showDetails(row.presupuesto_id, { forcePendiente: true }));
                 tbody.appendChild(tr);
             });
             setEmpty(filtered.length === 0);
@@ -921,11 +918,13 @@
         const pidNorm = normPresupuestoId(presupuestoId);
         const proposal = listData.find(p => normPresupuestoId(p.presupuesto_id) === pidNorm);
         const fornecedorFiltro = (options && options.fornecedor) ? String(options.fornecedor).trim() : null;
-        if (proposal && proposal.isEnCurso) {
+        const forcePendiente = !!(options && options.forcePendiente);
+        const forceEnCurso = !!(options && options.forceEnCurso);
+        if (!forcePendiente && (forceEnCurso || (proposal && (proposal.estado_pedido || '').toLowerCase() === 'em_curso'))) {
             showDetailsEnCurso(presupuestoId, fornecedorFiltro || undefined);
             return;
         }
-        showDetailsPendientes(presupuestoId);
+        showDetailsPendientes(presupuestoId, fornecedorFiltro || undefined);
     }
 
     async function showDetailsContactoFornecedores(contactoId) {
