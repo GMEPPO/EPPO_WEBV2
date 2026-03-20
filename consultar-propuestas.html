@@ -1705,6 +1705,39 @@
         </div>
     </div>
 
+    <!-- Modal para cambiar estado a Proposta Parcialmente Adjudicada -->
+    <div class="modal-overlay" id="changeStatusPropostaParcialmenteAdjudicadaModal">
+        <div class="modal" style="max-width: 760px;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="proposta-parcial-modal-title">Proposta Parcialmente Adjudicada</h3>
+                <button class="modal-close" onclick="closePropostaParcialmenteAdjudicadaModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-description" id="proposta-parcial-description" style="color: var(--text-secondary); margin-bottom: var(--space-4); font-size: 0.875rem;">
+                    Indique os artigos e as quantidades adjudicadas. Pode adjudicar mais quantidade do que a original.
+                </p>
+                <div class="form-group">
+                    <label class="form-label" id="proposta-parcial-products-label">Artigos da proposta:</label>
+                    <div id="proposta-parcial-products-list" style="max-height: 320px; overflow-y: auto; border: 1px solid var(--bg-gray-300); border-radius: var(--radius-md); padding: var(--space-3);">
+                        <!-- Se llenará dinámicamente -->
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" id="proposta-parcial-comentario-label">Comentário (opcional):</label>
+                    <textarea class="form-input" id="proposta-parcial-comentario" rows="4" placeholder="" style="width: 100%; min-height: 100px;"></textarea>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closePropostaParcialmenteAdjudicadaModal()" id="proposta-parcial-cancel-btn">Cancelar</button>
+                <button type="button" class="btn-primary" onclick="savePropostaParcialmenteAdjudicadaStatus()">
+                    <i class="fas fa-save"></i> <span id="proposta-parcial-save-text">Guardar</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal para cambiar estado a Proposta Adjudicada (comentario obligatorio) -->
     <div class="modal-overlay" id="changeStatusPropostaAdjudicadaModal">
         <div class="modal" style="max-width: 600px;">

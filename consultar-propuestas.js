@@ -839,6 +839,7 @@ class ProposalsManager {
                 if (statusLower.includes('concluida') || statusLower.includes('concluída') || statusLower === 'encomenda_concluida') return 'encomenda_concluida';
                 if (statusLower.includes('rechazada') || statusLower.includes('rejeitada')) return 'rejeitada';
                 if (statusLower === 'follow_up' || statusLower.includes('follow up')) return 'follow_up';
+                if (statusLower.includes('parcial') && statusLower.includes('adjudicada')) return 'proposta_parcialmente_adjudicada';
                 if (statusLower.includes('adjudicada') || statusLower === 'proposta_adjudicada') return 'proposta_adjudicada';
                 return status; // Si no coincide, usar el valor original
             };
@@ -924,7 +925,7 @@ class ProposalsManager {
                             " onfocus="this.style.borderColor='var(--primary-500, #2563eb)'; this.style.boxShadow='0 0 0 2px rgba(37,99,235,0.2)';" onblur="this.style.borderColor='var(--bg-gray-300, #d1d5db)'; this.style.boxShadow='none';">
                                 ${(() => {
                                     const isComercial = (window.cachedRole || '').toString().toLowerCase() === 'comercial';
-                                    const allowedComercial = ['propuesta_enviada', 'propuesta_en_edicion', 'follow_up', 'rejeitada', 'proposta_adjudicada'];
+                                    const allowedComercial = ['propuesta_enviada', 'propuesta_en_edicion', 'follow_up', 'rejeitada', 'proposta_parcialmente_adjudicada', 'proposta_adjudicada'];
                                     
                                     let options = '';
                                     
@@ -937,6 +938,7 @@ class ProposalsManager {
                                         options += estadoNormalizado === 'propuesta_en_edicion' ? `<option value="propuesta_en_edicion" selected>${this.getStatusText('propuesta_en_edicion')}</option>` : `<option value="propuesta_en_edicion">${this.getStatusText('propuesta_en_edicion')}</option>`;
                                         options += estadoNormalizado === 'follow_up' ? `<option value="follow_up" selected>${this.getStatusText('follow_up')}</option>` : `<option value="follow_up">${this.getStatusText('follow_up')}</option>`;
                                         options += estadoNormalizado === 'rejeitada' ? `<option value="rejeitada" selected>${this.getStatusText('rejeitada')}</option>` : `<option value="rejeitada">${this.getStatusText('rejeitada')}</option>`;
+                                        options += estadoNormalizado === 'proposta_parcialmente_adjudicada' ? `<option value="proposta_parcialmente_adjudicada" selected>${this.getStatusText('proposta_parcialmente_adjudicada')}</option>` : `<option value="proposta_parcialmente_adjudicada">${this.getStatusText('proposta_parcialmente_adjudicada')}</option>`;
                                         options += estadoNormalizado === 'proposta_adjudicada' ? `<option value="proposta_adjudicada" selected>${this.getStatusText('proposta_adjudicada')}</option>` : `<option value="proposta_adjudicada">${this.getStatusText('proposta_adjudicada')}</option>`;
                                         return options;
                                     }
@@ -959,6 +961,7 @@ class ProposalsManager {
                                     options += estadoNormalizado === 'encomenda_en_curso' ? `<option value="encomenda_en_curso" selected>${this.getStatusText('encomenda_en_curso')}</option>` : `<option value="encomenda_en_curso">${this.getStatusText('encomenda_en_curso')}</option>`;
                                     options += estadoNormalizado === 'encomenda_concluida' ? `<option value="encomenda_concluida" selected>${this.getStatusText('encomenda_concluida')}</option>` : `<option value="encomenda_concluida">${this.getStatusText('encomenda_concluida')}</option>`;
                                     options += estadoNormalizado === 'rejeitada' ? `<option value="rejeitada" selected>${this.getStatusText('rejeitada')}</option>` : `<option value="rejeitada">${this.getStatusText('rejeitada')}</option>`;
+                                    options += estadoNormalizado === 'proposta_parcialmente_adjudicada' ? `<option value="proposta_parcialmente_adjudicada" selected>${this.getStatusText('proposta_parcialmente_adjudicada')}</option>` : `<option value="proposta_parcialmente_adjudicada">${this.getStatusText('proposta_parcialmente_adjudicada')}</option>`;
                                     options += estadoNormalizado === 'proposta_adjudicada' ? `<option value="proposta_adjudicada" selected>${this.getStatusText('proposta_adjudicada')}</option>` : `<option value="proposta_adjudicada">${this.getStatusText('proposta_adjudicada')}</option>`;
                                     return options;
                                 })()}
@@ -1267,6 +1270,7 @@ class ProposalsManager {
                 'encomenda_concluida': 'Encomenda Concluída',
                 'rejeitada': 'Rechazada',
                 'follow_up': 'Follow up',
+                'proposta_parcialmente_adjudicada': 'Propuesta Parcialmente Adjudicada',
                 'proposta_adjudicada': 'Propuesta Adjudicada',
                 // Compatibilidad con estados antiguos
                 'propuesta enviada': 'Propuesta Enviada',
@@ -1289,6 +1293,7 @@ class ProposalsManager {
                 'encomenda_concluida': 'Encomenda Concluída',
                 'rejeitada': 'Rejeitada',
                 'follow_up': 'Follow up',
+                'proposta_parcialmente_adjudicada': 'Proposta Parcialmente Adjudicada',
                 'proposta_adjudicada': 'Proposta Adjudicada',
                 // Compatibilidad con estados antiguos
                 'propuesta enviada': 'Proposta Enviada',
@@ -1312,6 +1317,7 @@ class ProposalsManager {
                 'encomenda_concluida': 'Order Completed',
                 'rejeitada': 'Rejected',
                 'follow_up': 'Follow up',
+                'proposta_parcialmente_adjudicada': 'Proposal Partially Awarded',
                 'proposta_adjudicada': 'Proposal Awarded',
                 // Compatibilidad con estados antiguos
                 'propuesta enviada': 'Proposal Sent',
@@ -1360,6 +1366,8 @@ class ProposalsManager {
             return map['rejeitada'] || 'Rechazada';
         } else if (statusLower === 'follow_up' || statusLower.includes('follow up')) {
             return map['follow_up'] || 'Follow up';
+        } else if (statusLower.includes('parcial') && statusLower.includes('adjudicada')) {
+            return map['proposta_parcialmente_adjudicada'] || 'Propuesta Parcialmente Adjudicada';
         } else if (statusLower.includes('adjudicada')) {
             return map['proposta_adjudicada'] || 'Propuesta Adjudicada';
         }
@@ -3906,6 +3914,8 @@ class ProposalsManager {
             this.openEncomendaConcluidaModal(proposal);
         } else if (normalizedStatus === 'rejeitada') {
             this.openRejeitadaModal(proposal);
+        } else if (normalizedStatus === 'proposta_parcialmente_adjudicada') {
+            this.openPropostaParcialmenteAdjudicadaModal(proposal);
         } else if (normalizedStatus === 'proposta_adjudicada') {
             this.openPropostaAdjudicadaModal(proposal);
         } else if (normalizedStatus === 'aguarda_creacion_codigo_phc') {
@@ -3935,7 +3945,7 @@ class ProposalsManager {
         'amostra_pedida', 'muestra_entregada', 'aguarda_dossier', 'aguarda_aprovacao_dossier',
         'aguarda_creacion_cliente', 'aguarda_creacion_codigo_phc', 'aguarda_pagamento',
         'follow_up', 'pedido_de_encomenda', 'encomenda_en_curso',
-        'encomenda_concluida', 'rejeitada', 'proposta_adjudicada'
+        'encomenda_concluida', 'rejeitada', 'proposta_parcialmente_adjudicada', 'proposta_adjudicada'
     ];
     static STATUS_EXCLUDED_BY_DEFAULT = ['encomenda_concluida', 'rejeitada'];
 
@@ -3958,6 +3968,7 @@ class ProposalsManager {
             encomenda_en_curso: 'Encomenda em Curso',
             encomenda_concluida: 'Encomenda Concluída',
             rejeitada: 'Rejeitada',
+            proposta_parcialmente_adjudicada: 'Proposta Parcialmente Adjudicada',
             proposta_adjudicada: 'Proposta Adjudicada'
         },
         es: {
@@ -3977,6 +3988,7 @@ class ProposalsManager {
             encomenda_en_curso: 'Encomenda en Curso',
             encomenda_concluida: 'Encomenda Concluída',
             rejeitada: 'Rechazada',
+            proposta_parcialmente_adjudicada: 'Propuesta Parcialmente Adjudicada',
             proposta_adjudicada: 'Propuesta Adjudicada'
         },
         en: {
@@ -3996,6 +4008,7 @@ class ProposalsManager {
             encomenda_en_curso: 'Order in Progress',
             encomenda_concluida: 'Order Completed',
             rejeitada: 'Rejected',
+            proposta_parcialmente_adjudicada: 'Proposal Partially Awarded',
             proposta_adjudicada: 'Proposal Awarded'
         }
     };
@@ -4113,6 +4126,7 @@ class ProposalsManager {
         if (s === 'muestra_pedida' || s === 'amostra_pedida') return 'amostra_pedida';
         if (s === 'muestra_entregada' || s === 'amostra_enviada') return 'muestra_entregada';
         if (s === 'follow_up' || s.includes('follow up')) return 'follow_up';
+        if (s.includes('parcial') && s.includes('adjudicada')) return 'proposta_parcialmente_adjudicada';
         if (s.includes('adjudicada') || s === 'proposta_adjudicada') return 'proposta_adjudicada';
         if (s.includes('propuesta') && (s.includes('curso') || s.includes('curso'))) return 'propuesta_en_curso';
         if (s.includes('propuesta') && (s.includes('enviada') || s.includes('enviada'))) return 'propuesta_enviada';
@@ -5614,6 +5628,7 @@ class ProposalsManager {
             'encomenda_concluida': { es: 'Encomenda Concluída', pt: 'Encomenda Concluída', en: 'Order Completed' },
             'rejeitada': { es: 'Rechazada', pt: 'Rejeitada', en: 'Rejected' },
             'follow_up': { es: 'Follow up', pt: 'Follow up', en: 'Follow up' },
+            'proposta_parcialmente_adjudicada': { es: 'Propuesta Parcialmente Adjudicada', pt: 'Proposta Parcialmente Adjudicada', en: 'Proposal Partially Awarded' },
             'proposta_adjudicada': { es: 'Propuesta Adjudicada', pt: 'Proposta Adjudicada', en: 'Proposal Awarded' },
             // Compatibilidad con estados antiguos
             'propuesta enviada': { es: 'Propuesta Enviada', pt: 'Proposta Enviada', en: 'Proposal Sent' },
@@ -7718,6 +7733,237 @@ class ProposalsManager {
         if (saveText) saveText.textContent = L.save;
     }
 
+    openPropostaParcialmenteAdjudicadaModal(proposal) {
+        const modal = document.getElementById('changeStatusPropostaParcialmenteAdjudicadaModal');
+        const listEl = document.getElementById('proposta-parcial-products-list');
+        if (!modal || !listEl) return;
+        listEl.innerHTML = '';
+        const items = proposal.articulos || [];
+        items.forEach((art, idx) => {
+            const aid = art.id || `tmp-${idx}`;
+            const qty = Number(art.cantidad ?? art.cantidad_encomendada ?? 0) || 0;
+            const row = document.createElement('div');
+            row.className = 'product-checkbox-item';
+            row.style.display = 'grid';
+            row.style.gridTemplateColumns = '1fr 140px';
+            row.style.gap = '12px';
+            row.style.alignItems = 'center';
+            row.style.marginBottom = '10px';
+            row.innerHTML = `
+                <div>
+                    <div><strong>${getDisplayNameConsultar(art.nombre_articulo) || '-'}</strong></div>
+                    <div style="font-size:0.82rem; color: var(--text-secondary);">
+                        Ref: ${art.referencia_articulo || '-'} · ${this.currentLanguage === 'es' ? 'Cantidad original' : this.currentLanguage === 'pt' ? 'Quantidade original' : 'Original quantity'}: ${qty}
+                    </div>
+                </div>
+                <div>
+                    <label style="font-size:0.78rem; color: var(--text-secondary); display:block; margin-bottom:4px;">
+                        ${this.currentLanguage === 'es' ? 'Cantidad adjudicada' : this.currentLanguage === 'pt' ? 'Quantidade adjudicada' : 'Awarded qty'}
+                    </label>
+                    <input type="number" min="0" step="1" class="form-input partial-adj-qty" data-articulo-id="${aid}" data-original-qty="${qty}" value="0" />
+                </div>
+            `;
+            listEl.appendChild(row);
+        });
+        const commentsEl = document.getElementById('proposta-parcial-comentario');
+        if (commentsEl) commentsEl.value = '';
+        modal.setAttribute('data-proposal-id', proposal.id);
+        modal.classList.add('active');
+        this.updatePropostaParcialmenteAdjudicadaTranslations();
+    }
+
+    closePropostaParcialmenteAdjudicadaModal() {
+        const modal = document.getElementById('changeStatusPropostaParcialmenteAdjudicadaModal');
+        if (modal) modal.classList.remove('active');
+    }
+
+    updatePropostaParcialmenteAdjudicadaTranslations() {
+        const lang = this.currentLanguage || 'pt';
+        const t = {
+            pt: {
+                title: 'Proposta Parcialmente Adjudicada',
+                desc: 'Indique os artigos e as quantidades adjudicadas. Pode adjudicar mais quantidade do que a original.',
+                products: 'Artigos da proposta:',
+                comment: 'Comentário (opcional):',
+                cancel: 'Cancelar',
+                save: 'Guardar'
+            },
+            es: {
+                title: 'Propuesta Parcialmente Adjudicada',
+                desc: 'Indique los artículos y las cantidades adjudicadas. Se permite adjudicar más cantidad que la original.',
+                products: 'Artículos de la propuesta:',
+                comment: 'Comentario (opcional):',
+                cancel: 'Cancelar',
+                save: 'Guardar'
+            },
+            en: {
+                title: 'Proposal Partially Awarded',
+                desc: 'Set awarded quantities per product. Awarded quantity may be greater than original.',
+                products: 'Proposal products:',
+                comment: 'Comment (optional):',
+                cancel: 'Cancel',
+                save: 'Save'
+            }
+        };
+        const L = t[lang] || t.pt;
+        const map = {
+            'proposta-parcial-modal-title': L.title,
+            'proposta-parcial-description': L.desc,
+            'proposta-parcial-products-label': L.products,
+            'proposta-parcial-comentario-label': L.comment,
+            'proposta-parcial-cancel-btn': L.cancel,
+            'proposta-parcial-save-text': L.save
+        };
+        Object.entries(map).forEach(([id, text]) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = text;
+        });
+    }
+
+    async savePropostaParcialmenteAdjudicadaStatus() {
+        const modal = document.getElementById('changeStatusPropostaParcialmenteAdjudicadaModal');
+        const proposalId = modal?.getAttribute('data-proposal-id');
+        if (!proposalId) return;
+        if (!this.supabase) await this.initializeSupabase();
+
+        const proposal = this.allProposals.find(p => p.id === proposalId);
+        if (!proposal) return;
+
+        const qtyInputs = Array.from(modal.querySelectorAll('.partial-adj-qty'));
+        const qtyByArticuloId = {};
+        let hasAnyAwarded = false;
+        for (const input of qtyInputs) {
+            const aid = input.getAttribute('data-articulo-id');
+            const val = Number(input.value);
+            if (!Number.isFinite(val) || val < 0) {
+                this.showNotification(this.currentLanguage === 'es' ? 'Las cantidades adjudicadas deben ser numéricas y >= 0.' : this.currentLanguage === 'pt' ? 'As quantidades adjudicadas devem ser numéricas e >= 0.' : 'Awarded quantities must be numeric and >= 0.', 'error');
+                return;
+            }
+            const intVal = Math.floor(val);
+            qtyByArticuloId[aid] = intVal;
+            if (intVal > 0) hasAnyAwarded = true;
+        }
+        if (!hasAnyAwarded) {
+            this.showNotification(this.currentLanguage === 'es' ? 'Debe adjudicar al menos un artículo con cantidad > 0.' : this.currentLanguage === 'pt' ? 'Deve adjudicar pelo menos um artigo com quantidade > 0.' : 'You must award at least one product with quantity > 0.', 'error');
+            return;
+        }
+
+        const userName = await this.getCurrentUserName() || 'Sistema';
+        const role = (window.cachedRole || await window.getUserRole?.() || '').toString().trim() || null;
+        const comentarioManual = (document.getElementById('proposta-parcial-comentario')?.value || '').trim();
+
+        try {
+            const { data: currentProposalRow, error: pErr } = await this.supabase
+                .from('presupuestos')
+                .select('*')
+                .eq('id', proposalId)
+                .single();
+            if (pErr || !currentProposalRow) throw (pErr || new Error('No se pudo cargar la propuesta actual'));
+
+            const { data: currentArticulos, error: aErr } = await this.supabase
+                .from('presupuestos_articulos')
+                .select('*')
+                .eq('presupuesto_id', proposalId)
+                .order('created_at', { ascending: true });
+            if (aErr) throw aErr;
+
+            const pendingRows = [];
+            for (const art of (currentArticulos || [])) {
+                const originalQty = Number(art.cantidad ?? art.cantidad_encomendada ?? 0) || 0;
+                const adjudicada = Number(qtyByArticuloId[art.id] ?? 0) || 0;
+                const remanente = Math.max(originalQty - adjudicada, 0);
+                if (adjudicada > 0) {
+                    const { error: updErr } = await this.supabase
+                        .from('presupuestos_articulos')
+                        .update({ cantidad: adjudicada })
+                        .eq('id', art.id);
+                    if (updErr) throw updErr;
+                } else {
+                    const { error: delErr } = await this.supabase
+                        .from('presupuestos_articulos')
+                        .delete()
+                        .eq('id', art.id);
+                    if (delErr) throw delErr;
+                }
+                if (remanente > 0) {
+                    const clone = { ...art };
+                    delete clone.id;
+                    delete clone.created_at;
+                    delete clone.updated_at;
+                    clone.cantidad = remanente;
+                    pendingRows.push(clone);
+                }
+            }
+
+            let newProposalVersion = null;
+            if (pendingRows.length > 0) {
+                const codigoBase = currentProposalRow.codigo_propuesta || proposal.codigo_propuesta;
+                const { data: sameCodeRows } = await this.supabase
+                    .from('presupuestos')
+                    .select('version')
+                    .eq('codigo_propuesta', codigoBase);
+                const maxVersion = (sameCodeRows || []).reduce((acc, r) => Math.max(acc, Number(r?.version || 0)), 0);
+                const nextVersion = maxVersion + 1;
+
+                const newProposal = { ...currentProposalRow };
+                delete newProposal.id;
+                delete newProposal.created_at;
+                delete newProposal.updated_at;
+                newProposal.estado_propuesta = 'propuesta_en_edicion';
+                newProposal.version = nextVersion;
+                newProposal.fecha_ultima_actualizacion = new Date().toISOString();
+
+                const { data: insertedProposal, error: insProposalErr } = await this.supabase
+                    .from('presupuestos')
+                    .insert(newProposal)
+                    .select('id, codigo_propuesta, version')
+                    .single();
+                if (insProposalErr || !insertedProposal?.id) throw (insProposalErr || new Error('No se pudo crear la nueva versión'));
+
+                newProposalVersion = insertedProposal.version || nextVersion;
+
+                const insertArtRows = pendingRows.map(r => ({ ...r, presupuesto_id: insertedProposal.id }));
+                const { error: insArtErr } = await this.supabase
+                    .from('presupuestos_articulos')
+                    .insert(insertArtRows);
+                if (insArtErr) throw insArtErr;
+            }
+
+            await this.updateProposalStatus(proposalId, 'proposta_parcialmente_adjudicada');
+
+            const autoComment = this.currentLanguage === 'es'
+                ? `Adjudicación parcial registrada por ${userName}.${newProposalVersion ? ` Se creó nueva versión V${newProposalVersion} con artículos pendientes.` : ' No quedaron artículos pendientes para nueva versión.'}`
+                : this.currentLanguage === 'pt'
+                    ? `Adjudicação parcial registada por ${userName}.${newProposalVersion ? ` Foi criada nova versão V${newProposalVersion} com artigos pendentes.` : ' Não ficaram artigos pendentes para nova versão.'}`
+                    : `Partial award registered by ${userName}.${newProposalVersion ? ` New version V${newProposalVersion} created with pending items.` : ' No pending items remained for a new version.'}`;
+            const fullComment = [autoComment, comentarioManual].filter(Boolean).join('\n\n');
+            if (fullComment.trim()) {
+                const { error: cErr } = await this.supabase
+                    .from('presupuestos_comentarios')
+                    .insert({
+                        presupuesto_id: proposalId,
+                        comentario: fullComment.trim(),
+                        nombre_usuario: userName,
+                        rol_usuario: role
+                    });
+                if (cErr) console.warn('No se pudo guardar comentario de adjudicación parcial:', cErr);
+            }
+
+            this.closePropostaParcialmenteAdjudicadaModal();
+            await this.loadProposals();
+            this.resetStatusSelects(proposalId);
+            const okMsg = this.currentLanguage === 'es'
+                ? (newProposalVersion ? `Estado guardado. Se creó la versión V${newProposalVersion} con los artículos pendientes.` : 'Estado guardado. No hubo artículos pendientes para crear nueva versión.')
+                : this.currentLanguage === 'pt'
+                    ? (newProposalVersion ? `Estado guardado. Foi criada a versão V${newProposalVersion} com os artigos pendentes.` : 'Estado guardado. Não houve artigos pendentes para criar nova versão.')
+                    : (newProposalVersion ? `Status saved. Version V${newProposalVersion} was created with pending items.` : 'Status saved. No pending items remained to create a new version.');
+            this.showNotification(okMsg, 'success');
+        } catch (error) {
+            console.error('Error al guardar Proposta Parcialmente Adjudicada:', error);
+            this.showNotification(this.currentLanguage === 'es' ? `Error al guardar: ${error.message}` : this.currentLanguage === 'pt' ? `Erro ao guardar: ${error.message}` : `Error saving: ${error.message}`, 'error');
+        }
+    }
+
     openPropostaAdjudicadaModal(proposal) {
         const modal = document.getElementById('changeStatusPropostaAdjudicadaModal');
         if (!modal) return;
@@ -9738,6 +9984,18 @@ function closeFollowUpFirstTimeModal() {
 function saveFollowUpFirstTimeStatus() {
     if (window.proposalsManager) {
         window.proposalsManager.saveFollowUpFirstTimeStatus();
+    }
+}
+
+function closePropostaParcialmenteAdjudicadaModal() {
+    if (window.proposalsManager) {
+        window.proposalsManager.closePropostaParcialmenteAdjudicadaModal();
+    }
+}
+
+function savePropostaParcialmenteAdjudicadaStatus() {
+    if (window.proposalsManager) {
+        window.proposalsManager.savePropostaParcialmenteAdjudicadaStatus();
     }
 }
 
