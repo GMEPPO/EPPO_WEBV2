@@ -776,6 +776,67 @@
             box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.22);
         }
 
+        /* Aspecto unificado para modales de cambio de estado */
+        .status-modal-polish {
+            border: 1px solid var(--bg-gray-300);
+            box-shadow: 0 20px 45px rgba(0, 0, 0, 0.35);
+        }
+
+        .status-modal-polish .modal-header {
+            border-bottom: 1px solid var(--bg-gray-300);
+        }
+
+        .status-modal-polish .modal-body {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .status-modal-polish .form-group {
+            background: var(--bg-gray-50);
+            border: 1px solid var(--bg-gray-300);
+            border-radius: 10px;
+            padding: 12px;
+        }
+
+        .status-modal-polish .form-label {
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .status-modal-polish textarea.form-input,
+        .status-modal-polish input.form-input,
+        .status-modal-polish select.form-input {
+            border: 1px solid var(--bg-gray-300);
+            background: var(--bg-white);
+            color: var(--text-primary);
+            border-radius: 8px;
+        }
+
+        .status-modal-polish .modal-actions {
+            border-top: 1px solid var(--bg-gray-300);
+            padding-top: 12px;
+        }
+
+        .status-modal-polish .btn-secondary,
+        .status-modal-polish .btn-primary {
+            border-radius: 8px;
+            font-weight: 700;
+            min-height: 36px;
+            padding: 8px 14px;
+        }
+
+        [data-theme="dark"] .status-modal-polish .form-group {
+            background: rgba(17, 24, 39, 0.55);
+            border-color: rgba(148, 163, 184, 0.3);
+        }
+
+        [data-theme="dark"] .status-modal-polish .modal-header,
+        [data-theme="dark"] .status-modal-polish .modal-actions {
+            border-color: rgba(148, 163, 184, 0.35);
+        }
+
         @keyframes slideIn {
             from {
                 transform: translateX(100%);
@@ -1741,7 +1802,7 @@
         #aguarda-codigo-phc-products-list { width: 100%; box-sizing: border-box; }
     </style>
     <div class="modal-overlay" id="changeStatusPedidoEncomendaModal">
-        <div class="modal" style="max-width: 900px;">
+        <div class="modal status-modal-polish" style="max-width: 900px;">
             <div class="modal-header">
                 <h3 class="modal-title" id="pedido-encomenda-modal-title">Pedido de Encomenda</h3>
                 <button class="modal-close" onclick="window.proposalsManager.closePedidoEncomendaModal()">
@@ -1841,7 +1902,7 @@
 
     <!-- Modal para cambiar estado a Rejeitada -->
     <div class="modal-overlay" id="changeStatusRejeitadaModal">
-        <div class="modal" style="max-width: 600px;">
+        <div class="modal status-modal-polish" style="max-width: 600px;">
             <div class="modal-header">
                 <h3 class="modal-title" id="rejeitada-modal-title">Marcar como Rejeitada</h3>
                 <button class="modal-close" onclick="closeRejeitadaModal()">
@@ -1882,7 +1943,7 @@
 
     <!-- Modal Follow up (primera vez): observaciones y data follow-up futuro opcionales -->
     <div class="modal-overlay" id="changeStatusFollowUpFirstTimeModal">
-        <div class="modal" style="max-width: 560px;">
+        <div class="modal status-modal-polish" style="max-width: 560px;">
             <div class="modal-header">
                 <h3 class="modal-title" id="follow-up-first-time-modal-title">Follow up</h3>
                 <button class="modal-close" onclick="closeFollowUpFirstTimeModal()">
@@ -1969,7 +2030,7 @@
 
     <!-- Modal para cambiar estado a Amostra Pedida -->
     <div class="modal-overlay" id="amostraPedidaModal">
-        <div class="modal" style="max-width: 700px;">
+        <div class="modal status-modal-polish" style="max-width: 700px;">
             <div class="modal-header">
                 <h3 class="modal-title" id="amostra-pedida-modal-title">Amostra Pedida</h3>
                 <button class="modal-close" onclick="closeAmostraPedidaModal()">
@@ -1999,7 +2060,7 @@
 
     <!-- Modal para cambiar estado a Amostra Enviada -->
     <div class="modal-overlay" id="amostraEnviadaModal">
-        <div class="modal" style="max-width: 700px;">
+        <div class="modal status-modal-polish" style="max-width: 700px;">
             <div class="modal-header">
                 <h3 class="modal-title" id="amostra-enviada-modal-title">Amostra Enviada</h3>
                 <button class="modal-close" onclick="closeAmostraEnviadaModal()">
@@ -2065,7 +2126,7 @@
 
     <!-- Modal para cambiar estado a Aguarda Aprovação de Dossier -->
     <div class="modal-overlay" id="aguardaAprovacaoDossierModal">
-        <div class="modal" style="max-width: 700px;">
+        <div class="modal status-modal-polish" style="max-width: 700px;">
             <div class="modal-header">
                 <h3 class="modal-title" id="aguarda-dossier-modal-title">Aguarda Aprovação de Dossier</h3>
                 <button class="modal-close" onclick="closeAguardaAprovacaoDossierModal()">
@@ -2095,7 +2156,7 @@
 
     <!-- Modal para cambiar estado a Aguarda Pagamento -->
     <div class="modal-overlay" id="aguardaPagamentoModal">
-        <div class="modal" style="max-width: 600px;">
+        <div class="modal status-modal-polish" style="max-width: 600px;">
             <div class="modal-header">
                 <h3 class="modal-title" id="aguarda-pagamento-modal-title">Aguarda Pagamento</h3>
                 <button class="modal-close" onclick="closeAguardaPagamentoModal()">
