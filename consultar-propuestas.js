@@ -7894,6 +7894,19 @@ class ProposalsManager {
                 .order('created_at', { ascending: true });
             if (aErr) throw aErr;
 
+            const articulosAdjudicadosPayload = (currentArticulos || [])
+                .map(art => {
+                    const cantidadAdjudicada = Number(qtyByArticuloId[art.id] ?? 0) || 0;
+                    if (cantidadAdjudicada <= 0) return null;
+                    return {
+                        articulo_id: art.id,
+                        nombre_articulo: art.nombre_articulo || '',
+                        referencia_articulo: art.referencia_articulo || '',
+                        cantidad_adjudicada: cantidadAdjudicada
+                    };
+                })
+                .filter(Boolean);
+
             const pendingRows = [];
             for (const art of (currentArticulos || [])) {
                 const originalQty = Number(art.cantidad ?? art.cantidad_encomendada ?? 0) || 0;
@@ -7974,6 +7987,35 @@ class ProposalsManager {
                         rol_usuario: role
                     });
                 if (cErr) console.warn('No se pudo guardar comentario de adjudicación parcial:', cErr);
+            }
+
+            // Webhook: solo para perfil comercial
+            const roleLower = (role || '').toString().toLowerCase();
+            if (roleLower === 'comercial') {
+                const origin = typeof window !== 'undefined' && window.location && window.location.origin;
+                const webhookUrl = origin && origin !== 'null' && !origin.startsWith('file')
+                    ? (origin + '/api/follow-up-webhook.json')
+                    : null;
+                if (webhookUrl) {
+                    const webhookBody = {
+                        tipo_alerta: 'proposta_parcialmente_adjudicada',
+                        evento: 'proposta_parcialmente_adjudicada',
+                        presupuesto_id: proposalId,
+                        codigo_propuesta: currentProposalRow?.codigo_propuesta || proposal?.codigo_propuesta || '',
+                        numero_propuesta: currentProposalRow?.codigo_propuesta || proposal?.codigo_propuesta || '',
+                        responsable_propuesta: currentProposalRow?.responsavel || proposal?.responsavel || '',
+                        comercial: userName || '',
+                        comentario: comentarioManual || '',
+                        articulos_adjudicados: articulosAdjudicadosPayload,
+                        nueva_version_creada: newProposalVersion != null,
+                        version_nueva: newProposalVersion || null
+                    };
+                    fetch(webhookUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(webhookBody)
+                    }).catch(() => {});
+                }
             }
 
             this.closePropostaParcialmenteAdjudicadaModal();
