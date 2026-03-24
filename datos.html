@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EPPO by Groupe GM - Datos</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="menu-hamburguesa.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="load-config.js"></script>
+    <script src="supabase-config-universal.js"></script>
+    <script src="auth.js"></script>
+    <style>
+        .datos-container { max-width: 1200px; margin: 0 auto; padding: var(--space-8) var(--space-6); }
+        .datos-header { margin-bottom: var(--space-6); }
+        .datos-title { font-family: var(--font-display); font-size: 2rem; color: var(--text-primary); margin: 0 0 .5rem 0; }
+        .datos-subtitle { color: var(--text-secondary); margin: 0; }
+        .datos-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem; }
+        .datos-card {
+            background: var(--bg-white);
+            border: 1px solid var(--bg-gray-200);
+            border-radius: var(--radius-lg);
+            padding: 1rem;
+            box-shadow: var(--shadow-sm);
+        }
+        .datos-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
+        .datos-card-title { font-size: 1rem; font-weight: 700; color: var(--text-primary); margin: 0; }
+        .datos-card-value { font-size: 2rem; font-weight: 700; color: var(--primary-500); margin: .75rem 0 .25rem 0; }
+        .datos-card-meta { color: var(--text-secondary); font-size: .875rem; }
+        .datos-info-btn {
+            border: 1px solid var(--bg-gray-300);
+            background: var(--bg-gray-100);
+            color: var(--text-primary);
+            border-radius: 999px;
+            width: 28px; height: 28px;
+            display: inline-flex; align-items: center; justify-content: center;
+            cursor: pointer;
+        }
+        .datos-loading, .datos-error { margin-top: 1rem; color: var(--text-secondary); }
+        .datos-error { color: var(--danger-500); }
+
+        .datos-info-modal { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.5); z-index: 1000; }
+        .datos-info-modal.active { display: flex; }
+        .datos-info-content {
+            width: min(640px, 92vw);
+            max-height: 82vh;
+            overflow: auto;
+            background: var(--bg-white);
+            border: 1px solid var(--bg-gray-300);
+            border-radius: 12px;
+            padding: 1rem;
+        }
+        .datos-info-content h3 { margin: 0 0 .5rem 0; color: var(--text-primary); }
+        .datos-info-content ul { margin: .5rem 0 0 1rem; color: var(--text-secondary); }
+        .datos-info-content li { margin-bottom: .35rem; }
+        .datos-info-close { margin-top: .75rem; }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <a href="index.html" class="logo">
+                <span class="logo-line1">EPPO by</span>
+                <span class="logo-line2 groupe-gm">Groupe GM</span>
+            </a>
+            <nav class="nav">
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="productos-dinamico.html" class="nav-link">Products</a>
+                <a href="carrito-compras.html" class="nav-link" id="nav-cart-link">Presupuesto</a>
+                <a href="consultar-propuestas.html" class="nav-link" id="nav-proposals-link">Histórico</a>
+                <div class="menu-dropdown">
+                    <button class="menu-toggle" id="menuToggle" onclick="toggleMenu()" aria-label="Toggle menu">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="dropdown-menu" id="dropdownMenu">
+                        <a href="comparar-productos.html" class="dropdown-link"><i class="fas fa-balance-scale"></i><span>Comparar</span></a>
+                        <a href="selector-productos.html" class="dropdown-link" id="nav-create-product-link"><i class="fas fa-edit"></i><span>Creador/Editor</span></a>
+                        <a href="gestao-encomendas.html" class="dropdown-link"><i class="fas fa-truck-loading"></i><span>Gestão de Encomendas</span></a>
+                    </div>
+                </div>
+                <div class="language-selector">
+                    <button class="flag-btn active" data-lang="pt" title="Português"><img src="https://flagcdn.com/w20/pt.png" alt="Portugal"></button>
+                    <button class="flag-btn" data-lang="es" title="Español"><img src="https://flagcdn.com/w20/es.png" alt="España"></button>
+                </div>
+                <div class="user-bar" id="user-bar">
+                    <span class="user-bar-name" id="user-bar-name">—</span>
+                    <span class="user-bar-sep" aria-hidden="true">|</span>
+                    <span class="user-bar-role" id="user-bar-role">—</span>
+                    <button type="button" class="user-bar-logout" id="user-bar-logout">Logout</button>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="datos-container">
+            <div class="datos-header">
+                <h1 class="datos-title">Datos</h1>
+                <p class="datos-subtitle">Indicadores conservadores de valor abierto (sin duplicados por propuesta).</p>
+            </div>
+            <div id="datosLoading" class="datos-loading"><i class="fas fa-spinner fa-spin"></i> Cargando indicadores...</div>
+            <div id="datosError" class="datos-error" style="display:none;"></div>
+            <div id="datosGrid" class="datos-grid" style="display:none;">
+                <div class="datos-card">
+                    <div class="datos-card-top">
+                        <h2 class="datos-card-title">Valor abierto (propuestas enviadas)</h2>
+                        <button class="datos-info-btn" data-card="abierto" title="Qué incluye"><i class="fas fa-info"></i></button>
+                    </div>
+                    <div class="datos-card-value" id="valorAbierto">€0,00</div>
+                    <div class="datos-card-meta" id="metaAbierto">0 propuestas</div>
+                </div>
+                <div class="datos-card">
+                    <div class="datos-card-top">
+                        <h2 class="datos-card-title">Valor en estados avanzados</h2>
+                        <button class="datos-info-btn" data-card="avanzado" title="Qué incluye"><i class="fas fa-info"></i></button>
+                    </div>
+                    <div class="datos-card-value" id="valorAvanzado">€0,00</div>
+                    <div class="datos-card-meta" id="metaAvanzado">0 propuestas</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="datosInfoModal" class="datos-info-modal" aria-hidden="true">
+        <div class="datos-info-content">
+            <h3 id="datosInfoTitle">Información del cálculo</h3>
+            <div id="datosInfoBody"></div>
+            <button id="datosInfoClose" class="btn-secondary datos-info-close">Cerrar</button>
+        </div>
+    </div>
+
+    <script src="menu-hamburguesa.js"></script>
+    <script src="datos.js"></script>
+</body>
+</html>

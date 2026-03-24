@@ -210,6 +210,28 @@ async function toggleMenu() {
     }
 }
 
+function ensureDatosMenuLink(roleLower) {
+    const dropdownMenu = document.getElementById('dropdownMenu');
+    if (!dropdownMenu) return;
+
+    const existing = dropdownMenu.querySelector('a.dropdown-link[data-menu-key="datos"]');
+    const isAdmin = roleLower === 'admin';
+
+    if (!isAdmin) {
+        if (existing) existing.remove();
+        return;
+    }
+
+    if (existing) return;
+
+    const link = document.createElement('a');
+    link.className = 'dropdown-link';
+    link.href = 'datos.html';
+    link.setAttribute('data-menu-key', 'datos');
+    link.innerHTML = '<i class="fas fa-chart-pie"></i><span>Datos</span>';
+    dropdownMenu.appendChild(link);
+}
+
 /**
  * Inicializar barra de usuario (nombre, rol, logout) en el header
  */
@@ -282,6 +304,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(async () => {
         const role = typeof window.getUserRole === 'function' ? await window.getUserRole() : null;
         const roleLower = (role || '').toString().toLowerCase();
+        ensureDatosMenuLink(roleLower);
 
         if (roleLower === 'compras') {
             const navCart = document.getElementById('nav-cart-link');
