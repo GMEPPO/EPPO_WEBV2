@@ -8254,17 +8254,24 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     };
 
     const getItemAreaNegocio = (item) => {
-        const directArea = item.area_negocio || item.areaNegocio || '';
+        const directArea = item.area_negocio || item.areaNegocio || item.categoria || item.category || '';
         if (directArea) return directArea;
         const ref = item.id || item.referencia || item.referencia_articulo;
         if (!ref || !window.cartManager?.allProducts || !window.cartManager.allProducts.length) return '';
         const match = window.cartManager.allProducts.find(p => String(p.id) === String(ref));
-        return match ? (match.area_negocio || match.areaNegocio || '') : '';
+        if (match) {
+            return match.area_negocio || match.areaNegocio || match.categoria || match.category || '';
+        }
+        return '';
     };
 
     const isPersonalizedBusinessArea = (areaValue) => {
         const area = normalizeTextNoAccents(areaValue);
-        return area === 'acessorios personalizados' || area === 'cosmetica personalizada';
+        const isAccessoriesPersonalized =
+            (area.includes('acessor') || area.includes('accesor')) && area.includes('personaliz');
+        const isCosmeticsPersonalized =
+            area.includes('cosmet') && area.includes('personaliz');
+        return isAccessoriesPersonalized || isCosmeticsPersonalized;
     };
 
     const requiresLogoConfirmationForItem = (item) => {
