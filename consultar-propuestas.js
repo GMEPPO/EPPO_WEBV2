@@ -3017,7 +3017,7 @@ class ProposalsManager {
         if (!container) return;
         const lang = this.currentLanguage || 'pt';
         const t = this.getRegistroDirectoLabels(lang);
-        if (type === 'encomienda' || type === 'pedido_muestra' || type === 'pedido_especial') {
+        if (type === 'encomienda' || type === 'pedido_muestra' || type === 'pedido_especial' || type === 'proforma') {
             await this.loadRegistroDirectoPresupuestosData();
         }
         if (type === 'contacto_fornecedores') {
@@ -3050,6 +3050,18 @@ class ProposalsManager {
                 <div class="form-group"><label class="form-label">${t.fechaInicioProcurement}</label><input type="date" id="rd_fecha_inicio" class="form-input"></div>
                 <div class="form-group"><label class="form-label">${t.observaciones}</label><textarea id="rd_observaciones" class="form-input" rows="3"></textarea></div>
             `;
+        } else if (type === 'proforma') {
+            html = `
+                <div class="form-group"><label class="form-label">${t.comercial} <span class="required">*</span></label><select id="rd_comercial" class="form-input" required><option value="">${seleccione}</option></select></div>
+                <div class="form-group"><label class="form-label">${t.fechaInicioPedido} <span class="required">*</span></label><input type="date" id="rd_fecha_pedido" class="form-input" required></div>
+                <div class="form-group"><label class="form-label">${t.nombreCliente} <span class="required">*</span></label><div class="rd-cliente-wrap"><input type="text" id="rd_nombre_cliente" class="form-input" required placeholder="${t.nombreCliente}" autocomplete="off"><ul id="rd_cliente_suggestions" class="rd-cliente-suggestions" style="display:none;"></ul></div></div>
+                <div class="form-group"><label class="form-label">${t.numeroCliente} <span class="required">*</span></label><input type="text" id="rd_numero_cliente" class="form-input" required></div>
+                <div class="form-group"><label class="form-label">${t.tipoCliente} <span class="required">*</span></label><select id="rd_tipo_cliente" class="form-input" required><option value="">${seleccione}</option><option value="A">A</option><option value="B">B</option><option value="C">C</option></select></div>
+                <div class="form-group"><label class="form-label">${t.numeroProforma} <span class="required">*</span></label><input type="text" id="rd_numero_proforma" class="form-input" required placeholder="${t.numeroProforma}"></div>
+                <div class="form-group"><label class="form-label">${t.valorProforma} <span class="required">*</span></label><input type="number" step="0.01" min="0" id="rd_valor_proforma" class="form-input" required placeholder="${t.valorProforma}"></div>
+                <div class="form-group"><label class="form-label">${t.valorAdjudicacaoOpcional}</label><input type="number" step="0.01" min="0" id="rd_valor_adjudicacao" class="form-input" placeholder="${t.valorAdjudicacaoOpcional}"></div>
+                <div class="form-group"><label class="form-label">${t.observaciones}</label><textarea id="rd_observaciones" class="form-input" rows="3"></textarea></div>
+            `;
         } else if (type === 'contacto_fornecedores') {
             const tcf = this.getContactoFornecedoresLabels(lang);
             html = `
@@ -3060,7 +3072,7 @@ class ProposalsManager {
             `;
         }
         container.innerHTML = html;
-        if (type === 'encomienda' || type === 'pedido_muestra' || type === 'pedido_especial') {
+        if (type === 'encomienda' || type === 'pedido_muestra' || type === 'pedido_especial' || type === 'proforma') {
             this.setupRegistroDirectoComercialSelect();
             this.setupRegistroDirectoClientAutocomplete();
         } else if (type === 'contacto_fornecedores') {
@@ -3328,8 +3340,13 @@ class ProposalsManager {
                 numeroCliente: 'Número do cliente',
                 numeroEncomenda: 'Número da encomenda',
                 fechaPedido: 'Data do pedido',
+                fechaInicioPedido: 'Data de início do pedido',
                 fechaInicioProcurement: 'Data de início do procurement',
                 observaciones: 'Observações',
+                tipoCliente: 'Tipo de cliente',
+                numeroProforma: 'Número de proforma',
+                valorProforma: 'Valor da proforma',
+                valorAdjudicacaoOpcional: 'Valor de adjudicação (opcional)',
                 nombreProveedor: 'Nome do fornecedor',
                 tipoPedido: 'Tipo de pedido',
                 seleccione: 'Selecione...',
@@ -3345,8 +3362,13 @@ class ProposalsManager {
                 numeroCliente: 'Número de cliente',
                 numeroEncomenda: 'Número de encomenda',
                 fechaPedido: 'Fecha del pedido',
+                fechaInicioPedido: 'Fecha de inicio del pedido',
                 fechaInicioProcurement: 'Fecha de inicio del procurement',
                 observaciones: 'Observaciones',
+                tipoCliente: 'Tipo de cliente',
+                numeroProforma: 'Número de proforma',
+                valorProforma: 'Valor de la proforma',
+                valorAdjudicacaoOpcional: 'Valor de adjudicación (opcional)',
                 nombreProveedor: 'Nombre del proveedor',
                 tipoPedido: 'Tipo de pedido',
                 seleccione: 'Seleccione...',
@@ -3362,8 +3384,13 @@ class ProposalsManager {
                 numeroCliente: 'Client number',
                 numeroEncomenda: 'Order number',
                 fechaPedido: 'Order date',
+                fechaInicioPedido: 'Order start date',
                 fechaInicioProcurement: 'Procurement start date',
                 observaciones: 'Observations',
+                tipoCliente: 'Customer type',
+                numeroProforma: 'Proforma number',
+                valorProforma: 'Proforma value',
+                valorAdjudicacaoOpcional: 'Award value (optional)',
                 nombreProveedor: 'Supplier name',
                 tipoPedido: 'Order type',
                 seleccione: 'Select...',
@@ -3442,11 +3469,50 @@ class ProposalsManager {
             const responsable = await this.getCurrentUserName();
             let estadoInicial = 'propuesta_en_edicion';
             let numeroEncomenda = null;
+            let tipoCliente = null;
+            let facturaProforma = null;
+            let valorAdjudicacao = null;
+            let fechaEnvioPropuesta = null;
+            let fechaFacturaProforma = null;
+            let observacionesFinal = observaciones;
             if (type === 'encomienda') {
                 estadoInicial = 'encomenda_en_curso';
                 numeroEncomenda = document.getElementById('rd_numero_encomenda')?.value?.trim() || null;
             } else if (type === 'pedido_muestra') {
                 estadoInicial = 'amostra_pedida';
+            } else if (type === 'proforma') {
+                const numeroClienteProforma = numeroCliente;
+                const tipoClienteProforma = document.getElementById('rd_tipo_cliente')?.value?.trim() || '';
+                const numeroProforma = document.getElementById('rd_numero_proforma')?.value?.trim() || '';
+                const valorProformaStr = document.getElementById('rd_valor_proforma')?.value?.trim() || '';
+                const valorAdjudicacaoStr = document.getElementById('rd_valor_adjudicacao')?.value?.trim() || '';
+                if (!numeroClienteProforma) {
+                    this.showNotification(lang === 'es' ? 'El número de cliente es obligatorio.' : 'O número do cliente é obrigatório.', 'error');
+                    return;
+                }
+                if (!tipoClienteProforma) {
+                    this.showNotification(lang === 'es' ? 'El tipo de cliente es obligatorio.' : 'O tipo de cliente é obrigatório.', 'error');
+                    return;
+                }
+                if (!numeroProforma) {
+                    this.showNotification(lang === 'es' ? 'El número de proforma es obligatorio.' : 'O número da proforma é obrigatório.', 'error');
+                    return;
+                }
+                if (!valorProformaStr || Number.isNaN(parseFloat(valorProformaStr))) {
+                    this.showNotification(lang === 'es' ? 'El valor de la proforma es obligatorio.' : 'O valor da proforma é obrigatório.', 'error');
+                    return;
+                }
+                tipoCliente = tipoClienteProforma;
+                facturaProforma = numeroProforma;
+                fechaFacturaProforma = fechaPedido;
+                const valorAdj = valorAdjudicacaoStr ? parseFloat(valorAdjudicacaoStr) : null;
+                const tieneAdjudicacion = valorAdj !== null && !Number.isNaN(valorAdj);
+                valorAdjudicacao = tieneAdjudicacion ? valorAdj : null;
+                estadoInicial = tieneAdjudicacion ? 'aguarda_pagamento' : 'propuesta_en_curso';
+                fechaEnvioPropuesta = tieneAdjudicacion ? fechaPedido : null;
+                const valorProforma = parseFloat(valorProformaStr);
+                const infoValorProforma = `Valor proforma: €${valorProforma.toFixed(2)}`;
+                observacionesFinal = observaciones ? `${observaciones}\n${infoValorProforma}` : infoValorProforma;
             }
             const presupuestoData = {
                 nombre_cliente: nombreCliente,
@@ -3455,10 +3521,15 @@ class ProposalsManager {
                 fecha_inicial: fechaPedido,
                 estado_propuesta: estadoInicial,
                 codigo_propuesta: codigo,
-                tipo_registro_directo: type === 'pedido_especial' ? 'pedido_especial' : type,
-                comentarios: observaciones,
+                tipo_registro_directo: type,
+                comentarios: observacionesFinal,
                 responsavel: responsable || null,
                 numero_encomienda: numeroEncomenda,
+                tipo_cliente: tipoCliente,
+                factura_proforma: facturaProforma,
+                fecha_factura_proforma: fechaFacturaProforma,
+                valor_adjudicacao: valorAdjudicacao,
+                fecha_envio_propuesta: fechaEnvioPropuesta,
                 version: 1
             };
             const { data: newPresupuesto, error } = await this.supabase.from('presupuestos').insert([presupuestoData]).select().single();
@@ -5285,7 +5356,12 @@ class ProposalsManager {
         const checkboxes = modal.querySelectorAll('input[type="checkbox"]:checked');
         const selectedArticleIds = Array.from(checkboxes).map(cb => cb.getAttribute('data-articulo-id'));
 
-        if (selectedArticleIds.length === 0) {
+        const isDirectWithoutProducts = (
+            String(proposal.tipo_registro_directo || '').toLowerCase() === 'proforma' &&
+            (!proposal.articulos || proposal.articulos.length === 0)
+        );
+
+        if (selectedArticleIds.length === 0 && !isDirectWithoutProducts) {
             const message = this.currentLanguage === 'es' ? 
                 'Debe seleccionar al menos un producto' : 
                 this.currentLanguage === 'pt' ?
