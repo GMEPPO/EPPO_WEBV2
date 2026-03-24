@@ -7266,6 +7266,8 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
                     name: articulo.nombre_articulo,
                     category: product.categoria || product.category || '', // Agregar categoría del producto
                     categoria: product.categoria || product.category || '', // También en español
+                    area_negocio: product.area_negocio || product.areaNegocio || '',
+                    areaNegocio: product.area_negocio || product.areaNegocio || '',
                     quantity: qtyArt,
                     price: articulo.precio,
                     observations: articulo.observaciones || '',
@@ -7301,6 +7303,7 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
                     selectedReferenceVariant: selectedReferenceVariant, // Color seleccionado
                     variantes_referencias: variantesReferencias, // Variantes de referencia del producto
                     colorSeleccionadoGuardado: colorSeleccionadoGuardado, // Color guardado en la BD (puede no existir en variantes)
+                    tipoPersonalizacion: articulo.tipo_personalizacion || '',
                     logoUrl: articulo.logo_url || null,
                     marca: product.marca || product.brand || product.marcaEs || '',
                     brand: product.brand || product.marca || product.marcaEs || ''
@@ -7331,6 +7334,8 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
                     id: articulo.referencia_articulo || `special_${articulo.id}`,
                     type: 'special',
                     name: articulo.nombre_articulo,
+                    area_negocio: productFromDB ? (productFromDB.area_negocio || productFromDB.areaNegocio || '') : '',
+                    areaNegocio: productFromDB ? (productFromDB.area_negocio || productFromDB.areaNegocio || '') : '',
                     quantity: qtyArt,
                     price: articulo.precio,
                     observations: articulo.observaciones || '',
@@ -7344,7 +7349,9 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
                     descripcion_pt: productFromDB ? (productFromDB.descripcion_pt || productFromDB.descripcionPt || '') : '',
                     description: productFromDB ? (productFromDB.descripcion_es || productFromDB.descripcion_pt || productFromDB.descripcionEs || productFromDB.descripcionPt || '') : '',
                     image: productFromDB ? (productFromDB.foto || null) : null,
-                    foto: productFromDB ? (productFromDB.foto || null) : null
+                    foto: productFromDB ? (productFromDB.foto || null) : null,
+                    tipoPersonalizacion: articulo.tipo_personalizacion || '',
+                    logoUrl: articulo.logo_url || null
                 });
             }
         }
@@ -8231,8 +8238,46 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     // Calcular ancho disponible (página menos márgenes)
     const availableWidth = pageWidth - (margin * 2);
     
-    // Verificar si hay logos en los productos
-    const hasLogos = cartToProcess.some(item => item.logoUrl && item.logoUrl.trim() !== '');
+    const normalizeTextNoAccents = (value) => (value || '')
+        .toString()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+
+    const isPersonalizedSelection = (item) => {
+        const hasSelectedVariant = item.selectedVariant !== null && item.selectedVariant !== undefined;
+        if (hasSelectedVariant) return true;
+        const tp = normalizeTextNoAccents(item.tipoPersonalizacion || item.tipo_personalizacion || item.personalization || '');
+        if (!tp) return false;
+        return tp !== 'sin personalizacion' && tp !== 'sem personalizacao' && tp !== 'no customization';
+    };
+
+    const getItemAreaNegocio = (item) => {
+        const directArea = item.area_negocio || item.areaNegocio || '';
+        if (directArea) return directArea;
+        const ref = item.id || item.referencia || item.referencia_articulo;
+        if (!ref || !window.cartManager?.allProducts || !window.cartManager.allProducts.length) return '';
+        const match = window.cartManager.allProducts.find(p => String(p.id) === String(ref));
+        return match ? (match.area_negocio || match.areaNegocio || '') : '';
+    };
+
+    const isPersonalizedBusinessArea = (areaValue) => {
+        const area = normalizeTextNoAccents(areaValue);
+        return area === 'acessorios personalizados' || area === 'cosmetica personalizada';
+    };
+
+    const requiresLogoConfirmationForItem = (item) => {
+        const hasLogo = !!(item.logoUrl && item.logoUrl.trim() !== '');
+        if (hasLogo) return false;
+        const area = getItemAreaNegocio(item);
+        if (!isPersonalizedBusinessArea(area)) return false;
+        return isPersonalizedSelection(item);
+    };
+
+    // Mostrar columna de logo si hay logos cargados o si hay artículos personalizados
+    // de Accesorios/Cosmética sin logo (requieren texto de confirmación).
+    const hasLogos = cartToProcess.some(item => (item.logoUrl && item.logoUrl.trim() !== '') || requiresLogoConfirmationForItem(item));
     
     // Definir anchos de columnas (ajustados para que quepan en la página)
     const colWidths = {
@@ -8665,6 +8710,9 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     
     // Agregar traducción para "Logo"
     const logoLabel = lang === 'pt' ? 'Logo' : lang === 'es' ? 'Logo' : 'Logo';
+    const logoConfirmationText = lang === 'es'
+        ? 'precio a confirmar tras la recepción del logotipo'
+        : 'preço a confirmar após a receção do logotipo';
     
     // Dibujar encabezados (todos centrados) - fondo gris oscuro como el pie de página
     doc.setFillColor(64, 64, 64); // Mismo gris oscuro que el pie de página
@@ -9303,10 +9351,11 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         drawCell(colPositions.total, currentY, colWidths.total, calculatedRowHeight, totalParaMostrar, { align: 'center', bold: true, fontSize: 8, noWrap: true });
         drawCell(colPositions.deliveryTime, currentY, colWidths.deliveryTime, calculatedRowHeight, deliveryText, { align: 'center', fontSize: 6 });
         
-        // Dibujar logo si existe
+        // Dibujar logo si existe o texto de confirmación para personalizados sin logotipo
         console.log(`🔄 Item ${i + 1}: Verificando logo (hasLogos: ${hasLogos}, logoUrl: ${item.logoUrl ? 'existe' : 'no existe'})...`);
         if (hasLogos) {
             drawCell(colPositions.logo, currentY, colWidths.logo, calculatedRowHeight, '', { border: true });
+            const requiresLogoConfirmation = requiresLogoConfirmationForItem(item);
             
             // Agregar logo (centrado verticalmente)
             if (item.logoUrl && item.logoUrl.trim() !== '') {
@@ -9457,10 +9506,21 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                     doc.text('N/A', colPositions.logo + colWidths.logo / 2, currentY + calculatedRowHeight / 2, { align: 'center' });
                 }
             } else {
-                // Si no hay logo, mostrar "N/A"
-                doc.setFontSize(6);
-                doc.setTextColor(0, 0, 0);
-                doc.text('N/A', colPositions.logo + colWidths.logo / 2, currentY + calculatedRowHeight / 2, { align: 'center' });
+                if (requiresLogoConfirmation) {
+                    drawCell(
+                        colPositions.logo,
+                        currentY,
+                        colWidths.logo,
+                        calculatedRowHeight,
+                        logoConfirmationText,
+                        { align: 'center', fontSize: 6, border: false, maxLines: 8 }
+                    );
+                } else {
+                    // Si no hay logo, mostrar "N/A"
+                    doc.setFontSize(6);
+                    doc.setTextColor(0, 0, 0);
+                    doc.text('N/A', colPositions.logo + colWidths.logo / 2, currentY + calculatedRowHeight / 2, { align: 'center' });
+                }
             }
         }
 
