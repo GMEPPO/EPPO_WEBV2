@@ -8282,22 +8282,17 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         return isPersonalizedSelection(item);
     };
 
-    // Consolidar duplicados de productos cuando NO hay variante personalizada.
-    // Objetivo: si el mismo producto base se añade varias veces, mostrarlo una sola vez en el PDF
-    // y evitar repetir la parte "precios escalonados" / descripción asociada en cada línea.
-    const shouldMergeBaseNonPersonalizedProduct = (item) => {
-        if (!item || item.type !== 'product') return false;
-        const hasSelectedCustomVariant = item.selectedVariant !== null && item.selectedVariant !== undefined;
-        if (hasSelectedCustomVariant) return false;
-        // Solo fusionar cuando no es un "personalized selection" (Sin personalización).
-        if (isPersonalizedSelection(item)) return false;
-        return true;
+    // Consolidar duplicados de productos para que la fila se muestre una sola vez,
+    // pero Cant./Precio/Total se repartan por ocurrencia.
+    // Para no mezclar productos distintos, la clave de fusión incluye la variante personalizada (si existe).
+    const shouldMergeProductOccurrences = (item) => {
+        return !!(item && item.type === 'product');
     };
 
     const mergedByKey = new Map();
     const mergedOrder = [];
     cartToProcess.forEach((item) => {
-        if (!shouldMergeBaseNonPersonalizedProduct(item)) {
+        if (!shouldMergeProductOccurrences(item)) {
             mergedOrder.push(item);
             return;
         }
@@ -8311,8 +8306,15 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         const colorGuardKey = item.colorSeleccionadoGuardado || item.colorSeleccionadoGuardado === ''
             ? String(item.colorSeleccionadoGuardado)
             : '';
+        const tipoPersonalizacionKey = normalizeTextNoAccents(
+            item.tipoPersonalizacion || item.tipo_personalizacion || item.personalization || ''
+        );
+        const selectedVariantKey = item.selectedVariant !== null && item.selectedVariant !== undefined
+            ? String(item.selectedVariant)
+            : '';
+        const logoKey = (item.logoUrl && item.logoUrl.trim() !== '') ? 'has' : 'no';
         const obsKey = (item.observations || item.observations_text || '').trim();
-        const key = `${idKey}|ref:${refKey}|c:${colorGuardKey}|obs:${obsKey}`;
+        const key = `${idKey}|tp:${tipoPersonalizacionKey}|sv:${selectedVariantKey}|ref:${refKey}|c:${colorGuardKey}|logo:${logoKey}|obs:${obsKey}`;
 
         if (!mergedByKey.has(key)) {
             const cloned = { ...item };
@@ -8838,10 +8840,14 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         // Asegurar que el texto no se salga del cuadro
         const maxY = y + height - padding;
         const minY = y + padding;
-        // Alinear al final (última línea cerca del borde inferior) para minimizar
-        // el blanco visible al final cuando la celda es más alta que el contenido.
-        let startY = maxY - (allLines.length - 1) * actualLineHeight;
-        if (startY < minY) startY = minY;
+        // Alinear arriba para evitar que el "blanco" se vaya hacia la zona superior
+        // cuando otras columnas (Cant./Precio/Total) reservan más altura.
+        let startY = minY;
+        const endY = startY + (allLines.length - 1) * actualLineHeight;
+        if (endY > maxY) {
+            startY = maxY - (allLines.length - 1) * actualLineHeight;
+            if (startY < minY) startY = minY;
+        }
         
         // IMPORTANTE: Dibujar TODAS las líneas, incluso si se salen del cuadro
         // Esto asegura que el texto completo se muestre (el PDF se ajustará automáticamente)
