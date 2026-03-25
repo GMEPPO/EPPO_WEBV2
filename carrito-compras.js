@@ -8454,6 +8454,45 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         const availableWidth = width - (padding * 2);
         let textLines;
         let actualFontSize = fontSize;
+
+        // Modo especial: si pedimos divisores entre líneas, tratamos '\n' como separación real
+        // y repartimos TODA la altura de la celda en segmentos iguales.
+        if (separatorBetweenLines) {
+            textLines = String(text).split('\n').map(s => (s ?? '').toString().trim());
+            textLines = textLines.length ? textLines : [''];
+
+            // Reducir tamaño de fuente si alguna línea no cabe (solo si es necesario)
+            // Mantenerlo simple: el contenido suele ser corto (cantidades / euros).
+            actualFontSize = fontSize;
+            doc.setFontSize(actualFontSize);
+            doc.setFont('helvetica', bold ? 'bold' : 'normal');
+
+            const segmentHeight = height / textLines.length;
+            if (textLines.length > 1) {
+                doc.setDrawColor(0, 0, 0);
+                doc.setLineWidth(separatorLineWidth);
+                for (let i = 1; i < textLines.length; i++) {
+                    const sepY = y + (segmentHeight * i);
+                    doc.line(x + 1, sepY, x + width - 1, sepY);
+                }
+            }
+
+            if (textColor !== null) {
+                doc.setTextColor(textColor[0], textColor[1], textColor[2]);
+            } else {
+                doc.setTextColor(0, 0, 0);
+            }
+
+            textLines.forEach((line, index) => {
+                const textY = y + (segmentHeight * (index + 0.5));
+                let textX = x + padding;
+                if (align === 'center') textX = x + (width / 2);
+                if (align === 'right') textX = x + width - padding;
+                doc.text(line, textX, textY, { align: align, maxWidth: availableWidth });
+            });
+
+            return;
+        }
         
         // Si noWrap es true (para números), no dividir el texto
         if (noWrap) {
@@ -8492,16 +8531,6 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         const lineHeight = actualFontSize * 0.4;
         const totalTextHeight = textLines.length * lineHeight;
         const startY = y + (height - totalTextHeight) / 2 + lineHeight;
-
-        // Opcional: dibujar una línea horizontal entre cada "línea" del texto
-        if (separatorBetweenLines && textLines.length > 1) {
-            doc.setDrawColor(0, 0, 0);
-            doc.setLineWidth(separatorLineWidth);
-            for (let si = 0; si < textLines.length - 1; si++) {
-                const sepY = startY + (si * lineHeight) + (lineHeight / 2) * separatorPadding;
-                doc.line(x + 1, sepY, x + width - 1, sepY);
-            }
-        }
         
         // Dibujar texto (ya establecimos el tamaño de fuente arriba si es noWrap)
         if (!noWrap) {
@@ -8801,13 +8830,15 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         const maxY = y + height - padding;
         const minY = y + padding;
         // Empezar desde arriba con padding mínimo para evitar espacio en blanco excesivo
-        let startY = minY + (actualLineHeight * 0.5);
+        // Alinear arriba para evitar huecos grandes al final cuando la fila tiene
+        // altura extra (p. ej. por Cant./Precio/Total con varios escalones).
+        let startY = minY;
         
         // Verificar que el texto quepa
         const endY = startY + (allLines.length - 1) * actualLineHeight;
         if (endY > maxY) {
             // Si no cabe completamente, ajustar ligeramente hacia arriba
-            startY = minY + (actualLineHeight * 0.3);
+            startY = minY + (actualLineHeight * 0.1);
         }
         
         // IMPORTANTE: Dibujar TODAS las líneas, incluso si se salen del cuadro
@@ -9274,7 +9305,9 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         
         // Si hay ocurrencias consolidadas, reservar altura para apilar Cant./Precio/Total (una línea por duplicado)
         const occCount = mergeOccurrences && mergeOccurrences.length > 0 ? mergeOccurrences.length : 0;
-        const occCellHeight = occCount > 1 ? (occCount * (8 * 0.4)) + (padding * 2) : 0;
+        // Altura mínima para que las líneas (Cant./Precio/Total) queden repartidas
+        // con buena legibilidad en toda la altura de la celda.
+        const occCellHeight = occCount > 1 ? (occCount * (fontSize * 0.9)) + (padding * 2) : 0;
 
         const calculatedRowHeight = Math.max(
             baseRowHeight,
@@ -9461,7 +9494,14 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             const quantityText = (mergeOccurrences && mergeOccurrences.length > 0)
                 ? mergeOccurrences.map(o => formatQuantityForPdf(o?.qty || 0)).join('\n')
                 : formatQuantityForPdf(quantity);
-            drawCell(colPositions.quantity, currentY, colWidths.quantity, calculatedRowHeight, quantityText, { align: 'center', fontSize: 8, noWrap: false });
+            drawCell(
+                colPositions.quantity,
+                currentY,
+                colWidths.quantity,
+                calculatedRowHeight,
+                quantityText,
+                { align: 'center', fontSize: 8, noWrap: false, separatorBetweenLines: !!(mergeOccurrences && mergeOccurrences.length > 1) }
+            );
             console.log(`✅ Item ${i + 1}: Cantidad dibujada`);
         } catch (cellError) {
             console.error(`❌ ERROR dibujando cantidad item ${i + 1}:`, cellError);
