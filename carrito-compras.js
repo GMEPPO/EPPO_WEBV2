@@ -7720,14 +7720,14 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     }
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 15;
+    const margin = 10;
     const logoHeight = 15; // Altura de los logotipos
     // startY se ajustará después de crear el encabezado
     let startY = logoHeight + 15;
     let currentY = startY;
-    const baseRowHeight = 16; // Altura base de cada fila (reducida)
-    const minRowHeight = 12; // Altura mínima (reducida)
-    const imageSize = 25; // Tamaño de imagen en la tabla (reducido para más información)
+    const baseRowHeight = 14; // Altura base de cada fila (reducida)
+    const minRowHeight = 10; // Altura mínima (reducida)
+    const imageSize = 22; // Tamaño de imagen en la tabla (reducido para más información)
 
     // Traducciones
     const translations = {
@@ -8233,7 +8233,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     // Procesar cada item del carrito
     // IMPORTANTE: Siempre recargar el carrito desde localStorage para tener los datos más recientes
     // Esto asegura que tengamos el selectedReferenceVariant actualizado
-    const cartToProcess = useProposalData ? window.cartManager.cart : window.cartManager.loadCart();
+    let cartToProcess = useProposalData ? window.cartManager.cart : window.cartManager.loadCart();
 
     // Calcular ancho disponible (página menos márgenes)
     const availableWidth = pageWidth - (margin * 2);
@@ -8282,20 +8282,126 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         return isPersonalizedSelection(item);
     };
 
+    // Consolidar duplicados de productos cuando NO hay variante personalizada.
+    // Objetivo: si el mismo producto base se añade varias veces, mostrarlo una sola vez en el PDF
+    // y evitar repetir la parte "precios escalonados" / descripción asociada en cada línea.
+    const shouldMergeBaseNonPersonalizedProduct = (item) => {
+        if (!item || item.type !== 'product') return false;
+        const hasSelectedCustomVariant = item.selectedVariant !== null && item.selectedVariant !== undefined;
+        if (hasSelectedCustomVariant) return false;
+        // Solo fusionar cuando no es un "personalized selection" (Sin personalización).
+        if (isPersonalizedSelection(item)) return false;
+        return true;
+    };
+
+    const mergedByKey = new Map();
+    const mergedOrder = [];
+    cartToProcess.forEach((item) => {
+        if (!shouldMergeBaseNonPersonalizedProduct(item)) {
+            mergedOrder.push(item);
+            return;
+        }
+
+        // Clave de fusión: mismo producto y misma selección de color/referencia (si aplica),
+        // además de que la observación sea igual (para evitar ocultar diferencias).
+        const idKey = item.id || item.referencia_articulo || item.referencia || '';
+        const refKey = item.selectedReferenceVariant !== null && item.selectedReferenceVariant !== undefined
+            ? String(item.selectedReferenceVariant)
+            : '';
+        const colorGuardKey = item.colorSeleccionadoGuardado || item.colorSeleccionadoGuardado === ''
+            ? String(item.colorSeleccionadoGuardado)
+            : '';
+        const obsKey = (item.observations || item.observations_text || '').trim();
+        const key = `${idKey}|ref:${refKey}|c:${colorGuardKey}|obs:${obsKey}`;
+
+        if (!mergedByKey.has(key)) {
+            const cloned = { ...item };
+            const qtyCloned = Number(cloned.quantity || 0);
+            const unitPriceCloned = Number(cloned.price || 0);
+            cloned._mergeOccurrences = [{ qty: qtyCloned, unitPrice: unitPriceCloned }];
+            cloned._mergeBaseForCalc = cloned.basePrice || cloned.precio || unitPriceCloned || 0;
+            mergedByKey.set(key, cloned);
+            mergedOrder.push(cloned);
+            return;
+        }
+
+        const existing = mergedByKey.get(key);
+        const qty1 = Number(existing.quantity || 0);
+        const qty2 = Number(item.quantity || 0);
+        const qtySum = qty1 + qty2;
+
+        // Acumular logo si alguno lo tiene.
+        if ((!existing.logoUrl || existing.logoUrl.trim() === '') && item.logoUrl && item.logoUrl.trim() !== '') {
+            existing.logoUrl = item.logoUrl;
+        }
+
+        // Guardar la nueva ocurrencia (para recalcular escalones por cada cantidad individual)
+        if (!existing._mergeOccurrences) existing._mergeOccurrences = [];
+        existing._mergeOccurrences.push({ qty: qty2, unitPrice: Number(item.price || 0) });
+
+        // Recalcular usando escalones por ocurrencia (NO por qtySum).
+        const canCalcTiers = existing.price_tiers && Array.isArray(existing.price_tiers) && existing.price_tiers.length > 0 &&
+            window.cartManager && typeof window.cartManager.getPriceForQuantity === 'function';
+
+        const occs = existing._mergeOccurrences;
+        const newQtySum = occs.reduce((acc, o) => acc + Number(o.qty || 0), 0);
+
+        let totalSum = 0;
+        const newOccs = [];
+
+        if (canCalcTiers) {
+            const baseForCalc = existing._mergeBaseForCalc || 0;
+            for (const o of occs) {
+                const q = Number(o.qty || 0);
+                if (!Number.isFinite(q) || q <= 0) continue;
+                const res = window.cartManager.getPriceForQuantity(existing.price_tiers, q, baseForCalc);
+                const unit = (res && typeof res.price === 'number' && Number.isFinite(res.price)) ? res.price : Number(o.unitPrice || 0);
+                const total = unit * q;
+                newOccs.push({ qty: q, unitPrice: unit, total });
+                totalSum += total;
+            }
+        } else {
+            // Si no hay escalones, usamos el unitPrice guardado por ocurrencia
+            for (const o of occs) {
+                const q = Number(o.qty || 0);
+                if (!Number.isFinite(q) || q <= 0) continue;
+                const unit = Number(o.unitPrice || 0);
+                const total = unit * q;
+                newOccs.push({ qty: q, unitPrice: unit, total });
+                totalSum += total;
+            }
+        }
+
+        const newQtySumFinal = newOccs.reduce((acc, o) => acc + Number(o.qty || 0), 0);
+
+        existing._mergeOccurrences = newOccs;
+        existing.quantity = newQtySumFinal;
+        // Ajustar unitPrice para que el total del PDF (unitPrice * quantity) sea la suma de los totales por ocurrencia.
+        existing.price = newQtySumFinal > 0 ? (totalSum / newQtySumFinal) : Number(existing.price || 0);
+    });
+
+    // Aplicar consolidación para el resto del render del PDF.
+    cartToProcess = mergedOrder;
+
     // Mostrar columna de logo si hay logos cargados o si hay artículos personalizados
     // de Accesorios/Cosmética sin logo (requieren texto de confirmación).
     const hasLogos = cartToProcess.some(item => (item.logoUrl && item.logoUrl.trim() !== '') || requiresLogoConfirmationForItem(item));
+    // Nota: cartToProcess ahora está fusionado, pero el cálculo de hasLogos debería hacerse con ese mismo array.
+    // (Si queda una mínima diferencia, puede afectar a la visibilidad de la columna.)
+    // Recalcular con el array ya consolidado:
+    const cartConsolidadoParaLogo = mergedOrder;
+    const hasLogosFinal = cartConsolidadoParaLogo.some(item => (item.logoUrl && item.logoUrl.trim() !== '') || requiresLogoConfirmationForItem(item));
     
     // Definir anchos de columnas (ajustados para que quepan en la página)
     const colWidths = {
-        name: 30,  // Nueva columna para el nombre del producto
-        photo: 35,  // Reducida para dar espacio al nombre
-        description: 50,  // Reducida
-        quantity: 15,  // Para "Cant." o "Qtd."
-        unitPrice: 16,  // Más pequeña (solo "Precio")
-        total: 16,  // Más pequeña
-        deliveryTime: 18,  // Más pequeña
-        logo: hasLogos ? 20 : 0  // Columna de logo solo si hay logos
+        name: 26,  // Reducida para ganar espacio a la descripción
+        photo: 32,  // Reducida para dar más espacio al texto
+        description: 62,  // Aumentada: menos saltos de línea = filas más compactas
+        quantity: 14,  // Para "Cant." o "Qtd."
+        unitPrice: 15,  // Más compacta (solo "Precio")
+        total: 14,  // Más compacta
+        deliveryTime: 16,  // Reducida para que entren 2-3 filas por página
+        logo: hasLogosFinal ? 20 : 0  // Columna de logo solo si hay logos
     };
 
     // Verificar que la suma de anchos no exceda el ancho disponible
@@ -8558,7 +8664,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         const padding = 2;
         const availableWidth = width - (padding * 2);
         const fontSize = 7;
-        const lineHeight = fontSize * 0.6; // Espaciado aumentado para evitar que se corte el texto
+        const lineHeight = fontSize * 0.55; // Espaciado reducido para ganar espacio vertical
         
         // Construir el texto completo: normalizar para reducir espacios y saltos de línea excesivos
         let fullText = normalizeDescriptionForPdf(baseDescription || '');
@@ -8679,7 +8785,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         
         // Calcular altura total y posición inicial
         // Usar un lineHeight más generoso para evitar que se corte el texto
-        const actualLineHeight = fontSize * 0.6; // Aumentar ligeramente el lineHeight
+        const actualLineHeight = fontSize * 0.55; // Reducir lineHeight para filas más compactas
         const totalTextHeight = allLines.length * actualLineHeight;
         // Asegurar que el texto no se salga del cuadro
         const maxY = y + height - padding;
@@ -8967,10 +9073,24 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             description = '-';
         }
 
-        // Calcular valores
-        const unitPrice = item.price || 0;
-        const quantity = item.quantity || 1;
-        const total = unitPrice * quantity;
+        // Calcular valores (si el item fue consolidado, usar totales por ocurrencia)
+        const mergeOccurrences = Array.isArray(item._mergeOccurrences) ? item._mergeOccurrences : null;
+        const unitPriceBase = item.price || 0;
+        let quantity = item.quantity || 1;
+        let unitPrice = unitPriceBase;
+        let total = unitPrice * quantity;
+        if (mergeOccurrences && mergeOccurrences.length > 0) {
+            const qtySum = mergeOccurrences.reduce((acc, o) => acc + Number(o?.qty || 0), 0);
+            const totalSum = mergeOccurrences.reduce((acc, o) => {
+                const unit = Number(o?.unitPrice || 0);
+                const q = Number(o?.qty || 0);
+                const t = (o && o.total !== undefined && o.total !== null) ? Number(o.total) : (unit * q);
+                return acc + (Number.isFinite(t) ? t : 0);
+            }, 0);
+            quantity = qtySum;
+            total = totalSum;
+            unitPrice = qtySum > 0 ? (totalSum / qtySum) : unitPriceBase;
+        }
         totalProposal += total;
 
         // Construir el texto completo para calcular la altura correcta
@@ -9013,7 +9133,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         const padding = 2;
         const availableWidth = colWidths.description - (padding * 2);
         const fontSize = 7;
-        const actualLineHeight = fontSize * 0.6; // Mismo lineHeight que drawDescriptionWithBoldParts
+        const actualLineHeight = fontSize * 0.55; // Mismo lineHeight que drawDescriptionWithBoldParts
         
         // Establecer la fuente antes de dividir el texto para calcular correctamente
         doc.setFontSize(fontSize);
@@ -9139,11 +9259,16 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         const safetyFactor = hasObservations ? 1.15 : (allLinesCount > 5 ? 1.1 : 1.05); // Factor de seguridad reducido
         const minDescriptionHeight = (descriptionHeight * safetyFactor) + (padding * 2); // Padding mínimo
         
+        // Si hay ocurrencias consolidadas, reservar altura para apilar Cant./Precio/Total (una línea por duplicado)
+        const occCount = mergeOccurrences && mergeOccurrences.length > 0 ? mergeOccurrences.length : 0;
+        const occCellHeight = occCount > 1 ? (occCount * (8 * 0.4)) + (padding * 2) : 0;
+
         const calculatedRowHeight = Math.max(
             baseRowHeight,
             minDescriptionHeight,
             deliveryHeight + (padding * 2),
-            imageSize + (padding * 2)
+            imageSize + (padding * 2),
+            occCellHeight
         );
         
         console.log('📏 Altura final calculada para fila:', {
@@ -9320,8 +9445,10 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         
         console.log(`🔄 Item ${i + 1}: Dibujando cantidad...`);
         try {
-            const quantityText = formatQuantityForPdf(quantity);
-            drawCell(colPositions.quantity, currentY, colWidths.quantity, calculatedRowHeight, quantityText, { align: 'center', fontSize: 8, noWrap: true });
+            const quantityText = (mergeOccurrences && mergeOccurrences.length > 0)
+                ? mergeOccurrences.map(o => formatQuantityForPdf(o?.qty || 0)).join('\n')
+                : formatQuantityForPdf(quantity);
+            drawCell(colPositions.quantity, currentY, colWidths.quantity, calculatedRowHeight, quantityText, { align: 'center', fontSize: 8, noWrap: false });
             console.log(`✅ Item ${i + 1}: Cantidad dibujada`);
         } catch (cellError) {
             console.error(`❌ ERROR dibujando cantidad item ${i + 1}:`, cellError);
@@ -9329,33 +9456,38 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         }
         // Formatear precio unitario: hasta 4 decimales si tiene 4 decimales significativos
         // Si el precio es 0, mostrar "Sobre consulta" en lugar del precio (para todos los usuarios en el PDF)
-        let precioParaMostrar = '';
-        if (unitPrice === 0 || unitPrice === null || unitPrice === undefined) {
-            const translations = {
-                'pt': 'Sobre consulta',
-                'es': 'Sobre consulta',
-                'en': 'On request'
-            };
-            const currentLang = selectedLanguage || window.cartManager?.currentLanguage || localStorage.getItem('language') || 'pt';
-            precioParaMostrar = translations[currentLang] || translations['pt'];
-        } else {
-            precioParaMostrar = `€${formatMoneyForPdf(unitPrice)}`;
-        }
-        drawCell(colPositions.unitPrice, currentY, colWidths.unitPrice, calculatedRowHeight, precioParaMostrar, { align: 'center', fontSize: 8, noWrap: true });
-        // Formatear total: si el precio unitario es 0, mostrar "Sobre consulta" en lugar del total
-        let totalParaMostrar = '';
-        if (unitPrice === 0 || unitPrice === null || unitPrice === undefined) {
-            const translations = {
-                'pt': 'Sobre consulta',
-                'es': 'Sobre consulta',
-                'en': 'On request'
-            };
-            const currentLang = selectedLanguage || window.cartManager?.currentLanguage || localStorage.getItem('language') || 'pt';
-            totalParaMostrar = translations[currentLang] || translations['pt'];
-        } else {
-            totalParaMostrar = `€${formatMoneyForPdf(total)}`;
-        }
-        drawCell(colPositions.total, currentY, colWidths.total, calculatedRowHeight, totalParaMostrar, { align: 'center', bold: true, fontSize: 8, noWrap: true });
+        const translations = {
+            'pt': 'Sobre consulta',
+            'es': 'Sobre consulta',
+            'en': 'On request'
+        };
+        const currentLang = selectedLanguage || window.cartManager?.currentLanguage || localStorage.getItem('language') || 'pt';
+
+        const precioParaMostrar = (mergeOccurrences && mergeOccurrences.length > 0)
+            ? mergeOccurrences.map(o => {
+                const u = Number(o?.unitPrice || 0);
+                if (!Number.isFinite(u) || u === 0) return translations[currentLang] || translations['pt'];
+                return `€${formatMoneyForPdf(u)}`;
+            }).join('\n')
+            : ((unitPrice === 0 || unitPrice === null || unitPrice === undefined)
+                ? (translations[currentLang] || translations['pt'])
+                : `€${formatMoneyForPdf(unitPrice)}`);
+
+        drawCell(colPositions.unitPrice, currentY, colWidths.unitPrice, calculatedRowHeight, precioParaMostrar, { align: 'center', fontSize: 8, noWrap: false });
+
+        const totalParaMostrar = (mergeOccurrences && mergeOccurrences.length > 0)
+            ? mergeOccurrences.map(o => {
+                const u = Number(o?.unitPrice || 0);
+                const q = Number(o?.qty || 0);
+                const t = (o && o.total !== undefined && o.total !== null) ? Number(o.total) : (u * q);
+                if (!Number.isFinite(u) || u === 0) return translations[currentLang] || translations['pt'];
+                return `€${formatMoneyForPdf(t)}`;
+            }).join('\n')
+            : ((unitPrice === 0 || unitPrice === null || unitPrice === undefined)
+                ? (translations[currentLang] || translations['pt'])
+                : `€${formatMoneyForPdf(total)}`);
+
+        drawCell(colPositions.total, currentY, colWidths.total, calculatedRowHeight, totalParaMostrar, { align: 'center', bold: true, fontSize: 8, noWrap: false });
         drawCell(colPositions.deliveryTime, currentY, colWidths.deliveryTime, calculatedRowHeight, deliveryText, { align: 'center', fontSize: 6 });
         
         // Dibujar logo si existe o texto de confirmación para personalizados sin logotipo
