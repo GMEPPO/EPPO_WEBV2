@@ -8387,12 +8387,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
 
     // Mostrar columna de logo si hay logos cargados o si hay artículos personalizados
     // de Accesorios/Cosmética sin logo (requieren texto de confirmación).
-    const hasLogos = cartToProcess.some(item => (item.logoUrl && item.logoUrl.trim() !== '') || requiresLogoConfirmationForItem(item));
-    // Nota: cartToProcess ahora está fusionado, pero el cálculo de hasLogos debería hacerse con ese mismo array.
-    // (Si queda una mínima diferencia, puede afectar a la visibilidad de la columna.)
-    // Recalcular con el array ya consolidado:
-    const cartConsolidadoParaLogo = mergedOrder;
-    const hasLogosFinal = cartConsolidadoParaLogo.some(item => (item.logoUrl && item.logoUrl.trim() !== '') || requiresLogoConfirmationForItem(item));
+    const hasLogosFinal = cartToProcess.some(item => (item.logoUrl && item.logoUrl.trim() !== '') || requiresLogoConfirmationForItem(item));
     
     // Definir anchos de columnas (ajustados para que quepan en la página)
     const colWidths = {
@@ -8414,6 +8409,13 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         Object.keys(colWidths).forEach(key => {
             colWidths[key] = Math.floor(colWidths[key] * scale);
         });
+    }
+
+    // Si sobran milímetros por redondeos, asignarlos a descripción para evitar hueco a la derecha.
+    const adjustedTotalWidth = Object.values(colWidths).reduce((sum, width) => sum + width, 0);
+    const remainder = availableWidth - adjustedTotalWidth;
+    if (remainder > 0) {
+        colWidths.description += remainder;
     }
 
     // Posiciones X de cada columna
@@ -9306,16 +9308,16 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         // Agregar padding adicional para evitar que el texto se corte
         // Usar un factor de seguridad mayor para descripciones largas o con observaciones
         const hasObservations = observations && observations.trim();
-        // Reducir el factor de seguridad para evitar demasiado espacio en blanco
-        // Usar un factor más pequeño que se ajuste mejor al contenido
-        const safetyFactor = hasObservations ? 1.15 : (allLinesCount > 5 ? 1.1 : 1.05); // Factor de seguridad reducido
-        const minDescriptionHeight = (descriptionHeight * safetyFactor) + (padding * 2); // Padding mínimo
+        // Evitar inflar de más la altura de descripción para no dejar espacio en blanco.
+        const safetyFactor = hasObservations ? 1.02 : 1.0;
+        const minDescriptionHeight = (descriptionHeight * safetyFactor) + padding;
         
         // Si hay ocurrencias consolidadas, reservar altura para apilar Cant./Precio/Total (una línea por duplicado)
         const occCount = mergeOccurrences && mergeOccurrences.length > 0 ? mergeOccurrences.length : 0;
         // Altura mínima para que las líneas (Cant./Precio/Total) queden repartidas
         // con buena legibilidad en toda la altura de la celda.
-        const occCellHeight = occCount > 1 ? (occCount * (fontSize * 0.9)) + (padding * 2) : 0;
+        // No forzar altura adicional por escalones: la separación se dibuja dentro de la altura real de la fila.
+        const occCellHeight = 0;
 
         const calculatedRowHeight = Math.max(
             baseRowHeight,
@@ -9577,7 +9579,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         drawCell(colPositions.deliveryTime, currentY, colWidths.deliveryTime, calculatedRowHeight, deliveryText, { align: 'center', fontSize: 6 });
         
         // Dibujar logo si existe o texto de confirmación para personalizados sin logotipo
-        console.log(`🔄 Item ${i + 1}: Verificando logo (hasLogos: ${hasLogos}, logoUrl: ${item.logoUrl ? 'existe' : 'no existe'})...`);
+        console.log(`🔄 Item ${i + 1}: Verificando logo (hasLogosFinal: ${hasLogosFinal}, logoUrl: ${item.logoUrl ? 'existe' : 'no existe'})...`);
         if (hasLogosFinal) {
             drawCell(colPositions.logo, currentY, colWidths.logo, calculatedRowHeight, '', { border: true });
             const requiresLogoConfirmation = requiresLogoConfirmationForItem(item);
