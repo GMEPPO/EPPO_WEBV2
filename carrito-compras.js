@@ -7725,9 +7725,9 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     // startY se ajustará después de crear el encabezado
     let startY = logoHeight + 15;
     let currentY = startY;
-    const baseRowHeight = 14; // Altura base de cada fila (reducida)
-    const minRowHeight = 10; // Altura mínima (reducida)
-    const imageSize = 22; // Tamaño de imagen en la tabla (reducido para más información)
+    const baseRowHeight = 12; // Altura base de cada fila (aún más compacta)
+    const minRowHeight = 8; // Altura mínima (compacta)
+    const imageSize = 20; // Tamaño de imagen en la tabla
 
     // Traducciones
     const translations = {
@@ -7735,7 +7735,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             proposal: 'Proposta',
             name: 'Nome',
             photo: 'Foto',
-            description: 'Desc.',
+            description: 'DESCRIÇÃO',
             quantity: 'Qtd.',
             unitPrice: 'Preço',
             total: 'Total',
@@ -7751,7 +7751,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             proposal: 'Propuesta',
             name: 'Nombre',
             photo: 'Foto',
-            description: 'Desc.',
+            description: 'DESCRIPCION',
             quantity: 'Cant.',
             unitPrice: 'Precio',
             total: 'Total',
@@ -7772,7 +7772,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             proposal: 'Proposta',
             name: 'Nome',
             photo: 'Foto',
-            description: 'Desc.',
+            description: 'Descrição',
             quantity: 'Qtd.',
             unitPrice: 'Preço',
             total: 'Total',
@@ -7793,7 +7793,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             proposal: 'Proposal',
             name: 'Name',
             photo: 'Photo',
-            description: 'Description',
+            description: 'DESCRIPTION',
             quantity: 'Qty.',
             unitPrice: 'Price',
             total: 'Total',
@@ -8716,7 +8716,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         const padding = 2;
         const availableWidth = width - (padding * 2);
         const fontSize = 7;
-        const lineHeight = fontSize * 0.55; // Espaciado reducido para ganar espacio vertical
+        const lineHeight = fontSize * 0.52; // Espaciado reducido para ganar espacio vertical
         
         // Construir el texto completo: normalizar para reducir espacios y saltos de línea excesivos
         let fullText = normalizeDescriptionForPdf(baseDescription || '');
@@ -9184,7 +9184,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         const padding = 2;
         const availableWidth = colWidths.description - (padding * 2);
         const fontSize = 7;
-        const actualLineHeight = fontSize * 0.55; // Mismo lineHeight que drawDescriptionWithBoldParts
+        const actualLineHeight = fontSize * 0.52; // Mismo lineHeight que drawDescriptionWithBoldParts
         
         // Establecer la fuente antes de dividir el texto para calcular correctamente
         doc.setFontSize(fontSize);
@@ -9340,34 +9340,9 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
 
         // Verificar si necesitamos una nueva página
         console.log(`🔄 Item ${i + 1}: Verificando si necesita nueva página...`);
-        // Regla: la primera página nunca debe mostrar más de 1 producto.
-        const currentPageNum = (doc?.internal && typeof doc.internal.getNumberOfPages === 'function')
-            ? doc.internal.getNumberOfPages()
-            : 1;
-
         // SOLO verificar si el producto individual cabe (sin considerar total ni condiciones)
         // El total y las condiciones se manejan después
-        if (currentPageNum === 1 && i > 0) {
-            doc.addPage();
-            currentY = margin;
-
-            // Redibujar encabezados en nueva página - fondo gris oscuro
-            doc.setFillColor(64, 64, 64);
-            const headerWidth = Object.values(colWidths).reduce((sum, width) => sum + width, 0);
-            doc.rect(margin, margin, headerWidth, baseRowHeight, 'F');
-            drawCell(colPositions.name, margin, colWidths.name, baseRowHeight, t.name, { align: 'center', bold: true, fontSize: 8, textColor: whiteColor });
-            drawCell(colPositions.photo, margin, colWidths.photo, baseRowHeight, t.photo, { align: 'center', bold: true, fontSize: 8, textColor: whiteColor });
-            drawCell(colPositions.description, margin, colWidths.description, baseRowHeight, t.description, { align: 'center', bold: true, fontSize: 8, textColor: whiteColor });
-            drawCell(colPositions.quantity, margin, colWidths.quantity, baseRowHeight, t.quantity, { align: 'center', bold: true, fontSize: 8, textColor: whiteColor });
-            drawCell(colPositions.unitPrice, margin, colWidths.unitPrice, baseRowHeight, t.unitPrice, { align: 'center', bold: true, fontSize: 8, textColor: whiteColor });
-            drawCell(colPositions.total, margin, colWidths.total, baseRowHeight, t.total, { align: 'center', bold: true, fontSize: 8, textColor: whiteColor });
-            drawCell(colPositions.deliveryTime, margin, colWidths.deliveryTime, baseRowHeight, t.deliveryTime, { align: 'center', bold: true, fontSize: 8, textColor: whiteColor });
-            if (hasLogosFinal) {
-                drawCell(colPositions.logo, margin, colWidths.logo, baseRowHeight, logoLabel, { align: 'center', bold: true, fontSize: 8, textColor: whiteColor });
-            }
-            doc.setTextColor(0, 0, 0);
-            currentY = margin + baseRowHeight;
-        } else if (currentY + calculatedRowHeight > pageHeight - margin) {
+        if (currentY + calculatedRowHeight > pageHeight - margin) {
             doc.addPage();
             // En páginas siguientes, empezar desde el margen superior (sin espacio de logos)
             currentY = margin;
