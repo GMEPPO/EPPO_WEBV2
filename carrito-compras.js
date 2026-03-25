@@ -8428,7 +8428,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
 
     // Función para dibujar una celda
     function drawCell(x, y, width, height, text, options = {}) {
-        const { align = 'left', bold = false, fontSize = 8, border = true, maxLines = null, noWrap = false, textColor = null } = options;
+        const { align = 'left', bold = false, fontSize = 8, border = true, maxLines = null, noWrap = false, textColor = null, separatorBetweenLines = false, separatorLineWidth = 0.2, separatorPadding = 0.5 } = options;
         
         // Asegurar que los colores estén correctos antes de dibujar
         doc.setDrawColor(0, 0, 0); // Negro para bordes
@@ -8492,6 +8492,16 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         const lineHeight = actualFontSize * 0.4;
         const totalTextHeight = textLines.length * lineHeight;
         const startY = y + (height - totalTextHeight) / 2 + lineHeight;
+
+        // Opcional: dibujar una línea horizontal entre cada "línea" del texto
+        if (separatorBetweenLines && textLines.length > 1) {
+            doc.setDrawColor(0, 0, 0);
+            doc.setLineWidth(separatorLineWidth);
+            for (let si = 0; si < textLines.length - 1; si++) {
+                const sepY = startY + (si * lineHeight) + (lineHeight / 2) * separatorPadding;
+                doc.line(x + 1, sepY, x + width - 1, sepY);
+            }
+        }
         
         // Dibujar texto (ya establecimos el tamaño de fuente arriba si es noWrap)
         if (!noWrap) {
@@ -9175,7 +9185,10 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         // Calcular altura considerando el espaciado entre líneas y saltos de línea adicionales
         // Agregar espacio extra para saltos de línea entre secciones (descripción, variante, color, notas)
         // Reducir el espacio entre secciones para evitar demasiado espacio en blanco
-        const sectionBreaks = (variantText ? 1 : 0) + (selectedColorText ? 1 : 0) + (observations ? 1 : 0);
+        const hasVariantText = !!(variantText && String(variantText).trim());
+        const hasSelectedColorText = !!(selectedColorText && String(selectedColorText).trim());
+        const hasObservationsText = !!(observations && String(observations).trim());
+        const sectionBreaks = (hasVariantText ? 1 : 0) + (hasSelectedColorText ? 1 : 0) + (hasObservationsText ? 1 : 0);
         // Calcular altura más precisa: líneas * lineHeight + saltos de línea + padding mínimo
         const descriptionHeight = Math.max(
             (allLinesCount * actualLineHeight) + (sectionBreaks * actualLineHeight * 0.5) + (padding * 2), 
@@ -9473,7 +9486,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                 ? (translations[currentLang] || translations['pt'])
                 : `€${formatMoneyForPdf(unitPrice)}`);
 
-        drawCell(colPositions.unitPrice, currentY, colWidths.unitPrice, calculatedRowHeight, precioParaMostrar, { align: 'center', fontSize: 8, noWrap: false });
+        drawCell(colPositions.unitPrice, currentY, colWidths.unitPrice, calculatedRowHeight, precioParaMostrar, { align: 'center', fontSize: 8, noWrap: false, separatorBetweenLines: !!(mergeOccurrences && mergeOccurrences.length > 1) });
 
         const totalParaMostrar = (mergeOccurrences && mergeOccurrences.length > 0)
             ? mergeOccurrences.map(o => {
@@ -9487,7 +9500,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                 ? (translations[currentLang] || translations['pt'])
                 : `€${formatMoneyForPdf(total)}`);
 
-        drawCell(colPositions.total, currentY, colWidths.total, calculatedRowHeight, totalParaMostrar, { align: 'center', bold: true, fontSize: 8, noWrap: false });
+        drawCell(colPositions.total, currentY, colWidths.total, calculatedRowHeight, totalParaMostrar, { align: 'center', bold: true, fontSize: 8, noWrap: false, separatorBetweenLines: !!(mergeOccurrences && mergeOccurrences.length > 1) });
         drawCell(colPositions.deliveryTime, currentY, colWidths.deliveryTime, calculatedRowHeight, deliveryText, { align: 'center', fontSize: 6 });
         
         // Dibujar logo si existe o texto de confirmación para personalizados sin logotipo
