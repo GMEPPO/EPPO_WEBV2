@@ -8423,12 +8423,12 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         unitPrice: margin + colWidths.name + colWidths.photo + colWidths.description + colWidths.quantity,
         total: margin + colWidths.name + colWidths.photo + colWidths.description + colWidths.quantity + colWidths.unitPrice,
         deliveryTime: margin + colWidths.name + colWidths.photo + colWidths.description + colWidths.quantity + colWidths.unitPrice + colWidths.total,
-        logo: hasLogos ? margin + colWidths.name + colWidths.photo + colWidths.description + colWidths.quantity + colWidths.unitPrice + colWidths.total + colWidths.deliveryTime : 0
+        logo: hasLogosFinal ? margin + colWidths.name + colWidths.photo + colWidths.description + colWidths.quantity + colWidths.unitPrice + colWidths.total + colWidths.deliveryTime : 0
     };
 
     // Función para dibujar una celda
     function drawCell(x, y, width, height, text, options = {}) {
-        const { align = 'left', bold = false, fontSize = 8, border = true, maxLines = null, noWrap = false, textColor = null, separatorBetweenLines = false, separatorLineWidth = 0.2, separatorPadding = 0.5 } = options;
+        const { align = 'left', bold = false, fontSize = 8, border = true, maxLines = null, noWrap = false, textColor = null, separatorBetweenLines = false, separatorLineWidth = 0.25, separatorPadding = 0.5 } = options;
         
         // Asegurar que los colores estén correctos antes de dibujar
         doc.setDrawColor(0, 0, 0); // Negro para bordes
@@ -8463,8 +8463,6 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
 
             // Reducir tamaño de fuente si alguna línea no cabe (solo si es necesario)
             // Mantenerlo simple: el contenido suele ser corto (cantidades / euros).
-            actualFontSize = fontSize;
-            doc.setFontSize(actualFontSize);
             doc.setFont('helvetica', bold ? 'bold' : 'normal');
 
             const segmentHeight = height / textLines.length;
@@ -8488,7 +8486,18 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                 let textX = x + padding;
                 if (align === 'center') textX = x + (width / 2);
                 if (align === 'right') textX = x + width - padding;
-                doc.text(line, textX, textY, { align: align, maxWidth: availableWidth });
+                
+                // Ajustar el tamaño de la fuente para que NO se parta en varias líneas
+                let segFontSize = fontSize;
+                doc.setFontSize(segFontSize);
+                const rawText = line == null ? '' : String(line);
+                let textWidth = doc.getTextWidth(rawText);
+                while (textWidth > availableWidth && segFontSize > 5) {
+                    segFontSize -= 0.5;
+                    doc.setFontSize(segFontSize);
+                    textWidth = doc.getTextWidth(rawText);
+                }
+                doc.text(rawText, textX, textY, { align: align });
             });
 
             return;
@@ -8829,17 +8838,10 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         // Asegurar que el texto no se salga del cuadro
         const maxY = y + height - padding;
         const minY = y + padding;
-        // Empezar desde arriba con padding mínimo para evitar espacio en blanco excesivo
-        // Alinear arriba para evitar huecos grandes al final cuando la fila tiene
-        // altura extra (p. ej. por Cant./Precio/Total con varios escalones).
-        let startY = minY;
-        
-        // Verificar que el texto quepa
-        const endY = startY + (allLines.length - 1) * actualLineHeight;
-        if (endY > maxY) {
-            // Si no cabe completamente, ajustar ligeramente hacia arriba
-            startY = minY + (actualLineHeight * 0.1);
-        }
+        // Alinear al final (última línea cerca del borde inferior) para minimizar
+        // el blanco visible al final cuando la celda es más alta que el contenido.
+        let startY = maxY - (allLines.length - 1) * actualLineHeight;
+        if (startY < minY) startY = minY;
         
         // IMPORTANTE: Dibujar TODAS las líneas, incluso si se salen del cuadro
         // Esto asegura que el texto completo se muestre (el PDF se ajustará automáticamente)
@@ -8881,7 +8883,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     drawCell(colPositions.unitPrice, currentY, colWidths.unitPrice, baseRowHeight, t.unitPrice, { align: 'center', bold: true, fontSize: 8, textColor: whiteColor });
     drawCell(colPositions.total, currentY, colWidths.total, baseRowHeight, t.total, { align: 'center', bold: true, fontSize: 8, textColor: whiteColor });
     drawCell(colPositions.deliveryTime, currentY, colWidths.deliveryTime, baseRowHeight, t.deliveryTime, { align: 'center', bold: true, fontSize: 8, textColor: whiteColor });
-    if (hasLogos) {
+    if (hasLogosFinal) {
         drawCell(colPositions.logo, currentY, colWidths.logo, baseRowHeight, logoLabel, { align: 'center', bold: true, fontSize: 8, textColor: whiteColor });
     }
     // Restaurar color de texto a negro para el contenido
@@ -9330,9 +9332,34 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
 
         // Verificar si necesitamos una nueva página
         console.log(`🔄 Item ${i + 1}: Verificando si necesita nueva página...`);
+        // Regla: la primera página nunca debe mostrar más de 1 producto.
+        const currentPageNum = (doc?.internal && typeof doc.internal.getNumberOfPages === 'function')
+            ? doc.internal.getNumberOfPages()
+            : 1;
+
         // SOLO verificar si el producto individual cabe (sin considerar total ni condiciones)
         // El total y las condiciones se manejan después
-        if (currentY + calculatedRowHeight > pageHeight - margin) {
+        if (currentPageNum === 1 && i > 0) {
+            doc.addPage();
+            currentY = margin;
+
+            // Redibujar encabezados en nueva página - fondo gris oscuro
+            doc.setFillColor(64, 64, 64);
+            const headerWidth = Object.values(colWidths).reduce((sum, width) => sum + width, 0);
+            doc.rect(margin, margin, headerWidth, baseRowHeight, 'F');
+            drawCell(colPositions.name, margin, colWidths.name, baseRowHeight, t.name, { align: 'center', bold: true, fontSize: 8, textColor: whiteColor });
+            drawCell(colPositions.photo, margin, colWidths.photo, baseRowHeight, t.photo, { align: 'center', bold: true, fontSize: 8, textColor: whiteColor });
+            drawCell(colPositions.description, margin, colWidths.description, baseRowHeight, t.description, { align: 'center', bold: true, fontSize: 8, textColor: whiteColor });
+            drawCell(colPositions.quantity, margin, colWidths.quantity, baseRowHeight, t.quantity, { align: 'center', bold: true, fontSize: 8, textColor: whiteColor });
+            drawCell(colPositions.unitPrice, margin, colWidths.unitPrice, baseRowHeight, t.unitPrice, { align: 'center', bold: true, fontSize: 8, textColor: whiteColor });
+            drawCell(colPositions.total, margin, colWidths.total, baseRowHeight, t.total, { align: 'center', bold: true, fontSize: 8, textColor: whiteColor });
+            drawCell(colPositions.deliveryTime, margin, colWidths.deliveryTime, baseRowHeight, t.deliveryTime, { align: 'center', bold: true, fontSize: 8, textColor: whiteColor });
+            if (hasLogosFinal) {
+                drawCell(colPositions.logo, margin, colWidths.logo, baseRowHeight, logoLabel, { align: 'center', bold: true, fontSize: 8, textColor: whiteColor });
+            }
+            doc.setTextColor(0, 0, 0);
+            currentY = margin + baseRowHeight;
+        } else if (currentY + calculatedRowHeight > pageHeight - margin) {
             doc.addPage();
             // En páginas siguientes, empezar desde el margen superior (sin espacio de logos)
             currentY = margin;
@@ -9349,7 +9376,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             drawCell(colPositions.unitPrice, margin, colWidths.unitPrice, baseRowHeight, t.unitPrice, { align: 'center', bold: true, fontSize: 8, textColor: whiteColor });
             drawCell(colPositions.total, margin, colWidths.total, baseRowHeight, t.total, { align: 'center', bold: true, fontSize: 8, textColor: whiteColor });
             drawCell(colPositions.deliveryTime, margin, colWidths.deliveryTime, baseRowHeight, t.deliveryTime, { align: 'center', bold: true, fontSize: 8, textColor: whiteColor });
-            if (hasLogos) {
+            if (hasLogosFinal) {
                 drawCell(colPositions.logo, margin, colWidths.logo, baseRowHeight, logoLabel, { align: 'center', bold: true, fontSize: 8, textColor: whiteColor });
             }
             // Restaurar color de texto a negro para el contenido
@@ -9526,7 +9553,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                 ? (translations[currentLang] || translations['pt'])
                 : `€${formatMoneyForPdf(unitPrice)}`);
 
-        drawCell(colPositions.unitPrice, currentY, colWidths.unitPrice, calculatedRowHeight, precioParaMostrar, { align: 'center', fontSize: 8, noWrap: false, separatorBetweenLines: !!(mergeOccurrences && mergeOccurrences.length > 1) });
+        drawCell(colPositions.unitPrice, currentY, colWidths.unitPrice, calculatedRowHeight, precioParaMostrar, { align: 'center', fontSize: 8, noWrap: true, separatorBetweenLines: !!(mergeOccurrences && mergeOccurrences.length > 1) });
 
         const totalParaMostrar = (mergeOccurrences && mergeOccurrences.length > 0)
             ? mergeOccurrences.map(o => {
@@ -9540,12 +9567,12 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                 ? (translations[currentLang] || translations['pt'])
                 : `€${formatMoneyForPdf(total)}`);
 
-        drawCell(colPositions.total, currentY, colWidths.total, calculatedRowHeight, totalParaMostrar, { align: 'center', bold: true, fontSize: 8, noWrap: false, separatorBetweenLines: !!(mergeOccurrences && mergeOccurrences.length > 1) });
+        drawCell(colPositions.total, currentY, colWidths.total, calculatedRowHeight, totalParaMostrar, { align: 'center', bold: true, fontSize: 8, noWrap: true, separatorBetweenLines: !!(mergeOccurrences && mergeOccurrences.length > 1) });
         drawCell(colPositions.deliveryTime, currentY, colWidths.deliveryTime, calculatedRowHeight, deliveryText, { align: 'center', fontSize: 6 });
         
         // Dibujar logo si existe o texto de confirmación para personalizados sin logotipo
         console.log(`🔄 Item ${i + 1}: Verificando logo (hasLogos: ${hasLogos}, logoUrl: ${item.logoUrl ? 'existe' : 'no existe'})...`);
-        if (hasLogos) {
+        if (hasLogosFinal) {
             drawCell(colPositions.logo, currentY, colWidths.logo, calculatedRowHeight, '', { border: true });
             const requiresLogoConfirmation = requiresLogoConfirmationForItem(item);
             
@@ -9764,7 +9791,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     // Fila del total - fondo gris oscuro como el pie de página
     doc.setFillColor(64, 64, 64); // Mismo gris oscuro que el pie de página
     // Calcular ancho total incluyendo la columna de logo si existe
-    const totalRowWidth = colWidths.name + colWidths.photo + colWidths.description + colWidths.quantity + colWidths.unitPrice + colWidths.total + colWidths.deliveryTime + (hasLogos ? colWidths.logo : 0);
+    const totalRowWidth = colWidths.name + colWidths.photo + colWidths.description + colWidths.quantity + colWidths.unitPrice + colWidths.total + colWidths.deliveryTime + (hasLogosFinal ? colWidths.logo : 0);
     doc.rect(margin, currentY, totalRowWidth, baseRowHeight, 'F');
     
     // Calcular ancho de la celda combinada (desde nombre hasta precio unitario, excluyendo total, delivery y logo)
@@ -9782,7 +9809,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     drawCell(colPositions.deliveryTime, currentY, colWidths.deliveryTime, baseRowHeight, '', { align: 'center', border: true, textColor: whiteColor });
     
     // Si hay columna de logo, dibujar celda vacía con borde para cerrar correctamente
-    if (hasLogos) {
+    if (hasLogosFinal) {
         drawCell(colPositions.logo, currentY, colWidths.logo, baseRowHeight, '', { align: 'center', border: true, textColor: whiteColor });
     }
     // Restaurar color de texto a negro
