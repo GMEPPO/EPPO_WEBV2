@@ -8432,7 +8432,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
 
     // Función para dibujar una celda
     function drawCell(x, y, width, height, text, options = {}) {
-        const { align = 'left', bold = false, fontSize = 8, border = true, maxLines = null, noWrap = false, textColor = null, separatorBetweenLines = false, separatorLineWidth = 0.25, separatorPadding = 0.5 } = options;
+        const { align = 'left', bold = false, fontSize = 8, border = true, maxLines = null, noWrap = false, textColor = null, separatorBetweenLines = false, separatorLineWidth = 0.25, separatorPadding = 0.5, preserveWords = false, minFontSize = 5 } = options;
         
         // Asegurar que los colores estén correctos antes de dibujar
         doc.setDrawColor(0, 0, 0); // Negro para bordes
@@ -8525,6 +8525,48 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                 }
             }
             textLines = [text];
+        } else if (preserveWords) {
+            // Ajuste de tamaño para que la palabra más larga quepa completa
+            actualFontSize = fontSize;
+            doc.setFont('helvetica', bold ? 'bold' : 'normal');
+            doc.setFontSize(actualFontSize);
+            const paragraphsForMeasure = String(text).split('\n').map(p => p.trim()).filter(Boolean);
+            const wordsForMeasure = paragraphsForMeasure.flatMap(p => p.split(/\s+/).filter(Boolean));
+            const longestWordWidthAt = (size) => {
+                doc.setFontSize(size);
+                let maxW = 0;
+                for (const w of wordsForMeasure) {
+                    const ww = doc.getTextWidth(w);
+                    if (ww > maxW) maxW = ww;
+                }
+                return maxW;
+            };
+            while (actualFontSize > minFontSize && longestWordWidthAt(actualFontSize) > availableWidth) {
+                actualFontSize -= 0.25;
+            }
+
+            // Wrap por palabras (sin partir palabras)
+            textLines = [];
+            doc.setFontSize(actualFontSize);
+            const paragraphs = String(text).split('\n');
+            for (const paraRaw of paragraphs) {
+                const para = paraRaw.trim();
+                if (!para) continue;
+                const words = para.split(/\s+/).filter(Boolean);
+                let line = '';
+                for (const word of words) {
+                    const test = line ? `${line} ${word}` : word;
+                    const testWidth = doc.getTextWidth(test);
+                    if (testWidth <= availableWidth || !line) {
+                        line = test;
+                    } else {
+                        textLines.push(line);
+                        line = word;
+                    }
+                }
+                if (line) textLines.push(line);
+            }
+            if (textLines.length === 0) textLines = [''];
         } else {
             // Dividir texto en líneas que caben en el ancho de la celda
             textLines = doc.splitTextToSize(text, availableWidth);
@@ -8547,7 +8589,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         
         // Dibujar texto (ya establecimos el tamaño de fuente arriba si es noWrap)
         if (!noWrap) {
-        doc.setFontSize(fontSize);
+        doc.setFontSize(actualFontSize);
         doc.setFont('helvetica', bold ? 'bold' : 'normal');
         } else {
             // Asegurar que el tamaño de fuente esté establecido (ya lo hicimos arriba)
@@ -8911,14 +8953,14 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         pt: [
             'Preços não incluem IVA e são válidos para uma única entrega.',
             'Estes preços não incluem despesas de transporte.',
-            'Esta proposta é válida por 2 meses e está sempre sujeita a revisão no momento da adjudicação.',
+            'Esta proposta é válida por 1 mês e está sempre sujeita a revisão no momento da adjudicação.',
             'A quantidade de entrega poderá ter uma variação de até 10%.',
             'Condições de pagamento: 30% do valor total do pedido no momento da adjudicação; 70% nas condições habituais.'
         ],
         es: [
             'Los precios no incluyen IVA y son válidos para una única entrega.',
             'Estos precios no incluyen gastos de transporte.',
-            'Esta propuesta es válida por 2 meses y está siempre sujeta a revisión en el momento de la adjudicación.',
+            'Esta propuesta es válida por 1 mes y está siempre sujeta a revisión en el momento de la adjudicación.',
             'La cantidad de entrega podrá tener una variación de hasta 10%.',
             'Condiciones de pago: 30% del valor total del pedido en el momento de la adjudicación; 70% en las condiciones habituales.'
         ],
@@ -9551,7 +9593,14 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                 : `€${formatMoneyForPdf(total)}`);
 
         drawCell(colPositions.total, currentY, colWidths.total, calculatedRowHeight, totalParaMostrar, { align: 'center', bold: true, fontSize: 8, noWrap: true, separatorBetweenLines: !!(mergeOccurrences && mergeOccurrences.length > 1) });
-        drawCell(colPositions.deliveryTime, currentY, colWidths.deliveryTime, calculatedRowHeight, deliveryText, { align: 'center', fontSize: 6 });
+        drawCell(
+            colPositions.deliveryTime,
+            currentY,
+            colWidths.deliveryTime,
+            calculatedRowHeight,
+            deliveryText,
+            { align: 'center', fontSize: 6, preserveWords: true, minFontSize: 4.75 }
+        );
         
         // Dibujar logo si existe o texto de confirmación para personalizados sin logotipo
         console.log(`🔄 Item ${i + 1}: Verificando logo (hasLogosFinal: ${hasLogosFinal}, logoUrl: ${item.logoUrl ? 'existe' : 'no existe'})...`);
