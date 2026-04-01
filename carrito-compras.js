@@ -8884,9 +8884,9 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         // Asegurar que el texto no se salga del cuadro
         const maxY = y + height - padding;
         const minY = y + padding;
-        // Alinear arriba para evitar que el "blanco" se vaya hacia la zona superior
-        // cuando otras columnas (Cant./Precio/Total) reservan más altura.
-        let startY = minY;
+        // Añadir separación superior para que el texto no quede pegado al borde.
+        const descriptionTopInset = 1.2;
+        let startY = minY + descriptionTopInset;
         const endY = startY + (allLines.length - 1) * actualLineHeight;
         if (endY > maxY) {
             startY = maxY - (allLines.length - 1) * actualLineHeight;
