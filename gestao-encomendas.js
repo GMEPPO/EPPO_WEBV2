@@ -1047,18 +1047,26 @@
             const articuloMap = {};
             (articulos || []).forEach(a => { articuloMap[a.id] = a; });
 
-            // Agrupar por fornecedor: Nº Encomenda y Fecha Encomenda compartidos; Previsão Entrega por artículo
-            let byFornecedor = {};
+            // Agrupar por fornecedor + tipo para NO mezclar "criacao_codigos" con "encomenda a fornecedor"
+            // dentro del mismo bloque visual ni del mismo guardado.
+            let byFornecedorTipo = {};
             (gcRows || []).forEach(gc => {
                 const fn = (gc.nome_fornecedor || '').trim() || '-';
-                if (!byFornecedor[fn]) byFornecedor[fn] = [];
-                byFornecedor[fn].push(gc);
+                const tipoRaw = (gc.tipo || '').toString().trim();
+                const tipoKey = tipoRaw.toLowerCase() || '-';
+                const key = fn + '|||' + tipoKey;
+                if (!byFornecedorTipo[key]) byFornecedorTipo[key] = { fornecedor: fn, tipo: tipoRaw, rows: [] };
+                byFornecedorTipo[key].rows.push(gc);
             });
 
             // Si venimos desde Histórico o desde uma linha específica, podemos filtrar por fornecedor concreto
             if (fornecedorFiltro) {
-                const key = Object.keys(byFornecedor).find(k => (k || '').toLowerCase() === fornecedorFiltro.toLowerCase());
-                byFornecedor = key ? { [key]: byFornecedor[key] } : {};
+                const filtered = {};
+                Object.keys(byFornecedorTipo).forEach(k => {
+                    const g = byFornecedorTipo[k];
+                    if ((g.fornecedor || '').toLowerCase() === fornecedorFiltro.toLowerCase()) filtered[k] = g;
+                });
+                byFornecedorTipo = filtered;
             }
 
             const codigoPropuesta = (proposal && proposal.codigo_propuesta) ? proposal.codigo_propuesta : (presupuestoId ? String(presupuestoId).substring(0, 8) : '-');
@@ -1068,9 +1076,15 @@
             let numeroPropostaBlock = '<div class="ge-fornecedor-block" style="margin-bottom:1rem;"><div style="display:grid;grid-template-columns:auto 1fr;gap:1rem;align-items:center;"><div><span style="font-size:0.8rem;color:#94a3b8;">' + t('numPropuesta') + '</span><div style="font-weight:600;color:#f1f5f9;font-size:1.1rem;">' + escapeHtml(codigoPropuesta) + '</div></div><div><span style="font-size:0.8rem;color:#94a3b8;">' + t('responsable') + '</span><div style="font-weight:600;color:#f1f5f9;">' + escapeHtml(responsavelVal) + '</div></div></div></div>';
 
             blocksEl.innerHTML = numeroPropostaBlock + concluirBlockPendientes;
-            Object.keys(byFornecedor).sort().forEach(fornecedorName => {
-                const rows = byFornecedor[fornecedorName];
-                const articuloIds = rows.map(r => r.presupuesto_articulo_id).filter(Boolean);
+            Object.keys(byFornecedorTipo).sort().forEach(groupKey => {
+                const group = byFornecedorTipo[groupKey];
+                const fornecedorName = group.fornecedor || '-';
+                const rows = group.rows || [];
+                const isSoloCreacaoCodigosGroup = rows.length > 0 && rows.every(gc => ((gc.tipo || '').toLowerCase() === 'criacao_codigos'));
+                const articuloIds = rows
+                    .filter(r => ((r.tipo || '').toLowerCase() !== 'criacao_codigos'))
+                    .map(r => r.presupuesto_articulo_id)
+                    .filter(Boolean);
                 const firstArt = articuloIds.length && articuloMap[articuloIds[0]] ? articuloMap[articuloIds[0]] : null;
                 const numero = firstArt ? (firstArt.numero_encomenda || '') : '';
                 const fecha = firstArt && firstArt.fecha_encomenda ? firstArt.fecha_encomenda.split('T')[0] : '';
@@ -1078,8 +1092,8 @@
                 const block = document.createElement('div');
                 block.className = 'ge-fornecedor-block';
                 block.setAttribute('data-fornecedor-name', fornecedorName);
-                if (isSoloCreacaoCodigos) block.setAttribute('data-solo-creacao-codigos', '1');
-                const formHtml = isSoloCreacaoCodigos
+                if (isSoloCreacaoCodigosGroup) block.setAttribute('data-solo-creacao-codigos', '1');
+                const formHtml = isSoloCreacaoCodigosGroup
                     ? ''
                     : (geReadOnly
                         ? `<div class="ge-fornecedor-form" style="display:grid;gap:0.5rem;margin-bottom:1rem;">
@@ -1091,11 +1105,11 @@
                             <div><label>${t('fechaEncomenda')}</label><input type="date" class="ge-editable ge-fn-fecha" value="${escapeAttr(fecha)}"></div>
                             <div style="align-self: flex-end;"><button type="button" class="ge-btn ge-btn-primary ge-save-fornecedor">${t('guardar')}</button></div>
                         </div>`);
-                const tableHeaders = isSoloCreacaoCodigos
+                const tableHeaders = isSoloCreacaoCodigosGroup
                     ? `<thead><tr><th>${t('productoRef')}</th><th>${t('refPhc')}</th></tr></thead>`
                     : `<thead><tr><th>${t('productoRef')}</th><th>${t('refPhc')}</th><th>${t('cantidad')}</th><th>${t('precio')}</th><th>${t('desconto')}</th><th>${t('previsaoEntrega')}</th></tr></thead>`;
                 block.innerHTML = `
-                    <div class="ge-fornecedor-title">${t('fornecedor')}: ${escapeHtml(fornecedorName)}</div>
+                    <div class="ge-fornecedor-title">${t('fornecedor')}: ${escapeHtml(fornecedorName)} ${group.tipo ? `· ${escapeHtml(group.tipo)}` : ''}</div>
                     ${formHtml}
                     <div class="ge-table-wrap">
                         <table class="ge-table">
@@ -1103,7 +1117,7 @@
                             <tbody class="ge-fornecedor-tbody"></tbody>
                         </table>
                     </div>
-                    ${(isSoloCreacaoCodigos && !geReadOnly) ? '<div style="margin-top:8px;"><button type="button" class="ge-btn ge-btn-primary ge-save-fornecedor">' + t('guardar') + '</button></div>' : ''}
+                    ${(isSoloCreacaoCodigosGroup && !geReadOnly) ? '<div style="margin-top:8px;"><button type="button" class="ge-btn ge-btn-primary ge-save-fornecedor">' + t('guardar') + '</button></div>' : ''}
                 `;
                 const tbody = block.querySelector('.ge-fornecedor-tbody');
                 rows.forEach(gc => {
@@ -1113,10 +1127,10 @@
                     const art = articuloId && articuloMap[articuloId] ? articuloMap[articuloId] : null;
                     const previsaoVal = art && art.fecha_prevista_entrega ? (typeof art.fecha_prevista_entrega === 'string' ? art.fecha_prevista_entrega.split('T')[0] : art.fecha_prevista_entrega) : '';
                     const hasArticuloId = articuloId && articuloId !== 'undefined';
-                    const productDetailsHtml = buildProductDetailsHtml(gc, { showFaltaBadge: true, soloCreacaoCodigos: isSoloCreacaoCodigos });
+                    const productDetailsHtml = buildProductDetailsHtml(gc, { showFaltaBadge: true, soloCreacaoCodigos: isSoloCreacaoCodigosGroup });
                     const hasPhc = (gc.phc_ref || '').trim() !== '';
                     const isSemPhc = !!(gc.referencia || gc.designacao);
-                    const needsPhcInput = (isSemPhc || isSoloCreacaoCodigos) && !hasPhc;
+                    const needsPhcInput = (isSemPhc || isSoloCreacaoCodigosGroup) && !hasPhc;
                     const gcId = (gc.id || '').toString();
                     const phcCell = geReadOnly
                         ? escapeHtml((gc.phc_ref || '').trim() || '-')
@@ -1129,9 +1143,10 @@
 
                     const tr = document.createElement('tr');
                     tr.setAttribute('data-articulo-id', articuloId);
+                    tr.setAttribute('data-gc-tipo', ((gc.tipo || '').toLowerCase().trim()));
                     if (gcId) tr.setAttribute('data-gc-id', gcId);
                     if (needsPhcInput) tr.setAttribute('data-sem-phc', '1');
-                    if (isSoloCreacaoCodigos) {
+                    if (isSoloCreacaoCodigosGroup) {
                         tr.innerHTML = `
                             <td class="ge-td-product" style="vertical-align: top;">${productDetailsHtml}</td>
                             <td style="vertical-align: top;">${phcCell}</td>
@@ -1187,10 +1202,27 @@
 
         const tbody = block.querySelector('.ge-fornecedor-tbody');
         const rows = tbody ? tbody.querySelectorAll('tr[data-articulo-id]') : [];
+        const rowsEncomenda = Array.from(rows).filter(tr => ((tr.getAttribute('data-gc-tipo') || '').toLowerCase() !== 'criacao_codigos'));
+        const articuloIdsFromRows = rowsEncomenda
+            .map(tr => tr.getAttribute('data-articulo-id'))
+            .filter(id => id && id !== 'undefined');
+        const articuloIdsEncomenda = [...new Set([...(articuloIdsFromRows || []), ...((Array.isArray(articuloIds) ? articuloIds : []).filter(Boolean))])];
 
         try {
             if (!soloCreacaoCodigos) {
-                for (const tr of rows) {
+                // Guardar número y fecha de encomenda en lote para todos los artículos del bloque.
+                if (articuloIdsEncomenda.length > 0) {
+                    const { error: bulkError } = await client
+                        .from('presupuestos_articulos')
+                        .update({
+                            numero_encomenda,
+                            fecha_encomenda: fecha_encomenda || null
+                        })
+                        .in('id', articuloIdsEncomenda);
+                    if (bulkError) throw bulkError;
+                }
+
+                for (const tr of rowsEncomenda) {
                     const articuloId = tr.getAttribute('data-articulo-id');
                     if (!articuloId || articuloId === 'undefined') continue;
                     const previsaoEl = tr.querySelector('.ge-row-previsao');
@@ -1199,8 +1231,6 @@
                 const { error } = await client
                     .from('presupuestos_articulos')
                     .update({
-                        numero_encomenda,
-                        fecha_encomenda: fecha_encomenda || null,
                         fecha_prevista_entrega: fecha_prevista_entrega || null
                     })
                     .eq('id', articuloId);
@@ -1221,7 +1251,7 @@
             showNotification(t('guardado'), 'success');
 
             if (presupuestoId && !soloCreacaoCodigos) {
-                await tryMoveProposalToEncomendaEnCurso(client, presupuestoId, fornecedorName, articuloIds);
+                await tryMoveProposalToEncomendaEnCurso(client, presupuestoId, fornecedorName, articuloIdsEncomenda);
             }
         } catch (e) {
             console.error('saveFornecedorGroup:', e);
