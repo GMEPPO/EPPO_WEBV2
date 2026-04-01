@@ -1206,6 +1206,9 @@
         const articuloIdsFromRows = rowsEncomenda
             .map(tr => tr.getAttribute('data-articulo-id'))
             .filter(id => id && id !== 'undefined');
+        const gcIdsEncomenda = rowsEncomenda
+            .map(tr => tr.getAttribute('data-gc-id'))
+            .filter(id => id && id !== 'undefined');
         const articuloIdsEncomenda = [...new Set([...(articuloIdsFromRows || []), ...((Array.isArray(articuloIds) ? articuloIds : []).filter(Boolean))])];
 
         try {
@@ -1251,7 +1254,18 @@
             showNotification(t('guardado'), 'success');
 
             if (presupuestoId && !soloCreacaoCodigos) {
-                await tryMoveProposalToEncomendaEnCurso(client, presupuestoId, fornecedorName, articuloIdsEncomenda);
+                // Mover explícitamente este bloque a "em_curso" para evitar depender de validaciones
+                // globales que pueden impedir la transición aunque el guardado sea correcto.
+                const moved = await updatePresupuestoToEncomendaEnCurso(client, presupuestoId, {
+                    fornecedor: fornecedorName || null,
+                    gcIds: gcIdsEncomenda,
+                    notify: true,
+                    reload: true
+                });
+                if (!moved) {
+                    // Fallback con la lógica anterior
+                    await tryMoveProposalToEncomendaEnCurso(client, presupuestoId, fornecedorName, articuloIdsEncomenda);
+                }
             }
         } catch (e) {
             console.error('saveFornecedorGroup:', e);
