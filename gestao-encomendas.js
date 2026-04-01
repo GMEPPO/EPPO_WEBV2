@@ -343,8 +343,14 @@
                 if (r.presupuesto_articulo_id) byPresupuesto[id].articuloIds.add(r.presupuesto_articulo_id);
                 if (r.tipo && typeof r.tipo === 'string' && r.tipo.trim() !== '') {
                     const tipo = r.tipo.trim();
-                    if (!tipoByPresupuesto[id]) tipoByPresupuesto[id] = tipo;
-                    else if (tipo.toLowerCase() === 'criacao_codigos') tipoByPresupuesto[id] = tipo; // preferir criacao_codigos si existe
+                    const tipoLower = tipo.toLowerCase();
+                    const currentLower = (tipoByPresupuesto[id] || '').toLowerCase();
+                    if (!tipoByPresupuesto[id]) {
+                        tipoByPresupuesto[id] = tipo;
+                    } else if (currentLower === 'criacao_codigos' && tipoLower !== 'criacao_codigos') {
+                        // Si hay mezcla, priorizar la encomenda normal para no mostrar tipo equivocado en la lista principal.
+                        tipoByPresupuesto[id] = tipo;
+                    }
                 }
                 const est = (r.estado_pedido || 'pendente').toLowerCase();
                 if (!estadoByPresupuesto[id]) estadoByPresupuesto[id] = est;
@@ -1176,19 +1182,27 @@
     }
 
     async function saveFornecedorGroup(block, articuloIds, presupuestoId, fornecedorName) {
-        if (!articuloIds || articuloIds.length === 0) {
-            showNotification(t('error'), 'error');
-            return;
-        }
         const client = await getClient();
         if (!client) return;
 
         const soloCreacaoCodigos = block.getAttribute('data-solo-creacao-codigos') === '1';
+        if (!soloCreacaoCodigos && (!articuloIds || articuloIds.length === 0)) {
+            showNotification(t('error'), 'error');
+            return;
+        }
         const phcInputs = block.querySelectorAll('.ge-phc-ref-input');
         if (!soloCreacaoCodigos) {
             for (const input of phcInputs) {
                 if (!(input.value || '').trim()) {
                     showNotification(t('obrigatorioPhcSemCodigo'), 'error');
+                    input.focus();
+                    return;
+                }
+            }
+        } else {
+            for (const input of phcInputs) {
+                if (!(input.value || '').trim()) {
+                    showNotification(lang === 'es' ? 'Debe informar el código PHC para guardar y concluir la creación de código.' : lang === 'en' ? 'You must enter the PHC code to save and complete code creation.' : 'Deve indicar o código PHC para guardar e concluir a criação de código.', 'error');
                     input.focus();
                     return;
                 }
@@ -1207,6 +1221,9 @@
             .map(tr => tr.getAttribute('data-articulo-id'))
             .filter(id => id && id !== 'undefined');
         const gcIdsEncomenda = rowsEncomenda
+            .map(tr => tr.getAttribute('data-gc-id'))
+            .filter(id => id && id !== 'undefined');
+        const gcIdsBlock = Array.from(rows)
             .map(tr => tr.getAttribute('data-gc-id'))
             .filter(id => id && id !== 'undefined');
         const articuloIdsEncomenda = [...new Set([...(articuloIdsFromRows || []), ...((Array.isArray(articuloIds) ? articuloIds : []).filter(Boolean))])];
@@ -1251,6 +1268,14 @@
                     .eq('id', gcId);
                 if (error) throw error;
             }
+
+            if (soloCreacaoCodigos && gcIdsBlock.length > 0) {
+                const { error: concluirCodError } = await client
+                    .from('gestao_compras')
+                    .update({ estado_pedido: 'concluido' })
+                    .in('id', gcIdsBlock);
+                if (concluirCodError) throw concluirCodError;
+            }
             showNotification(t('guardado'), 'success');
 
             if (presupuestoId && !soloCreacaoCodigos) {
@@ -1267,6 +1292,8 @@
                     await tryMoveProposalToEncomendaEnCurso(client, presupuestoId, fornecedorName, articuloIdsEncomenda);
                 }
             }
+            await loadHistorico();
+            await loadList();
         } catch (e) {
             console.error('saveFornecedorGroup:', e);
             showNotification(e.message || t('error'), 'error');
@@ -1387,11 +1414,13 @@
         blocksEl.innerHTML = '<div class="ge-loading">' + t('loading') + '</div>';
 
         try {
-            const { data: gcRows, error: gcErr } = await client
+            const { data: gcRowsRaw, error: gcErr } = await client
                 .from('gestao_compras')
                 .select('*')
                 .eq('presupuesto_id', presupuestoId);
             if (gcErr) throw gcErr;
+            // Em curso: mostrar SOLO filas realmente em_curso para evitar duplicados con criacao_codigos concluida.
+            const gcRows = (gcRowsRaw || []).filter(gc => ((gc.estado_pedido || '').toLowerCase() === 'em_curso'));
 
             const { data: articulos, error: artErr } = await client
                 .from('presupuestos_articulos')
