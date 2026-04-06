@@ -8342,8 +8342,35 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         existing._mergeOccurrences.push({ qty: qty2, unitPrice: Number(item.price || 0) });
 
         // Recalcular usando escalones por ocurrencia (NO por qtySum).
-        const canCalcTiers = existing.price_tiers && Array.isArray(existing.price_tiers) && existing.price_tiers.length > 0 &&
-            window.cartManager && typeof window.cartManager.getPriceForQuantity === 'function';
+        // Prioridad de escalones: variante seleccionada > base.
+        // Si hay variante seleccionada pero SIN escalones válidos, NO caer a base:
+        // se conserva el precio guardado por ocurrencia.
+        const hasSelectedVariant = existing.selectedVariant !== null &&
+            existing.selectedVariant !== undefined &&
+            existing.variants &&
+            Array.isArray(existing.variants) &&
+            existing.variants.length > 0;
+
+        let effectivePriceTiers = [];
+        let variantTiersMissing = false;
+
+        if (hasSelectedVariant) {
+            const selectedVariant = existing.variants[existing.selectedVariant];
+            if (selectedVariant && Array.isArray(selectedVariant.price_tiers) && selectedVariant.price_tiers.length > 0) {
+                effectivePriceTiers = selectedVariant.price_tiers;
+            } else {
+                variantTiersMissing = true;
+            }
+        } else if (existing.price_tiers && Array.isArray(existing.price_tiers) && existing.price_tiers.length > 0) {
+            effectivePriceTiers = existing.price_tiers;
+        }
+
+        const canCalcTiers = !variantTiersMissing &&
+            effectivePriceTiers &&
+            Array.isArray(effectivePriceTiers) &&
+            effectivePriceTiers.length > 0 &&
+            window.cartManager &&
+            typeof window.cartManager.getPriceForQuantity === 'function';
 
         const occs = existing._mergeOccurrences;
         const newQtySum = occs.reduce((acc, o) => acc + Number(o.qty || 0), 0);
@@ -8356,7 +8383,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             for (const o of occs) {
                 const q = Number(o.qty || 0);
                 if (!Number.isFinite(q) || q <= 0) continue;
-                const res = window.cartManager.getPriceForQuantity(existing.price_tiers, q, baseForCalc);
+                const res = window.cartManager.getPriceForQuantity(effectivePriceTiers, q, baseForCalc);
                 const unit = (res && typeof res.price === 'number' && Number.isFinite(res.price)) ? res.price : Number(o.unitPrice || 0);
                 const total = unit * q;
                 newOccs.push({ qty: q, unitPrice: unit, total });
