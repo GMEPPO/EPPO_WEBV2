@@ -1762,7 +1762,37 @@ class ProposalsManager {
                     gap: 8px;
                     transition: all 0.2s;
                 " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(139,92,246,0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
-                    <i class="fas fa-folder"></i> <span id="view-dossiers-text">${this.currentLanguage === 'es' ? 'Ver Dossiers' : this.currentLanguage === 'pt' ? 'Ver Dossiers' : 'View Dossiers'} (${proposal.dossier_documentos.length})</span>
+                    <i class="fas fa-folder"></i> <span id="view-dossiers-text">${detailLabels.viewDossiers} (${proposal.dossier_documentos.length})</span>
+                </button>
+                <button class="btn-replace-dossier" onclick="window.proposalsManager.openProposalDossierManager('${proposal.id}', 'replace')" style="
+                    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+                    color: white;
+                    border: none;
+                    padding: 10px 20px;
+                    border-radius: 8px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    transition: all 0.2s;
+                " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(99,102,241,0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
+                    <i class="fas fa-rotate"></i> <span>${detailLabels.replaceDossier}</span>
+                </button>
+                <button class="btn-append-dossier" onclick="window.proposalsManager.openProposalDossierManager('${proposal.id}', 'append')" style="
+                    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+                    color: white;
+                    border: none;
+                    padding: 10px 20px;
+                    border-radius: 8px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    transition: all 0.2s;
+                " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(14,165,233,0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
+                    <i class="fas fa-file-circle-plus"></i> <span>${detailLabels.appendDossier}</span>
                 </button>
                 ` : ''}
                 ${window.cachedRole !== 'comercial' ? `
@@ -3838,6 +3868,9 @@ class ProposalsManager {
                 total: 'Total',
                 editProposal: 'Editar Proposta',
                 printPDF: 'Imprimir PDF',
+                viewDossiers: 'Ver Dossiers',
+                replaceDossier: 'Substituir Dossier',
+                appendDossier: 'Anexar Documento',
                 viewHistory: 'Ver Modificações',
                 viewStatusHistory: 'Ver alterações de estado',
                 deleteProposal: 'Eliminar',
@@ -3879,6 +3912,9 @@ class ProposalsManager {
                 total: 'Total',
                 editProposal: 'Editar Propuesta',
                 printPDF: 'Imprimir PDF',
+                viewDossiers: 'Ver Dossiers',
+                replaceDossier: 'Sustituir Dossier',
+                appendDossier: 'Anexar Documento',
                 viewHistory: 'Ver Modificaciones',
                 viewStatusHistory: 'Ver cambios de estado',
                 deleteProposal: 'Eliminar',
@@ -3920,6 +3956,9 @@ class ProposalsManager {
                 total: 'Total',
                 editProposal: 'Edit Proposal',
                 printPDF: 'Print PDF',
+                viewDossiers: 'View Dossiers',
+                replaceDossier: 'Replace Dossier',
+                appendDossier: 'Append Document',
                 viewHistory: 'View History',
                 viewStatusHistory: 'View status changes',
                 deleteProposal: 'Delete',
@@ -9200,6 +9239,145 @@ class ProposalsManager {
     // ============================================
     // MODAL: Aguarda Aprovação de Dossier
     // ============================================
+    getDossierModalLabels(mode = 'status') {
+        const translations = {
+            pt: {
+                status: { title: 'Aguarda AprovaÃ§Ã£o de Dossier', documentsLabel: 'Documentos ou imagens do dossier (mÃ¡ximo 3):', addDocument: 'Adicionar Documento', cancel: 'Cancelar', save: 'Guardar' },
+                replace: { title: 'Substituir Dossier', documentsLabel: 'Documentos finais do dossier (mÃ¡ximo 3):', addDocument: 'Adicionar novo documento', cancel: 'Cancelar', save: 'Guardar dossier', hint: 'Remova os antigos e carregue os novos documentos que devem ficar na proposta.', existing: 'Atual', uploaded: 'Novo' },
+                append: { title: 'Anexar Documento ao Dossier', documentsLabel: 'Documentos do dossier (mÃ¡ximo 3):', addDocument: 'Anexar documento', cancel: 'Cancelar', save: 'Guardar dossier', hint: 'Os documentos atuais mantÃªm-se. Pode anexar mais sem ultrapassar o limite.', existing: 'Atual', uploaded: 'Novo' }
+            },
+            es: {
+                status: { title: 'Aguarda AprobaciÃ³n de Dossier', documentsLabel: 'Documentos o imÃ¡genes del dossier (mÃ¡ximo 3):', addDocument: 'Agregar Documento', cancel: 'Cancelar', save: 'Guardar' },
+                replace: { title: 'Sustituir Dossier', documentsLabel: 'Documentos finales del dossier (mÃ¡ximo 3):', addDocument: 'Agregar documento nuevo', cancel: 'Cancelar', save: 'Guardar dossier', hint: 'Quite los actuales y suba los nuevos documentos que deben quedar en la propuesta.', existing: 'Actual', uploaded: 'Nuevo' },
+                append: { title: 'Anexar Documento al Dossier', documentsLabel: 'Documentos del dossier (mÃ¡ximo 3):', addDocument: 'Anexar documento', cancel: 'Cancelar', save: 'Guardar dossier', hint: 'Los documentos actuales se conservan. Puede anexar mÃ¡s sin superar el lÃ­mite.', existing: 'Actual', uploaded: 'Nuevo' }
+            },
+            en: {
+                status: { title: 'Awaiting Dossier Approval', documentsLabel: 'Dossier documents or images (maximum 3):', addDocument: 'Add Document', cancel: 'Cancel', save: 'Save' },
+                replace: { title: 'Replace Dossier', documentsLabel: 'Final dossier documents (maximum 3):', addDocument: 'Add new document', cancel: 'Cancel', save: 'Save dossier', hint: 'Remove the current files and upload the new documents that should remain on the proposal.', existing: 'Current', uploaded: 'New' },
+                append: { title: 'Append Document to Dossier', documentsLabel: 'Dossier documents (maximum 3):', addDocument: 'Append document', cancel: 'Cancel', save: 'Save dossier', hint: 'Current documents stay attached. You can append more without exceeding the limit.', existing: 'Current', uploaded: 'New' }
+            }
+        };
+        const langTranslations = translations[this.currentLanguage] || translations.pt;
+        return langTranslations[mode] || langTranslations.status;
+    }
+
+    getProposalDossierDocuments(proposal) {
+        if (!proposal) return [];
+        if (Array.isArray(proposal.dossier_documentos)) {
+            return proposal.dossier_documentos.filter(url => !!String(url || '').trim()).map(url => String(url).trim());
+        }
+        if (typeof proposal.dossier_documentos === 'string' && proposal.dossier_documentos.trim()) {
+            try {
+                const parsed = JSON.parse(proposal.dossier_documentos);
+                if (Array.isArray(parsed)) {
+                    return parsed.filter(url => !!String(url || '').trim()).map(url => String(url).trim());
+                }
+            } catch (_) {}
+            return [proposal.dossier_documentos.trim()];
+        }
+        return [];
+    }
+
+    renderDossierDocumentCard(container, publicUrl, fileName, source = 'existing') {
+        if (!container || !publicUrl) return;
+        const labels = this.getDossierModalLabels(container.dataset.mode || 'status');
+        const isImage = /\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?|$)/i.test(publicUrl || '');
+        const card = document.createElement('div');
+        card.style.position = 'relative';
+        card.style.display = 'inline-flex';
+        card.style.flexDirection = 'column';
+        card.style.margin = '5px';
+        card.style.gap = '6px';
+        card.setAttribute('data-url', publicUrl);
+        card.setAttribute('data-source', source);
+        card.setAttribute('data-dossier-card', 'true');
+
+        const safeName = (fileName || publicUrl.split('/').pop() || 'documento').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const sourceLabel = source === 'existing' ? labels.existing : labels.uploaded;
+        const badgeBg = source === 'existing' ? '#64748b' : '#10b981';
+
+        if (isImage) {
+            card.innerHTML = `
+                <div style="position: relative;">
+                    <img src="${publicUrl}" data-url="${publicUrl}" style="width: 150px; height: 150px; object-fit: cover; border-radius: 8px; border: 2px solid var(--bg-gray-300);">
+                    <button type="button" onclick="removeDossierDocument(this)" style="position: absolute; top: 5px; right: 5px; background: #ef4444; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-times" style="font-size: 12px;"></i>
+                    </button>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;width:150px;">
+                    <span style="display:inline-flex;align-items:center;justify-content:center;padding:2px 8px;border-radius:999px;background:${badgeBg};color:white;font-size:11px;font-weight:700;">${sourceLabel}</span>
+                    <a href="${publicUrl}" target="_blank" rel="noopener" style="font-size:11px;color:var(--primary-500,#3b82f6);text-decoration:underline;">Ver</a>
+                </div>
+                <div style="width:150px;font-size:11px;color:var(--text-secondary);word-break:break-word;">${safeName}</div>
+            `;
+        } else {
+            card.innerHTML = `
+                <div style="position: relative; width: 150px; height: 150px; border: 2px solid var(--bg-gray-300); border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; background: var(--bg-gray-100);">
+                    <button type="button" onclick="removeDossierDocument(this)" style="position: absolute; top: 5px; right: 5px; background: #ef4444; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-times" style="font-size: 12px;"></i>
+                    </button>
+                    <i class="fas fa-file" style="font-size: 48px; color: var(--text-secondary); margin-bottom: 10px;"></i>
+                    <span style="font-size: 12px; color: var(--text-secondary); text-align: center; word-break: break-word;">${safeName}</span>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;width:150px;">
+                    <span style="display:inline-flex;align-items:center;justify-content:center;padding:2px 8px;border-radius:999px;background:${badgeBg};color:white;font-size:11px;font-weight:700;">${sourceLabel}</span>
+                    <a href="${publicUrl}" target="_blank" rel="noopener" style="font-size:11px;color:var(--primary-500,#3b82f6);text-decoration:underline;">Ver</a>
+                </div>
+            `;
+        }
+
+        container.appendChild(card);
+    }
+
+    async persistProposalDossierDocuments(proposalId, documentosUrls) {
+        const cleanedUrls = Array.from(new Set((documentosUrls || []).filter(url => !!String(url || '').trim()).map(url => String(url).trim()))).slice(0, 3);
+        if (!this.supabase) {
+            await this.initializeSupabase();
+        }
+
+        const dossierData = { presupuesto_id: proposalId, documentos_urls: cleanedUrls };
+        const { data: existing } = await this.supabase.from('presupuestos_dossiers').select('id').eq('presupuesto_id', proposalId).maybeSingle();
+
+        if (existing) {
+            await this.supabase.from('presupuestos_dossiers').update(dossierData).eq('presupuesto_id', proposalId);
+        } else {
+            await this.supabase.from('presupuestos_dossiers').insert([dossierData]);
+        }
+
+        const proposal = this.allProposals.find(p => p.id === proposalId);
+        if (proposal) proposal.dossier_documentos = cleanedUrls;
+        return cleanedUrls;
+    }
+
+    openProposalDossierManager(proposalId, mode = 'append') {
+        const proposal = this.allProposals.find(p => p.id === proposalId);
+        if (!proposal) {
+            console.error('Propuesta no encontrada:', proposalId);
+            return;
+        }
+
+        const modal = document.getElementById('aguardaAprovacaoDossierModal');
+        const documentsContainer = document.getElementById('aguarda-dossier-documents-container');
+        if (!modal || !documentsContainer) {
+            console.error('Modal de dossier no encontrado');
+            return;
+        }
+
+        documentsContainer.innerHTML = '';
+        documentsContainer.setAttribute('data-mode', mode);
+        modal.setAttribute('data-proposal-id', proposal.id);
+        modal.setAttribute('data-dossier-mode', mode);
+        modal.setAttribute('data-update-status', 'false');
+
+        this.getProposalDossierDocuments(proposal).forEach((url, index) => {
+            this.renderDossierDocumentCard(documentsContainer, url, `dossier-${index + 1}`, 'existing');
+        });
+
+        this.updateAguardaAprovacaoDossierTranslations();
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
     openAguardaAprovacaoDossierModal(proposal) {
         const modal = document.getElementById('aguardaAprovacaoDossierModal');
         const documentsContainer = document.getElementById('aguarda-dossier-documents-container');
@@ -9209,18 +9387,17 @@ class ProposalsManager {
             return;
         }
 
-        // Limpiar documentos anteriores
         if (documentsContainer) {
             documentsContainer.innerHTML = '';
+            documentsContainer.setAttribute('data-mode', 'status');
         }
 
-        // Guardar el ID de la propuesta
         modal.setAttribute('data-proposal-id', proposal.id);
+        modal.setAttribute('data-dossier-mode', 'status');
+        modal.setAttribute('data-update-status', 'true');
 
-        // Actualizar traducciones
         this.updateAguardaAprovacaoDossierTranslations();
 
-        // Mostrar modal
         modal.classList.add('active');
         document.body.style.overflow = 'hidden';
     }
@@ -9334,6 +9511,95 @@ class ProposalsManager {
                 element.textContent = text;
             }
         });
+    }
+
+    async saveAguardaAprovacaoDossierStatus() {
+        const modal = document.getElementById('aguardaAprovacaoDossierModal');
+        const proposalId = modal?.getAttribute('data-proposal-id');
+
+        if (!proposalId) {
+            console.error('Proposal ID not found');
+            return;
+        }
+
+        const documentsContainer = document.getElementById('aguarda-dossier-documents-container');
+        const uploadedDocuments = documentsContainer ? Array.from(documentsContainer.querySelectorAll('[data-url]')).map(el => el.getAttribute('data-url')).slice(0, 3) : [];
+        const shouldUpdateStatus = modal?.getAttribute('data-update-status') !== 'false';
+
+        try {
+            const savedDocuments = await this.persistProposalDossierDocuments(proposalId, uploadedDocuments);
+            if (shouldUpdateStatus) {
+                await this.updateProposalStatus(proposalId, 'aguarda_aprovacao_dossier');
+            }
+
+            this.closeAguardaAprovacaoDossierModal();
+            const successMessage = this.currentLanguage === 'es'
+                ? (shouldUpdateStatus ? 'Dossier guardado y estado actualizado correctamente' : 'Dossier guardado correctamente')
+                : this.currentLanguage === 'pt'
+                    ? (shouldUpdateStatus ? 'Dossier guardado e estado atualizado com sucesso' : 'Dossier guardado com sucesso')
+                    : (shouldUpdateStatus ? 'Dossier saved and status updated successfully' : 'Dossier saved successfully');
+            this.showNotification(successMessage, 'success');
+
+            const proposal = this.allProposals.find(p => p.id === proposalId);
+            if (proposal) proposal.dossier_documentos = savedDocuments;
+        } catch (error) {
+            console.error('Error al guardar dossier:', error);
+            const message = this.currentLanguage === 'es'
+                ? `Error al guardar: ${error.message}`
+                : this.currentLanguage === 'pt'
+                    ? `Erro ao guardar: ${error.message}`
+                    : `Error saving: ${error.message}`;
+            this.showNotification(message, 'error');
+        }
+    }
+
+    closeAguardaAprovacaoDossierModal() {
+        const modal = document.getElementById('aguardaAprovacaoDossierModal');
+        const documentsContainer = document.getElementById('aguarda-dossier-documents-container');
+        if (modal) {
+            modal.classList.remove('active');
+            document.body.style.overflow = 'auto';
+            modal.removeAttribute('data-dossier-mode');
+            modal.removeAttribute('data-update-status');
+        }
+        if (documentsContainer) {
+            documentsContainer.innerHTML = '';
+            documentsContainer.removeAttribute('data-mode');
+        }
+    }
+
+    updateAguardaAprovacaoDossierTranslations() {
+        const modal = document.getElementById('aguardaAprovacaoDossierModal');
+        const mode = modal?.getAttribute('data-dossier-mode') || 'status';
+        const t = this.getDossierModalLabels(mode);
+
+        const elements = {
+            'aguarda-dossier-modal-title': t.title,
+            'aguarda-dossier-documents-label': t.documentsLabel,
+            'aguarda-dossier-add-document-btn': t.addDocument,
+            'aguarda-dossier-cancel-btn': t.cancel,
+            'aguarda-dossier-save-text': t.save
+        };
+
+        Object.entries(elements).forEach(([id, text]) => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.textContent = text;
+            }
+        });
+
+        const documentsContainer = document.getElementById('aguarda-dossier-documents-container');
+        if (documentsContainer && documentsContainer.parentNode) {
+            let hint = document.getElementById('aguarda-dossier-mode-hint');
+            if (!hint) {
+                hint = document.createElement('div');
+                hint.id = 'aguarda-dossier-mode-hint';
+                hint.style.cssText = 'font-size: 0.85rem; color: var(--text-secondary); margin: -6px 0 8px;';
+                documentsContainer.parentNode.insertBefore(hint, documentsContainer);
+            }
+            hint.textContent = t.hint || '';
+            hint.style.display = t.hint ? 'block' : 'none';
+        }
     }
 
     // ============================================
@@ -10546,6 +10812,18 @@ function saveAguardaAprovacaoDossierStatus() {
 
 function addDossierDocument() {
     const input = document.getElementById('aguarda-dossier-document-input');
+    const container = document.getElementById('aguarda-dossier-documents-container');
+    const existingDocs = container ? container.querySelectorAll('[data-url]').length : 0;
+    if (existingDocs >= 3) {
+        const lang = window.proposalsManager?.currentLanguage;
+        const message = lang === 'es'
+            ? 'Máximo 3 documentos permitidos. Elimine uno antes de anexar otro.'
+            : lang === 'pt'
+                ? 'Máximo 3 documentos permitidos. Remova um antes de anexar outro.'
+                : 'Maximum 3 documents allowed. Remove one before appending another.';
+        window.proposalsManager?.showNotification?.(message, 'info');
+        return;
+    }
     if (input) {
         input.click();
     }
@@ -10675,30 +10953,21 @@ async function handleDossierDocumentUpload(event) {
 
             // Quitar placeholder de carga y crear elemento de documento
             if (placeholderDiv && placeholderDiv.parentNode) placeholderDiv.remove();
-            const docDiv = document.createElement('div');
-            docDiv.style.position = 'relative';
-            docDiv.style.display = 'inline-block';
-            docDiv.style.margin = '5px';
-            
-            if (file.type.startsWith('image/')) {
-                docDiv.innerHTML = `
-                    <img src="${publicUrl}" data-url="${publicUrl}" style="width: 150px; height: 150px; object-fit: cover; border-radius: 8px; border: 2px solid var(--bg-gray-300);">
-                    <button type="button" onclick="removeDossierDocument(this)" style="position: absolute; top: 5px; right: 5px; background: #ef4444; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
-                        <i class="fas fa-times" style="font-size: 12px;"></i>
-                    </button>
-                `;
+            if (window.proposalsManager?.renderDossierDocumentCard) {
+                window.proposalsManager.renderDossierDocumentCard(container, publicUrl, file.name, 'uploaded');
             } else {
+                const docDiv = document.createElement('div');
+                docDiv.style.position = 'relative';
+                docDiv.style.display = 'inline-block';
+                docDiv.style.margin = '5px';
                 docDiv.innerHTML = `
-                    <div style="width: 150px; height: 150px; border: 2px solid var(--bg-gray-300); border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; background: var(--bg-gray-100);">
+                    <div style="width: 150px; height: 150px; border: 2px solid var(--bg-gray-300); border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; background: var(--bg-gray-100);" data-url="${publicUrl}">
                         <i class="fas fa-file" style="font-size: 48px; color: var(--text-secondary); margin-bottom: 10px;"></i>
                         <span style="font-size: 12px; color: var(--text-secondary); text-align: center; word-break: break-word;">${file.name}</span>
                     </div>
-                    <a href="${publicUrl}" target="_blank" data-url="${publicUrl}" style="position: absolute; top: 5px; right: 5px; background: #ef4444; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; text-decoration: none;">
-                        <i class="fas fa-times" style="font-size: 12px;"></i>
-                    </a>
                 `;
+                container.appendChild(docDiv);
             }
-            container.appendChild(docDiv);
         } catch (error) {
             if (placeholderDiv && placeholderDiv.parentNode) placeholderDiv.remove();
             console.error('Error al subir documento:', error);
@@ -10716,7 +10985,12 @@ async function handleDossierDocumentUpload(event) {
 }
 
 function removeDossierDocument(button) {
-    button.closest('div').remove();
+    const card = button.closest('[data-dossier-card="true"]');
+    if (card) {
+        card.remove();
+        return;
+    }
+    button.closest('div')?.remove();
 }
 
 // Funciones globales para modal de aguarda pagamento
