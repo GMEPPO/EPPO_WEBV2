@@ -7735,12 +7735,12 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             proposal: 'Proposta',
             name: 'Nome',
             photo: 'Foto',
-            description: 'DESCRIÃ‡ÃƒO',
+            description: 'DESCRI\u00C7\u00C3O',
             quantity: 'Qtd.',
-            unitPrice: 'PreÃ§o',
+            unitPrice: 'Pre\u00E7o',
             total: 'Total',
             deliveryTime: 'Prazo',
-            personalizedPrice: 'PreÃ§o Personalizado',
+            personalizedPrice: 'Pre\u00E7o Personalizado',
             personalized: 'Personalizado',
             notes: 'Notas',
             totalProposal: 'Total da Proposta',
@@ -7766,18 +7766,18 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             unidadesEnStock: 'unidades en stock',
             restantes: 'Restantes',
             plazoEntrega: 'plazo de entrega',
-            sujetoConfirmacion: '(sujeto a confirmaciÃ³n en el momento de la adjudicaciÃ³n)'
+            sujetoConfirmacion: '(sujeto a confirmaci\u00F3n en el momento de la adjudicaci\u00F3n)'
         },
         pt: {
             proposal: 'Proposta',
             name: 'Nome',
             photo: 'Foto',
-            description: 'DescriÃ§Ã£o',
+            description: 'Descri\u00E7\u00E3o',
             quantity: 'Qtd.',
-            unitPrice: 'PreÃ§o',
+            unitPrice: 'Pre\u00E7o',
             total: 'Total',
             deliveryTime: 'Entrega',
-            personalizedPrice: 'PreÃ§o Personalizado',
+            personalizedPrice: 'Pre\u00E7o Personalizado',
             personalized: 'Personalizado',
             notes: 'Notas',
             totalProposal: 'Total da Proposta',
@@ -7787,7 +7787,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             unidadesEnStock: 'unidades em stock',
             restantes: 'Restantes',
             plazoEntrega: 'prazo de entrega',
-            sujetoConfirmacion: '(sujeito a confirmaÃ§Ã£o no momento da adjudicaÃ§Ã£o)'
+            sujetoConfirmacion: '(sujeito a confirma\u00E7\u00E3o no momento da adjudica\u00E7\u00E3o)'
         },
         en: {
             proposal: 'Proposal',
@@ -8952,8 +8952,8 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     // Agregar traducciÃ³n para "Logo"
     const logoLabel = lang === 'pt' ? 'Logo' : lang === 'es' ? 'Logo' : 'Logo';
     const logoConfirmationText = lang === 'es'
-        ? 'precio a confirmar tras la recepciÃ³n del logotipo'
-        : 'preÃ§o a confirmar apÃ³s a receÃ§Ã£o do logotipo';
+        ? 'precio a confirmar tras la recepci\u00F3n del logotipo'
+        : 'pre\u00E7o a confirmar ap\u00F3s a rece\u00E7\u00E3o do logotipo';
     
     // Dibujar encabezados (todos centrados) - fondo gris oscuro como el pie de pÃ¡gina
     doc.setFillColor(64, 64, 64); // Mismo gris oscuro que el pie de pÃ¡gina
@@ -9613,11 +9613,11 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             ? mergeOccurrences.map(o => {
                 const u = Number(o?.unitPrice || 0);
                 if (!Number.isFinite(u) || u === 0) return translations[currentLang] || translations['pt'];
-                return `â‚¬${formatMoneyForPdf(u)}`;
+                return `\u20AC${formatMoneyForPdf(u)}`;
             }).join('\n')
             : ((unitPrice === 0 || unitPrice === null || unitPrice === undefined)
                 ? (translations[currentLang] || translations['pt'])
-                : `â‚¬${formatMoneyForPdf(unitPrice)}`);
+                : `\u20AC${formatMoneyForPdf(unitPrice)}`);
 
         drawCell(colPositions.unitPrice, currentY, colWidths.unitPrice, calculatedRowHeight, precioParaMostrar, { align: 'center', fontSize: 8, noWrap: true, separatorBetweenLines: !!(mergeOccurrences && mergeOccurrences.length > 1) });
 
@@ -9627,11 +9627,11 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                 const q = Number(o?.qty || 0);
                 const t = (o && o.total !== undefined && o.total !== null) ? Number(o.total) : (u * q);
                 if (!Number.isFinite(u) || u === 0) return translations[currentLang] || translations['pt'];
-                return `â‚¬${formatMoneyForPdf(t)}`;
+                return `\u20AC${formatMoneyForPdf(t)}`;
             }).join('\n')
             : ((unitPrice === 0 || unitPrice === null || unitPrice === undefined)
                 ? (translations[currentLang] || translations['pt'])
-                : `â‚¬${formatMoneyForPdf(total)}`);
+                : `\u20AC${formatMoneyForPdf(total)}`);
 
         drawCell(colPositions.total, currentY, colWidths.total, calculatedRowHeight, totalParaMostrar, { align: 'center', bold: true, fontSize: 8, noWrap: true, separatorBetweenLines: !!(mergeOccurrences && mergeOccurrences.length > 1) });
         drawCell(
@@ -9876,7 +9876,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     
     // Celda del total - con separador de miles (ej. 309.750,00)
     const formattedTotalProposal = formatMoneyForPdf(totalProposal);
-    drawCell(colPositions.total, currentY, colWidths.total, baseRowHeight, `â‚¬${formattedTotalProposal}`, { align: 'center', bold: true, fontSize: 9, noWrap: true, textColor: whiteColor, border: true });
+    drawCell(colPositions.total, currentY, colWidths.total, baseRowHeight, `\u20AC${formattedTotalProposal}`, { align: 'center', bold: true, fontSize: 9, noWrap: true, textColor: whiteColor, border: true });
     
     // Celda de plazo de entrega (vacÃ­a en la fila del total)
     drawCell(colPositions.deliveryTime, currentY, colWidths.deliveryTime, baseRowHeight, '', { align: 'center', border: true, textColor: whiteColor });
