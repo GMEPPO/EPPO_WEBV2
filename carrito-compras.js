@@ -1646,15 +1646,15 @@ class CartManager {
         const translations = {
             pt: {
                 foto: 'Foto',
-                descricao: 'DescriÃ§Ã£o',
+                descricao: 'Descrição',
                 quantidade: 'Quantidade',
-                preco: 'PreÃ§o',
+                preco: 'Preço',
                 prazoEntrega: 'Prazo de Entrega',
-                acoes: 'AÃ§Ãµes'
+                acoes: 'Ações'
             },
             es: {
                 foto: 'Foto',
-                descricao: 'DescripciÃ³n',
+                descricao: 'Descripción',
                 quantidade: 'Cantidad',
                 preco: 'Precio',
                 prazoEntrega: 'Plazo de Entrega',
@@ -1695,14 +1695,14 @@ class CartManager {
                 unidadesEnStock: 'unidades en stock',
                 restantes: 'Restantes',
                 plazoEntrega: 'plazo de entrega',
-                sujetoConfirmacion: '(sujeto a confirmaciÃ³n en el momento de la adjudicaciÃ³n)'
+                sujetoConfirmacion: '(sujeto a confirmación en el momento de la adjudicación)'
             },
             pt: {
                 enStock: 'Em stock',
                 unidadesEnStock: 'unidades em stock',
                 restantes: 'Restantes',
                 plazoEntrega: 'prazo de entrega',
-                sujetoConfirmacion: '(sujeito a confirmaÃ§Ã£o no momento da adjudicaÃ§Ã£o)'
+                sujetoConfirmacion: '(sujeito a confirmação no momento da adjudicação)'
             },
             en: {
                 enStock: 'In stock',
@@ -2905,10 +2905,10 @@ class CartManager {
                                     onblur="updateManualPrice('${String(itemIdentifier).replace(/'/g, "\\'")}', this.value)">`;
                             }
                             // Precio normal (clickeable para ver escalones)
-                            return `<div class="cart-item-total" style="cursor: pointer; transition: opacity 0.2s;" onclick="showPriceTiersModal('${String(itemIdentifier).replace(/'/g, "\\'")}', '${productName.replace(/'/g, "\\'")}')" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">â‚¬${this.formatUnitPrice(unitPrice)}</div>`;
+                            return `<div class="cart-item-total" style="cursor: pointer; transition: opacity 0.2s;" onclick="showPriceTiersModal('${String(itemIdentifier).replace(/'/g, "\\'")}', '${productName.replace(/'/g, "\\'")}')" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">€${this.formatUnitPrice(unitPrice)}</div>`;
                         } else {
                             // Precio normal (clickeable para ver escalones)
-                            return `<div class="cart-item-total" style="cursor: pointer; transition: opacity 0.2s;" onclick="showPriceTiersModal('${String(itemIdentifier).replace(/'/g, "\\'")}', '${productName.replace(/'/g, "\\'")}')" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">â‚¬${this.formatUnitPrice(unitPrice)}</div>`;
+                            return `<div class="cart-item-total" style="cursor: pointer; transition: opacity 0.2s;" onclick="showPriceTiersModal('${String(itemIdentifier).replace(/'/g, "\\'")}', '${productName.replace(/'/g, "\\'")}')" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">€${this.formatUnitPrice(unitPrice)}</div>`;
                         }
                     })()}
                 </div>
@@ -2929,10 +2929,10 @@ class CartManager {
                                 }
                             }
                         }
-                        // Siempre que haya plazo de entrega, aÃ±adir "sujeito a confirmaÃ§Ã£o no momento da adjudicaÃ§Ã£o"
+                        // Siempre que haya plazo de entrega, añadir la nota de confirmación si no existe
                         if (deliveryTimeToShow) {
                             const tDelivery = this.getStockTranslations();
-                            const yaTieneFrase = /adjudicaÃ§Ã£o|adjudicaciÃ³n|award/i.test(deliveryTimeToShow);
+                            const yaTieneFrase = /adjudicação|adjudicación|award/i.test(deliveryTimeToShow);
                             if (!yaTieneFrase) {
                                 deliveryTimeToShow = `${deliveryTimeToShow} ${tDelivery.sujetoConfirmacion}`;
                             }
