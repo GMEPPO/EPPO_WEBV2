@@ -1,6 +1,6 @@
-/**
+﻿/**
  * Sistema de Carrito de Compras - EPPO
- * Maneja la funcionalidad completa del carrito incluyendo agregar categorías
+ * Maneja la funcionalidad completa del carrito incluyendo agregar categorÃ­as
  */
 
 class CartManager {
@@ -8,7 +8,7 @@ class CartManager {
         this.cart = this.loadCart();
         this.currentLanguage = localStorage.getItem('language') || 'pt';
         this.allProducts = [];
-        this.allCategories = []; // Categorías con nombres en ambos idiomas
+        this.allCategories = []; // CategorÃ­as con nombres en ambos idiomas
         this.selectedProduct = null;
         this.supabase = null;
         this.editingProposalId = null;
@@ -20,12 +20,12 @@ class CartManager {
     async init() {
         await this.initializeSupabase();
         await this.loadAllProducts();
-        await this.loadCategories(); // Cargar categorías desde Supabase
+        await this.loadCategories(); // Cargar categorÃ­as desde Supabase
         
         // Verificar si estamos editando una propuesta
         await this.checkIfEditingProposal();
 
-        // Actualizar botón modo 200+ al cargar
+        // Actualizar botÃ³n modo 200+ al cargar
         await this.updateMode200Button();
         
         // Enriquecer items del carrito con datos de la BD si faltan
@@ -35,10 +35,10 @@ class CartManager {
         this.renderCart();
         this.updateSummary();
         
-        // Actualizar plazos según stock después de cargar
+        // Actualizar plazos segÃºn stock despuÃ©s de cargar
         this.updateDeliveryTimesFromStock();
         
-        // Cargar clientes para la barra de cliente y productos orçamentados anteriormente
+        // Cargar clientes para la barra de cliente y productos orÃ§amentados anteriormente
         if (typeof loadExistingClients === 'function') loadExistingClients();
         if (typeof setupProposalClientBar === 'function') setupProposalClientBar();
         
@@ -46,13 +46,13 @@ class CartManager {
     }
 
     async checkIfEditingProposal() {
-        // Verificar si hay un parámetro edit en la URL
+        // Verificar si hay un parÃ¡metro edit en la URL
         const urlParams = new URLSearchParams(window.location.search);
         const editId = urlParams.get('edit');
         
         if (editId) {
             this.editingProposalId = editId;
-            // Siempre cargar desde Supabase para tener todos los artículos (módulos, precio especial, etc.).
+            // Siempre cargar desde Supabase para tener todos los artÃ­culos (mÃ³dulos, precio especial, etc.).
             // El PDF/imprimir ya usa Supabase y muestra todo; localStorage puede tener datos antiguos o incompletos.
             try {
                 await this.loadProposalFromSupabase(editId);
@@ -71,7 +71,7 @@ class CartManager {
             }
             this.showEditingIndicator();
         } else {
-            // No estamos editando: si quedó datos de una edición anterior (salimos sin guardar o guardamos y volvimos), vaciar carrito
+            // No estamos editando: si quedÃ³ datos de una ediciÃ³n anterior (salimos sin guardar o guardamos y volvimos), vaciar carrito
             if (localStorage.getItem('editing_proposal')) {
                 localStorage.removeItem('editing_proposal');
                 this.editingProposalId = null;
@@ -100,7 +100,7 @@ class CartManager {
                 throw proposalError;
             }
 
-            // Cargar artículos (orden por created_at para no depender de columna 'orden')
+            // Cargar artÃ­culos (orden por created_at para no depender de columna 'orden')
             const { data: articulosRaw, error: articulosError } = await this.supabase
                 .from('presupuestos_articulos')
                 .select('*')
@@ -119,11 +119,11 @@ class CartManager {
                 return (a.created_at || '').localeCompare(b.created_at || '');
             });
             
-            // DEBUG: Verificar qué precios están llegando desde Supabase
-            console.log('📦 Artículos cargados desde Supabase:', articulos?.length || 0);
+            // DEBUG: Verificar quÃ© precios estÃ¡n llegando desde Supabase
+            console.log('ðŸ“¦ ArtÃ­culos cargados desde Supabase:', articulos?.length || 0);
             if (articulos && articulos.length > 0) {
                 articulos.forEach((art, idx) => {
-                    console.log(`   Artículo ${idx + 1}:`, {
+                    console.log(`   ArtÃ­culo ${idx + 1}:`, {
                         nombre: art.nombre_articulo,
                         precio: art.precio,
                         tipoPrecio: typeof art.precio,
@@ -147,39 +147,39 @@ class CartManager {
                 modo_200_plus: proposal.modo_200_plus || proposal.modo_200 || false
             };
 
-            // Cargar estado del modo 200+ desde la propuesta (solo así se bloquea el precio al cambiar cantidad)
+            // Cargar estado del modo 200+ desde la propuesta (solo asÃ­ se bloquea el precio al cambiar cantidad)
             this.modo200 = proposal.modo_200_plus || proposal.modo_200 || false;
 
-            // Primero cargar todos los productos generales; después añadir los exclusivos del cliente
-            // (si se hace al revés, loadAllProducts sustituye allProducts y se pierden los exclusivos)
+            // Primero cargar todos los productos generales; despuÃ©s aÃ±adir los exclusivos del cliente
+            // (si se hace al revÃ©s, loadAllProducts sustituye allProducts y se pierden los exclusivos)
             await this.loadAllProducts();
             await this.loadClientExclusiveProducts(proposal.nombre_cliente);
 
-            console.log('📦 Productos cargados antes de cargar propuesta al carrito:', this.allProducts.length);
-            console.log('📋 Artículos a cargar:', articulos ? articulos.length : 0);
+            console.log('ðŸ“¦ Productos cargados antes de cargar propuesta al carrito:', this.allProducts.length);
+            console.log('ðŸ“‹ ArtÃ­culos a cargar:', articulos ? articulos.length : 0);
 
-            // IMPORTANTE: Cargar los artículos al carrito PRIMERO, antes de aplicar modo 200+
+            // IMPORTANTE: Cargar los artÃ­culos al carrito PRIMERO, antes de aplicar modo 200+
             // Esto asegura que los precios guardados se carguen correctamente
             await this.loadProposalIntoCart();
             
-            // NO aplicar modo 200+ cuando se está editando - los precios ya están guardados
-            // Solo actualizar el botón del modo 200+ para mostrar el estado
+            // NO aplicar modo 200+ cuando se estÃ¡ editando - los precios ya estÃ¡n guardados
+            // Solo actualizar el botÃ³n del modo 200+ para mostrar el estado
             await this.updateMode200Button();
             
-            console.log('✅ Carrito después de cargar propuesta:', this.cart.length, 'items');
+            console.log('âœ… Carrito despuÃ©s de cargar propuesta:', this.cart.length, 'items');
         } catch (error) {
             // Error al cargar propuesta
         }
     }
 
     /**
-     * Comparar artículos originales con nuevos y generar lista de cambios
+     * Comparar artÃ­culos originales con nuevos y generar lista de cambios
      */
     compareArticlesAndGenerateEdits(articulosOriginales, articulosNuevos) {
         const cambios = [];
         const lang = this.currentLanguage || 'pt';
 
-        // Crear mapas para búsqueda rápida
+        // Crear mapas para bÃºsqueda rÃ¡pida
         const mapaOriginales = new Map();
         articulosOriginales.forEach(art => {
             const key = `${art.nombre_articulo}_${art.referencia_articulo || ''}`;
@@ -223,7 +223,7 @@ class CartManager {
             } else if (totalNuevo === 0 && totalOriginal > 0) {
                 const articulo = originales[0];
                 const mensaje = lang === 'es' ?
-                    `Se eliminó el producto "${articulo.nombre_articulo}"` :
+                    `Se eliminÃ³ el producto "${articulo.nombre_articulo}"` :
                     lang === 'pt' ?
                     `O produto "${articulo.nombre_articulo}" foi removido` :
                     `Product "${articulo.nombre_articulo}" was removed`;
@@ -248,10 +248,10 @@ class CartManager {
                 // Producto nuevo agregado
                 nuevos.forEach(art => {
                     const mensaje = lang === 'es' ?
-                        `Se agregó "${art.nombre_articulo}" (Cantidad: ${art.cantidad}, Precio: €${art.precio.toFixed(2)})` :
+                        `Se agregÃ³ "${art.nombre_articulo}" (Cantidad: ${art.cantidad}, Precio: â‚¬${art.precio.toFixed(2)})` :
                         lang === 'pt' ?
-                        `Foi adicionado "${art.nombre_articulo}" (Quantidade: ${art.cantidad}, Preço: €${art.precio.toFixed(2)})` :
-                        `Added "${art.nombre_articulo}" (Quantity: ${art.cantidad}, Price: €${art.precio.toFixed(2)})`;
+                        `Foi adicionado "${art.nombre_articulo}" (Quantidade: ${art.cantidad}, PreÃ§o: â‚¬${art.precio.toFixed(2)})` :
+                        `Added "${art.nombre_articulo}" (Quantity: ${art.cantidad}, Price: â‚¬${art.precio.toFixed(2)})`;
                     cambios.push({
                         tipo: 'agregado',
                         articulo: art.nombre_articulo,
@@ -269,7 +269,7 @@ class CartManager {
                 // Cambio en cantidad
                 if (totalNuevo !== totalOriginal) {
                     const mensaje = lang === 'es' ?
-                        `Cantidad de "${artOriginal.nombre_articulo}" cambió de ${totalOriginal} a ${totalNuevo}` :
+                        `Cantidad de "${artOriginal.nombre_articulo}" cambiÃ³ de ${totalOriginal} a ${totalNuevo}` :
                         lang === 'pt' ?
                         `Quantidade de "${artOriginal.nombre_articulo}" alterou de ${totalOriginal} para ${totalNuevo}` :
                         `Quantity of "${artOriginal.nombre_articulo}" changed from ${totalOriginal} to ${totalNuevo}`;
@@ -289,10 +289,10 @@ class CartManager {
                 const precioNuevo = Number(artNuevo.precio) || 0;
                 if (Math.abs(precioOriginal - precioNuevo) > 0.01) {
                     const mensaje = lang === 'es' ?
-                        `Precio de "${artOriginal.nombre_articulo}" cambió de €${precioOriginal.toFixed(2)} a €${precioNuevo.toFixed(2)}` :
+                        `Precio de "${artOriginal.nombre_articulo}" cambiÃ³ de â‚¬${precioOriginal.toFixed(2)} a â‚¬${precioNuevo.toFixed(2)}` :
                         lang === 'pt' ?
-                        `Preço de "${artOriginal.nombre_articulo}" alterou de €${precioOriginal.toFixed(2)} para €${precioNuevo.toFixed(2)}` :
-                        `Price of "${artOriginal.nombre_articulo}" changed from €${precioOriginal.toFixed(2)} to €${precioNuevo.toFixed(2)}`;
+                        `PreÃ§o de "${artOriginal.nombre_articulo}" alterou de â‚¬${precioOriginal.toFixed(2)} para â‚¬${precioNuevo.toFixed(2)}` :
+                        `Price of "${artOriginal.nombre_articulo}" changed from â‚¬${precioOriginal.toFixed(2)} to â‚¬${precioNuevo.toFixed(2)}`;
                     cambios.push({
                         tipo: 'modificacion',
                         articulo: artOriginal.nombre_articulo,
@@ -307,14 +307,14 @@ class CartManager {
                 // Cambio en observaciones
                 const obsOriginal = (artOriginal.observaciones || '').trim();
                 const obsNuevo = (artNuevo.observaciones || '').trim();
-                // Normalizar valores vacíos y comparar
+                // Normalizar valores vacÃ­os y comparar
                 const obsOriginalNormalizado = obsOriginal || '';
                 const obsNuevoNormalizado = obsNuevo || '';
                 if (obsOriginalNormalizado !== obsNuevoNormalizado) {
                     const mensaje = lang === 'es' ?
                         `Observaciones de "${artOriginal.nombre_articulo}" fueron modificadas` :
                         lang === 'pt' ?
-                        `Observações de "${artOriginal.nombre_articulo}" foram alteradas` :
+                        `ObservaÃ§Ãµes de "${artOriginal.nombre_articulo}" foram alteradas` :
                         `Observations of "${artOriginal.nombre_articulo}" were modified`;
                     cambios.push({
                         tipo: 'modificacion',
@@ -327,21 +327,21 @@ class CartManager {
                     });
                 }
 
-                // Cambio en personalización
-                // Normalizar valores: convertir a minúsculas y manejar valores equivalentes
+                // Cambio en personalizaciÃ³n
+                // Normalizar valores: convertir a minÃºsculas y manejar valores equivalentes
                 const normalizarPersonalizacion = (valor) => {
-                    // Manejar null, undefined, o string vacío
+                    // Manejar null, undefined, o string vacÃ­o
                     if (!valor || typeof valor !== 'string') return '';
                     const normalizado = valor.trim().toLowerCase();
-                    // Si está vacío después de trim, retornar string vacío
+                    // Si estÃ¡ vacÃ­o despuÃ©s de trim, retornar string vacÃ­o
                     if (normalizado === '') return '';
-                    // Mapear valores equivalentes a un valor estándar
+                    // Mapear valores equivalentes a un valor estÃ¡ndar
                     const equivalentes = {
-                        'sin personalización': '',
-                        'sem personalização': '',
+                        'sin personalizaciÃ³n': '',
+                        'sem personalizaÃ§Ã£o': '',
                         'sem personalizacao': '',
                         'no personalization': '',
-                        'sem personalizaçao': '', // Variante con ç
+                        'sem personalizaÃ§ao': '', // Variante con Ã§
                         '': ''
                     };
                     return equivalentes[normalizado] !== undefined ? equivalentes[normalizado] : normalizado;
@@ -352,20 +352,20 @@ class CartManager {
                 const persOriginalNormalizado = normalizarPersonalizacion(persOriginal);
                 const persNuevoNormalizado = normalizarPersonalizacion(persNuevo);
                 
-                // Solo registrar si realmente son diferentes después de normalizar
+                // Solo registrar si realmente son diferentes despuÃ©s de normalizar
                 if (persOriginalNormalizado !== persNuevoNormalizado) {
                     const mensaje = lang === 'es' ?
-                        `Personalización de "${artOriginal.nombre_articulo}" cambió de "${persOriginal || 'Sin personalización'}" a "${persNuevo || 'Sin personalización'}"` :
+                        `PersonalizaciÃ³n de "${artOriginal.nombre_articulo}" cambiÃ³ de "${persOriginal || 'Sin personalizaciÃ³n'}" a "${persNuevo || 'Sin personalizaciÃ³n'}"` :
                         lang === 'pt' ?
-                        `Personalização de "${artOriginal.nombre_articulo}" alterou de "${persOriginal || 'Sem personalização'}" para "${persNuevo || 'Sem personalização'}"` :
+                        `PersonalizaÃ§Ã£o de "${artOriginal.nombre_articulo}" alterou de "${persOriginal || 'Sem personalizaÃ§Ã£o'}" para "${persNuevo || 'Sem personalizaÃ§Ã£o'}"` :
                         `Personalization of "${artOriginal.nombre_articulo}" changed from "${persOriginal || 'No personalization'}" to "${persNuevo || 'No personalization'}"`;
                     cambios.push({
                         tipo: 'modificacion',
                         articulo: artOriginal.nombre_articulo,
                         referencia: artOriginal.referencia_articulo || '',
                         campo: 'personalizacion',
-                        valor_anterior: persOriginal || '(sin personalización)',
-                        valor_nuevo: persNuevo || '(sin personalización)',
+                        valor_anterior: persOriginal || '(sin personalizaciÃ³n)',
+                        valor_nuevo: persNuevo || '(sin personalizaciÃ³n)',
                         descripcion: mensaje
                     });
                 }
@@ -393,7 +393,7 @@ class CartManager {
                 }
             }
         } catch (error) {
-            console.warn('⚠️ Error al obtener nombre del usuario:', error);
+            console.warn('âš ï¸ Error al obtener nombre del usuario:', error);
         }
         // Fallback a localStorage o sistema
         return localStorage.getItem('commercial_name') || 'Sistema';
@@ -401,7 +401,7 @@ class CartManager {
 
     /**
      * Verificar si el usuario actual puede usar el Modo 200+
-     * Solo administradores y Claudia Cruz pueden usar esta función
+     * Solo administradores y Claudia Cruz pueden usar esta funciÃ³n
      */
     async canUseMode200() {
         try {
@@ -417,7 +417,7 @@ class CartManager {
                 .single();
 
             if (roleError || !userRoleData) {
-                console.warn('⚠️ Error al obtener rol del usuario:', roleError);
+                console.warn('âš ï¸ Error al obtener rol del usuario:', roleError);
                 return false;
             }
 
@@ -426,21 +426,21 @@ class CartManager {
 
             // Permitir si es administrador
             if (userRole === 'admin') {
-                console.log('✅ Usuario es administrador, puede usar Modo 200+');
+                console.log('âœ… Usuario es administrador, puede usar Modo 200+');
                 return true;
             }
 
             // Permitir si es Claudia Cruz (aunque sea comercial)
             if (userName.toLowerCase().trim() === 'claudia cruz') {
-                console.log('✅ Usuario es Claudia Cruz, puede usar Modo 200+');
+                console.log('âœ… Usuario es Claudia Cruz, puede usar Modo 200+');
                 return true;
             }
 
             // El resto de comerciales no pueden usar Modo 200+
-            console.log('❌ Usuario no tiene permisos para usar Modo 200+');
+            console.log('âŒ Usuario no tiene permisos para usar Modo 200+');
             return false;
         } catch (error) {
-            console.warn('⚠️ Error al verificar permisos de Modo 200+:', error);
+            console.warn('âš ï¸ Error al verificar permisos de Modo 200+:', error);
             return false;
         }
     }
@@ -458,7 +458,7 @@ class CartManager {
         }
 
         try {
-            // Obtener el nombre del usuario actual (el que está haciendo la modificación)
+            // Obtener el nombre del usuario actual (el que estÃ¡ haciendo la modificaciÃ³n)
             const currentUserName = usuario || await this.getCurrentUserName();
 
             // Obtener los datos actuales de la propuesta
@@ -469,7 +469,7 @@ class CartManager {
                 .single();
 
             if (fetchError) {
-                console.warn('⚠️ Error al obtener datos de la propuesta:', fetchError);
+                console.warn('âš ï¸ Error al obtener datos de la propuesta:', fetchError);
                 return;
             }
 
@@ -481,9 +481,9 @@ class CartManager {
             // Crear un registro consolidado de todas las ediciones para ediciones_propuesta
             const descripcionCompleta = cambios.map(c => c.descripcion).join('; ');
             const titulo = lang === 'es' ?
-                `Edición de propuesta - ${cambios.length} cambio(s)` :
+                `EdiciÃ³n de propuesta - ${cambios.length} cambio(s)` :
                 lang === 'pt' ?
-                `Edição de proposta - ${cambios.length} alteração(ões)` :
+                `EdiÃ§Ã£o de proposta - ${cambios.length} alteraÃ§Ã£o(Ãµes)` :
                 `Proposal edit - ${cambios.length} change(s)`;
 
             const nuevoRegistroEdiciones = {
@@ -528,12 +528,12 @@ class CartManager {
                 .eq('id', proposalId);
 
             if (updateError) {
-                console.warn('⚠️ Error al registrar ediciones:', updateError);
+                console.warn('âš ï¸ Error al registrar ediciones:', updateError);
             } else {
-                console.log('✅ Ediciones registradas correctamente por:', currentUserName);
+                console.log('âœ… Ediciones registradas correctamente por:', currentUserName);
             }
         } catch (error) {
-            console.error('❌ Error al registrar ediciones:', error);
+            console.error('âŒ Error al registrar ediciones:', error);
         }
     }
 
@@ -546,13 +546,13 @@ class CartManager {
         this.cart = [];
         this.saveCart();
 
-        // Cargar cada artículo en el carrito (incluye módulos y productos con precio especial)
+        // Cargar cada artÃ­culo en el carrito (incluye mÃ³dulos y productos con precio especial)
         const articulosList = this.editingProposalData.articulos || [];
         for (let index = 0; index < articulosList.length; index++) {
             const articulo = articulosList[index];
             // Cantidad: en BD puede ser 'cantidad' o 'cantidad_encomendada'
             const cantidadArticulo = articulo.cantidad ?? articulo.cantidad_encomendada ?? 1;
-            console.log('🔄 Cargando artículo al carrito:', {
+            console.log('ðŸ”„ Cargando artÃ­culo al carrito:', {
                 nombre: articulo.nombre_articulo,
                 referencia: articulo.referencia_articulo,
                 precio: articulo.precio,
@@ -560,7 +560,7 @@ class CartManager {
             });
             
             // Buscar el producto SOLO por ID (referencia_articulo). No buscar por nombre: productos
-            // de módulo o exclusivos no deben resolverse a otro producto similar del catálogo.
+            // de mÃ³dulo o exclusivos no deben resolverse a otro producto similar del catÃ¡logo.
             let product = null;
             if (articulo.referencia_articulo && this.allProducts) {
                 product = this.allProducts.find(p =>
@@ -568,10 +568,10 @@ class CartManager {
                     String(p.id) === String(articulo.referencia_articulo).trim()
                 );
             }
-            console.log('🔍 Resultado de búsqueda:', product ? 'Producto encontrado' : 'Producto NO encontrado, agregando como pedido especial');
+            console.log('ðŸ” Resultado de bÃºsqueda:', product ? 'Producto encontrado' : 'Producto NO encontrado, agregando como pedido especial');
 
             if (product) {
-                // Normalizar cantidad según boxSize si existe
+                // Normalizar cantidad segÃºn boxSize si existe
                 let quantity = parseInt(cantidadArticulo, 10) || 1;
                 if (product.box_size) {
                     const productForNormalization = {
@@ -581,8 +581,8 @@ class CartManager {
                     quantity = this.normalizeQuantityForBox(productForNormalization, quantity);
                 }
                 
-                // Agregar producto con datos del artículo
-                // Generar un ID único para este item del carrito
+                // Agregar producto con datos del artÃ­culo
+                // Generar un ID Ãºnico para este item del carrito
                 const cartItemId = `cart-item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
                 
                 const nomeFornecedor = product.nombre_fornecedor || null;
@@ -591,26 +591,26 @@ class CartManager {
                 // El precio viene como numeric(12, 4) de PostgreSQL, que Supabase devuelve como string
                 let precioGuardado = 0;
                 if (articulo.precio !== null && articulo.precio !== undefined && articulo.precio !== '') {
-                    // Supabase devuelve numeric como string, convertir a número
+                    // Supabase devuelve numeric como string, convertir a nÃºmero
                     const precioStr = String(articulo.precio).trim();
                     precioGuardado = parseFloat(precioStr);
                     
                     // Si el parseo falla o da NaN, intentar Number directamente
                     if (isNaN(precioGuardado)) {
                         precioGuardado = Number(articulo.precio);
-                        // Si aún falla, usar 0
+                        // Si aÃºn falla, usar 0
                         if (isNaN(precioGuardado)) {
-                            console.warn('⚠️ No se pudo parsear el precio:', articulo.precio, 'para', articulo.nombre_articulo);
+                            console.warn('âš ï¸ No se pudo parsear el precio:', articulo.precio, 'para', articulo.nombre_articulo);
                             precioGuardado = 0;
                         }
                     }
                 } else {
-                    console.warn('⚠️ Precio es null/undefined/vacío para:', articulo.nombre_articulo);
+                    console.warn('âš ï¸ Precio es null/undefined/vacÃ­o para:', articulo.nombre_articulo);
                 }
                 
                 const precioProducto = product.precio || 0;
                 
-                console.log('💰 Precio cargado desde BD:', {
+                console.log('ðŸ’° Precio cargado desde BD:', {
                     nombre: articulo.nombre_articulo,
                     precioOriginal: articulo.precio,
                     tipoPrecioOriginal: typeof articulo.precio,
@@ -620,19 +620,19 @@ class CartManager {
                     precioProducto: precioProducto
                 });
                 
-                // Precio manual: cuando la propuesta se guardó con modo 200+, O cuando el producto es "sobre consulta"
-                // (precio base 0) y en la propuesta se guardó un precio > 0 — así al editar se muestra y mantiene ese precio.
+                // Precio manual: cuando la propuesta se guardÃ³ con modo 200+, O cuando el producto es "sobre consulta"
+                // (precio base 0) y en la propuesta se guardÃ³ un precio > 0 â€” asÃ­ al editar se muestra y mantiene ese precio.
                 const esPrecioManual = !!(this.modo200 || (this.editingProposalData && (this.editingProposalData.modo_200_plus || this.editingProposalData.modo_200)) || (precioProducto === 0 && precioGuardado > 0));
                 
-                // Obtener el orden del artículo (si existe en la BD, sino usar el índice)
+                // Obtener el orden del artÃ­culo (si existe en la BD, sino usar el Ã­ndice)
                 const orden = articulo.orden !== undefined && articulo.orden !== null ? articulo.orden : index;
-                // Productos creados desde el módulo editable: mostrar como módulo y permitir duplicar con Ctrl+arrastrar
+                // Productos creados desde el mÃ³dulo editable: mostrar como mÃ³dulo y permitir duplicar con Ctrl+arrastrar
                 const isModuleProduct = product.categoria === 'pedido-especial' || product.is_custom === true;
                 const itemType = isModuleProduct ? 'special' : 'product';
                 
                 const cartItem = {
                     id: product.id,
-                    cartItemId: cartItemId, // ID único para identificar este item específico en el carrito
+                    cartItemId: cartItemId, // ID Ãºnico para identificar este item especÃ­fico en el carrito
                     order: orden, // Orden para drag and drop
                     type: itemType,
                     isEmptyModule: !!isModuleProduct,
@@ -659,17 +659,17 @@ class CartManager {
                     selectedVariant: (() => {
                         // Buscar la variante correcta por su nombre (tipo_personalizacion)
                         if (articulo.tipo_personalizacion && 
-                            articulo.tipo_personalizacion !== 'Sin personalización' && 
-                            articulo.tipo_personalizacion !== 'Sem personalização' && 
+                            articulo.tipo_personalizacion !== 'Sin personalizaciÃ³n' && 
+                            articulo.tipo_personalizacion !== 'Sem personalizaÃ§Ã£o' && 
                             articulo.tipo_personalizacion !== 'No customization' &&
                             product.variants && 
                             product.variants.length > 0) {
-                            // Buscar el índice de la variante que coincida con el nombre guardado
+                            // Buscar el Ã­ndice de la variante que coincida con el nombre guardado
                             const variantIndex = product.variants.findIndex(variant => 
                                 variant.name === articulo.tipo_personalizacion ||
                                 variant.nombre === articulo.tipo_personalizacion
                             );
-                            // Si se encuentra, devolver el índice; si no, devolver null
+                            // Si se encuentra, devolver el Ã­ndice; si no, devolver null
                             return variantIndex >= 0 ? variantIndex : null;
                         }
                         return null;
@@ -690,7 +690,7 @@ class CartManager {
                 // IMPORTANTE: Asegurar que el precio se mantenga correctamente
                 // Verificar que el precio no se haya perdido
                 if (cartItem.price !== precioGuardado) {
-                    console.error('❌ ERROR: El precio se perdió al crear el item!', {
+                    console.error('âŒ ERROR: El precio se perdiÃ³ al crear el item!', {
                         precioGuardado: precioGuardado,
                         precioEnItem: cartItem.price,
                         nombre: cartItem.name
@@ -699,7 +699,7 @@ class CartManager {
                     cartItem.price = precioGuardado;
                 }
                 
-                console.log('✅ Item agregado al carrito:', {
+                console.log('âœ… Item agregado al carrito:', {
                     nombre: cartItem.name,
                     precio: cartItem.price,
                     precioGuardado: precioGuardado,
@@ -710,10 +710,10 @@ class CartManager {
 
                 this.cart.push(cartItem);
                 
-                // Verificar inmediatamente después de agregar
+                // Verificar inmediatamente despuÃ©s de agregar
                 const lastItem = this.cart[this.cart.length - 1];
                 if (lastItem.price !== precioGuardado) {
-                    console.error('❌ ERROR: El precio se perdió después de agregar al carrito!', {
+                    console.error('âŒ ERROR: El precio se perdiÃ³ despuÃ©s de agregar al carrito!', {
                         precioEsperado: precioGuardado,
                         precioActual: lastItem.price,
                         nombre: lastItem.name
@@ -722,8 +722,8 @@ class CartManager {
                     lastItem.price = precioGuardado;
                 }
             } else {
-                // Si no se encuentra el producto en allProducts, buscar en BD (ej. producto creado desde módulo editable)
-                // y agregar como pedido especial / módulo editable con foto y precio guardados
+                // Si no se encuentra el producto en allProducts, buscar en BD (ej. producto creado desde mÃ³dulo editable)
+                // y agregar como pedido especial / mÃ³dulo editable con foto y precio guardados
                 const cartItemId = `cart-item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
                 let precioGuardado = 0;
                 if (articulo.precio !== null && articulo.precio !== undefined && articulo.precio !== '') {
@@ -746,7 +746,7 @@ class CartManager {
                 const descripcion = productFromDB ? (productFromDB.descripcion_es || productFromDB.descripcion_pt || productFromDB.descripcionEs || productFromDB.descripcionPt || '') : '';
                 const foto = productFromDB && (productFromDB.foto || productFromDB.photo) ? (productFromDB.foto || productFromDB.photo) : null;
                 
-                console.log('📦 Agregando como pedido especial / módulo:', {
+                console.log('ðŸ“¦ Agregando como pedido especial / mÃ³dulo:', {
                     nombre: articulo.nombre_articulo,
                     precio: precioGuardado,
                     cantidad: cantidadArticulo,
@@ -783,25 +783,25 @@ class CartManager {
 
         this.saveCart();
         
-        console.log('🔄 Llamando a renderCart() con', this.cart.length, 'items en el carrito');
+        console.log('ðŸ”„ Llamando a renderCart() con', this.cart.length, 'items en el carrito');
         try {
         this.renderCart();
-            console.log('✅ renderCart() completado exitosamente');
+            console.log('âœ… renderCart() completado exitosamente');
         } catch (renderError) {
-            console.error('❌ ERROR en renderCart():', renderError);
+            console.error('âŒ ERROR en renderCart():', renderError);
             console.error('   - Stack:', renderError.stack);
         }
         
         this.updateSummary();
         
-        // Actualizar plazos según stock
+        // Actualizar plazos segÃºn stock
         this.updateDeliveryTimesFromStock();
 
         // Prellenar formulario con datos de la propuesta
         this.prefillProposalForm();
 
-        // IMPORTANTE: NO aplicar precios del modo 200+ cuando se está editando una propuesta
-        // Los precios ya están guardados en presupuestos_articulos y deben mantenerse
+        // IMPORTANTE: NO aplicar precios del modo 200+ cuando se estÃ¡ editando una propuesta
+        // Los precios ya estÃ¡n guardados en presupuestos_articulos y deben mantenerse
         // El modo 200+ solo debe aplicarse cuando se crea una NUEVA propuesta, no al editar
         // if (this.modo200) {
         //     this.applyMode200Prices();
@@ -864,21 +864,21 @@ class CartManager {
             const today = new Date();
             const oneMonthAgo = new Date(today);
             oneMonthAgo.setMonth(today.getMonth() - 1); // Restar un mes
-            const maxDate = today.toISOString().split('T')[0]; // Máximo: hoy
-            const minDate = oneMonthAgo.toISOString().split('T')[0]; // Mínimo: hace un mes
+            const maxDate = today.toISOString().split('T')[0]; // MÃ¡ximo: hoy
+            const minDate = oneMonthAgo.toISOString().split('T')[0]; // MÃ­nimo: hace un mes
             proposalDateInput.setAttribute('max', maxDate);
             proposalDateInput.setAttribute('min', minDate);
         }
         const clientNumberInput = document.getElementById('clientNumberInput');
         if (clientNumberInput) {
-            // Si no hay número de cliente o es null, usar "0"
+            // Si no hay nÃºmero de cliente o es null, usar "0"
             clientNumberInput.value = this.editingProposalData.numero_cliente || '0';
         }
         const tipoClienteInput = document.getElementById('tipoClienteInput');
         if (tipoClienteInput && this.editingProposalData.tipo_cliente) {
             tipoClienteInput.value = this.editingProposalData.tipo_cliente || '';
         }
-        // Rellenar también la barra de cliente (visible en la página)
+        // Rellenar tambiÃ©n la barra de cliente (visible en la pÃ¡gina)
         const proposalClientInput = document.getElementById('proposalClientNameInput');
         if (proposalClientInput) {
             proposalClientInput.value = this.editingProposalData.nombre_cliente || '';
@@ -890,7 +890,7 @@ class CartManager {
     }
 
     showEditingIndicator() {
-        // Mostrar botón de productos exclusivos solo si hay propuesta en edición
+        // Mostrar botÃ³n de productos exclusivos solo si hay propuesta en ediciÃ³n
         const exclusiveBtn = document.getElementById('addExclusiveProductBtn');
         if (exclusiveBtn) {
             if (this.editingProposalData && this.editingProposalData.nombre_cliente) {
@@ -909,11 +909,11 @@ class CartManager {
             document.body.appendChild(indicator);
         }
 
-        // Obtener información de la propuesta
+        // Obtener informaciÃ³n de la propuesta
         const proposalId = this.editingProposalId || '';
         const clientName = this.editingProposalData?.nombre_cliente || '';
         
-        // Usar código de propuesta si existe, sino usar primeros 8 caracteres del UUID
+        // Usar cÃ³digo de propuesta si existe, sino usar primeros 8 caracteres del UUID
         const proposalNumber = this.editingProposalData?.codigo_propuesta || 
                               (proposalId ? proposalId.substring(0, 8).toUpperCase() : '');
 
@@ -933,7 +933,7 @@ class CartManager {
             </div>
         `;
 
-        // Mostrar información en la barra del carrito
+        // Mostrar informaciÃ³n en la barra del carrito
         this.showEditingInfoInCartBar(proposalNumber, clientName);
     }
 
@@ -946,7 +946,7 @@ class CartManager {
             // Mostrar el contenedor
             infoContainer.style.display = 'flex';
 
-            // Configurar textos según idioma
+            // Configurar textos segÃºn idioma
             if (this.currentLanguage === 'es') {
                 numberText.textContent = `Propuesta #${proposalNumber}`;
                 clientText.textContent = `Cliente: ${clientName}`;
@@ -959,15 +959,15 @@ class CartManager {
             }
         }
 
-        // Botón de aplicar precio máximo eliminado (no hace nada)
+        // BotÃ³n de aplicar precio mÃ¡ximo eliminado (no hace nada)
 
-        // Ocultar botón de crear propuesta cuando se edita
+        // Ocultar botÃ³n de crear propuesta cuando se edita
         const generateProposalBtn = document.getElementById('generateProposalBtn');
         if (generateProposalBtn) {
             generateProposalBtn.style.display = 'none';
         }
 
-        // Cambiar texto del botón de enviar propuesta
+        // Cambiar texto del botÃ³n de enviar propuesta
         const sendProposalBtn = document.getElementById('sendProposalBtn');
         const sendProposalText = document.getElementById('send-proposal-text');
         if (sendProposalBtn && sendProposalText) {
@@ -989,26 +989,26 @@ class CartManager {
             if (item.type === 'product') {
                 const productFromDB = this.allProducts.find(p => p.id === item.id);
                 if (productFromDB) {
-                    // Agregar descripciones si no están
+                    // Agregar descripciones si no estÃ¡n
                     if (!item.descripcionEs && productFromDB.descripcionEs) {
                         item.descripcionEs = productFromDB.descripcionEs;
                     }
                     if (!item.descripcionPt && productFromDB.descripcionPt) {
                         item.descripcionPt = productFromDB.descripcionPt;
                     }
-                    // Agregar plazo de entrega si no está
+                    // Agregar plazo de entrega si no estÃ¡
                     if (!item.plazoEntrega && productFromDB.plazoEntrega) {
                         item.plazoEntrega = productFromDB.plazoEntrega;
                     }
-                    // Agregar phc_ref si no está (importante para consulta de stock)
+                    // Agregar phc_ref si no estÃ¡ (importante para consulta de stock)
                     if (!item.phc_ref && productFromDB.phc_ref) {
                         item.phc_ref = productFromDB.phc_ref;
                     }
-                    // Agregar box_size si no está
+                    // Agregar box_size si no estÃ¡
                     if (!item.box_size && productFromDB.box_size) {
                         item.box_size = productFromDB.box_size;
                     }
-                    // Agregar nombre_fornecedor si no está
+                    // Agregar nombre_fornecedor si no estÃ¡
                     if (!item.nombre_fornecedor && productFromDB.nombre_fornecedor) {
                         item.nombre_fornecedor = productFromDB.nombre_fornecedor;
                     }
@@ -1017,7 +1017,7 @@ class CartManager {
                         item.minQuantity = null;
                         item.isValidQuantity = true;
                     } else {
-                        // Agregar price_tiers si no están
+                        // Agregar price_tiers si no estÃ¡n
                         if ((!item.price_tiers || item.price_tiers.length === 0) && productFromDB.price_tiers && productFromDB.price_tiers.length > 0) {
                             item.price_tiers = productFromDB.price_tiers;
                             const priceResult = this.getPriceForQuantity(item.price_tiers, item.quantity, item.basePrice || productFromDB.precio || item.price);
@@ -1031,7 +1031,7 @@ class CartManager {
                             item.isValidQuantity = priceResult.isValid;
                         }
                     }
-                    // Actualizar descripción según idioma actual
+                    // Actualizar descripciÃ³n segÃºn idioma actual
                     item.description = this.currentLanguage === 'es' ? 
                         (item.descripcionEs || '') :
                         (item.descripcionPt || item.descripcionEs || '');
@@ -1046,11 +1046,11 @@ class CartManager {
      */
     async initializeSupabase() {
         try {
-            // Usar siempre el cliente compartido para evitar múltiples instancias
+            // Usar siempre el cliente compartido para evitar mÃºltiples instancias
             if (window.universalSupabase) {
                 this.supabase = await window.universalSupabase.getClient();
             } else {
-                throw new Error('Supabase no está disponible. Asegúrate de que supabase-config-universal.js se cargue antes.');
+                throw new Error('Supabase no estÃ¡ disponible. AsegÃºrate de que supabase-config-universal.js se cargue antes.');
             }
         } catch (error) {
             // Error al inicializar
@@ -1067,15 +1067,15 @@ class CartManager {
         }
 
         try {
-            // Obtener país del usuario para filtrar productos
+            // Obtener paÃ­s del usuario para filtrar productos
             let userPais = null;
             try {
                 userPais = await window.getUserPais?.();
             } catch (error) {
-                console.warn('⚠️ No se pudo obtener el país del usuario:', error);
+                console.warn('âš ï¸ No se pudo obtener el paÃ­s del usuario:', error);
             }
 
-            // Si NO se está editando una propuesta, excluir productos con cliente_id
+            // Si NO se estÃ¡ editando una propuesta, excluir productos con cliente_id
             // Solo cargar productos generales (sin cliente asociado)
             let query = this.supabase
                 .from('products')
@@ -1087,19 +1087,19 @@ class CartManager {
                 query = query.is('cliente_id', null);
             }
             
-            // Filtrar productos según el país del usuario
-            // Si el usuario es de España, solo mostrar productos con mercado = 'AMBOS'
+            // Filtrar productos segÃºn el paÃ­s del usuario
+            // Si el usuario es de EspaÃ±a, solo mostrar productos con mercado = 'AMBOS'
             // Si el usuario es de Portugal, mostrar todos los productos
-            if (userPais && (userPais === 'Espanha' || userPais === 'España' || userPais === 'ES')) {
+            if (userPais && (userPais === 'Espanha' || userPais === 'EspaÃ±a' || userPais === 'ES')) {
                 query = query.eq('mercado', 'AMBOS');
-                console.log('🇪🇸 [loadAllProducts] Usuario de España detectado, filtrando productos con mercado = AMBOS');
+                console.log('ðŸ‡ªðŸ‡¸ [loadAllProducts] Usuario de EspaÃ±a detectado, filtrando productos con mercado = AMBOS');
             } else {
-                // Portugal o sin país: mostrar todos los productos
-                console.log('🇵🇹 [loadAllProducts] Usuario de Portugal o sin país, mostrando todos los productos');
+                // Portugal o sin paÃ­s: mostrar todos los productos
+                console.log('ðŸ‡µðŸ‡¹ [loadAllProducts] Usuario de Portugal o sin paÃ­s, mostrando todos los productos');
             }
             
-            // Si estamos editando una propuesta, loadAllProducts cargará todos los productos
-            // y luego loadClientExclusiveProducts agregará los exclusivos del cliente
+            // Si estamos editando una propuesta, loadAllProducts cargarÃ¡ todos los productos
+            // y luego loadClientExclusiveProducts agregarÃ¡ los exclusivos del cliente
             
             const { data, error } = await query
                 .order('created_at', { ascending: false });
@@ -1110,7 +1110,7 @@ class CartManager {
 
             // Debug: Verificar que area_negocio viene de la BD
             if (data && data.length > 0) {
-                console.log('📦 DEBUG loadAllProducts - Primer producto de la BD:', {
+                console.log('ðŸ“¦ DEBUG loadAllProducts - Primer producto de la BD:', {
                     id: data[0].id,
                     nombre: data[0].nombre,
                     area_negocio: data[0].area_negocio,
@@ -1196,12 +1196,12 @@ class CartManager {
             });
 
         } catch (error) {
-            this.showNotification('Error al cargar productos para búsqueda', 'error');
+            this.showNotification('Error al cargar productos para bÃºsqueda', 'error');
         }
     }
 
     /**
-     * Cargar categorías desde Supabase con nombres en ambos idiomas
+     * Cargar categorÃ­as desde Supabase con nombres en ambos idiomas
      */
     async loadCategories() {
         if (!this.supabase) {
@@ -1229,7 +1229,7 @@ class CartManager {
                     .replace(/[^a-z0-9-]/g, '');
             };
 
-            // Guardar categorías con sus nombres en ambos idiomas
+            // Guardar categorÃ­as con sus nombres en ambos idiomas
             this.allCategories = (data || []).map(cat => {
                 const nombreEs = cat.nombres_es || cat.nombre_es || '';
                 const nombrePt = cat.nombres_pt || cat.nombre_pt || '';
@@ -1259,7 +1259,7 @@ class CartManager {
                 // Asegurar que todos los items tengan cartItemId (para compatibilidad con items antiguos)
                 cart.forEach((item, index) => {
                     if (!item.cartItemId) {
-                        // Generar un cartItemId único para items antiguos que no lo tienen
+                        // Generar un cartItemId Ãºnico para items antiguos que no lo tienen
                         item.cartItemId = `cart-item-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`;
                     }
                 });
@@ -1273,13 +1273,13 @@ class CartManager {
 
     /**
      * Formatear precio unitario: mostrar hasta 4 decimales si el precio tiene 4 decimales significativos
-     * @param {number|string} price - Precio a formatear (puede ser número o string para preservar decimales)
-     * @returns {string} - Precio formateado con el número correcto de decimales
+     * @param {number|string} price - Precio a formatear (puede ser nÃºmero o string para preservar decimales)
+     * @returns {string} - Precio formateado con el nÃºmero correcto de decimales
      */
     formatUnitPrice(price) {
         // Si el precio es 0, null o undefined, mostrar "sobre consulta"
         if (!price || price === 0 || price === null || price === undefined) {
-            // Traducir "sobre consulta" según el idioma
+            // Traducir "sobre consulta" segÃºn el idioma
             const translations = {
                 'pt': 'Sobre consulta',
                 'es': 'Sobre consulta',
@@ -1294,7 +1294,7 @@ class CartManager {
         if (typeof price === 'string') {
             priceStr = price.trim();
         } else {
-            // Si es número, usar toFixed(6) para capturar todos los decimales posibles
+            // Si es nÃºmero, usar toFixed(6) para capturar todos los decimales posibles
             priceStr = Number(price).toFixed(6);
         }
         
@@ -1322,7 +1322,7 @@ class CartManager {
             const parts = formatted.split('.');
             if (parts.length === 2) {
                 const decimals = parts[1].replace(/0+$/, '');
-                // Si después de eliminar ceros quedan menos de 2 decimales, usar 2
+                // Si despuÃ©s de eliminar ceros quedan menos de 2 decimales, usar 2
                 if (decimals.length < 2) {
                     return numPrice.toFixed(2);
                 }
@@ -1359,17 +1359,17 @@ class CartManager {
      */
     saveCart() {
         localStorage.setItem('eppo_cart', JSON.stringify(this.cart));
-        // Actualizar contador en el botón de navegación
+        // Actualizar contador en el botÃ³n de navegaciÃ³n
         this.updateCartBadge();
     }
     
     /**
-     * Actualizar contador en el botón de navegación "Orçamento"
+     * Actualizar contador en el botÃ³n de navegaciÃ³n "OrÃ§amento"
      */
     updateCartBadge() {
         const cartCount = this.cart ? this.cart.length : 0;
         
-        // Buscar el botón en todas las páginas
+        // Buscar el botÃ³n en todas las pÃ¡ginas
         const cartLink = document.getElementById('nav-cart-link');
         
         if (cartLink) {
@@ -1383,7 +1383,7 @@ class CartManager {
             if (cartCount > 0) {
                 const badge = document.createElement('span');
                 badge.className = 'cart-badge';
-                // Agregar clase para números de dos dígitos
+                // Agregar clase para nÃºmeros de dos dÃ­gitos
                 if (cartCount > 9) {
                     badge.classList.add('double-digit');
                 }
@@ -1398,14 +1398,14 @@ class CartManager {
      * Siempre crea un nuevo item, permitiendo duplicados para comparar variantes
      */
     addProduct(product, quantity = 1) {
-        // Normalizar cantidad según boxSize
-        // Crear objeto para normalización con boxSize en camelCase
+        // Normalizar cantidad segÃºn boxSize
+        // Crear objeto para normalizaciÃ³n con boxSize en camelCase
         const productForNormalization = {
             id: product.id,
             boxSize: product.box_size ? Number(product.box_size) : null
         };
         
-        // Convertir quantity a número
+        // Convertir quantity a nÃºmero
         const quantityNum = Number(quantity) || 1;
         
         // Normalizar la cantidad
@@ -1417,12 +1417,12 @@ class CartManager {
             const message = lang === 'es' ? 
                 `Este producto solo se vende en cajas de ${product.box_size} unidades. La cantidad se ha ajustado a ${normalizedQuantity}.` :
                 lang === 'pt' ?
-                `Este produto só é vendido em caixas de ${product.box_size} unidades. A quantidade foi ajustada para ${normalizedQuantity}.` :
+                `Este produto sÃ³ Ã© vendido em caixas de ${product.box_size} unidades. A quantidade foi ajustada para ${normalizedQuantity}.` :
                 `This product is only sold in boxes of ${product.box_size} units. The quantity has been adjusted to ${normalizedQuantity}.`;
             this.showNotification(message, 'info');
         }
 
-        // Obtener descripción según idioma
+        // Obtener descripciÃ³n segÃºn idioma
         const description = this.currentLanguage === 'es' ? 
             (product.descripcionEs || product.descripcion_es || '') :
             (product.descripcionPt || product.descripcion_pt || product.descripcionEs || product.descripcion_es || '');
@@ -1432,27 +1432,27 @@ class CartManager {
         if (product.price_tiers && Array.isArray(product.price_tiers)) {
             priceTiers = product.price_tiers;
         } else {
-            // Buscar en allProducts si no está en el producto
+            // Buscar en allProducts si no estÃ¡ en el producto
             const productFromDB = this.allProducts.find(p => p.id === product.id);
             if (productFromDB && productFromDB.price_tiers) {
                 priceTiers = productFromDB.price_tiers;
             }
         }
 
-        // Calcular precio inicial según escalones usando cantidad normalizada
+        // Calcular precio inicial segÃºn escalones usando cantidad normalizada
         const initialPriceResult = this.getPriceForQuantity(priceTiers, normalizedQuantity, product.precio);
         const initialPrice = initialPriceResult.price;
 
         // Siempre crear un nuevo item (permitir duplicados)
-        // Generar un ID único para este item del carrito
+        // Generar un ID Ãºnico para este item del carrito
         const cartItemId = `cart-item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         
-        // Obtener variantes de referencias (para selección de color)
+        // Obtener variantes de referencias (para selecciÃ³n de color)
         let referenceVariants = [];
         if (product.variantes_referencias && Array.isArray(product.variantes_referencias)) {
             referenceVariants = product.variantes_referencias;
         } else {
-            // Buscar en allProducts si no está en el producto
+            // Buscar en allProducts si no estÃ¡ en el producto
             const productFromDB = this.allProducts.find(p => p.id === product.id);
             if (productFromDB && productFromDB.variantes_referencias && Array.isArray(productFromDB.variantes_referencias)) {
                 referenceVariants = productFromDB.variantes_referencias;
@@ -1468,14 +1468,14 @@ class CartManager {
                 }
             }
             
-            // Calcular el orden: será el último item + 1
+            // Calcular el orden: serÃ¡ el Ãºltimo item + 1
             const maxOrder = this.cart.length > 0 
                 ? Math.max(...this.cart.map(item => item.order !== undefined && item.order !== null ? item.order : 0))
                 : -1;
             
             this.cart.push({
                 id: product.id,
-            cartItemId: cartItemId, // ID único para identificar este item específico en el carrito
+            cartItemId: cartItemId, // ID Ãºnico para identificar este item especÃ­fico en el carrito
                 type: 'product',
                 name: product.nombre,
                 category: product.categoria,
@@ -1506,7 +1506,7 @@ class CartManager {
         // Guardar inmediatamente para asegurar que price_tiers se guarden
         this.saveCart();
 
-        // Si el modo 200+ está activo, aplicar precio 200+ al nuevo producto si corresponde
+        // Si el modo 200+ estÃ¡ activo, aplicar precio 200+ al nuevo producto si corresponde
         if (this.modo200) {
             const lastItem = this.cart[this.cart.length - 1];
             if (lastItem && lastItem.type === 'product') {
@@ -1557,7 +1557,7 @@ class CartManager {
         this.updateSummary();
         this.showNotification('Producto agregado al carrito', 'success');
         
-        // Actualizar plazos de entrega según stock (después de renderizar, sin bloquear)
+        // Actualizar plazos de entrega segÃºn stock (despuÃ©s de renderizar, sin bloquear)
         // Solo actualizar el producto que se acaba de agregar
         // Usar setTimeout para asegurar que el DOM se haya actualizado completamente
         setTimeout(() => {
@@ -1566,10 +1566,10 @@ class CartManager {
     }
 
     /**
-     * Agregar categoría completa al carrito
+     * Agregar categorÃ­a completa al carrito
      */
     addCategory(category, quantity, notes = '') {
-        // Calcular el orden: será el último item + 1
+        // Calcular el orden: serÃ¡ el Ãºltimo item + 1
         const maxOrder = this.cart.length > 0 
             ? Math.max(...this.cart.map(item => item.order !== undefined && item.order !== null ? item.order : 0))
             : -1;
@@ -1581,8 +1581,8 @@ class CartManager {
             category: category,
             quantity: quantity,
             notes: notes,
-            price: 0, // Se calculará basado en productos seleccionados
-            image: null, // Las imágenes de categoría ahora vienen desde Supabase, no desde archivos locales
+            price: 0, // Se calcularÃ¡ basado en productos seleccionados
+            image: null, // Las imÃ¡genes de categorÃ­a ahora vienen desde Supabase, no desde archivos locales
             order: maxOrder + 1 // Orden para drag and drop
         };
 
@@ -1590,7 +1590,7 @@ class CartManager {
         this.saveCart();
         this.renderCart();
         this.updateSummary();
-        this.showNotification('Categoría agregada al carrito', 'success');
+        this.showNotification('CategorÃ­a agregada al carrito', 'success');
     }
 
     // Funciones de cantidad eliminadas - solo usar las funciones "simple" globales
@@ -1612,7 +1612,7 @@ class CartManager {
             return !matchesCartItemId && !matchesId;
         });
         
-        // Solo actualizar si realmente se eliminó un item
+        // Solo actualizar si realmente se eliminÃ³ un item
         if (this.cart.length < initialLength) {
             this.saveCart();
             this.renderCart();
@@ -1623,12 +1623,12 @@ class CartManager {
 
     /**
      * Limpiar todo el carrito
-     * @param {boolean} silent - Si true, no pide confirmación ni muestra notificación (p. ej. tras guardar propuesta)
+     * @param {boolean} silent - Si true, no pide confirmaciÃ³n ni muestra notificaciÃ³n (p. ej. tras guardar propuesta)
      */
     clearCart(silent = false) {
         if (this.cart.length === 0) return;
         
-        if (silent || confirm('¿Estás seguro de que quieres limpiar todo el carrito?')) {
+        if (silent || confirm('Â¿EstÃ¡s seguro de que quieres limpiar todo el carrito?')) {
             this.cart = [];
             this.saveCart();
             this.renderCart();
@@ -1646,15 +1646,15 @@ class CartManager {
         const translations = {
             pt: {
                 foto: 'Foto',
-                descricao: 'Descrição',
+                descricao: 'DescriÃ§Ã£o',
                 quantidade: 'Quantidade',
-                preco: 'Preço',
+                preco: 'PreÃ§o',
                 prazoEntrega: 'Prazo de Entrega',
-                acoes: 'Ações'
+                acoes: 'AÃ§Ãµes'
             },
             es: {
                 foto: 'Foto',
-                descricao: 'Descripción',
+                descricao: 'DescripciÃ³n',
                 quantidade: 'Cantidad',
                 preco: 'Precio',
                 prazoEntrega: 'Plazo de Entrega',
@@ -1686,7 +1686,7 @@ class CartManager {
 
     /**
      * Obtener traducciones para mensajes de stock
-     * @returns {Object} Objeto con las traducciones según el idioma actual
+     * @returns {Object} Objeto con las traducciones segÃºn el idioma actual
      */
     getStockTranslations() {
         const translations = {
@@ -1695,14 +1695,14 @@ class CartManager {
                 unidadesEnStock: 'unidades en stock',
                 restantes: 'Restantes',
                 plazoEntrega: 'plazo de entrega',
-                sujetoConfirmacion: '(sujeto a confirmación en el momento de la adjudicación)'
+                sujetoConfirmacion: '(sujeto a confirmaciÃ³n en el momento de la adjudicaciÃ³n)'
             },
             pt: {
                 enStock: 'Em stock',
                 unidadesEnStock: 'unidades em stock',
                 restantes: 'Restantes',
                 plazoEntrega: 'prazo de entrega',
-                sujetoConfirmacion: '(sujeito a confirmação no momento da adjudicação)'
+                sujetoConfirmacion: '(sujeito a confirmaÃ§Ã£o no momento da adjudicaÃ§Ã£o)'
             },
             en: {
                 enStock: 'In stock',
@@ -1716,7 +1716,7 @@ class CartManager {
     }
 
     /**
-     * Indica si el texto de plazo es tipo "6/8 Semanas" (plazo en semanas) y debe llevar la frase de sujeito a confirmação.
+     * Indica si el texto de plazo es tipo "6/8 Semanas" (plazo en semanas) y debe llevar la frase de sujeito a confirmaÃ§Ã£o.
      * @param {string} text - Texto del plazo (ej. "6/8 Semanas", "4/6 Weeks")
      * @returns {boolean}
      */
@@ -1726,8 +1726,8 @@ class CartManager {
     }
 
     /**
-     * Nombre para mostrar en la web: quita los puntos que envuelven un fragmento (.palabra. → palabra).
-     * En creación/edición de productos se muestra el nombre con puntos; en el resto de la web sin puntos.
+     * Nombre para mostrar en la web: quita los puntos que envuelven un fragmento (.palabra. â†’ palabra).
+     * En creaciÃ³n/ediciÃ³n de productos se muestra el nombre con puntos; en el resto de la web sin puntos.
      * @param {string} name - Nombre del producto (puede contener .fragmento.)
      * @returns {string}
      */
@@ -1737,29 +1737,29 @@ class CartManager {
     }
 
     /**
-     * Actualizar plazos de entrega según stock (después de renderizar)
-     * @param {string} specificItemId - Opcional: ID del item específico a actualizar. Si no se proporciona, actualiza todos.
+     * Actualizar plazos de entrega segÃºn stock (despuÃ©s de renderizar)
+     * @param {string} specificItemId - Opcional: ID del item especÃ­fico a actualizar. Si no se proporciona, actualiza todos.
      */
     async updateDeliveryTimesFromStock(specificItemId = null) {
         // IMPORTANTE: Si NO se especifica un itemId, NO hacer nada
         // Esto previene actualizaciones no deseadas de todos los productos
-        // Solo se debe actualizar todos los productos cuando se pasa '*' explícitamente
+        // Solo se debe actualizar todos los productos cuando se pasa '*' explÃ­citamente
         if (!specificItemId) {
-            console.warn('⚠️ updateDeliveryTimesFromStock llamado sin specificItemId - IGNORANDO para prevenir actualizaciones no deseadas');
-            console.warn('   Si necesitas actualizar todos los productos, pasa "*" como parámetro');
+            console.warn('âš ï¸ updateDeliveryTimesFromStock llamado sin specificItemId - IGNORANDO para prevenir actualizaciones no deseadas');
+            console.warn('   Si necesitas actualizar todos los productos, pasa "*" como parÃ¡metro');
             return Promise.resolve();
         }
         
         // Si se especifica '*', actualizar todos los productos (solo para carga inicial)
         let deliveryElements;
         if (specificItemId === '*') {
-            console.log('⚠️ Actualizando plazos de entrega de TODOS los productos (carga inicial)');
+            console.log('âš ï¸ Actualizando plazos de entrega de TODOS los productos (carga inicial)');
             deliveryElements = document.querySelectorAll('.delivery-time[data-phc-ref]');
         } else {
-            // Si se especifica un itemId específico, solo actualizar ese elemento
+            // Si se especifica un itemId especÃ­fico, solo actualizar ese elemento
             // Escapar el itemId para evitar problemas con caracteres especiales en el selector
             const escapedItemId = String(specificItemId).replace(/"/g, '\\"');
-            // Buscar el elemento específico usando el itemId
+            // Buscar el elemento especÃ­fico usando el itemId
             const cartItem = document.querySelector(`.cart-item[data-item-id="${escapedItemId}"]`);
             if (cartItem) {
                 const deliveryElement = cartItem.querySelector('.delivery-time[data-phc-ref]');
@@ -1768,9 +1768,9 @@ class CartManager {
                     const elementItemId = deliveryElement.getAttribute('data-item-id');
                     if (String(elementItemId) === String(specificItemId) || elementItemId === specificItemId) {
                         deliveryElements = [deliveryElement];
-                        console.log(`✅ Encontrado elemento de plazo de entrega para itemId: ${specificItemId}`);
+                        console.log(`âœ… Encontrado elemento de plazo de entrega para itemId: ${specificItemId}`);
                     } else {
-                        console.warn(`⚠️ Elemento encontrado pero itemId no coincide: ${elementItemId} vs ${specificItemId}`);
+                        console.warn(`âš ï¸ Elemento encontrado pero itemId no coincide: ${elementItemId} vs ${specificItemId}`);
                         deliveryElements = [];
                     }
                 } else {
@@ -1778,17 +1778,17 @@ class CartManager {
                 }
             } else {
                 // Si no se encuentra, intentar buscar de otra manera
-                console.warn(`⚠️ No se encontró cart-item con data-item-id="${escapedItemId}"`);
+                console.warn(`âš ï¸ No se encontrÃ³ cart-item con data-item-id="${escapedItemId}"`);
                 deliveryElements = [];
             }
             
-            // IMPORTANTE: Si se especificó un itemId, NO actualizar otros elementos
+            // IMPORTANTE: Si se especificÃ³ un itemId, NO actualizar otros elementos
             if (deliveryElements.length === 0) {
-                console.log(`⚠️ No se encontró elemento de plazo de entrega para itemId: ${specificItemId}`);
+                console.log(`âš ï¸ No se encontrÃ³ elemento de plazo de entrega para itemId: ${specificItemId}`);
                 return Promise.resolve();
             }
             
-            console.log(`✅ Actualizando plazo de entrega SOLO para itemId: ${specificItemId} (${deliveryElements.length} elemento(s))`);
+            console.log(`âœ… Actualizando plazo de entrega SOLO para itemId: ${specificItemId} (${deliveryElements.length} elemento(s))`);
         }
         
         for (const element of deliveryElements) {
@@ -1796,20 +1796,20 @@ class CartManager {
             const quantity = parseInt(element.getAttribute('data-quantity') || '1');
             const elementItemId = element.getAttribute('data-item-id');
             
-            // IMPORTANTE: Si se especificó un specificItemId (y no es '*'), verificar que este elemento sea el correcto
+            // IMPORTANTE: Si se especificÃ³ un specificItemId (y no es '*'), verificar que este elemento sea el correcto
             if (specificItemId && specificItemId !== '*') {
                 // Verificar que el elemento pertenece al itemId especificado
                 if (String(elementItemId) !== String(specificItemId) && elementItemId !== specificItemId) {
-                    console.log(`⚠️ Saltando elemento con itemId diferente: ${elementItemId} (esperado: ${specificItemId})`);
+                    console.log(`âš ï¸ Saltando elemento con itemId diferente: ${elementItemId} (esperado: ${specificItemId})`);
                     continue; // Saltar este elemento, no es el que queremos actualizar
                 }
-                console.log(`✅ Procesando elemento correcto: itemId=${elementItemId}, phcRef=${phcRef}, quantity=${quantity}`);
+                console.log(`âœ… Procesando elemento correcto: itemId=${elementItemId}, phcRef=${phcRef}, quantity=${quantity}`);
             } else if (specificItemId === '*') {
-                console.log(`⚠️ Procesando elemento (actualización global): itemId=${elementItemId}, phcRef=${phcRef}, quantity=${quantity}`);
+                console.log(`âš ï¸ Procesando elemento (actualizaciÃ³n global): itemId=${elementItemId}, phcRef=${phcRef}, quantity=${quantity}`);
             }
             
-            // Si se especificó un specificItemId (y no es '*'), usar ese para buscar el item
-            // Si es '*', usar el itemId del elemento (actualización global)
+            // Si se especificÃ³ un specificItemId (y no es '*'), usar ese para buscar el item
+            // Si es '*', usar el itemId del elemento (actualizaciÃ³n global)
             // Si no hay specificItemId, usar el itemId del elemento
             const itemIdToUse = (specificItemId && specificItemId !== '*') ? specificItemId : elementItemId;
             
@@ -1829,8 +1829,8 @@ class CartManager {
                 continue;
             }
             
-            // Si se especificó un specificItemId (y no es '*'), usar la cantidad del item encontrado, no la del atributo
-            // Si es '*', usar la cantidad del atributo (actualización global)
+            // Si se especificÃ³ un specificItemId (y no es '*'), usar la cantidad del item encontrado, no la del atributo
+            // Si es '*', usar la cantidad del atributo (actualizaciÃ³n global)
             const quantityToUse = (specificItemId && specificItemId !== '*') ? item.quantity : quantity;
             
             // VERIFICAR PRIMERO: Si hay una variante seleccionada con plazo de entrega, usar ese plazo exclusivamente
@@ -1838,19 +1838,19 @@ class CartManager {
                 const selectedVariant = item.variants[item.selectedVariant];
                 if (selectedVariant && (selectedVariant.plazo_entrega_personalizado || selectedVariant.plazoEntrega || selectedVariant.plazo_entrega || selectedVariant.deliveryTime)) {
                     const variantDeliveryTime = selectedVariant.plazo_entrega_personalizado || selectedVariant.plazoEntrega || selectedVariant.plazo_entrega || selectedVariant.deliveryTime;
-                    // Guardar el plazo de variante en el item si no está guardado
+                    // Guardar el plazo de variante en el item si no estÃ¡ guardado
                     if (!item.variantDeliveryTime) {
                         item.variantDeliveryTime = variantDeliveryTime;
                         this.saveCart();
                     }
-                    // Mostrar el plazo de la variante; siempre añadir sujeito a confirmação cuando hay plazo de entrega
+                    // Mostrar el plazo de la variante; siempre aÃ±adir sujeito a confirmaÃ§Ã£o cuando hay plazo de entrega
                     element.innerHTML = '';
                     const span = document.createElement('span');
                     span.className = 'delivery-time-text';
                     const tVar = this.getStockTranslations();
                     span.textContent = `${variantDeliveryTime} ${tVar.sujetoConfirmacion}`;
                     element.appendChild(span);
-                    // Actualizar también el atributo data-quantity
+                    // Actualizar tambiÃ©n el atributo data-quantity
                     element.setAttribute('data-quantity', quantityToUse);
                     // Mantener data-phc-ref aunque no se use stock, para consistencia
                     if (!element.getAttribute('data-phc-ref')) {
@@ -1860,7 +1860,7 @@ class CartManager {
                 }
             }
             
-            // Si no hay plazo de variante, proceder con el cálculo normal basado en stock
+            // Si no hay plazo de variante, proceder con el cÃ¡lculo normal basado en stock
             // SIEMPRE obtener la referencia PHC desde products.phc_ref para asegurar que sea la correcta
             // Buscar el producto en allProducts (que viene de products) para obtener su phc_ref y plazo de entrega
             // Usar item.id (el ID del producto) para buscar en allProducts, no itemId (que es cartItemId)
@@ -1912,12 +1912,12 @@ class CartManager {
                 
                 const t = this.getStockTranslations();
                 
-                // IMPORTANTE: Si se especificó un specificItemId (y no es '*'), verificar una vez más que este elemento es el correcto
+                // IMPORTANTE: Si se especificÃ³ un specificItemId (y no es '*'), verificar una vez mÃ¡s que este elemento es el correcto
                 // antes de actualizar su contenido
                 if (specificItemId && specificItemId !== '*') {
                     const currentElementItemId = element.getAttribute('data-item-id');
                     if (String(currentElementItemId) !== String(specificItemId) && currentElementItemId !== specificItemId) {
-                        console.warn(`⚠️ Saltando actualización de contenido: elemento con itemId ${currentElementItemId} no coincide con ${specificItemId}`);
+                        console.warn(`âš ï¸ Saltando actualizaciÃ³n de contenido: elemento con itemId ${currentElementItemId} no coincide con ${specificItemId}`);
                         continue; // Saltar este elemento completamente
                     }
                 }
@@ -1925,7 +1925,7 @@ class CartManager {
                 // Limpiar contenido anterior para evitar duplicados
                 element.innerHTML = '';
                 
-                // Actualizar también el atributo data-quantity con la cantidad correcta
+                // Actualizar tambiÃ©n el atributo data-quantity con la cantidad correcta
                 element.setAttribute('data-quantity', quantityToUse);
                 
                 // Si tiene stock suficiente (stock >= cantidad solicitada)
@@ -1949,7 +1949,7 @@ class CartManager {
                     span.textContent = `${stockDisponible.toLocaleString()} en stock, restantes ${restantes.toLocaleString()} ${t.plazoEntrega} ${plazoNormal} ${t.sujetoConfirmacion}`;
                     element.appendChild(span);
                 }
-                // Si no tiene stock (stock = 0): mostrar plazo + sujeito a confirmação no momento da adjudicação
+                // Si no tiene stock (stock = 0): mostrar plazo + sujeito a confirmaÃ§Ã£o no momento da adjudicaÃ§Ã£o
                 else {
                     const span = document.createElement('span');
                     span.className = 'delivery-time-text';
@@ -1973,14 +1973,14 @@ class CartManager {
             return null;
         }
         
-        // Normalizar referencia PHC: trim y convertir a mayúsculas para comparación
+        // Normalizar referencia PHC: trim y convertir a mayÃºsculas para comparaciÃ³n
         const normalizedPhcRef = String(phcRef).trim().toUpperCase();
         
         if (!normalizedPhcRef) {
             return null;
         }
         
-        // Asegurar que Supabase esté inicializado
+        // Asegurar que Supabase estÃ© inicializado
         if (!this.supabase) {
             try {
                 await this.initializeSupabase();
@@ -1997,14 +1997,14 @@ class CartManager {
         
         try {
             // Buscar directamente en stock_productos por referencia_phc
-            // La búsqueda se hace normalizando ambas partes para ser insensible a mayúsculas/minúsculas
+            // La bÃºsqueda se hace normalizando ambas partes para ser insensible a mayÃºsculas/minÃºsculas
             const { data: stockRecords, error: fetchError } = await this.supabase
                 .from('stock_productos')
                 .select('referencia_phc, stock_disponible')
                 .ilike('referencia_phc', normalizedPhcRef);
             
             if (fetchError) {
-                // No mostrar error si la tabla no existe aún
+                // No mostrar error si la tabla no existe aÃºn
                 if (fetchError.message && fetchError.message.includes('does not exist')) {
                     return null;
                 }
@@ -2015,7 +2015,7 @@ class CartManager {
                 return null;
             }
             
-            // Buscar coincidencia normalizada (insensible a mayúsculas/minúsculas y espacios)
+            // Buscar coincidencia normalizada (insensible a mayÃºsculas/minÃºsculas y espacios)
             // Comparar products.phc_ref (normalizado) con stock_productos.referencia_phc (normalizado)
             const stockRecord = stockRecords.find(record => {
                 if (!record.referencia_phc) return false;
@@ -2052,19 +2052,19 @@ class CartManager {
             return;
         }
         
-        console.log('📋 renderCart() - Carrito tiene', this.cart.length, 'items');
+        console.log('ðŸ“‹ renderCart() - Carrito tiene', this.cart.length, 'items');
         
         // Cargar rol del usuario para usarlo en renderCartItem
         if (!window.cachedRole) {
             try {
                 window.cachedRole = await window.getUserRole?.();
             } catch (error) {
-                console.warn('⚠️ No se pudo obtener el rol del usuario:', error);
+                console.warn('âš ï¸ No se pudo obtener el rol del usuario:', error);
             }
         }
         
         if (this.cart.length === 0) {
-            console.log('📋 Carrito vacío, mostrando mensaje de carrito vacío');
+            console.log('ðŸ“‹ Carrito vacÃ­o, mostrando mensaje de carrito vacÃ­o');
             cartItemsContainer.innerHTML = this.getEmptyCartHTML();
             return;
         }
@@ -2085,39 +2085,39 @@ class CartManager {
         });
         
         const headersHTML = this.renderCartHeaders();
-            console.log('📋 Generando HTML de items...');
+            console.log('ðŸ“‹ Generando HTML de items...');
             const itemsHTML = this.cart.map((item, index) => {
                 try {
-                    console.log(`📦 Renderizando item ${index + 1}/${this.cart.length}:`, item.name || item.id);
+                    console.log(`ðŸ“¦ Renderizando item ${index + 1}/${this.cart.length}:`, item.name || item.id);
                     const html = this.renderCartItem(item);
                     if (!html || html.trim() === '') {
-                        console.warn(`⚠️ Item ${index + 1} generó HTML vacío:`, item);
+                        console.warn(`âš ï¸ Item ${index + 1} generÃ³ HTML vacÃ­o:`, item);
                     }
                     return html;
                 } catch (error) {
-                    console.error(`❌ ERROR renderizando item ${index + 1}:`, error);
+                    console.error(`âŒ ERROR renderizando item ${index + 1}:`, error);
                     console.error('   - Item:', item);
                     console.error('   - Stack:', error.stack);
-                    return ''; // Retornar string vacío si hay error para no romper el renderizado
+                    return ''; // Retornar string vacÃ­o si hay error para no romper el renderizado
                 }
             }).join('');
             
-            console.log('📋 HTML generado, longitud:', itemsHTML.length);
+            console.log('ðŸ“‹ HTML generado, longitud:', itemsHTML.length);
         
         // IMPORTANTE: Antes de renderizar, preservar el contenido de los elementos de plazo de entrega
-        // que ya tienen información de stock calculada, para no perderla al re-renderizar
+        // que ya tienen informaciÃ³n de stock calculada, para no perderla al re-renderizar
         const preservedDeliveryTimes = new Map();
         if (skipStockUpdate) {
-            // Solo preservar si estamos omitiendo la actualización de stock (para no perder información ya calculada)
+            // Solo preservar si estamos omitiendo la actualizaciÃ³n de stock (para no perder informaciÃ³n ya calculada)
             const existingDeliveryElements = document.querySelectorAll('.delivery-time[data-item-id]');
             existingDeliveryElements.forEach(element => {
                 const itemId = element.getAttribute('data-item-id');
                 const innerHTML = element.innerHTML;
-                // Detectar si el elemento tiene información de stock calculada:
+                // Detectar si el elemento tiene informaciÃ³n de stock calculada:
                 // - Contiene "en stock" (indica stock disponible)
                 // - Contiene "unidades en stock" o "units in stock" (indica stock parcial)
-                // - Contiene colores específicos (verde para en stock, amarillo para parcial)
-                // - NO es el texto básico "(sujeto a confirmación de stock)" al final
+                // - Contiene colores especÃ­ficos (verde para en stock, amarillo para parcial)
+                // - NO es el texto bÃ¡sico "(sujeto a confirmaciÃ³n de stock)" al final
                 const hasStockInfo = innerHTML && (
                     innerHTML.includes('en stock') ||
                     innerHTML.includes('Em stock') ||
@@ -2132,18 +2132,18 @@ class CartManager {
                     element.querySelector('span[style*="color: #f59e0b"]')    // Amarillo (stock parcial)
                 );
                 
-                // Solo preservar si tiene información de stock calculada
+                // Solo preservar si tiene informaciÃ³n de stock calculada
                 if (hasStockInfo) {
                     preservedDeliveryTimes.set(itemId, innerHTML);
-                    console.log(`💾 Preservando plazo de entrega con stock para itemId: ${itemId}`);
+                    console.log(`ðŸ’¾ Preservando plazo de entrega con stock para itemId: ${itemId}`);
                 }
             });
         }
         
         cartItemsContainer.innerHTML = headersHTML + itemsHTML;
-            console.log('✅ HTML insertado en el DOM');
+            console.log('âœ… HTML insertado en el DOM');
             
-            // Configurar drag and drop después de insertar el HTML
+            // Configurar drag and drop despuÃ©s de insertar el HTML
             this.setupDragAndDrop();
             
             // Restaurar el contenido preservado de los plazos de entrega
@@ -2158,31 +2158,31 @@ class CartManager {
                             const elementItemId = element.getAttribute('data-item-id');
                             if (String(elementItemId) === String(itemId) || elementItemId === itemId) {
                                 element.innerHTML = innerHTML;
-                                console.log(`✅ Restaurado plazo de entrega para itemId: ${itemId}`);
+                                console.log(`âœ… Restaurado plazo de entrega para itemId: ${itemId}`);
                             } else {
-                                console.warn(`⚠️ No se restauró plazo: itemId del elemento (${elementItemId}) no coincide con ${itemId}`);
+                                console.warn(`âš ï¸ No se restaurÃ³ plazo: itemId del elemento (${elementItemId}) no coincide con ${itemId}`);
                             }
                         } else {
-                            console.warn(`⚠️ No se encontró elemento de plazo de entrega para itemId: ${itemId}`);
+                            console.warn(`âš ï¸ No se encontrÃ³ elemento de plazo de entrega para itemId: ${itemId}`);
                         }
                     });
                 }, 10);
             }
             
-            // Después de renderizar, actualizar todos los plazos de entrega según stock
-            // Esto asegura que todos los productos mantengan su cálculo de stock actualizado
-            // skipStockUpdate permite omitir esta actualización cuando se está actualizando un producto específico
+            // DespuÃ©s de renderizar, actualizar todos los plazos de entrega segÃºn stock
+            // Esto asegura que todos los productos mantengan su cÃ¡lculo de stock actualizado
+            // skipStockUpdate permite omitir esta actualizaciÃ³n cuando se estÃ¡ actualizando un producto especÃ­fico
             if (!skipStockUpdate) {
-                console.log('⚠️ renderCart: Actualizando plazos de entrega de TODOS los productos (skipStockUpdate=false)');
+                console.log('âš ï¸ renderCart: Actualizando plazos de entrega de TODOS los productos (skipStockUpdate=false)');
                 setTimeout(() => {
-                    // Usar '*' como parámetro especial para indicar que se deben actualizar todos los productos
+                    // Usar '*' como parÃ¡metro especial para indicar que se deben actualizar todos los productos
                     this.updateDeliveryTimesFromStock('*');
                 }, 150);
             } else {
-                console.log('✅ renderCart: Omitiendo actualización de plazos de entrega (skipStockUpdate=true)');
+                console.log('âœ… renderCart: Omitiendo actualizaciÃ³n de plazos de entrega (skipStockUpdate=true)');
             }
         } catch (error) {
-            cartItemsContainer.innerHTML = '<div style="padding: 20px; color: red;">Error al cargar el carrito. Por favor, recarga la página.</div>';
+            cartItemsContainer.innerHTML = '<div style="padding: 20px; color: red;">Error al cargar el carrito. Por favor, recarga la pÃ¡gina.</div>';
         }
     }
 
@@ -2190,13 +2190,13 @@ class CartManager {
      * Renderizar un item del carrito
      */
     renderCartItem(item) {
-        // Declarar variables al principio para evitar errores de inicialización
-        // IMPORTANTE: Manejar correctamente el precio 0 (no usar || 0 que convertiría 0 en 0)
+        // Declarar variables al principio para evitar errores de inicializaciÃ³n
+        // IMPORTANTE: Manejar correctamente el precio 0 (no usar || 0 que convertirÃ­a 0 en 0)
         let unitPrice = (item.price !== null && item.price !== undefined) ? Number(item.price) : 0;
         let minQuantity = null;
         let isValidQuantity = true;
         
-        console.log('🎨 renderCartItem - Inicializando:', {
+        console.log('ðŸŽ¨ renderCartItem - Inicializando:', {
             nombre: item.name,
             precioItem: item.price,
             tipoPrecio: typeof item.price,
@@ -2214,12 +2214,12 @@ class CartManager {
                     if (!item.basePrice) {
                         item.basePrice = productFromDB.precio || item.price || 0;
                     }
-                    // Guardar después de cargar price_tiers
+                    // Guardar despuÃ©s de cargar price_tiers
                     this.saveCart();
                 }
             }
             
-            // Determinar qué price_tiers usar: variante seleccionada o base
+            // Determinar quÃ© price_tiers usar: variante seleccionada o base
             let priceTiersToUse = item.price_tiers || [];
             
             // Si hay una variante seleccionada, usar sus price_tiers
@@ -2230,12 +2230,12 @@ class CartManager {
                 }
             }
             
-            // Verificar si el modo 200+ está activo y este producto debe mantener el precio máximo
+            // Verificar si el modo 200+ estÃ¡ activo y este producto debe mantener el precio mÃ¡ximo
             const modo200Activo = this.modo200 || false;
             let debeMantenerPrecioMaximo = false;
             
             if (modo200Activo) {
-                // Buscar el producto en la base de datos para verificar área de negocio y marca
+                // Buscar el producto en la base de datos para verificar Ã¡rea de negocio y marca
                 const productFromDB = this.allProducts.find(p => {
                     return String(p.id) === String(item.id) || p.id === item.id;
                 });
@@ -2246,12 +2246,12 @@ class CartManager {
                     const marca = productFromDB.marca || productFromDB.brand || '';
                     const marcaUpper = marca.toUpperCase().trim();
                     
-                    // Solo mantener precio máximo si es equipamiento y no está excluido
+                    // Solo mantener precio mÃ¡ximo si es equipamiento y no estÃ¡ excluido
                     if (areaNegocioLower === 'equipamiento' && 
                         marcaUpper !== 'VACAVALIENTE' && 
                         marcaUpper !== 'LASER BUILD') {
                         debeMantenerPrecioMaximo = true;
-                        console.log(`🔧 renderCartItem - Modo 200+ activo: Manteniendo precio máximo para ${item.name}`);
+                        console.log(`ðŸ”§ renderCartItem - Modo 200+ activo: Manteniendo precio mÃ¡ximo para ${item.name}`);
                     }
                 }
             }
@@ -2264,12 +2264,12 @@ class CartManager {
                     ? Number(item.originalPrice) 
                     : Number(item.price);
                 
-                // Mantener el precio manual tal cual está guardado (puede ser 0 para "Sobre consulta")
+                // Mantener el precio manual tal cual estÃ¡ guardado (puede ser 0 para "Sobre consulta")
                 unitPrice = precioAMantener;
                 item.price = unitPrice;
                 item.minQuantity = null;
                 item.isValidQuantity = true;
-                console.log('💰 Precio manual mantenido:', {
+                console.log('ðŸ’° Precio manual mantenido:', {
                     nombre: item.name,
                     precioOriginal: item.originalPrice,
                     precioItem: item.price,
@@ -2277,12 +2277,12 @@ class CartManager {
                     manualPrice: item.manualPrice
                 });
                 // IMPORTANTE: Salir temprano para evitar que se recalcule el precio
-                // No continuar con el resto de la lógica de cálculo de precio
+                // No continuar con el resto de la lÃ³gica de cÃ¡lculo de precio
             } else if (priceTiersToUse && Array.isArray(priceTiersToUse) && priceTiersToUse.length > 0) {
-                // SIEMPRE recalcular precio según escalones si existen (a menos que el modo 200+ esté activo)
+                // SIEMPRE recalcular precio segÃºn escalones si existen (a menos que el modo 200+ estÃ© activo)
                 // Esto asegura que el precio se actualice cuando cambia la cantidad o la variante
                 if (debeMantenerPrecioMaximo) {
-                    // Si el modo 200+ está activo, usar el precio del escalón máximo
+                    // Si el modo 200+ estÃ¡ activo, usar el precio del escalÃ³n mÃ¡ximo
                     const sortedTiers = [...priceTiersToUse].sort((a, b) => {
                         const minA = a?.min_qty !== null && a?.min_qty !== undefined ? Number(a.min_qty) : 0;
                         const minB = b?.min_qty !== null && b?.min_qty !== undefined ? Number(b.min_qty) : 0;
@@ -2293,16 +2293,16 @@ class CartManager {
                     const maxPrice = lastTier?.price !== null && lastTier?.price !== undefined ? Number(lastTier.price) : null;
                     
                     if (maxPrice !== null && Number.isFinite(maxPrice)) {
-                        // Guardar precio original si no está guardado
+                        // Guardar precio original si no estÃ¡ guardado
                         if (item.originalPrice === undefined) {
                             item.originalPrice = item.price;
                         }
                         item.price = maxPrice;
                         item.minQuantity = null;
                         item.isValidQuantity = true;
-                        console.log(`✅ renderCartItem - Precio máximo aplicado (modo 200+): €${maxPrice}`);
+                        console.log(`âœ… renderCartItem - Precio mÃ¡ximo aplicado (modo 200+): â‚¬${maxPrice}`);
                     } else {
-                        // Si no se puede obtener precio máximo, recalcular normalmente
+                        // Si no se puede obtener precio mÃ¡ximo, recalcular normalmente
                         const basePriceForCalc = item.basePrice !== undefined && item.basePrice !== null ? item.basePrice : (item.price || 0);
                         const priceResult = this.getPriceForQuantity(priceTiersToUse, item.quantity, basePriceForCalc);
                         item.price = priceResult.price;
@@ -2310,7 +2310,7 @@ class CartManager {
                         item.isValidQuantity = priceResult.isValid;
                     }
                 } else {
-                    // Comportamiento normal: recalcular según cantidad
+                    // Comportamiento normal: recalcular segÃºn cantidad
                     const basePriceForCalc = item.basePrice !== undefined && item.basePrice !== null ? item.basePrice : (item.price || 0);
                     const priceResult = this.getPriceForQuantity(priceTiersToUse, item.quantity, basePriceForCalc);
                     item.price = priceResult.price;
@@ -2341,7 +2341,7 @@ class CartManager {
         
         // Si es un producto y NO es precio manual, recalcular para asegurar que tenemos los valores correctos
         if (item.type === 'product' && !isManualPrice) {
-            // Determinar qué price_tiers usar: variante seleccionada o base
+            // Determinar quÃ© price_tiers usar: variante seleccionada o base
             let priceTiersToUse = item.price_tiers || [];
             
             // Si hay una variante seleccionada, usar sus price_tiers
@@ -2352,12 +2352,12 @@ class CartManager {
                 }
             }
             
-            // Verificar si el modo 200+ está activo y este producto debe mantener el precio máximo
+            // Verificar si el modo 200+ estÃ¡ activo y este producto debe mantener el precio mÃ¡ximo
             const modo200Activo = this.modo200 || false;
             let debeMantenerPrecioMaximo = false;
             
             if (modo200Activo) {
-                // Buscar el producto en la base de datos para verificar área de negocio y marca
+                // Buscar el producto en la base de datos para verificar Ã¡rea de negocio y marca
                 const productFromDB = this.allProducts.find(p => {
                     return String(p.id) === String(item.id) || p.id === item.id;
                 });
@@ -2368,7 +2368,7 @@ class CartManager {
                     const marca = productFromDB.marca || productFromDB.brand || '';
                     const marcaUpper = marca.toUpperCase().trim();
                     
-                    // Solo mantener precio máximo si es equipamiento y no está excluido
+                    // Solo mantener precio mÃ¡ximo si es equipamiento y no estÃ¡ excluido
                     if (areaNegocioLower === 'equipamiento' && 
                         marcaUpper !== 'VACAVALIENTE' && 
                         marcaUpper !== 'LASER BUILD') {
@@ -2387,9 +2387,9 @@ class CartManager {
                 item.minQuantity = null;
                 item.isValidQuantity = true;
             } else if (priceTiersToUse && Array.isArray(priceTiersToUse) && priceTiersToUse.length > 0) {
-                // Si hay escalones, recalcular precio y cantidad mínima (a menos que el modo 200+ esté activo)
+                // Si hay escalones, recalcular precio y cantidad mÃ­nima (a menos que el modo 200+ estÃ© activo)
                 if (debeMantenerPrecioMaximo) {
-                    // Si el modo 200+ está activo, usar el precio del escalón máximo
+                    // Si el modo 200+ estÃ¡ activo, usar el precio del escalÃ³n mÃ¡ximo
                     const sortedTiers = [...priceTiersToUse].sort((a, b) => {
                         const minA = a?.min_qty !== null && a?.min_qty !== undefined ? Number(a.min_qty) : 0;
                         const minB = b?.min_qty !== null && b?.min_qty !== undefined ? Number(b.min_qty) : 0;
@@ -2409,7 +2409,7 @@ class CartManager {
                         item.minQuantity = minQuantity;
                         item.isValidQuantity = isValidQuantity;
                     } else {
-                        // Si no se puede obtener precio máximo, recalcular normalmente
+                        // Si no se puede obtener precio mÃ¡ximo, recalcular normalmente
                         const basePriceForCalc = item.basePrice !== undefined && item.basePrice !== null ? item.basePrice : (item.price || 0);
                         const priceResult = this.getPriceForQuantity(priceTiersToUse, item.quantity, basePriceForCalc);
                         unitPrice = priceResult.price || 0;
@@ -2422,7 +2422,7 @@ class CartManager {
                         item.isValidQuantity = isValidQuantity;
                     }
                 } else {
-                    // Comportamiento normal: recalcular según cantidad
+                    // Comportamiento normal: recalcular segÃºn cantidad
                     const basePriceForCalc = item.basePrice !== undefined && item.basePrice !== null ? item.basePrice : (item.price || 0);
                     const priceResult = this.getPriceForQuantity(priceTiersToUse, item.quantity, basePriceForCalc);
                     unitPrice = priceResult.price || 0;
@@ -2463,10 +2463,10 @@ class CartManager {
              'Special Order') :
             this.getCategoryName(item.category);
         
-        // Obtener descripción según idioma - buscar en la BD si no está en el item
+        // Obtener descripciÃ³n segÃºn idioma - buscar en la BD si no estÃ¡ en el item
         let description = '';
         if (item.type === 'product') {
-            // Si no tiene descripción en el item, intentar obtenerla de la BD
+            // Si no tiene descripciÃ³n en el item, intentar obtenerla de la BD
             if (!item.descripcionEs && !item.descripcionPt && !item.description) {
                 // Buscar en allProducts
                 const productFromDB = this.allProducts.find(p => p.id === item.id);
@@ -2491,7 +2491,7 @@ class CartManager {
         
         // Plazo de entrega
         let plazoEntrega = item.plazoEntrega || item.plazo_entrega || '';
-        // Si hay una variante seleccionada con plazo específico, usarlo siempre
+        // Si hay una variante seleccionada con plazo especÃ­fico, usarlo siempre
         if (item.selectedVariant !== null && item.selectedVariant !== undefined && item.variants && item.variants.length > 0) {
             const selectedVariant = item.variants[item.selectedVariant];
             if (selectedVariant && (selectedVariant.plazo_entrega_personalizado || selectedVariant.plazoEntrega || selectedVariant.plazo_entrega || selectedVariant.deliveryTime)) {
@@ -2502,23 +2502,23 @@ class CartManager {
                 plazoEntrega = item.variantDeliveryTime;
             }
         } else if (item.variantDeliveryTime) {
-            // Si se volvió a la base, limpiar el plazo guardado
+            // Si se volviÃ³ a la base, limpiar el plazo guardado
             delete item.variantDeliveryTime;
         }
         if (!plazoEntrega && item.type === 'product') {
-            // Buscar en la BD si no está en el item
+            // Buscar en la BD si no estÃ¡ en el item
             const productFromDB = this.allProducts.find(p => p.id === item.id);
             if (productFromDB) {
                 plazoEntrega = productFromDB.plazoEntrega || '';
             }
         }
         
-        // Observaciones (si no existe, inicializar vacío)
+        // Observaciones (si no existe, inicializar vacÃ­o)
         if (!item.observations) {
             item.observations = '';
         }
         
-        // Asegurar que itemIdentifier esté definido ANTES de usarlo en variantSelector
+        // Asegurar que itemIdentifier estÃ© definido ANTES de usarlo en variantSelector
         // Usar cartItemId si existe, sino usar item.id como fallback
         let itemIdentifier = item.cartItemId || item.id;
         if (!itemIdentifier) {
@@ -2528,7 +2528,7 @@ class CartManager {
         }
         itemIdentifier = String(itemIdentifier);
         
-        // Módulo vacío editable (Nuevo módulo)
+        // MÃ³dulo vacÃ­o editable (Nuevo mÃ³dulo)
         if (item.type === 'special' && item.isEmptyModule) {
             return this.renderEmptyModuleItem(item, itemIdentifier);
         }
@@ -2543,7 +2543,7 @@ class CartManager {
             }
         }
         
-        // Asegurar que las variantes tengan price_tiers válidos
+        // Asegurar que las variantes tengan price_tiers vÃ¡lidos
         if (productVariants.length > 0) {
             productVariants.forEach(variant => {
                 if (!variant.price_tiers || !Array.isArray(variant.price_tiers) || variant.price_tiers.length === 0) {
@@ -2564,7 +2564,7 @@ class CartManager {
             item.selectedVariant = null;
         }
         
-        // Obtener variantes de referencias (para selección de color)
+        // Obtener variantes de referencias (para selecciÃ³n de color)
         let referenceVariants = [];
         try {
             if (item.variantes_referencias && Array.isArray(item.variantes_referencias)) {
@@ -2596,7 +2596,7 @@ class CartManager {
         }
         
         // Renderizar selector de variantes solo si hay variantes
-        // itemIdentifier ya está definido arriba
+        // itemIdentifier ya estÃ¡ definido arriba
         const variantSelector = productVariants.length > 0 ? `
             <div class="cart-item-variant-selector" style="grid-column: 1 / -1; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--bg-gray-200);">
                 <label style="display: block; margin-bottom: 5px; font-size: 0.875rem; font-weight: 600; color: var(--text-primary);">
@@ -2606,7 +2606,7 @@ class CartManager {
                         onchange="changeProductVariant('${String(itemIdentifier).replace(/'/g, "\\'")}', this.value)"
                         style="width: 100%; padding: 8px 12px; border: 1px solid var(--bg-gray-300); border-radius: 6px; background: var(--bg-white); color: var(--text-primary); font-size: 0.875rem; cursor: pointer;">
                     <option value="base" ${item.selectedVariant === null ? 'selected' : ''}>
-                        ${this.currentLanguage === 'es' ? 'Sin personalización' : this.currentLanguage === 'pt' ? 'Sem personalização' : 'No customization'}
+                        ${this.currentLanguage === 'es' ? 'Sin personalizaciÃ³n' : this.currentLanguage === 'pt' ? 'Sem personalizaÃ§Ã£o' : 'No customization'}
                     </option>
                     ${productVariants.map((variant, index) => `
                         <option value="${index}" ${item.selectedVariant === index ? 'selected' : ''}>
@@ -2674,7 +2674,7 @@ class CartManager {
                 let options = '';
                 let selectedValue = '';
                 
-                // Verificar si el color guardado está en las variantes actuales
+                // Verificar si el color guardado estÃ¡ en las variantes actuales
                 let colorGuardadoEnVariantes = false;
                 let colorGuardadoIndex = -1;
                 
@@ -2699,7 +2699,7 @@ class CartManager {
                 }).join('');
                 }
                 
-                // Si hay color guardado pero NO está en las variantes, agregarlo como opción deshabilitada y seleccionada
+                // Si hay color guardado pero NO estÃ¡ en las variantes, agregarlo como opciÃ³n deshabilitada y seleccionada
                 if (hasColorGuardado && !colorGuardadoEnVariantes) {
                     const colorGuardadoText = String(item.colorSeleccionadoGuardado);
                     const disabledText = this.currentLanguage === 'es' ? ' (eliminado)' : 
@@ -2716,7 +2716,7 @@ class CartManager {
                         selectedValue = '-1';
                     }
                 } else if (hasVariants && !selectedValue && item.selectedReferenceVariant !== null && item.selectedReferenceVariant !== undefined) {
-                    // Si hay variantes y hay un índice seleccionado, usarlo
+                    // Si hay variantes y hay un Ã­ndice seleccionado, usarlo
                     selectedValue = item.selectedReferenceVariant;
                 }
                 
@@ -2743,7 +2743,7 @@ class CartManager {
         let upsellSuggestion = null;
         let upsellSuggestionHTML = '';
         if (item.type === 'product') {
-            // Determinar qué price_tiers usar: variante seleccionada o base
+            // Determinar quÃ© price_tiers usar: variante seleccionada o base
             let priceTiersToUse = item.price_tiers || [];
             
             // Si hay una variante seleccionada, usar sus price_tiers
@@ -2754,7 +2754,7 @@ class CartManager {
                 }
             }
             
-            // Crear objeto producto para la función de sugerencia
+            // Crear objeto producto para la funciÃ³n de sugerencia
             const productForSuggestion = {
                 id: item.id,
                 name: item.name,
@@ -2766,7 +2766,7 @@ class CartManager {
             
             // Generar HTML de sugerencia si existe
             if (upsellSuggestion) {
-                // Calcular el ahorro real: lo que costaría al precio actual vs el nuevo precio
+                // Calcular el ahorro real: lo que costarÃ­a al precio actual vs el nuevo precio
                 const costWithoutDiscount = upsellSuggestion.newQuantity * upsellSuggestion.currentUnitPrice;
                 const costWithDiscount = upsellSuggestion.nextTotal;
                 const realSavings = costWithoutDiscount - costWithDiscount;
@@ -2775,15 +2775,15 @@ class CartManager {
                 
                 const translations = {
                     es: {
-                        message: `Si aumentas tu pedido a ${upsellSuggestion.newQuantity} uds, el precio por unidad baja de ${upsellSuggestion.currentUnitPrice.toFixed(2)}€ a ${upsellSuggestion.nextUnitPrice.toFixed(2)}€ (${discountPercent}% descuento). ¡Ahorras ${realSavings.toFixed(2)}€ en total!`,
+                        message: `Si aumentas tu pedido a ${upsellSuggestion.newQuantity} uds, el precio por unidad baja de ${upsellSuggestion.currentUnitPrice.toFixed(2)}â‚¬ a ${upsellSuggestion.nextUnitPrice.toFixed(2)}â‚¬ (${discountPercent}% descuento). Â¡Ahorras ${realSavings.toFixed(2)}â‚¬ en total!`,
                         button: 'Aumentar cantidad'
                     },
                     pt: {
-                        message: `Se aumentar o seu pedido para ${upsellSuggestion.newQuantity} unid., o preço por unidade baixa de ${upsellSuggestion.currentUnitPrice.toFixed(2)}€ para ${upsellSuggestion.nextUnitPrice.toFixed(2)}€ (${discountPercent}% desconto). Poupa ${realSavings.toFixed(2)}€ no total!`,
+                        message: `Se aumentar o seu pedido para ${upsellSuggestion.newQuantity} unid., o preÃ§o por unidade baixa de ${upsellSuggestion.currentUnitPrice.toFixed(2)}â‚¬ para ${upsellSuggestion.nextUnitPrice.toFixed(2)}â‚¬ (${discountPercent}% desconto). Poupa ${realSavings.toFixed(2)}â‚¬ no total!`,
                         button: 'Aumentar quantidade'
                     },
                     en: {
-                        message: `If you increase your order to ${upsellSuggestion.newQuantity} units, the unit price drops from ${upsellSuggestion.currentUnitPrice.toFixed(2)}€ to ${upsellSuggestion.nextUnitPrice.toFixed(2)}€ (${discountPercent}% discount). You save ${realSavings.toFixed(2)}€ in total!`,
+                        message: `If you increase your order to ${upsellSuggestion.newQuantity} units, the unit price drops from ${upsellSuggestion.currentUnitPrice.toFixed(2)}â‚¬ to ${upsellSuggestion.nextUnitPrice.toFixed(2)}â‚¬ (${discountPercent}% discount). You save ${realSavings.toFixed(2)}â‚¬ in total!`,
                         button: 'Increase quantity'
                     }
                 };
@@ -2812,9 +2812,9 @@ class CartManager {
             }
         }
         
-        // itemIdentifier ya está definido arriba
+        // itemIdentifier ya estÃ¡ definido arriba
         
-        const dragHandleTitle = this.currentLanguage === 'es' ? 'Arrastrar para reordenar. Triple clic para duplicar módulo.' : this.currentLanguage === 'pt' ? 'Arrastrar para reordenar. Triplo clique para duplicar módulo.' : 'Drag to reorder. Triple click to duplicate module.';
+        const dragHandleTitle = this.currentLanguage === 'es' ? 'Arrastrar para reordenar. Triple clic para duplicar mÃ³dulo.' : this.currentLanguage === 'pt' ? 'Arrastrar para reordenar. Triplo clique para duplicar mÃ³dulo.' : 'Drag to reorder. Triple click to duplicate module.';
         return `
             <div class="cart-item-wrapper">
             <div class="cart-item" data-item-id="${itemIdentifier}" draggable="true" style="cursor: move; position: relative;">
@@ -2830,7 +2830,7 @@ class CartManager {
                 </div>
                 
                 <div class="cart-item-description">
-                    ${description ? `<div class="product-description-text">${description}</div>` : '<div class="product-description-text" style="color: var(--text-secondary); font-style: italic;">Sin descripción</div>'}
+                    ${description ? `<div class="product-description-text">${description}</div>` : '<div class="product-description-text" style="color: var(--text-secondary); font-style: italic;">Sin descripciÃ³n</div>'}
                 </div>
                 
                 ${item.box_size ? 
@@ -2864,9 +2864,9 @@ class CartManager {
                         } else if (!isValidQuantity && minQuantity !== null && minQuantity !== undefined) {
                             return `<div class="cart-item-total" style="color: #ef4444; font-weight: 600; font-size: 0.9rem;">
                                 ${this.currentLanguage === 'es' ? 
-                                    `Cantidad mínima: ${minQuantity}` : 
+                                    `Cantidad mÃ­nima: ${minQuantity}` : 
                                     this.currentLanguage === 'pt' ? 
-                                    `Quantidade mínima: ${minQuantity}` :
+                                    `Quantidade mÃ­nima: ${minQuantity}` :
                                     `Minimum quantity: ${minQuantity}`
                                 }
                             </div>`;
@@ -2881,11 +2881,11 @@ class CartManager {
                                                               item.variants && 
                                                               item.variants.length > 0;
                             
-                            // Verificar rol del usuario (usar caché si está disponible)
+                            // Verificar rol del usuario (usar cachÃ© si estÃ¡ disponible)
                             const userRole = window.cachedRole || null;
                             
                             // Mostrar input editable si: (precio 0 o precio manual guardado) y sin variante, y usuario admin
-                            // Así al editar una propuesta el admin ve y puede editar el precio que se guardó (sobre consulta)
+                            // AsÃ­ al editar una propuesta el admin ve y puede editar el precio que se guardÃ³ (sobre consulta)
                             const mostrarInputPrecio = (precioActualEsCero || isManualPrice) && !tieneVarianteSeleccionada && userRole === 'admin';
                             if (precioActualEsCero && !tieneVarianteSeleccionada && userRole === 'comercial') {
                                 const translations = { 'pt': 'Sobre consulta', 'es': 'Sobre consulta', 'en': 'On request' };
@@ -2905,10 +2905,10 @@ class CartManager {
                                     onblur="updateManualPrice('${String(itemIdentifier).replace(/'/g, "\\'")}', this.value)">`;
                             }
                             // Precio normal (clickeable para ver escalones)
-                            return `<div class="cart-item-total" style="cursor: pointer; transition: opacity 0.2s;" onclick="showPriceTiersModal('${String(itemIdentifier).replace(/'/g, "\\'")}', '${productName.replace(/'/g, "\\'")}')" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">€${this.formatUnitPrice(unitPrice)}</div>`;
+                            return `<div class="cart-item-total" style="cursor: pointer; transition: opacity 0.2s;" onclick="showPriceTiersModal('${String(itemIdentifier).replace(/'/g, "\\'")}', '${productName.replace(/'/g, "\\'")}')" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">â‚¬${this.formatUnitPrice(unitPrice)}</div>`;
                         } else {
                             // Precio normal (clickeable para ver escalones)
-                            return `<div class="cart-item-total" style="cursor: pointer; transition: opacity 0.2s;" onclick="showPriceTiersModal('${String(itemIdentifier).replace(/'/g, "\\'")}', '${productName.replace(/'/g, "\\'")}')" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">€${this.formatUnitPrice(unitPrice)}</div>`;
+                            return `<div class="cart-item-total" style="cursor: pointer; transition: opacity 0.2s;" onclick="showPriceTiersModal('${String(itemIdentifier).replace(/'/g, "\\'")}', '${productName.replace(/'/g, "\\'")}')" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">â‚¬${this.formatUnitPrice(unitPrice)}</div>`;
                         }
                     })()}
                 </div>
@@ -2923,16 +2923,16 @@ class CartManager {
                             if (selectedVariant && (selectedVariant.plazo_entrega_personalizado || selectedVariant.plazoEntrega || selectedVariant.plazo_entrega || selectedVariant.deliveryTime)) {
                                 deliveryTimeToShow = selectedVariant.plazo_entrega_personalizado || selectedVariant.plazoEntrega || selectedVariant.plazo_entrega || selectedVariant.deliveryTime;
                                 isVariant = true;
-                                // Guardar el plazo de variante en el item si no está guardado
+                                // Guardar el plazo de variante en el item si no estÃ¡ guardado
                                 if (!item.variantDeliveryTime) {
                                     item.variantDeliveryTime = deliveryTimeToShow;
                                 }
                             }
                         }
-                        // Siempre que haya plazo de entrega, añadir "sujeito a confirmação no momento da adjudicação"
+                        // Siempre que haya plazo de entrega, aÃ±adir "sujeito a confirmaÃ§Ã£o no momento da adjudicaÃ§Ã£o"
                         if (deliveryTimeToShow) {
                             const tDelivery = this.getStockTranslations();
-                            const yaTieneFrase = /adjudicação|adjudicación|award/i.test(deliveryTimeToShow);
+                            const yaTieneFrase = /adjudicaÃ§Ã£o|adjudicaciÃ³n|award/i.test(deliveryTimeToShow);
                             if (!yaTieneFrase) {
                                 deliveryTimeToShow = `${deliveryTimeToShow} ${tDelivery.sujetoConfirmacion}`;
                             }
@@ -2962,13 +2962,13 @@ class CartManager {
     }
 
     /**
-     * Renderizar módulo vacío editable (Nuevo módulo) - misma estructura y grid que los productos normales
+     * Renderizar mÃ³dulo vacÃ­o editable (Nuevo mÃ³dulo) - misma estructura y grid que los productos normales
      */
     renderEmptyModuleItem(item, itemIdentifier) {
         const L = this.currentLanguage || 'pt';
         const t = {
-            pt: { name: 'Nome', description: 'Descrição', personalization: 'Personalizado', noPersonalization: 'Sem personalização', withLogo: 'Com logo do hotel', peso: 'Peso (opcional)', qtyPerBox: 'Quantidade por caixa (opcional)', addPhoto: 'Adicionar foto', logoLabel: 'Logotipo', noFile: 'Nenhum ficheiro escolhido', chooseFile: 'Escolher ficheiro' },
-            es: { name: 'Nombre', description: 'Descripción', personalization: 'Personalizado', noPersonalization: 'Sin personalización', withLogo: 'Con logo del hotel', peso: 'Peso (opcional)', qtyPerBox: 'Cantidad por caja (opcional)', addPhoto: 'Añadir foto', logoLabel: 'Logotipo', noFile: 'Ningún archivo elegido', chooseFile: 'Elegir archivo' },
+            pt: { name: 'Nome', description: 'DescriÃ§Ã£o', personalization: 'Personalizado', noPersonalization: 'Sem personalizaÃ§Ã£o', withLogo: 'Com logo do hotel', peso: 'Peso (opcional)', qtyPerBox: 'Quantidade por caixa (opcional)', addPhoto: 'Adicionar foto', logoLabel: 'Logotipo', noFile: 'Nenhum ficheiro escolhido', chooseFile: 'Escolher ficheiro' },
+            es: { name: 'Nombre', description: 'DescripciÃ³n', personalization: 'Personalizado', noPersonalization: 'Sin personalizaciÃ³n', withLogo: 'Con logo del hotel', peso: 'Peso (opcional)', qtyPerBox: 'Cantidad por caja (opcional)', addPhoto: 'AÃ±adir foto', logoLabel: 'Logotipo', noFile: 'NingÃºn archivo elegido', chooseFile: 'Elegir archivo' },
             en: { name: 'Name', description: 'Description', personalization: 'Custom', noPersonalization: 'No customization', withLogo: 'With hotel logo', peso: 'Weight (optional)', qtyPerBox: 'Qty per box (optional)', addPhoto: 'Add photo', logoLabel: 'Logo', noFile: 'No file chosen', chooseFile: 'Choose file' }
         };
         const lbl = t[L] || t.pt;
@@ -2985,14 +2985,14 @@ class CartManager {
                     ${item.logoUrl ? `<span style="color: #10b981; font-size: 0.875rem;"><i class="fas fa-check-circle"></i> ${L === 'es' ? 'Logotipo subido' : L === 'en' ? 'Logo uploaded' : 'Logotipo carregado'}</span><button type="button" onclick="removeLogo('${safeId}')" style="padding: 6px 12px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem;"><i class="fas fa-trash"></i></button>` : `<span style="font-size: 0.875rem; color: var(--text-secondary);">${lbl.noFile}</span>`}
                 </div>
             </div>` : '';
-        const dragHandleTitleMod = L === 'es' ? 'Arrastrar para reordenar. Triple clic para duplicar módulo.' : L === 'pt' ? 'Arrastrar para reordenar. Triplo clique para duplicar módulo.' : 'Drag to reorder. Triple click to duplicate module.';
+        const dragHandleTitleMod = L === 'es' ? 'Arrastrar para reordenar. Triple clic para duplicar mÃ³dulo.' : L === 'pt' ? 'Arrastrar para reordenar. Triplo clique para duplicar mÃ³dulo.' : 'Drag to reorder. Triple click to duplicate module.';
         return `
             <div class="cart-item-wrapper">
             <div class="cart-item" data-item-id="${itemIdentifier}" draggable="true" style="cursor: move; position: relative;">
                 <div class="cart-item-drag-handle" title="${dragHandleTitleMod}" style="position: absolute; right: 4px; top: 4px; z-index: 2; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); cursor: move; background: var(--bg-gray-100); border-radius: 4px;"><i class="fas fa-grip-vertical"></i></div>
                 <div class="cart-item-image-container">
-                    ${item.image ? `<img draggable="false" src="${(item.image || '').replace(/"/g, '&quot;')}" alt="" class="cart-item-image" onclick="showImageModal('${(item.image || '').replace(/'/g, "\\'")}', '${nameVal || 'Módulo'}')" onerror="this.style.display='none'">` : `<label style="width: 100px; height: 100px; border: 2px dashed var(--bg-gray-300); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.75rem; color: var(--text-secondary); background: var(--bg-gray-100);"><input type="file" accept="image/*" style="display:none" onchange="handleModulePhotoUpload('${safeId}', this.files[0])"><i class="fas fa-plus" style="margin-right: 4px;"></i>${lbl.addPhoto}</label>`}
-                    <div class="cart-item-name">${(item.name || item.referencia || '').replace(/</g, '&lt;') || '—'}</div>
+                    ${item.image ? `<img draggable="false" src="${(item.image || '').replace(/"/g, '&quot;')}" alt="" class="cart-item-image" onclick="showImageModal('${(item.image || '').replace(/'/g, "\\'")}', '${nameVal || 'MÃ³dulo'}')" onerror="this.style.display='none'">` : `<label style="width: 100px; height: 100px; border: 2px dashed var(--bg-gray-300); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.75rem; color: var(--text-secondary); background: var(--bg-gray-100);"><input type="file" accept="image/*" style="display:none" onchange="handleModulePhotoUpload('${safeId}', this.files[0])"><i class="fas fa-plus" style="margin-right: 4px;"></i>${lbl.addPhoto}</label>`}
+                    <div class="cart-item-name">${(item.name || item.referencia || '').replace(/</g, '&lt;') || 'â€”'}</div>
                 </div>
                 <div class="cart-item-description">
                     <input type="text" class="module-editable-field" value="${nameVal}" placeholder="${lbl.name}" onchange="updateModuleField('${safeId}', 'name', this.value)" onblur="updateModuleField('${safeId}', 'name', this.value)" style="width: 100%; padding: 6px 8px; font-size: 0.9rem; font-weight: 600; color: var(--text-primary); margin-bottom: 8px;">
@@ -3016,7 +3016,7 @@ class CartManager {
                 <div class="cart-item-variant-selector" style="grid-column: 1 / -1; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--bg-gray-200);">
                     <label style="display: block; margin-bottom: 5px; font-size: 0.875rem; font-weight: 600; color: var(--text-primary);">${lbl.personalization}</label>
                     <select class="module-editable-field" onchange="updateModuleField('${safeId}', 'personalization', this.value); window.cartManager && window.cartManager.renderCart();" style="width: 100%; padding: 8px 12px; border-radius: 6px; color: var(--text-primary); font-size: 0.875rem; cursor: pointer;">
-                        <option value="Sem personalização" ${(item.personalization || '') === 'Sem personalização' ? 'selected' : ''}>${lbl.noPersonalization}</option>
+                        <option value="Sem personalizaÃ§Ã£o" ${(item.personalization || '') === 'Sem personalizaÃ§Ã£o' ? 'selected' : ''}>${lbl.noPersonalization}</option>
                         <option value="Com logo" ${isPersonalized ? 'selected' : ''}>${lbl.withLogo}</option>
                     </select>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px;">
@@ -3032,7 +3032,7 @@ class CartManager {
                 </div>
                 ${logoBlock}
                 <div class="cart-item-observations-container" id="observations-${itemIdentifier}" style="display: none;">
-                    <textarea class="observations-input module-editable-field" placeholder="Observações..." onblur="saveObservations('${safeId}', this.value)">${(item.observations || '').replace(/</g, '&lt;').replace(/&/g, '&amp;')}</textarea>
+                    <textarea class="observations-input module-editable-field" placeholder="ObservaÃ§Ãµes..." onblur="saveObservations('${safeId}', this.value)">${(item.observations || '').replace(/</g, '&lt;').replace(/&/g, '&amp;')}</textarea>
                 </div>
             </div>
             </div>
@@ -3040,17 +3040,17 @@ class CartManager {
     }
 
     /**
-     * Obtener HTML para carrito vacío
+     * Obtener HTML para carrito vacÃ­o
      */
     getEmptyCartHTML() {
         const translations = {
             pt: {
                 title: 'Carrinho Vazio',
-                text: 'Não há produtos no seu carrinho.',
+                text: 'NÃ£o hÃ¡ produtos no seu carrinho.',
                 button: 'Continuar Comprando'
             },
             es: {
-                title: 'Carrito Vacío',
+                title: 'Carrito VacÃ­o',
                 text: 'No hay productos en tu carrito.',
                 button: 'Continuar Comprando'
             },
@@ -3079,7 +3079,7 @@ class CartManager {
      * Actualizar resumen del carrito (ya no se usa pero se mantiene para compatibilidad)
      */
     updateSummary() {
-        // El resumen ya no se muestra, pero mantenemos la función por si se necesita en el futuro
+        // El resumen ya no se muestra, pero mantenemos la funciÃ³n por si se necesita en el futuro
     }
 
     /**
@@ -3102,45 +3102,45 @@ class CartManager {
             specs.push(typeName);
         }
 
-        return specs.join(' • ');
+        return specs.join(' â€¢ ');
     }
 
     /**
-     * Obtener precio según escalones de cantidad
-     * Si la cantidad excede el último escalón, usa el último escalón
+     * Obtener precio segÃºn escalones de cantidad
+     * Si la cantidad excede el Ãºltimo escalÃ³n, usa el Ãºltimo escalÃ³n
      */
     getPriceForQuantity(priceTiers, quantity, basePrice = 0) {
         if (!priceTiers || !Array.isArray(priceTiers) || priceTiers.length === 0) {
             return { price: basePrice, minQuantity: null, isValid: true };
         }
 
-        // Usar la misma lógica que en el buscador de productos
+        // Usar la misma lÃ³gica que en el buscador de productos
         let selectedPrice = Number.isFinite(basePrice) ? Number(basePrice) : 0;
 
-        // Ordenar escalones por cantidad mínima (igual que en el buscador)
+        // Ordenar escalones por cantidad mÃ­nima (igual que en el buscador)
         const sortedTiers = [...priceTiers].sort((a, b) => {
             const minA = a?.min_qty !== null && a?.min_qty !== undefined ? Number(a.min_qty) : 0;
             const minB = b?.min_qty !== null && b?.min_qty !== undefined ? Number(b.min_qty) : 0;
             return minA - minB;
         });
 
-        // Obtener la cantidad mínima del primer escalón
+        // Obtener la cantidad mÃ­nima del primer escalÃ³n
         const firstTier = sortedTiers[0];
         const minQuantity = firstTier?.min_qty !== null && firstTier?.min_qty !== undefined ? Number(firstTier.min_qty) : null;
         
-        // Validar si la cantidad es menor que el mínimo
+        // Validar si la cantidad es menor que el mÃ­nimo
         const isValid = minQuantity === null || quantity >= minQuantity;
 
-        // Si la cantidad es menor que el mínimo, usar el precio del primer escalón pero marcar como inválido
-        // Esto permite mostrar el precio de referencia pero con el mensaje de cantidad mínima
+        // Si la cantidad es menor que el mÃ­nimo, usar el precio del primer escalÃ³n pero marcar como invÃ¡lido
+        // Esto permite mostrar el precio de referencia pero con el mensaje de cantidad mÃ­nima
         if (!isValid && minQuantity !== null && firstTier) {
-            // Usar el precio del primer escalón como referencia
+            // Usar el precio del primer escalÃ³n como referencia
             const firstTierPrice = firstTier?.price !== null && firstTier?.price !== undefined ? Number(firstTier.price) : null;
             if (firstTierPrice !== null) {
                 selectedPrice = firstTierPrice;
             }
         } else {
-            // Buscar el escalón correspondiente (igual que en el buscador)
+            // Buscar el escalÃ³n correspondiente (igual que en el buscador)
             for (const tier of sortedTiers) {
                 if (!tier) continue;
                 
@@ -3152,32 +3152,32 @@ class CartManager {
                     continue;
                 }
 
-                // Si la cantidad está dentro del rango del escalón
+                // Si la cantidad estÃ¡ dentro del rango del escalÃ³n
                 if (quantity >= min && quantity <= max) {
                     selectedPrice = tierPrice;
                     break; // Igual que en el buscador
                 }
 
-                // Si la cantidad es mayor o igual al mínimo y no hay máximo (Infinity)
+                // Si la cantidad es mayor o igual al mÃ­nimo y no hay mÃ¡ximo (Infinity)
                 if (quantity >= min && (tier.max_qty === null || tier.max_qty === undefined)) {
                     selectedPrice = tierPrice;
                 }
             }
         }
 
-        // Si la cantidad excede todos los escalones, usar el último escalón
-        // Esta es la lógica clave: si pides más que el último escalón, usar el último escalón
+        // Si la cantidad excede todos los escalones, usar el Ãºltimo escalÃ³n
+        // Esta es la lÃ³gica clave: si pides mÃ¡s que el Ãºltimo escalÃ³n, usar el Ãºltimo escalÃ³n
         if (sortedTiers.length > 0) {
             const lastTier = sortedTiers[sortedTiers.length - 1];
             const lastTierMax = lastTier?.max_qty !== null && lastTier?.max_qty !== undefined ? Number(lastTier.max_qty) : Infinity;
             const lastTierPrice = lastTier?.price !== null && lastTier?.price !== undefined ? Number(lastTier.price) : null;
             const lastTierMin = lastTier?.min_qty !== null && lastTier?.min_qty !== undefined ? Number(lastTier.min_qty) : 0;
             
-            // Si la cantidad es mayor que el máximo del último escalón, usar el precio del último escalón
+            // Si la cantidad es mayor que el mÃ¡ximo del Ãºltimo escalÃ³n, usar el precio del Ãºltimo escalÃ³n
             if (lastTierMax !== Infinity && quantity > lastTierMax && lastTierPrice !== null) {
                 selectedPrice = lastTierPrice;
             } else if (lastTierMax === Infinity && quantity >= lastTierMin && lastTierPrice !== null) {
-                // Si el último escalón no tiene máximo, usar su precio si la cantidad es >= su mínimo
+                // Si el Ãºltimo escalÃ³n no tiene mÃ¡ximo, usar su precio si la cantidad es >= su mÃ­nimo
                 selectedPrice = lastTierPrice;
             }
         }
@@ -3195,10 +3195,10 @@ class CartManager {
     }
 
     /**
-     * Normalizar cantidad según boxSize del producto
+     * Normalizar cantidad segÃºn boxSize del producto
      * @param {Object} product - Producto con estructura { id, boxSize }
      * @param {number} requestedQty - Cantidad solicitada por el usuario
-     * @returns {number} - Cantidad normalizada (siempre múltiplo superior de boxSize)
+     * @returns {number} - Cantidad normalizada (siempre mÃºltiplo superior de boxSize)
      */
     normalizeQuantityForBox(product, requestedQty) {
         const boxSize = product.boxSize;
@@ -3237,7 +3237,7 @@ class CartManager {
             return minA - minB;
         });
 
-        // Buscar el escalón actual
+        // Buscar el escalÃ³n actual
         let currentTierIndex = -1;
         let currentTier = null;
 
@@ -3251,7 +3251,7 @@ class CartManager {
 
             if (tierPrice === null) continue;
 
-            // Verificar si la cantidad está en este escalón
+            // Verificar si la cantidad estÃ¡ en este escalÃ³n
             if (quantity >= min && quantity <= max) {
                 currentTierIndex = i;
                 currentTier = {
@@ -3262,7 +3262,7 @@ class CartManager {
                 break;
             }
 
-            // Si no hay máximo y la cantidad es >= mínimo, usar este escalón
+            // Si no hay mÃ¡ximo y la cantidad es >= mÃ­nimo, usar este escalÃ³n
             if (max === Infinity && quantity >= min) {
                 currentTierIndex = i;
                 currentTier = {
@@ -3274,15 +3274,15 @@ class CartManager {
             }
         }
 
-        // Si no se encontró escalón actual, no hay sugerencia
+        // Si no se encontrÃ³ escalÃ³n actual, no hay sugerencia
         if (currentTierIndex === -1 || !currentTier) {
             return null;
         }
 
-        // Identificar el siguiente escalón
+        // Identificar el siguiente escalÃ³n
         const nextTierIndex = currentTierIndex + 1;
         if (nextTierIndex >= sortedTiers.length) {
-            return null; // No hay siguiente escalón
+            return null; // No hay siguiente escalÃ³n
         }
 
         const nextTierRaw = sortedTiers[nextTierIndex];
@@ -3316,7 +3316,7 @@ class CartManager {
             return null;
         }
 
-        // Solo sugerir si el siguiente escalón tiene un precio por unidad menor
+        // Solo sugerir si el siguiente escalÃ³n tiene un precio por unidad menor
         if (nextTier.unitPrice >= currentTier.unitPrice) {
             return null;
         }
@@ -3339,7 +3339,7 @@ class CartManager {
     }
 
     /**
-     * Obtener nombre de categoría traducido
+     * Obtener nombre de categorÃ­a traducido
      */
     getCategoryName(category) {
         const translations = {
@@ -3364,14 +3364,14 @@ class CartManager {
         return t[category] || category;
     }
 
-    // Función getCategoryImage eliminada - ya no se usan imágenes locales de categorías
+    // FunciÃ³n getCategoryImage eliminada - ya no se usan imÃ¡genes locales de categorÃ­as
 
     /**
-     * Obtener texto de precio para categorías
+     * Obtener texto de precio para categorÃ­as
      */
     getCategoryPriceText() {
         const translations = {
-            pt: 'Preço sob consulta',
+            pt: 'PreÃ§o sob consulta',
             es: 'Precio a consultar',
             en: 'Price on request'
         };
@@ -3382,7 +3382,7 @@ class CartManager {
      * Configurar event listeners
      */
     setupEventListeners() {
-        // Al salir de la página en modo edición, limpiar carrito y datos de edición para que al volver a Orçamento no queden productos
+        // Al salir de la pÃ¡gina en modo ediciÃ³n, limpiar carrito y datos de ediciÃ³n para que al volver a OrÃ§amento no queden productos
         window.addEventListener('beforeunload', () => {
             if (this.editingProposalId) {
                 localStorage.removeItem('editing_proposal');
@@ -3396,7 +3396,7 @@ class CartManager {
             }
         });
 
-        // Formulario para agregar categoría
+        // Formulario para agregar categorÃ­a
         const addCategoryForm = document.getElementById('addCategoryForm');
         if (addCategoryForm) {
             addCategoryForm.addEventListener('submit', (e) => {
@@ -3435,15 +3435,15 @@ class CartManager {
             });
         }
 
-        // Formulario para agregar pedido especial - Listener ya está registrado en DOMContentLoaded
-        // No duplicar el listener aquí para evitar que se agreguen productos duplicados
+        // Formulario para agregar pedido especial - Listener ya estÃ¡ registrado en DOMContentLoaded
+        // No duplicar el listener aquÃ­ para evitar que se agreguen productos duplicados
 
         // Los controles de cantidad ahora usan onclick directamente en el HTML
     }
 
     /**
      * Calculadora de margen bruto: solo visible para administradores.
-     * Muestra botón y panel; al introducir valor y margen %, calcula precio = valor / (1 - margen/100).
+     * Muestra botÃ³n y panel; al introducir valor y margen %, calcula precio = valor / (1 - margen/100).
      */
     setupMarginCalculator() {
         const btn = document.getElementById('toggleMarginCalculatorBtn');
@@ -3458,7 +3458,7 @@ class CartManager {
             }
             btn.style.display = 'inline-flex';
             const lang = this.currentLanguage || (localStorage.getItem('language') || 'pt');
-            const t = { pt: { btn: 'Calculadora margem', title: 'Calculadora margem bruto', valor: 'Valor (custo)', margen: 'Margem bruto (%)', result: 'Preço com margem', close: 'Fechar' }, es: { btn: 'Calculadora margen', title: 'Calculadora margen bruto', valor: 'Valor (costo)', margen: 'Margen bruto (%)', result: 'Precio con margen', close: 'Cerrar' }, en: { btn: 'Margin calculator', title: 'Gross margin calculator', valor: 'Value (cost)', margen: 'Gross margin (%)', result: 'Price with margin', close: 'Close' } };
+            const t = { pt: { btn: 'Calculadora margem', title: 'Calculadora margem bruto', valor: 'Valor (custo)', margen: 'Margem bruto (%)', result: 'PreÃ§o com margem', close: 'Fechar' }, es: { btn: 'Calculadora margen', title: 'Calculadora margen bruto', valor: 'Valor (costo)', margen: 'Margen bruto (%)', result: 'Precio con margen', close: 'Cerrar' }, en: { btn: 'Margin calculator', title: 'Gross margin calculator', valor: 'Value (cost)', margen: 'Gross margin (%)', result: 'Price with margin', close: 'Close' } };
             const L = t[lang] || t.pt;
             const btnText = document.getElementById('margin-calc-btn-text');
             const titleEl = document.getElementById('margin-calculator-title');
@@ -3474,7 +3474,7 @@ class CartManager {
                 const valor = parseFloat(valorEl.value);
                 const margen = parseFloat(margenEl.value);
                 if (isNaN(valor) || valor < 0 || isNaN(margen) || margen < 0 || margen >= 100) {
-                    resultEl.textContent = '—';
+                    resultEl.textContent = 'â€”';
                     return;
                 }
                 const precio = valor / (1 - margen / 100);
@@ -3488,13 +3488,13 @@ class CartManager {
     }
 
     /**
-     * Configurar drag and drop para reordenar items del carrito y triple clic para duplicar módulo
+     * Configurar drag and drop para reordenar items del carrito y triple clic para duplicar mÃ³dulo
      */
     setupDragAndDrop() {
         const cartItems = document.querySelectorAll('.cart-item[draggable="true"]');
         let draggedElement = null;
         let draggedIndex = null;
-        let dragWithCtrl = false; // Ctrl + arrastrar = duplicar módulo (legacy, mantiene duplicar por arrastre si se usa)
+        let dragWithCtrl = false; // Ctrl + arrastrar = duplicar mÃ³dulo (legacy, mantiene duplicar por arrastre si se usa)
 
         cartItems.forEach((item, index) => {
             // Prevenir que los inputs y botones inicien el drag
@@ -3505,7 +3505,7 @@ class CartManager {
                 });
             });
 
-            // Triple clic = duplicar (módulos editables o productos ya creados)
+            // Triple clic = duplicar (mÃ³dulos editables o productos ya creados)
             let lastClickTime = 0;
             let clickCount = 0;
             item.addEventListener('click', (e) => {
@@ -3534,7 +3534,7 @@ class CartManager {
                             quantity: cartItem.quantity != null ? parseInt(cartItem.quantity, 10) : 1,
                             image: cartItem.image || null,
                             plazoEntrega: cartItem.plazoEntrega || cartItem.plazo_entrega || '',
-                            personalization: cartItem.personalization || 'Sem personalização',
+                            personalization: cartItem.personalization || 'Sem personalizaÃ§Ã£o',
                             logoUrl: cartItem.logoUrl || null,
                             peso: cartItem.peso != null ? cartItem.peso : null,
                             box_size: cartItem.box_size != null ? cartItem.box_size : null,
@@ -3569,7 +3569,7 @@ class CartManager {
                 item.style.opacity = '1';
                 item.removeAttribute('data-drag-ctrl');
                 dragWithCtrl = false;
-                // Remover clases de visualización
+                // Remover clases de visualizaciÃ³n
                 cartItems.forEach(cartItem => {
                     cartItem.classList.remove('drag-over');
                 });
@@ -3579,7 +3579,7 @@ class CartManager {
                 e.preventDefault();
                 e.dataTransfer.dropEffect = (e.ctrlKey && draggedElement) ? 'copy' : 'move';
                 
-                // Agregar clase visual para indicar dónde se puede soltar
+                // Agregar clase visual para indicar dÃ³nde se puede soltar
                 if (item !== draggedElement) {
                     item.classList.add('drag-over');
                 }
@@ -3612,7 +3612,7 @@ class CartManager {
                         const shouldDuplicate = ctrlWasPressed && !!draggedCartItem.isEmptyModule;
                         
                         if (shouldDuplicate) {
-                            // Duplicar módulo: insertar copia en la posición soltada (misma información, nuevo cartItemId)
+                            // Duplicar mÃ³dulo: insertar copia en la posiciÃ³n soltada (misma informaciÃ³n, nuevo cartItemId)
                             const targetIndex = this.cart.indexOf(targetCartItem);
                             const newCartItemId = `cart-item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
                             const clone = {
@@ -3626,7 +3626,7 @@ class CartManager {
                                 quantity: draggedCartItem.quantity != null ? parseInt(draggedCartItem.quantity, 10) : 1,
                                 image: draggedCartItem.image || null,
                                 plazoEntrega: draggedCartItem.plazoEntrega || draggedCartItem.plazo_entrega || '',
-                                personalization: draggedCartItem.personalization || 'Sem personalização',
+                                personalization: draggedCartItem.personalization || 'Sem personalizaÃ§Ã£o',
                                 logoUrl: draggedCartItem.logoUrl || null,
                                 peso: draggedCartItem.peso != null ? draggedCartItem.peso : null,
                                 box_size: draggedCartItem.box_size != null ? draggedCartItem.box_size : null,
@@ -3637,11 +3637,11 @@ class CartManager {
                             this.cart.forEach((it, i) => { it.order = i; });
                             this.saveCart();
                             this.renderCart(true);
-                            const msg = this.currentLanguage === 'es' ? 'Módulo duplicado' : this.currentLanguage === 'pt' ? 'Módulo duplicado' : 'Module duplicated';
+                            const msg = this.currentLanguage === 'es' ? 'MÃ³dulo duplicado' : this.currentLanguage === 'pt' ? 'MÃ³dulo duplicado' : 'Module duplicated';
                             this.showNotification(msg, 'success');
-                            console.log('✅ Módulo duplicado con Ctrl+arrastrar');
+                            console.log('âœ… MÃ³dulo duplicado con Ctrl+arrastrar');
                         } else {
-                            // Reordenar por inserción (no swap), usando IDs en orden actual para evitar ambigüedades.
+                            // Reordenar por inserciÃ³n (no swap), usando IDs en orden actual para evitar ambigÃ¼edades.
                             const getItemKey = (it) => String(it?.cartItemId || it?.id || '');
                             const orderSnapshot = this.cart
                                 .slice()
@@ -3658,7 +3658,7 @@ class CartManager {
                             let toIndex = orderedKeys.indexOf(targetKey);
                             if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return;
 
-                            // Si se suelta en la mitad inferior del target, insertar después del target.
+                            // Si se suelta en la mitad inferior del target, insertar despuÃ©s del target.
                             const targetRect = item.getBoundingClientRect();
                             const dropY = e.clientY - targetRect.top;
                             const dropAfterTarget = dropY > (targetRect.height / 2);
@@ -3678,7 +3678,7 @@ class CartManager {
                             this.cart.forEach((it, i) => { it.order = i; });
                             this.saveCart();
                             this.renderCart(true);
-                            console.log('✅ Items reordenados (insert):', { moved: draggedCartItem.name, target: targetCartItem.name, fromIndex, toIndex });
+                            console.log('âœ… Items reordenados (insert):', { moved: draggedCartItem.name, target: targetCartItem.name, fromIndex, toIndex });
                         }
                     }
                 }
@@ -3687,7 +3687,7 @@ class CartManager {
     }
 
     /**
-     * Manejar agregar categoría
+     * Manejar agregar categorÃ­a
      */
     handleAddCategory() {
         const category = document.getElementById('categorySelect').value;
@@ -3708,17 +3708,17 @@ class CartManager {
     }
 
     /**
-     * Mostrar notificación
+     * Mostrar notificaciÃ³n
      */
     showNotification(message, type = 'info') {
-        // Calcular posición top basada en notificaciones existentes
+        // Calcular posiciÃ³n top basada en notificaciones existentes
         const existingNotifications = document.querySelectorAll('.notification-stack');
         let topOffset = 20;
         existingNotifications.forEach(notif => {
             topOffset += notif.offsetHeight + 10;
         });
 
-        // Crear elemento de notificación
+        // Crear elemento de notificaciÃ³n
         const notification = document.createElement('div');
         notification.className = `notification notification-${type} notification-stack`;
         notification.style.cssText = `
@@ -3745,7 +3745,7 @@ class CartManager {
             notification.style.transform = 'translateX(0)';
         }, 100);
 
-        // Remover después de 3 segundos
+        // Remover despuÃ©s de 3 segundos
         setTimeout(() => {
             notification.style.transform = 'translateX(100%)';
             setTimeout(() => {
@@ -3759,7 +3759,7 @@ class CartManager {
     }
 
     /**
-     * Reposicionar notificaciones existentes después de eliminar una
+     * Reposicionar notificaciones existentes despuÃ©s de eliminar una
      */
     repositionNotifications() {
         const notifications = document.querySelectorAll('.notification-stack');
@@ -3776,7 +3776,7 @@ class CartManager {
     async updateLanguage(lang) {
         this.currentLanguage = lang;
         
-        // Actualizar descripciones en los items del carrito según el nuevo idioma
+        // Actualizar descripciones en los items del carrito segÃºn el nuevo idioma
         this.cart.forEach(item => {
             if (item.type === 'product') {
                 // Si no tiene descripciones, intentar obtenerlas de la BD
@@ -3788,14 +3788,14 @@ class CartManager {
                     }
                 }
                 
-                // Actualizar descripción según idioma
+                // Actualizar descripciÃ³n segÃºn idioma
                 if (item.descripcionEs || item.descripcionPt) {
                     item.description = lang === 'es' ? 
                         (item.descripcionEs || item.descripcion_es || '') :
                         (item.descripcionPt || item.descripcion_pt || item.descripcionEs || item.descripcion_es || '');
                 }
                 
-                // Actualizar plazo de entrega si no está
+                // Actualizar plazo de entrega si no estÃ¡
                 if (!item.plazoEntrega && !item.plazo_entrega) {
                     const productFromDB = this.allProducts.find(p => p.id === item.id);
                     if (productFromDB && productFromDB.plazoEntrega) {
@@ -3809,22 +3809,22 @@ class CartManager {
         this.renderCart();
         this.updateSummary();
         
-        // Botón de aplicar precio máximo eliminado (no hace nada)
+        // BotÃ³n de aplicar precio mÃ¡ximo eliminado (no hace nada)
 
-        // Actualizar botón modo 200+
+        // Actualizar botÃ³n modo 200+
         await this.updateMode200Button();
     }
 
     /**
-     * Aplicar precio del escalón máximo (200+) solo a productos de equipamiento
+     * Aplicar precio del escalÃ³n mÃ¡ximo (200+) solo a productos de equipamiento
      * (excluyendo vacavaliente y Laser Build)
      */
     applyMode200Prices() {
-        console.log('🔧 ========== INICIO applyMode200Prices ==========');
-        console.log('📦 Total items en carrito:', this.cart?.length || 0);
+        console.log('ðŸ”§ ========== INICIO applyMode200Prices ==========');
+        console.log('ðŸ“¦ Total items en carrito:', this.cart?.length || 0);
         
         if (!this.cart || this.cart.length === 0) {
-            console.warn('⚠️ Carrito vacío, no hay productos para procesar');
+            console.warn('âš ï¸ Carrito vacÃ­o, no hay productos para procesar');
             return;
         }
 
@@ -3833,7 +3833,7 @@ class CartManager {
         let itemsSkipped = 0;
 
         this.cart.forEach((item, index) => {
-            console.log(`\n📦 Procesando item ${index + 1}:`, {
+            console.log(`\nðŸ“¦ Procesando item ${index + 1}:`, {
                 id: item.id,
                 name: item.name,
                 type: item.type,
@@ -3842,34 +3842,34 @@ class CartManager {
 
             // Solo procesar productos
             if (item.type !== 'product') {
-                console.log(`   ⏭️ Saltado: No es un producto (tipo: ${item.type})`);
+                console.log(`   â­ï¸ Saltado: No es un producto (tipo: ${item.type})`);
                 itemsSkipped++;
                 return;
             }
 
             // IMPORTANTE: Si el precio es manual (viene de una propuesta guardada), NO recalcular
             if (item.manualPrice === true) {
-                console.log(`   ⏭️ Saltado: Precio manual (guardado desde propuesta), mantener precio: €${item.price}`);
+                console.log(`   â­ï¸ Saltado: Precio manual (guardado desde propuesta), mantener precio: â‚¬${item.price}`);
                 itemsSkipped++;
                 return;
             }
 
             itemsProcessed++;
 
-            // Buscar el producto en la base de datos para obtener área de negocio y marca
+            // Buscar el producto en la base de datos para obtener Ã¡rea de negocio y marca
             const productFromDB = this.allProducts.find(p => {
                 return String(p.id) === String(item.id) || p.id === item.id;
             });
 
             if (!productFromDB) {
-                console.warn(`   ⚠️ Producto no encontrado en allProducts (ID: ${item.id})`);
-                console.warn(`   🔍 Total productos en allProducts: ${this.allProducts.length}`);
-                console.warn(`   🔍 IDs disponibles (primeros 10):`, this.allProducts.slice(0, 10).map(p => p.id));
+                console.warn(`   âš ï¸ Producto no encontrado en allProducts (ID: ${item.id})`);
+                console.warn(`   ðŸ” Total productos en allProducts: ${this.allProducts.length}`);
+                console.warn(`   ðŸ” IDs disponibles (primeros 10):`, this.allProducts.slice(0, 10).map(p => p.id));
                 itemsSkipped++;
                 return;
             }
 
-            console.log('   ✅ Producto encontrado en BD:', {
+            console.log('   âœ… Producto encontrado en BD:', {
                 id: productFromDB.id,
                 nombre: productFromDB.nombre,
                 area_negocio: productFromDB.area_negocio,
@@ -3879,85 +3879,85 @@ class CartManager {
                 todasLasPropiedades: Object.keys(productFromDB)
             });
 
-            // Verificar área de negocio - debe ser "equipamiento" (case-insensitive)
+            // Verificar Ã¡rea de negocio - debe ser "equipamiento" (case-insensitive)
             const areaNegocio = productFromDB.area_negocio || productFromDB.areaNegocio || '';
             const areaNegocioLower = areaNegocio.toLowerCase().trim();
-            console.log(`   🔍 Verificando área de negocio: "${areaNegocio}" -> "${areaNegocioLower}"`);
+            console.log(`   ðŸ” Verificando Ã¡rea de negocio: "${areaNegocio}" -> "${areaNegocioLower}"`);
             
             if (areaNegocioLower !== 'equipamiento') {
-                console.log(`   ⏭️ Saltado: Área de negocio no es "equipamiento" (es: "${areaNegocioLower}")`);
+                console.log(`   â­ï¸ Saltado: Ãrea de negocio no es "equipamiento" (es: "${areaNegocioLower}")`);
                 itemsSkipped++;
                 return;
             }
 
-            console.log('   ✅ Área de negocio correcta: equipamiento');
+            console.log('   âœ… Ãrea de negocio correcta: equipamiento');
 
             // Verificar marca - excluir "vacavaliente" y "Laser Build"
             const marca = productFromDB.marca || productFromDB.brand || '';
             const marcaUpper = marca.toUpperCase().trim();
-            console.log(`   🔍 Verificando marca: "${marca}" -> "${marcaUpper}"`);
+            console.log(`   ðŸ” Verificando marca: "${marca}" -> "${marcaUpper}"`);
             
             if (marcaUpper === 'VACAVALIENTE' || marcaUpper === 'LASER BUILD') {
-                console.log(`   ⏭️ Saltado: Marca excluida (${marcaUpper})`);
+                console.log(`   â­ï¸ Saltado: Marca excluida (${marcaUpper})`);
                 itemsSkipped++;
                 return;
             }
 
-            console.log('   ✅ Marca no está excluida');
+            console.log('   âœ… Marca no estÃ¡ excluida');
 
-            // Guardar precio original si no está guardado
+            // Guardar precio original si no estÃ¡ guardado
             if (item.originalPrice === undefined) {
                 item.originalPrice = item.price;
-                console.log(`   💾 Precio original guardado: €${item.originalPrice}`);
+                console.log(`   ðŸ’¾ Precio original guardado: â‚¬${item.originalPrice}`);
             } else {
-                console.log(`   💾 Precio original ya guardado: €${item.originalPrice}`);
+                console.log(`   ðŸ’¾ Precio original ya guardado: â‚¬${item.originalPrice}`);
             }
 
-            // Determinar qué price_tiers usar: variante seleccionada o base
+            // Determinar quÃ© price_tiers usar: variante seleccionada o base
             let priceTiersToUse = item.price_tiers || [];
-            console.log(`   🔍 Price tiers del item:`, priceTiersToUse?.length || 0);
+            console.log(`   ðŸ” Price tiers del item:`, priceTiersToUse?.length || 0);
             
             if (item.selectedVariant !== null && item.selectedVariant !== undefined && item.variants && item.variants.length > 0) {
                 const selectedVariant = item.variants[item.selectedVariant];
-                console.log(`   🔍 Variante seleccionada: ${item.selectedVariant}`, selectedVariant);
+                console.log(`   ðŸ” Variante seleccionada: ${item.selectedVariant}`, selectedVariant);
                 if (selectedVariant && selectedVariant.price_tiers && selectedVariant.price_tiers.length > 0) {
                     priceTiersToUse = selectedVariant.price_tiers;
-                    console.log(`   ✅ Usando price_tiers de variante:`, priceTiersToUse.length);
+                    console.log(`   âœ… Usando price_tiers de variante:`, priceTiersToUse.length);
                 }
             }
 
             // Si no hay price_tiers, intentar obtenerlos del producto de la BD
             if (!priceTiersToUse || priceTiersToUse.length === 0) {
                 priceTiersToUse = productFromDB.price_tiers || [];
-                console.log(`   🔍 Price tiers de BD:`, priceTiersToUse?.length || 0);
+                console.log(`   ðŸ” Price tiers de BD:`, priceTiersToUse?.length || 0);
             }
 
             if (!priceTiersToUse || priceTiersToUse.length === 0) {
-                console.warn(`   ⚠️ No hay price_tiers disponibles para este producto`);
+                console.warn(`   âš ï¸ No hay price_tiers disponibles para este producto`);
                 itemsSkipped++;
                 return;
             }
 
-            console.log('   ✅ Price tiers encontrados:', priceTiersToUse);
+            console.log('   âœ… Price tiers encontrados:', priceTiersToUse);
 
-            // Ordenar escalones por cantidad mínima
+            // Ordenar escalones por cantidad mÃ­nima
             const sortedTiers = [...priceTiersToUse].sort((a, b) => {
                 const minA = a?.min_qty !== null && a?.min_qty !== undefined ? Number(a.min_qty) : 0;
                 const minB = b?.min_qty !== null && b?.min_qty !== undefined ? Number(b.min_qty) : 0;
                 return minA - minB;
             });
 
-            console.log('   📊 Escalones ordenados:', sortedTiers.map(t => ({
+            console.log('   ðŸ“Š Escalones ordenados:', sortedTiers.map(t => ({
                 min_qty: t.min_qty,
                 max_qty: t.max_qty,
                 price: t.price
             })));
 
-            // Obtener el último escalón (el que tiene max_qty === null o es el último)
+            // Obtener el Ãºltimo escalÃ³n (el que tiene max_qty === null o es el Ãºltimo)
             const lastTier = sortedTiers[sortedTiers.length - 1];
             const maxPrice = lastTier?.price !== null && lastTier?.price !== undefined ? Number(lastTier.price) : null;
 
-            console.log('   📊 Último escalón:', {
+            console.log('   ðŸ“Š Ãšltimo escalÃ³n:', {
                 min_qty: lastTier?.min_qty,
                 max_qty: lastTier?.max_qty,
                 price: maxPrice
@@ -3965,40 +3965,40 @@ class CartManager {
 
             if (maxPrice !== null && Number.isFinite(maxPrice)) {
                 const precioAnterior = item.price;
-                // Aplicar el precio máximo
+                // Aplicar el precio mÃ¡ximo
                 item.price = maxPrice;
                 itemsApplied++;
-                console.log(`   ✅ Precio aplicado: €${precioAnterior} -> €${maxPrice}`);
-                console.log(`   🔄 Item actualizado:`, {
+                console.log(`   âœ… Precio aplicado: â‚¬${precioAnterior} -> â‚¬${maxPrice}`);
+                console.log(`   ðŸ”„ Item actualizado:`, {
                     id: item.id,
                     name: item.name,
                     price: item.price,
                     quantity: item.quantity
                 });
             } else {
-                console.warn(`   ⚠️ No se pudo obtener precio máximo válido`);
+                console.warn(`   âš ï¸ No se pudo obtener precio mÃ¡ximo vÃ¡lido`);
                 itemsSkipped++;
             }
         });
 
-        console.log('\n📊 RESUMEN applyMode200Prices:');
+        console.log('\nðŸ“Š RESUMEN applyMode200Prices:');
         console.log(`   - Items procesados: ${itemsProcessed}`);
         console.log(`   - Precios aplicados: ${itemsApplied}`);
         console.log(`   - Items saltados: ${itemsSkipped}`);
-        console.log('🔧 ========== FIN applyMode200Prices ==========\n');
+        console.log('ðŸ”§ ========== FIN applyMode200Prices ==========\n');
         
-        // IMPORTANTE: Guardar y renderizar después de aplicar precios
+        // IMPORTANTE: Guardar y renderizar despuÃ©s de aplicar precios
         if (itemsApplied > 0) {
-            console.log('💾 Guardando carrito y renderizando después de aplicar modo 200+...');
+            console.log('ðŸ’¾ Guardando carrito y renderizando despuÃ©s de aplicar modo 200+...');
             this.saveCart();
             this.renderCart();
             this.updateSummary();
-            console.log('✅ Carrito guardado y renderizado');
+            console.log('âœ… Carrito guardado y renderizado');
         }
     }
 
     /**
-     * Revertir precios al calcular según cantidad normal (desactivar modo 200+)
+     * Revertir precios al calcular segÃºn cantidad normal (desactivar modo 200+)
      */
     revertMode200Prices() {
         if (!this.cart || this.cart.length === 0) {
@@ -4013,11 +4013,11 @@ class CartManager {
 
             // Si tiene precio original guardado, restaurarlo
             if (item.originalPrice !== undefined) {
-                // Restaurar precio original y recalcular según cantidad
+                // Restaurar precio original y recalcular segÃºn cantidad
                 const originalPrice = item.originalPrice;
                 item.price = originalPrice;
 
-                // Recalcular precio según escalones con la cantidad actual
+                // Recalcular precio segÃºn escalones con la cantidad actual
                 let priceTiersToUse = item.price_tiers || [];
                 if (item.selectedVariant !== null && item.selectedVariant !== undefined && item.variants && item.variants.length > 0) {
                     const selectedVariant = item.variants[item.selectedVariant];
@@ -4039,7 +4039,7 @@ class CartManager {
     }
 
     /**
-     * Actualizar apariencia del botón modo 200+
+     * Actualizar apariencia del botÃ³n modo 200+
      */
     async updateMode200Button() {
         const mode200Btn = document.getElementById('mode200Btn');
@@ -4054,12 +4054,12 @@ class CartManager {
         const canUse = await this.canUseMode200();
         
         if (!canUse) {
-            // Ocultar el botón si no tiene permisos
+            // Ocultar el botÃ³n si no tiene permisos
             mode200Btn.style.display = 'none';
             return;
         }
 
-        // Mostrar el botón si tiene permisos
+        // Mostrar el botÃ³n si tiene permisos
         mode200Btn.style.display = 'flex';
 
         const lang = this.currentLanguage || 'es';
@@ -4104,20 +4104,20 @@ class CartManager {
      */
     sendOrder() {
         if (this.cart.length === 0) {
-            this.showNotification('El carrito está vacío', 'error');
+            this.showNotification('El carrito estÃ¡ vacÃ­o', 'error');
             return;
         }
 
-        // Mostrar confirmación
+        // Mostrar confirmaciÃ³n
         const totalItems = this.cart.reduce((total, item) => total + item.quantity, 0);
-        const confirmMessage = `¿Estás seguro de que quieres enviar el pedido con ${totalItems} productos?`;
+        const confirmMessage = `Â¿EstÃ¡s seguro de que quieres enviar el pedido con ${totalItems} productos?`;
         
         if (confirm(confirmMessage)) {
-            // Aquí puedes implementar la lógica para enviar el pedido
+            // AquÃ­ puedes implementar la lÃ³gica para enviar el pedido
             // Por ejemplo, enviar a un servidor, generar PDF, etc.
             this.showNotification('Pedido enviado correctamente', 'success');
             
-            // Limpiar el carrito después de enviar
+            // Limpiar el carrito despuÃ©s de enviar
             this.cart = [];
             this.saveCart();
             this.renderCart();
@@ -4134,7 +4134,7 @@ function openAddProductModal() {
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
     
-    // Limpiar búsqueda y selección
+    // Limpiar bÃºsqueda y selecciÃ³n
     const searchInput = document.getElementById('productSearchInput');
     const resultsContainer = document.getElementById('productSearchResults');
     const selectedSection = document.getElementById('selectedProductSection');
@@ -4168,7 +4168,7 @@ function openAddProductModal() {
         addBtn.disabled = true;
     }
     
-    // Mostrar productos exclusivos del cliente si se está editando una propuesta
+    // Mostrar productos exclusivos del cliente si se estÃ¡ editando una propuesta
     const exclusiveSection = document.getElementById('clientExclusiveProductsSection');
     const exclusiveList = document.getElementById('clientExclusiveProductsList');
     if (window.cartManager && window.cartManager.editingProposalData) {
@@ -4209,7 +4209,7 @@ function openAddProductModal() {
                             <div class="product-search-item-info">
                                 <h4 class="product-search-item-name">${window.cartManager && typeof window.cartManager.getDisplayName === 'function' ? window.cartManager.getDisplayName(product.nombre) : (product.nombre || '')}</h4>
                                 <p class="product-search-item-ref">Ref: ${product.id || product.referencia} | ${product.marca || 'Sin marca'}</p>
-                                <span style="font-weight: 700; color: var(--brand-gold, #C6A15B); font-size: 0.95rem;">${precioFormateado.includes('Sobre consulta') || precioFormateado.includes('On request') ? precioFormateado : precioFormateado + ' €'}</span>
+                                <span style="font-weight: 700; color: var(--brand-gold, #C6A15B); font-size: 0.95rem;">${precioFormateado.includes('Sobre consulta') || precioFormateado.includes('On request') ? precioFormateado : precioFormateado + ' â‚¬'}</span>
                             </div>
                         </div>
                     `;
@@ -4260,7 +4260,7 @@ function openAddExclusiveProductModal() {
             resultsContainer.innerHTML = `
                 <div style="padding: var(--space-4); text-align: center; color: var(--text-secondary);">
                     <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: var(--space-2); opacity: 0.3;"></i>
-                    <p>No se encontró información del cliente</p>
+                    <p>No se encontrÃ³ informaciÃ³n del cliente</p>
                 </div>
             `;
         }
@@ -4389,7 +4389,7 @@ async function loadExclusiveProducts(clienteNombre) {
             };
         });
         
-        // Agregar productos normalizados a allProducts si no están ya
+        // Agregar productos normalizados a allProducts si no estÃ¡n ya
         const existingIds = new Set(window.cartManager.allProducts.map(p => p.id));
         const newProducts = normalizedProducts.filter(p => !existingIds.has(p.id));
         window.cartManager.allProducts = [...window.cartManager.allProducts, ...newProducts];
@@ -4432,7 +4432,7 @@ async function loadExclusiveProducts(clienteNombre) {
                         <p class="product-search-item-ref">Ref: ${product.id || product.referencia} | ${product.marca || 'Sin marca'}</p>
                         <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px; flex-wrap: wrap;">
                             <span class="product-search-item-category">${categoryName}</span>
-                            <span style="font-weight: 700; color: var(--brand-gold, #C6A15B); font-size: 0.95rem;">${precioFormateado} €</span>
+                            <span style="font-weight: 700; color: var(--brand-gold, #C6A15B); font-size: 0.95rem;">${precioFormateado} â‚¬</span>
                             ${plazoEntrega ? `<span style="font-size: 0.8rem; color: var(--text-secondary, #6b7280); background: var(--bg-gray-100, #f3f4f6); padding: 2px 8px; border-radius: 4px;"><i class="fas fa-truck" style="margin-right: 4px;"></i>${plazoEntrega}</span>` : ''}
                         </div>
                     </div>
@@ -4504,7 +4504,7 @@ window.selectExclusiveProduct = function(productId) {
         addBtn.disabled = false;
     }
     
-    // Scroll a la sección seleccionada
+    // Scroll a la secciÃ³n seleccionada
     if (selectedSection) {
         selectedSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
@@ -4532,13 +4532,13 @@ function addSelectedExclusiveProductToCart() {
     // Cerrar modal
     closeAddExclusiveProductModal();
     
-    // Mostrar notificación
+    // Mostrar notificaciÃ³n
     if (window.cartManager.showNotification) {
         const lang = window.cartManager.currentLanguage || 'pt';
         const message = lang === 'es' ? 
             'Producto exclusivo agregado al presupuesto' : 
             lang === 'pt' ? 
-            'Produto exclusivo adicionado ao orçamento' :
+            'Produto exclusivo adicionado ao orÃ§amento' :
             'Exclusive product added to proposal';
         window.cartManager.showNotification(message, 'success');
     }
@@ -4564,19 +4564,19 @@ function handleProductSearch(e) {
         return;
     }
     
-    // Helper para normalizar cadenas (sin acentos, minúsculas, guiones)
-    // Normalización unificada: pasa a minúsculas, quita acentos, reemplaza espacios por guiones, elimina caracteres especiales
+    // Helper para normalizar cadenas (sin acentos, minÃºsculas, guiones)
+    // NormalizaciÃ³n unificada: pasa a minÃºsculas, quita acentos, reemplaza espacios por guiones, elimina caracteres especiales
     const normalizeString = (str) => {
         return (str || '').toLowerCase()
             .normalize('NFD')
             .replace(/[\u0300-\u036f]/g, '') // Quitar acentos
             .replace(/\s+/g, '-') // Reemplazar espacios por guiones
-            .replace(/[^a-z0-9-]/g, ''); // Eliminar caracteres que no sean letras, números o guiones
+            .replace(/[^a-z0-9-]/g, ''); // Eliminar caracteres que no sean letras, nÃºmeros o guiones
     };
 
     const searchTermNormalized = normalizeString(searchTerm);
 
-    // Verificar que allProducts esté disponible
+    // Verificar que allProducts estÃ© disponible
     if (!window.cartManager.allProducts || !Array.isArray(window.cartManager.allProducts)) {
         console.warn('Buscador: allProducts no disponible o no es un array');
         resultsContainer.innerHTML = `
@@ -4631,10 +4631,10 @@ function handleProductSearch(e) {
             });
         }
 
-        // 2. matchesDirectCategory: categoría directa
+        // 2. matchesDirectCategory: categorÃ­a directa
         const matchesDirectCategory = categoria ? normalizeString(categoria).includes(searchTermNormalized) : false;
 
-        // 3. matchesCategory: buscar por categoría desde allCategories
+        // 3. matchesCategory: buscar por categorÃ­a desde allCategories
         let matchesCategory = false;
         if (
             searchTerm.length >= 2 &&
@@ -4642,7 +4642,7 @@ function handleProductSearch(e) {
             Array.isArray(window.cartManager.allCategories) &&
             window.cartManager.allCategories.length > 0
         ) {
-            // Identificar la categoría del producto por prioridad
+            // Identificar la categorÃ­a del producto por prioridad
             const productCategoryId = (
                 product.categoria_id ||
                 product.category_id ||
@@ -4653,7 +4653,7 @@ function handleProductSearch(e) {
 
             const productCategoriaNorm = normalizeString(product.categoria || '');
 
-            // Buscar la categoría del producto en allCategories
+            // Buscar la categorÃ­a del producto en allCategories
             const categoryOfProduct = window.cartManager.allCategories.find(cat => {
                 const catId = (cat.id || '').toString().toLowerCase();
                 const catEsNorm = normalizeString(cat.nombre_es || '');
@@ -4661,7 +4661,7 @@ function handleProductSearch(e) {
                 const catSlugEsNorm = normalizeString(cat.slug_es || cat.slug || '');
                 const catSlugPtNorm = normalizeString(cat.slug_pt || cat.slug || '');
 
-                // Emparejar por ID de categoría
+                // Emparejar por ID de categorÃ­a
                 if (productCategoryId && productCategoryId === catId) return true;
 
                 // Emparejar por slug/nombre normalizado
@@ -4677,7 +4677,7 @@ function handleProductSearch(e) {
                 return false;
             });
 
-            // Si encontramos la categoría del producto, verificar si el término de búsqueda coincide con sus nombres
+            // Si encontramos la categorÃ­a del producto, verificar si el tÃ©rmino de bÃºsqueda coincide con sus nombres
             if (categoryOfProduct) {
                 const catEsNorm = normalizeString(categoryOfProduct.nombre_es || '');
                 const catPtNorm = normalizeString(categoryOfProduct.nombre_pt || '');
@@ -4704,7 +4704,7 @@ function handleProductSearch(e) {
             </div>
         `;
     } else {
-        // Función helper para obtener nombres de categoría en ambos idiomas
+        // FunciÃ³n helper para obtener nombres de categorÃ­a en ambos idiomas
         const getCategoryNames = (product) => {
             if (!window.cartManager || !window.cartManager.allCategories || !Array.isArray(window.cartManager.allCategories) || window.cartManager.allCategories.length === 0) {
                 return { es: product.categoria || '', pt: product.categoria || '' };
@@ -4721,7 +4721,7 @@ function handleProductSearch(e) {
             const productCategoriaNorm = normalizeString(product.categoria || '');
             const productCategoriaLower = (product.categoria || '').toLowerCase().trim();
 
-            // Buscar la categoría del producto en allCategories
+            // Buscar la categorÃ­a del producto en allCategories
             let categoryOfProduct = null;
             
             // Primero intentar por ID
@@ -4732,7 +4732,7 @@ function handleProductSearch(e) {
                 });
             }
             
-            // Si no se encontró por ID, intentar por slug/nombre normalizado
+            // Si no se encontrÃ³ por ID, intentar por slug/nombre normalizado
             if (!categoryOfProduct && productCategoriaNorm) {
                 categoryOfProduct = window.cartManager.allCategories.find(cat => {
                     const catEsNorm = normalizeString(cat.nombre_es || '');
@@ -4749,7 +4749,7 @@ function handleProductSearch(e) {
                 });
             }
             
-            // También intentar comparar directamente el nombre de la categoría del producto con los nombres de las categorías
+            // TambiÃ©n intentar comparar directamente el nombre de la categorÃ­a del producto con los nombres de las categorÃ­as
             if (!categoryOfProduct && product.categoria) {
                 categoryOfProduct = window.cartManager.allCategories.find(cat => {
                     const catEs = (cat.nombre_es || '').toLowerCase().trim();
@@ -4769,7 +4769,7 @@ function handleProductSearch(e) {
                 const nombreEs = categoryOfProduct.nombre_es || '';
                 const nombrePt = categoryOfProduct.nombre_pt || '';
                 
-                // Devolver ambos nombres si están disponibles
+                // Devolver ambos nombres si estÃ¡n disponibles
                 return { 
                     es: nombreEs || product.categoria || '', 
                     pt: nombrePt || product.categoria || '' 
@@ -4805,7 +4805,7 @@ function handleProductSearch(e) {
             const precioFormateado = window.cartManager ? window.cartManager.formatUnitPrice(precioOriginal || precio) : precio.toFixed(2);
             const plazoEntrega = product.plazo_entrega || product.plazoEntrega || '';
             
-            // Mostrar ambos idiomas si ambos están disponibles
+            // Mostrar ambos idiomas si ambos estÃ¡n disponibles
             let categoryDisplay = '';
             if (categoryNames.es && categoryNames.pt) {
                 // Si son diferentes, mostrar ambos separados por " / "
@@ -4836,7 +4836,7 @@ function handleProductSearch(e) {
                         <p class="product-search-item-ref">Ref: ${product.id || product.referencia} | ${product.marca || 'Sin marca'}</p>
                         <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px; flex-wrap: wrap;">
                         <span class="product-search-item-category">${categoryDisplay}</span>
-                            <span style="font-weight: 700; color: var(--accent-500, #f59e0b); font-size: 0.95rem;">${precioFormateado} €</span>
+                            <span style="font-weight: 700; color: var(--accent-500, #f59e0b); font-size: 0.95rem;">${precioFormateado} â‚¬</span>
                             ${plazoEntrega ? `<span style="font-size: 0.8rem; color: var(--text-secondary, #6b7280); background: var(--bg-gray-100, #f3f4f6); padding: 2px 8px; border-radius: 4px;"><i class="fas fa-truck" style="margin-right: 4px;"></i>${plazoEntrega}</span>` : ''}
                         </div>
                     </div>
@@ -4853,7 +4853,7 @@ function handleProductSearch(e) {
             resultsContainer.innerHTML = `
                 <div class="no-results">
                     <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: var(--space-2); opacity: 0.3;"></i>
-                    <p>Error al buscar productos. Por favor, recarga la página.</p>
+                    <p>Error al buscar productos. Por favor, recarga la pÃ¡gina.</p>
                 </div>
             `;
         }
@@ -4903,13 +4903,13 @@ function selectProduct(productId) {
         addBtn.disabled = false;
     }
     
-    // Scroll a la sección de selección
+    // Scroll a la secciÃ³n de selecciÃ³n
     if (selectedSection) {
         selectedSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 }
 
-// Asegurar que la función sea global
+// Asegurar que la funciÃ³n sea global
 window.selectProduct = selectProduct;
 
 function addSelectedProductToCart() {
@@ -4939,7 +4939,7 @@ function addSelectedProductToCart() {
     const product = window.cartManager.selectedProduct;
     
     
-        // Agregar al carrito usando el método existente
+        // Agregar al carrito usando el mÃ©todo existente
         window.cartManager.addProduct({
             id: product.id,
             nombre: product.nombre,
@@ -4959,7 +4959,7 @@ function addSelectedProductToCart() {
     closeAddProductModal();
 }
 
-// Asegurar que la función sea global
+// Asegurar que la funciÃ³n sea global
 window.addSelectedProductToCart = addSelectedProductToCart;
 
 // Funciones para observaciones
@@ -5002,7 +5002,7 @@ function saveObservations(itemId, observations) {
         // Guardar el carrito inmediatamente
         window.cartManager.saveCart();
         
-        // Debug para verificar que se guardó
+        // Debug para verificar que se guardÃ³
     } else {
     }
 }
@@ -5011,7 +5011,7 @@ function saveObservations(itemId, observations) {
 window.toggleObservations = toggleObservations;
 window.saveObservations = saveObservations;
 
-// Función para actualizar el precio en tiempo real mientras se escribe
+// FunciÃ³n para actualizar el precio en tiempo real mientras se escribe
 function updatePriceOnQuantityChange(itemId, quantity) {
     if (!window.cartManager) {
         console.error('cartManager no disponible');
@@ -5045,7 +5045,7 @@ function updatePriceOnQuantityChange(itemId, quantity) {
         }
         
         // NO normalizar mientras el usuario escribe - solo calcular precio
-        // La normalización se hará cuando termine de editar (onblur)
+        // La normalizaciÃ³n se harÃ¡ cuando termine de editar (onblur)
         // Usar la cantidad solicitada para calcular el precio en tiempo real
         const newQuantity = requestedQuantity;
         
@@ -5064,14 +5064,14 @@ function updatePriceOnQuantityChange(itemId, quantity) {
                 if (!item.basePrice) {
                     item.basePrice = productFromDB.precio || item.price || 0;
                 }
-                // Asegurar que box_size esté guardado
+                // Asegurar que box_size estÃ© guardado
                 if (!item.box_size && productFromDB.box_size) {
                     item.box_size = productFromDB.box_size;
                 }
             }
         }
         
-        // Determinar qué price_tiers usar: variante seleccionada o base
+        // Determinar quÃ© price_tiers usar: variante seleccionada o base
         let priceTiersToUse = item.price_tiers || [];
         
         // Si hay una variante seleccionada, usar sus price_tiers
@@ -5088,7 +5088,7 @@ function updatePriceOnQuantityChange(itemId, quantity) {
             item.minQuantity = null;
             item.isValidQuantity = true;
         } else {
-            // Calcular precio según escalones (precio unitario) usando los price_tiers correctos
+            // Calcular precio segÃºn escalones (precio unitario) usando los price_tiers correctos
             let newPrice = item.price || 0;
             let minQty = null;
             let isValid = true;
@@ -5120,13 +5120,13 @@ function updatePriceOnQuantityChange(itemId, quantity) {
         
         // NO actualizar la cantidad en el item mientras el usuario escribe
         // Solo actualizar el precio para mostrar en tiempo real
-        // La cantidad se actualizará cuando termine de editar (onblur)
+        // La cantidad se actualizarÃ¡ cuando termine de editar (onblur)
         
         // NO guardar el carrito mientras el usuario escribe
-        // Se guardará cuando termine de editar (onblur)
+        // Se guardarÃ¡ cuando termine de editar (onblur)
         
-        // Actualizar el precio en el DOM inmediatamente (mostrar solo precio unitario o mensaje de cantidad mínima)
-        // Buscar el elemento del carrito de manera más robusta
+        // Actualizar el precio en el DOM inmediatamente (mostrar solo precio unitario o mensaje de cantidad mÃ­nima)
+        // Buscar el elemento del carrito de manera mÃ¡s robusta
         const allCartItems = document.querySelectorAll('.cart-item');
         let cartItem = null;
         
@@ -5143,20 +5143,20 @@ function updatePriceOnQuantityChange(itemId, quantity) {
             // Solo actualizar el precio mostrado
             const priceElement = cartItem.querySelector('.cart-item-total');
             if (priceElement) {
-                // Si la cantidad no es válida, mostrar mensaje de cantidad mínima
+                // Si la cantidad no es vÃ¡lida, mostrar mensaje de cantidad mÃ­nima
                 if (!isValid && minQty !== null) {
                     const lang = window.cartManager?.currentLanguage || 'es';
                     const message = lang === 'es' ? 
-                        `Cantidad mínima: ${minQty}` : 
+                        `Cantidad mÃ­nima: ${minQty}` : 
                         lang === 'pt' ? 
-                        `Quantidade mínima: ${minQty}` :
+                        `Quantidade mÃ­nima: ${minQty}` :
                         `Minimum quantity: ${minQty}`;
                     priceElement.textContent = message;
                     priceElement.style.color = '#ef4444';
                     priceElement.style.fontWeight = '600';
                 } else {
                     // Mostrar precio unitario
-                    priceElement.textContent = `€${window.cartManager.formatUnitPrice(newPrice)}`;
+                    priceElement.textContent = `â‚¬${window.cartManager.formatUnitPrice(newPrice)}`;
                     priceElement.style.color = '';
                     priceElement.style.fontWeight = '';
                 }
@@ -5166,7 +5166,7 @@ function updatePriceOnQuantityChange(itemId, quantity) {
             updateUpsellSuggestion(cartItem, item, newQuantity);
         }
     } catch (error) {
-        console.error('❌ Error en updatePriceOnQuantityChange:', error);
+        console.error('âŒ Error en updatePriceOnQuantityChange:', error);
     }
 }
 
@@ -5181,7 +5181,7 @@ function updateUpsellSuggestion(cartItemElement, item, quantity) {
     }
     
     try {
-        // Determinar qué price_tiers usar: variante seleccionada o base
+        // Determinar quÃ© price_tiers usar: variante seleccionada o base
         let priceTiersToUse = item.price_tiers || [];
         
         // Si hay una variante seleccionada, usar sus price_tiers
@@ -5192,7 +5192,7 @@ function updateUpsellSuggestion(cartItemElement, item, quantity) {
             }
         }
         
-        // Crear objeto producto para la función de sugerencia
+        // Crear objeto producto para la funciÃ³n de sugerencia
         const productForSuggestion = {
             id: item.id,
             name: item.name,
@@ -5206,7 +5206,7 @@ function updateUpsellSuggestion(cartItemElement, item, quantity) {
         let suggestionElement = cartItemElement.querySelector('.upsell-suggestion');
         
         if (upsellSuggestion) {
-            // Calcular el ahorro real: lo que costaría al precio actual vs el nuevo precio
+            // Calcular el ahorro real: lo que costarÃ­a al precio actual vs el nuevo precio
             const costWithoutDiscount = upsellSuggestion.newQuantity * upsellSuggestion.currentUnitPrice;
             const costWithDiscount = upsellSuggestion.nextTotal;
             const realSavings = costWithoutDiscount - costWithDiscount;
@@ -5215,17 +5215,17 @@ function updateUpsellSuggestion(cartItemElement, item, quantity) {
             
             const translations = {
                 es: {
-                    message: `Si aumentas tu pedido a ${upsellSuggestion.newQuantity} uds, el precio por unidad baja de ${upsellSuggestion.currentUnitPrice.toFixed(2)}€ a ${upsellSuggestion.nextUnitPrice.toFixed(2)}€ (${discountPercent}% descuento). ¡Ahorras ${realSavings.toFixed(2)}€ en total!`,
+                    message: `Si aumentas tu pedido a ${upsellSuggestion.newQuantity} uds, el precio por unidad baja de ${upsellSuggestion.currentUnitPrice.toFixed(2)}â‚¬ a ${upsellSuggestion.nextUnitPrice.toFixed(2)}â‚¬ (${discountPercent}% descuento). Â¡Ahorras ${realSavings.toFixed(2)}â‚¬ en total!`,
                     button: 'Aumentar cantidad',
                     title: 'Oferta especial'
                 },
                 pt: {
-                    message: `Se aumentar o seu pedido para ${upsellSuggestion.newQuantity} unid., o preço por unidade baixa de ${upsellSuggestion.currentUnitPrice.toFixed(2)}€ para ${upsellSuggestion.nextUnitPrice.toFixed(2)}€ (${discountPercent}% desconto). Poupa ${realSavings.toFixed(2)}€ no total!`,
+                    message: `Se aumentar o seu pedido para ${upsellSuggestion.newQuantity} unid., o preÃ§o por unidade baixa de ${upsellSuggestion.currentUnitPrice.toFixed(2)}â‚¬ para ${upsellSuggestion.nextUnitPrice.toFixed(2)}â‚¬ (${discountPercent}% desconto). Poupa ${realSavings.toFixed(2)}â‚¬ no total!`,
                     button: 'Aumentar quantidade',
                     title: 'Oferta especial'
                 },
                 en: {
-                    message: `If you increase your order to ${upsellSuggestion.newQuantity} units, the unit price drops from ${upsellSuggestion.currentUnitPrice.toFixed(2)}€ to ${upsellSuggestion.nextUnitPrice.toFixed(2)}€ (${discountPercent}% discount). You save ${realSavings.toFixed(2)}€ in total!`,
+                    message: `If you increase your order to ${upsellSuggestion.newQuantity} units, the unit price drops from ${upsellSuggestion.currentUnitPrice.toFixed(2)}â‚¬ to ${upsellSuggestion.nextUnitPrice.toFixed(2)}â‚¬ (${discountPercent}% discount). You save ${realSavings.toFixed(2)}â‚¬ in total!`,
                     button: 'Increase quantity',
                     title: 'Special offer'
                 }
@@ -5261,7 +5261,7 @@ function updateUpsellSuggestion(cartItemElement, item, quantity) {
                 // Actualizar elemento existente
                 suggestionElement.outerHTML = suggestionHTML;
             } else {
-                // Insertar nuevo elemento después del selector de variantes o antes del contenedor de observaciones
+                // Insertar nuevo elemento despuÃ©s del selector de variantes o antes del contenedor de observaciones
                 const variantSelector = cartItemElement.querySelector('.cart-item-variant-selector');
                 const observationsContainer = cartItemElement.querySelector('.cart-item-observations-container');
                 
@@ -5284,7 +5284,7 @@ function updateUpsellSuggestion(cartItemElement, item, quantity) {
             }
         }
     } catch (error) {
-        console.error('❌ Error actualizando sugerencia de upsell:', error);
+        console.error('âŒ Error actualizando sugerencia de upsell:', error);
     }
 }
 
@@ -5314,7 +5314,7 @@ function changeProductVariant(itemId, variantIndex) {
             return;
         }
         
-        // Cargar variantes si no están en el item
+        // Cargar variantes si no estÃ¡n en el item
         if (!item.variants || item.variants.length === 0) {
             const productFromDB = window.cartManager.allProducts.find(p => {
                 return String(p.id) === String(item.id) || p.id === item.id;
@@ -5340,7 +5340,7 @@ function changeProductVariant(itemId, variantIndex) {
             const index = parseInt(variantIndex);
             if (index >= 0 && index < item.variants.length) {
                 item.selectedVariant = index;
-                isPersonalizedVariant = true; // Se seleccionó una variante personalizada
+                isPersonalizedVariant = true; // Se seleccionÃ³ una variante personalizada
                 // Obtener el plazo de entrega de la variante si existe
                 const selectedVariant = item.variants[index];
                 if (selectedVariant && (selectedVariant.plazo_entrega_personalizado || selectedVariant.plazoEntrega || selectedVariant.plazo_entrega || selectedVariant.deliveryTime)) {
@@ -5356,12 +5356,12 @@ function changeProductVariant(itemId, variantIndex) {
                     }
                 }
             } else {
-                console.warn('Índice de variante inválido:', index);
+                console.warn('Ãndice de variante invÃ¡lido:', index);
                 return;
             }
         }
         
-        // Recalcular precio según la variante seleccionada
+        // Recalcular precio segÃºn la variante seleccionada
         let priceTiersToUse = item.price_tiers || [];
         
         if (item.selectedVariant !== null && item.selectedVariant !== undefined && item.variants && item.variants.length > 0) {
@@ -5410,7 +5410,7 @@ function changeProductVariant(itemId, variantIndex) {
         // skipStockUpdate=true para evitar que se actualicen todos los plazos ahora
         window.cartManager.renderCart(true);
         
-        // Mostrar banner de advertencia si se seleccionó una variante personalizada
+        // Mostrar banner de advertencia si se seleccionÃ³ una variante personalizada
         if (isPersonalizedVariant) {
             setTimeout(() => {
                 showPersonalizedPriceWarningBanner(itemId);
@@ -5419,7 +5419,7 @@ function changeProductVariant(itemId, variantIndex) {
             }, 100);
         }
         
-        // Actualizar solo el plazo de entrega del producto que cambió de variante
+        // Actualizar solo el plazo de entrega del producto que cambiÃ³ de variante
         // Usar cartItemId si existe, sino usar item.id
         const itemIdentifier = item.cartItemId || item.id;
         setTimeout(() => {
@@ -5440,18 +5440,18 @@ function changeProductVariant(itemId, variantIndex) {
                 }
             }
             
-            // Actualizar SOLO el producto que cambió (solo si no hay plazo de variante)
-            // NO actualizar los demás productos para evitar cambios innecesarios en sus plazos de entrega
+            // Actualizar SOLO el producto que cambiÃ³ (solo si no hay plazo de variante)
+            // NO actualizar los demÃ¡s productos para evitar cambios innecesarios en sus plazos de entrega
             if (!variantDeliveryTime) {
                 window.cartManager.updateDeliveryTimesFromStock(itemIdentifier).catch(err => {
                     console.error('Error actualizando plazo de entrega del producto modificado:', err);
                 });
             }
-            // Si hay plazo de variante, no necesitamos actualizar nada porque ya se mostró el plazo de la variante
+            // Si hay plazo de variante, no necesitamos actualizar nada porque ya se mostrÃ³ el plazo de la variante
         }, 100);
         
     } catch (error) {
-        console.error('❌ Error en changeProductVariant:', error);
+        console.error('âŒ Error en changeProductVariant:', error);
     }
 }
 
@@ -5483,7 +5483,7 @@ function changeReferenceVariant(itemId, variantIndex) {
             return;
         }
         
-        // Cargar variantes_referencias si no están en el item
+        // Cargar variantes_referencias si no estÃ¡n en el item
         if (!item.variantes_referencias || item.variantes_referencias.length === 0) {
             const productFromDB = window.cartManager.allProducts.find(p => {
                 return String(p.id) === String(item.id) || p.id === item.id;
@@ -5499,14 +5499,14 @@ function changeReferenceVariant(itemId, variantIndex) {
         // Actualizar selectedReferenceVariant
         if (variantIndex === '' || variantIndex === null || variantIndex === undefined) {
             item.selectedReferenceVariant = null;
-            // Si se deselecciona, también limpiar el color guardado
+            // Si se deselecciona, tambiÃ©n limpiar el color guardado
             item.colorSeleccionadoGuardado = null;
         } else {
             const index = parseInt(variantIndex);
             
             // Si se intenta seleccionar el color eliminado (-1), no permitirlo
             if (index === -1) {
-                console.warn('⚠️ No se puede seleccionar un color eliminado. El color guardado se mantiene para historial.');
+                console.warn('âš ï¸ No se puede seleccionar un color eliminado. El color guardado se mantiene para historial.');
                 // Mantener el selectedReferenceVariant actual o null
                 // No actualizar nada, solo mostrar advertencia
                 return;
@@ -5514,19 +5514,19 @@ function changeReferenceVariant(itemId, variantIndex) {
             
             if (index >= 0 && item.variantes_referencias && index < item.variantes_referencias.length) {
                 item.selectedReferenceVariant = index;
-                // Actualizar también el color guardado con el nuevo color seleccionado
+                // Actualizar tambiÃ©n el color guardado con el nuevo color seleccionado
                 const selectedVariant = item.variantes_referencias[index];
                 if (selectedVariant && selectedVariant.color) {
                     item.colorSeleccionadoGuardado = selectedVariant.color;
                 }
-                console.log('✅ Color seleccionado guardado:', {
+                console.log('âœ… Color seleccionado guardado:', {
                     itemId: item.id,
                     itemName: item.name,
                     selectedIndex: index,
                     color: selectedVariant?.color
                 });
             } else {
-                console.error('Índice de variante de referencia inválido:', index);
+                console.error('Ãndice de variante de referencia invÃ¡lido:', index);
                 return;
             }
         }
@@ -5534,14 +5534,14 @@ function changeReferenceVariant(itemId, variantIndex) {
         // Guardar carrito
         window.cartManager.saveCart();
         
-        // Verificar que se guardó correctamente
+        // Verificar que se guardÃ³ correctamente
         const savedCart = window.cartManager.loadCart();
         const savedItem = savedCart.find(cartItem => 
             (cartItem.cartItemId && cartItem.cartItemId === item.cartItemId) ||
             (String(cartItem.id) === String(item.id) && cartItem.id === item.id)
         );
         if (savedItem) {
-            console.log('✅ Verificación: Color guardado en localStorage:', {
+            console.log('âœ… VerificaciÃ³n: Color guardado en localStorage:', {
                 selectedReferenceVariant: savedItem.selectedReferenceVariant
             });
         }
@@ -5610,7 +5610,7 @@ async function openAddSpecialOrderModal() {
                         priceInput.style.opacity = '0.6';
                         priceInput.style.cursor = 'not-allowed';
                         priceInput.title = window.cartManager.currentLanguage === 'pt' 
-                            ? 'Comerciais não podem definir preço em pedidos especiais' 
+                            ? 'Comerciais nÃ£o podem definir preÃ§o em pedidos especiais' 
                             : window.cartManager.currentLanguage === 'es'
                             ? 'Los comerciales no pueden definir precio en pedidos especiales'
                             : 'Comercials cannot set price in special orders';
@@ -5624,7 +5624,7 @@ async function openAddSpecialOrderModal() {
                 }
             }
         } catch (error) {
-            console.warn('⚠️ Error al verificar rol para pedido especial:', error);
+            console.warn('âš ï¸ Error al verificar rol para pedido especial:', error);
             // En caso de error, permitir editar (por seguridad, mejor permitir que bloquear)
             if (priceInput) {
                 priceInput.disabled = false;
@@ -5642,7 +5642,7 @@ function closeAddSpecialOrderModal() {
     modal.classList.remove('active');
     document.body.style.overflow = 'auto';
     
-    // Restaurar el campo de precio al cerrar (por si un admin lo abre después)
+    // Restaurar el campo de precio al cerrar (por si un admin lo abre despuÃ©s)
     const priceInput = document.getElementById('specialOrderPriceInput');
     if (priceInput) {
         priceInput.disabled = false;
@@ -5694,12 +5694,12 @@ async function addSpecialOrderToCart() {
                     // Si es comercial (no admin) y no es Claudia Cruz, forzar precio a 0
                     if (userRole === 'comercial' && userName !== 'claudia cruz') {
                         price = 0;
-                        console.log('🔒 Usuario comercial detectado: precio forzado a 0 en pedido especial');
+                        console.log('ðŸ”’ Usuario comercial detectado: precio forzado a 0 en pedido especial');
                     }
                 }
             }
         } catch (error) {
-            console.warn('⚠️ Error al verificar rol para pedido especial:', error);
+            console.warn('âš ï¸ Error al verificar rol para pedido especial:', error);
         }
     }
     
@@ -5725,9 +5725,9 @@ async function addSpecialOrderToCart() {
     
     if (!Number.isFinite(price) || price < 0) {
         const message = lang === 'es' ? 
-            'Ingresa un precio válido (>= 0)' : 
+            'Ingresa un precio vÃ¡lido (>= 0)' : 
             lang === 'pt' ?
-            'Insira um preço válido (>= 0)' :
+            'Insira um preÃ§o vÃ¡lido (>= 0)' :
             'Enter a valid price (>= 0)';
         window.cartManager?.showNotification(message, 'error');
         return;
@@ -5767,7 +5767,7 @@ async function addSpecialOrderToCart() {
         const newProduct = data || payload;
         let imageUrl = null;
 
-        // Subir imagen si se seleccionó
+        // Subir imagen si se seleccionÃ³
         if (imageFile) {
             try {
                 imageUrl = await uploadSpecialProductImage(imageFile, newProduct.id);
@@ -5786,7 +5786,7 @@ async function addSpecialOrderToCart() {
                 const msg = lang === 'es'
                     ? 'Producto creado, pero la imagen no se pudo subir.'
                     : lang === 'pt'
-                        ? 'Produto criado, mas a imagem não pôde ser carregada.'
+                        ? 'Produto criado, mas a imagem nÃ£o pÃ´de ser carregada.'
                         : 'Product created, but image upload failed.';
                 window.cartManager?.showNotification(msg, 'warning');
             }
@@ -5834,7 +5834,7 @@ async function addSpecialOrderToCart() {
                 image: mappedProduct.image || null
             };
             
-            // Calcular el orden: será el último item + 1
+            // Calcular el orden: serÃ¡ el Ãºltimo item + 1
             const maxOrder = window.cartManager.cart.length > 0 
                 ? Math.max(...window.cartManager.cart.map(item => item.order !== undefined && item.order !== null ? item.order : 0))
                 : -1;
@@ -5848,7 +5848,7 @@ async function addSpecialOrderToCart() {
             const message = lang === 'es' ? 
                 'Producto creado y agregado al presupuesto' : 
                 lang === 'pt' ?
-                'Produto criado e adicionado ao orçamento' :
+                'Produto criado e adicionado ao orÃ§amento' :
                 'Product created and added to budget';
             window.cartManager.showNotification(message, 'success');
         }
@@ -5857,7 +5857,7 @@ async function addSpecialOrderToCart() {
         const message = lang === 'es' ? 
             'No se pudo crear el producto en Supabase. Intenta de nuevo.' : 
             lang === 'pt' ?
-            'Não foi possível criar o produto no Supabase. Tente novamente.' :
+            'NÃ£o foi possÃ­vel criar o produto no Supabase. Tente novamente.' :
             'Could not create product in Supabase. Please try again.';
         window.cartManager?.showNotification(message, 'error');
         return;
@@ -5873,7 +5873,7 @@ window.closeAddSpecialOrderModal = closeAddSpecialOrderModal;
 window.addSpecialOrderToCart = addSpecialOrderToCart;
 
 /**
- * Añadir un módulo vacío editable al carrito (en lugar del modal de pedido especial)
+ * AÃ±adir un mÃ³dulo vacÃ­o editable al carrito (en lugar del modal de pedido especial)
  */
 function addEmptyModule() {
     if (!window.cartManager) return;
@@ -5892,7 +5892,7 @@ function addEmptyModule() {
         quantity: 1,
         image: null,
         plazoEntrega: '',
-        personalization: 'Sem personalização',
+        personalization: 'Sem personalizaÃ§Ã£o',
         logoUrl: null,
         peso: null,
         box_size: null,
@@ -5903,14 +5903,14 @@ function addEmptyModule() {
     window.cartManager.saveCart();
     window.cartManager.renderCart();
     window.cartManager.updateSummary();
-    const msg = window.cartManager.currentLanguage === 'es' ? 'Módulo añadido. Rellene los campos.' :
-        window.cartManager.currentLanguage === 'pt' ? 'Módulo adicionado. Preencha os campos.' : 'Module added. Fill in the fields.';
+    const msg = window.cartManager.currentLanguage === 'es' ? 'MÃ³dulo aÃ±adido. Rellene los campos.' :
+        window.cartManager.currentLanguage === 'pt' ? 'MÃ³dulo adicionado. Preencha os campos.' : 'Module added. Fill in the fields.';
     window.cartManager.showNotification(msg, 'success');
 }
 window.addEmptyModule = addEmptyModule;
 
 /**
- * Actualizar un campo de un módulo vacío en el carrito
+ * Actualizar un campo de un mÃ³dulo vacÃ­o en el carrito
  */
 function updateModuleField(cartItemId, field, value) {
     if (!window.cartManager || !cartItemId) return;
@@ -5926,13 +5926,13 @@ function updateModuleField(cartItemId, field, value) {
 window.updateModuleField = updateModuleField;
 
 /**
- * Obtener una ruta de archivo única en el bucket: si ya existe un archivo con ese nombre,
- * añade _1, _2, etc. para no duplicar nombres.
+ * Obtener una ruta de archivo Ãºnica en el bucket: si ya existe un archivo con ese nombre,
+ * aÃ±ade _1, _2, etc. para no duplicar nombres.
  * @param {object} storageClient - Cliente Supabase (con .storage)
  * @param {string} bucket - Nombre del bucket
  * @param {string} folderPrefix - Prefijo de carpeta (ej. "modules/xyz", "productos", "logos")
  * @param {string} fileName - Nombre del archivo (ej. "foto.jpg")
- * @returns {Promise<string>} Ruta completa única (ej. "modules/xyz/foto_2.jpg")
+ * @returns {Promise<string>} Ruta completa Ãºnica (ej. "modules/xyz/foto_2.jpg")
  */
 async function getUniqueStorageFilePath(storageClient, bucket, folderPrefix, fileName) {
     const sanitized = (fileName || 'file').replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').trim() || 'file';
@@ -5960,7 +5960,7 @@ if (typeof window !== 'undefined') {
 }
 
 /**
- * Subir foto de un módulo vacío y asignar URL al item
+ * Subir foto de un mÃ³dulo vacÃ­o y asignar URL al item
  */
 async function handleModulePhotoUpload(cartItemId, file) {
     if (!file || !window.cartManager) return;
@@ -6004,14 +6004,14 @@ async function handleModulePhotoUpload(cartItemId, file) {
             window.cartManager.renderCart();
         }
     } catch (e) {
-        console.error('Error subiendo foto del módulo:', e);
+        console.error('Error subiendo foto del mÃ³dulo:', e);
         window.cartManager.showNotification(e.message || 'Error al subir la foto', 'error');
     }
 }
 window.handleModulePhotoUpload = handleModulePhotoUpload;
 
 // Listener para enviar el formulario de pedido especial
-// Usar una variable para evitar registrar múltiples veces
+// Usar una variable para evitar registrar mÃºltiples veces
 let specialOrderFormListenerRegistered = false;
 document.addEventListener('DOMContentLoaded', () => {
     const specialOrderForm = document.getElementById('addSpecialOrderForm');
@@ -6029,14 +6029,14 @@ document.addEventListener('DOMContentLoaded', () => {
  * Reutiliza el enfoque sin headers globales para evitar problemas de MIME
  */
 async function uploadSpecialProductImage(file, productId) {
-    // Validaciones básicas
-    if (!file) throw new Error('No se seleccionó ninguna imagen');
+    // Validaciones bÃ¡sicas
+    if (!file) throw new Error('No se seleccionÃ³ ninguna imagen');
     if (!file.type || !file.type.startsWith('image/')) {
         throw new Error('El archivo debe ser una imagen');
     }
     const maxSize = 5 * 1024 * 1024;
     if (file.size > maxSize) {
-        throw new Error('La imagen es demasiado grande. Máximo 5MB');
+        throw new Error('La imagen es demasiado grande. MÃ¡ximo 5MB');
     }
 
     // Asegurar cliente principal
@@ -6047,7 +6047,7 @@ async function uploadSpecialProductImage(file, productId) {
         throw new Error('Supabase no disponible');
     }
 
-    // Crear cliente específico para Storage sin headers globales
+    // Crear cliente especÃ­fico para Storage sin headers globales
     let storageClient;
     try {
         if (typeof supabase !== 'undefined' && window.SUPABASE_CONFIG) {
@@ -6064,7 +6064,7 @@ async function uploadSpecialProductImage(file, productId) {
             storageClient = window.cartManager.supabase;
         }
     } catch (err) {
-        console.warn('No se pudo crear cliente específico de Storage, usando el principal', err);
+        console.warn('No se pudo crear cliente especÃ­fico de Storage, usando el principal', err);
         storageClient = window.cartManager.supabase;
     }
 
@@ -6093,7 +6093,7 @@ async function uploadSpecialProductImage(file, productId) {
 
     const { data: urlData } = storageClient.storage.from('product-images').getPublicUrl(path);
     if (!urlData?.publicUrl) {
-        throw new Error('No se pudo obtener la URL pública de la imagen');
+        throw new Error('No se pudo obtener la URL pÃºblica de la imagen');
     }
     return urlData.publicUrl;
 }
@@ -6114,7 +6114,7 @@ function sendOrder() {
 
 // FUNCIONES SIMPLES PARA LOS BOTONES DEL CARRITO
 // IMPORTANTE: Todas las modificaciones de cantidad deben pasar por simpleSetQuantity
-// para asegurar que se normalice correctamente según boxSize
+// para asegurar que se normalice correctamente segÃºn boxSize
 function simpleIncrease(itemId) {
     if (!window.cartManager) {
         console.error('cartManager no disponible');
@@ -6137,9 +6137,9 @@ function simpleIncrease(itemId) {
         return;
     }
     
-    // Si el producto tiene box_size, aumentar en múltiplos de box_size
+    // Si el producto tiene box_size, aumentar en mÃºltiplos de box_size
     if (item.type === 'product') {
-        // Asegurar que box_size esté cargado si no está en el item
+        // Asegurar que box_size estÃ© cargado si no estÃ¡ en el item
         if (!item.box_size) {
             const productFromDB = window.cartManager.allProducts.find(p => {
                 return String(p.id) === String(item.id) || p.id === item.id;
@@ -6150,13 +6150,13 @@ function simpleIncrease(itemId) {
         }
         
         if (item.box_size) {
-            // FORZAR A NÚMERO: asegurar que box_size y quantity sean números
+            // FORZAR A NÃšMERO: asegurar que box_size y quantity sean nÃºmeros
             const boxSize = Number(item.box_size);
             const currentQuantity = Number(item.quantity || boxSize);
             const newQuantity = currentQuantity + boxSize;
             
-            console.log(`➕ Aumentando cantidad: itemId=${itemId}, currentQuantity=${currentQuantity}, boxSize=${boxSize}, newQuantity=${newQuantity}`);
-            console.log(`📦 Item encontrado:`, item);
+            console.log(`âž• Aumentando cantidad: itemId=${itemId}, currentQuantity=${currentQuantity}, boxSize=${boxSize}, newQuantity=${newQuantity}`);
+            console.log(`ðŸ“¦ Item encontrado:`, item);
             window.simpleSetQuantity(itemId, newQuantity);
             return;
         }
@@ -6190,9 +6190,9 @@ function simpleDecrease(itemId) {
         return;
     }
     
-    // Si el producto tiene box_size, disminuir en múltiplos de box_size
+    // Si el producto tiene box_size, disminuir en mÃºltiplos de box_size
     if (item.type === 'product') {
-        // Asegurar que box_size esté cargado si no está en el item
+        // Asegurar que box_size estÃ© cargado si no estÃ¡ en el item
         if (!item.box_size) {
             const productFromDB = window.cartManager.allProducts.find(p => {
                 return String(p.id) === String(item.id) || p.id === item.id;
@@ -6203,13 +6203,13 @@ function simpleDecrease(itemId) {
         }
         
         if (item.box_size) {
-            // FORZAR A NÚMERO: asegurar que box_size y quantity sean números
+            // FORZAR A NÃšMERO: asegurar que box_size y quantity sean nÃºmeros
             const boxSize = Number(item.box_size);
             const currentQuantity = Number(item.quantity || boxSize);
             const newQuantity = Math.max(boxSize, currentQuantity - boxSize);
             
-            console.log(`➖ Disminuyendo cantidad: itemId=${itemId}, currentQuantity=${currentQuantity}, boxSize=${boxSize}, newQuantity=${newQuantity}`);
-            console.log(`📦 Item encontrado:`, item);
+            console.log(`âž– Disminuyendo cantidad: itemId=${itemId}, currentQuantity=${currentQuantity}, boxSize=${boxSize}, newQuantity=${newQuantity}`);
+            console.log(`ðŸ“¦ Item encontrado:`, item);
             window.simpleSetQuantity(itemId, newQuantity);
             return;
         }
@@ -6250,9 +6250,9 @@ function simpleSetQuantity(itemId, quantity) {
             return;
         }
         
-        console.log(`🔧 simpleSetQuantity: itemId=${itemId}, quantity=${quantity}, item.quantity actual=${item.quantity}`);
+        console.log(`ðŸ”§ simpleSetQuantity: itemId=${itemId}, quantity=${quantity}, item.quantity actual=${item.quantity}`);
         
-        // Convertir el valor a número (manejar comas y puntos decimales)
+        // Convertir el valor a nÃºmero (manejar comas y puntos decimales)
         const rawValue = String(quantity).replace(",", ".");
         let requestedQuantity = parseFloat(rawValue) || 1;
         if (!Number.isFinite(requestedQuantity) || requestedQuantity < 1) {
@@ -6262,66 +6262,66 @@ function simpleSetQuantity(itemId, quantity) {
             requestedQuantity = 250000;
         }
         
-        // Normalizar cantidad según boxSize si es un producto
+        // Normalizar cantidad segÃºn boxSize si es un producto
         let newQuantity = requestedQuantity;
         if (item.type === 'product') {
-            // Asegurar que box_size esté cargado
+            // Asegurar que box_size estÃ© cargado
             if (!item.box_size) {
                 const productFromDB = window.cartManager.allProducts.find(p => {
                     return String(p.id) === String(item.id) || p.id === item.id;
                 });
                 if (productFromDB && productFromDB.box_size) {
                     item.box_size = productFromDB.box_size;
-                    console.log(`📦 box_size cargado desde BD para producto ${item.id}: ${item.box_size}`);
+                    console.log(`ðŸ“¦ box_size cargado desde BD para producto ${item.id}: ${item.box_size}`);
                 } else {
-                    console.log(`⚠️ No se encontró box_size para producto ${item.id} en allProducts`);
+                    console.log(`âš ï¸ No se encontrÃ³ box_size para producto ${item.id} en allProducts`);
                 }
             }
             
-            // Crear objeto producto para normalización con la propiedad correcta (boxSize en camelCase)
+            // Crear objeto producto para normalizaciÃ³n con la propiedad correcta (boxSize en camelCase)
             const productForNormalization = {
                 id: item.id,
                 boxSize: item.box_size ? Number(item.box_size) : null
             };
             
-            console.log(`🔍 Normalizando cantidad: requestedQuantity=${requestedQuantity}, boxSize=${productForNormalization.boxSize}`);
+            console.log(`ðŸ” Normalizando cantidad: requestedQuantity=${requestedQuantity}, boxSize=${productForNormalization.boxSize}`);
             
-            // Normalizar la cantidad (siempre múltiplo superior de boxSize)
-            // PERO: si la cantidad solicitada ya es un múltiplo exacto de boxSize, no ajustar
+            // Normalizar la cantidad (siempre mÃºltiplo superior de boxSize)
+            // PERO: si la cantidad solicitada ya es un mÃºltiplo exacto de boxSize, no ajustar
             const boxSizeNum = Number(item.box_size);
             const requestedQtyNum = Number(requestedQuantity);
             
-            // Verificar si ya es un múltiplo exacto
+            // Verificar si ya es un mÃºltiplo exacto
             if (requestedQtyNum > 0 && requestedQtyNum % boxSizeNum === 0) {
-                // Ya es un múltiplo exacto, usar directamente
+                // Ya es un mÃºltiplo exacto, usar directamente
                 newQuantity = requestedQtyNum;
-                console.log(`✅ Cantidad ya es múltiplo de boxSize, usando directamente: ${newQuantity}`);
+                console.log(`âœ… Cantidad ya es mÃºltiplo de boxSize, usando directamente: ${newQuantity}`);
             } else {
-                // Normalizar la cantidad (siempre múltiplo superior de boxSize)
+                // Normalizar la cantidad (siempre mÃºltiplo superior de boxSize)
                 newQuantity = window.cartManager.normalizeQuantityForBox(productForNormalization, requestedQuantity);
-                console.log(`✅ Cantidad normalizada: ${requestedQuantity} → ${newQuantity}`);
+                console.log(`âœ… Cantidad normalizada: ${requestedQuantity} â†’ ${newQuantity}`);
             }
             
-            // Si la cantidad fue ajustada, mostrar aviso (solo si realmente cambió)
+            // Si la cantidad fue ajustada, mostrar aviso (solo si realmente cambiÃ³)
             if (newQuantity !== requestedQuantity && item.box_size) {
                 const lang = window.cartManager?.currentLanguage || 'es';
                 const message = lang === 'es' ? 
                     `Este producto solo se vende en cajas de ${item.box_size} unidades. La cantidad se ha ajustado a ${newQuantity}.` :
                     lang === 'pt' ?
-                    `Este produto só é vendido em caixas de ${item.box_size} unidades. A quantidade foi ajustada para ${newQuantity}.` :
+                    `Este produto sÃ³ Ã© vendido em caixas de ${item.box_size} unidades. A quantidade foi ajustada para ${newQuantity}.` :
                     `This product is only sold in boxes of ${item.box_size} units. The quantity has been adjusted to ${newQuantity}.`;
                 window.cartManager.showNotification(message, 'info');
             }
         }
         
         // ACTUALIZAR EL ESTADO: establecer cantidad normalizada en el item
-        // Esto es crítico - el input es controlado y usa item.quantity como value
+        // Esto es crÃ­tico - el input es controlado y usa item.quantity como value
         item.quantity = newQuantity;
         
-        // Debug: verificar que se actualizó correctamente
-        console.log(`✅ Cantidad actualizada en item: ${requestedQuantity} → ${newQuantity} (item.quantity ahora es: ${item.quantity})`);
+        // Debug: verificar que se actualizÃ³ correctamente
+        console.log(`âœ… Cantidad actualizada en item: ${requestedQuantity} â†’ ${newQuantity} (item.quantity ahora es: ${item.quantity})`);
         
-        // ACTUALIZAR EL INPUT INMEDIATAMENTE antes de cualquier otra operación
+        // ACTUALIZAR EL INPUT INMEDIATAMENTE antes de cualquier otra operaciÃ³n
         // Esto asegura que el usuario vea la cantidad normalizada de inmediato
         // Usar itemId (que es cartItemId) para encontrar el elemento correcto
         const allCartItemsBefore = document.querySelectorAll('.cart-item');
@@ -6333,10 +6333,10 @@ function simpleSetQuantity(itemId, quantity) {
                 if (quantityInput) {
                     // Actualizar el input inmediatamente con item.quantity (cantidad normalizada)
                     quantityInput.value = item.quantity;
-                    console.log(`✅ Input actualizado inmediatamente: ${quantityInput.value}`);
+                    console.log(`âœ… Input actualizado inmediatamente: ${quantityInput.value}`);
                 }
                 
-                // Actualizar también el atributo data-quantity en el elemento de plazo de entrega
+                // Actualizar tambiÃ©n el atributo data-quantity en el elemento de plazo de entrega
                 const deliveryElement = cartItemElement.querySelector('.delivery-time[data-phc-ref]');
                 if (deliveryElement) {
                     deliveryElement.setAttribute('data-quantity', item.quantity);
@@ -6346,11 +6346,11 @@ function simpleSetQuantity(itemId, quantity) {
             }
         }
         
-        // Si es un producto, actualizar el precio según escalones
+        // Si es un producto, actualizar el precio segÃºn escalones
         if (item.type === 'product') {
             // Si el precio fue editado manualmente (por admin para productos sobre consulta), no recalcular
             if (item.manualPrice && item.price !== undefined && item.price !== null) {
-                console.log(`🔧 Precio manual mantenido para ${item.name}: €${item.price.toFixed(4)}`);
+                console.log(`ðŸ”§ Precio manual mantenido para ${item.name}: â‚¬${item.price.toFixed(4)}`);
                 // Mantener el precio manual, solo actualizar cantidad
                 window.cartManager.saveCart();
                 // skipStockUpdate=true para evitar actualizar todos los plazos de entrega
@@ -6359,12 +6359,12 @@ function simpleSetQuantity(itemId, quantity) {
                 return;
             }
             
-            // Verificar si el modo 200+ está activo y este producto debe mantener el precio máximo
+            // Verificar si el modo 200+ estÃ¡ activo y este producto debe mantener el precio mÃ¡ximo
             const modo200Activo = window.cartManager?.modo200 || false;
             let debeMantenerPrecioMaximo = false;
             
             if (modo200Activo) {
-                // Buscar el producto en la base de datos para verificar área de negocio y marca
+                // Buscar el producto en la base de datos para verificar Ã¡rea de negocio y marca
                 const productFromDB = window.cartManager.allProducts.find(p => {
                     return String(p.id) === String(item.id) || p.id === item.id;
                 });
@@ -6375,24 +6375,24 @@ function simpleSetQuantity(itemId, quantity) {
                     const marca = productFromDB.marca || productFromDB.brand || '';
                     const marcaUpper = marca.toUpperCase().trim();
                     
-                    // Solo mantener precio máximo si es equipamiento y no está excluido
+                    // Solo mantener precio mÃ¡ximo si es equipamiento y no estÃ¡ excluido
                     if (areaNegocioLower === 'equipamiento' && 
                         marcaUpper !== 'VACAVALIENTE' && 
                         marcaUpper !== 'LASER BUILD') {
                         debeMantenerPrecioMaximo = true;
-                        console.log(`🔧 Modo 200+ activo: Manteniendo precio máximo para ${item.name} (área: ${areaNegocioLower}, marca: ${marcaUpper})`);
+                        console.log(`ðŸ”§ Modo 200+ activo: Manteniendo precio mÃ¡ximo para ${item.name} (Ã¡rea: ${areaNegocioLower}, marca: ${marcaUpper})`);
                     }
                 }
             }
             
-            // Si debe mantener precio máximo, no recalcular según cantidad
+            // Si debe mantener precio mÃ¡ximo, no recalcular segÃºn cantidad
             if (debeMantenerPrecioMaximo) {
-                // Asegurar que el precio original esté guardado
+                // Asegurar que el precio original estÃ© guardado
                 if (item.originalPrice === undefined) {
                     item.originalPrice = item.price;
                 }
                 
-                // Obtener el precio del escalón máximo
+                // Obtener el precio del escalÃ³n mÃ¡ximo
                 let priceTiersToUse = item.price_tiers || [];
                 if (item.selectedVariant !== null && item.selectedVariant !== undefined && item.variants && item.variants.length > 0) {
                     const selectedVariant = item.variants[item.selectedVariant];
@@ -6412,7 +6412,7 @@ function simpleSetQuantity(itemId, quantity) {
                 }
                 
                 if (priceTiersToUse && priceTiersToUse.length > 0) {
-                    // Ordenar escalones y obtener el último (precio máximo)
+                    // Ordenar escalones y obtener el Ãºltimo (precio mÃ¡ximo)
                     const sortedTiers = [...priceTiersToUse].sort((a, b) => {
                         const minA = a?.min_qty !== null && a?.min_qty !== undefined ? Number(a.min_qty) : 0;
                         const minB = b?.min_qty !== null && b?.min_qty !== undefined ? Number(b.min_qty) : 0;
@@ -6424,11 +6424,11 @@ function simpleSetQuantity(itemId, quantity) {
                     
                     if (maxPrice !== null && Number.isFinite(maxPrice)) {
                         item.price = maxPrice;
-                        console.log(`✅ Precio mantenido en máximo (modo 200+): €${maxPrice}`);
+                        console.log(`âœ… Precio mantenido en mÃ¡ximo (modo 200+): â‚¬${maxPrice}`);
                     }
                 }
             } else {
-                // Comportamiento normal: recalcular precio según cantidad
+                // Comportamiento normal: recalcular precio segÃºn cantidad
                 // Si no tiene price_tiers, intentar obtenerlos de la BD primero
                 if (!item.price_tiers || item.price_tiers.length === 0) {
                     const productFromDB = window.cartManager.allProducts.find(p => {
@@ -6442,7 +6442,7 @@ function simpleSetQuantity(itemId, quantity) {
                     }
                 }
                 
-                // Determinar qué price_tiers usar: variante seleccionada o base
+                // Determinar quÃ© price_tiers usar: variante seleccionada o base
                 let priceTiersToUse = item.price_tiers || [];
                 
                 // Si hay una variante seleccionada, usar sus price_tiers
@@ -6453,7 +6453,7 @@ function simpleSetQuantity(itemId, quantity) {
                     }
                 }
                 
-                // SIEMPRE recalcular precio según escalones (igual que en el buscador)
+                // SIEMPRE recalcular precio segÃºn escalones (igual que en el buscador)
                 if (priceTiersToUse && Array.isArray(priceTiersToUse) && priceTiersToUse.length > 0) {
                     const basePriceForCalc = item.basePrice !== undefined && item.basePrice !== null ? item.basePrice : (item.price || 0);
                     const priceResult = window.cartManager.getPriceForQuantity(priceTiersToUse, newQuantity, basePriceForCalc);
@@ -6473,20 +6473,20 @@ function simpleSetQuantity(itemId, quantity) {
         window.cartManager.saveCart();
         
         // REFRESCAR EL INPUT: Re-renderizar el carrito para que el input muestre la cantidad normalizada
-        // El input es controlado (usa item.quantity como value), así que al re-renderizar mostrará item.quantity
-        // IMPORTANTE: renderCart() usa item.quantity como value del input, así que mostrará la cantidad normalizada
+        // El input es controlado (usa item.quantity como value), asÃ­ que al re-renderizar mostrarÃ¡ item.quantity
+        // IMPORTANTE: renderCart() usa item.quantity como value del input, asÃ­ que mostrarÃ¡ la cantidad normalizada
         // skipStockUpdate=true para evitar que se actualicen todos los plazos ahora
-        // Los actualizaremos después de manera selectiva
+        // Los actualizaremos despuÃ©s de manera selectiva
         window.cartManager.renderCart(true);
         window.cartManager.updateSummary();
         
-        // Actualizar mensajes de stock SOLO para el producto específico que cambió
-        // NO actualizar los demás productos para evitar cambios innecesarios en sus plazos de entrega
-        // Usar un timeout más largo para asegurar que el render haya terminado completamente
+        // Actualizar mensajes de stock SOLO para el producto especÃ­fico que cambiÃ³
+        // NO actualizar los demÃ¡s productos para evitar cambios innecesarios en sus plazos de entrega
+        // Usar un timeout mÃ¡s largo para asegurar que el render haya terminado completamente
         setTimeout(() => {
-            // Verificar que el itemId es válido antes de actualizar
+            // Verificar que el itemId es vÃ¡lido antes de actualizar
             if (!itemId) {
-                console.warn('⚠️ itemId no válido para actualizar plazo de entrega');
+                console.warn('âš ï¸ itemId no vÃ¡lido para actualizar plazo de entrega');
                 return;
             }
             
@@ -6494,30 +6494,30 @@ function simpleSetQuantity(itemId, quantity) {
             // IMPORTANTE: El itemId que se pasa debe ser exactamente el mismo que se usa en el DOM (itemIdentifier)
             const itemIdToUpdate = item.cartItemId || item.id;
             
-            // Normalizar ambos IDs para comparación
+            // Normalizar ambos IDs para comparaciÃ³n
             const normalizedItemId = String(itemId).trim();
             const normalizedItemIdToUpdate = String(itemIdToUpdate).trim();
             
             // Verificar que el itemIdToUpdate coincide con el itemId pasado
             if (normalizedItemIdToUpdate !== normalizedItemId && itemIdToUpdate !== itemId) {
-                console.warn(`⚠️ itemId no coincide: itemId=${itemId}, itemIdToUpdate=${itemIdToUpdate}`);
+                console.warn(`âš ï¸ itemId no coincide: itemId=${itemId}, itemIdToUpdate=${itemIdToUpdate}`);
                 // Intentar usar el itemId original si no coincide
-                console.log(`🔄 Intentando usar itemId original: ${itemId}`);
+                console.log(`ðŸ”„ Intentando usar itemId original: ${itemId}`);
             }
             
             // Usar el itemId original si hay discrepancia, pero preferir itemIdToUpdate si coincide
             const finalItemId = (normalizedItemIdToUpdate === normalizedItemId || itemIdToUpdate === itemId) ? itemIdToUpdate : itemId;
             
-            // Actualizar SOLO el producto que cambió usando el cartItemId o id correcto
-            console.log(`🔄 Actualizando plazo de entrega SOLO para itemId: ${finalItemId} (original: ${itemId}, itemIdToUpdate: ${itemIdToUpdate})`);
+            // Actualizar SOLO el producto que cambiÃ³ usando el cartItemId o id correcto
+            console.log(`ðŸ”„ Actualizando plazo de entrega SOLO para itemId: ${finalItemId} (original: ${itemId}, itemIdToUpdate: ${itemIdToUpdate})`);
             window.cartManager.updateDeliveryTimesFromStock(finalItemId).catch(err => {
                 console.error('Error actualizando plazo de entrega del producto modificado:', err);
             });
         }, 200);
         
-        // FORZAR ACTUALIZACIÓN DEL INPUT después del render para asegurar que se actualice
-        // Esto es crítico: el input DEBE mostrar item.quantity (cantidad normalizada), nunca el valor crudo
-        // Usar múltiples intentos para asegurar que se actualice incluso si hay problemas de timing
+        // FORZAR ACTUALIZACIÃ“N DEL INPUT despuÃ©s del render para asegurar que se actualice
+        // Esto es crÃ­tico: el input DEBE mostrar item.quantity (cantidad normalizada), nunca el valor crudo
+        // Usar mÃºltiples intentos para asegurar que se actualice incluso si hay problemas de timing
         const forceInputUpdate = () => {
             const allCartItemsAfter = document.querySelectorAll('.cart-item');
             for (const cartItemElement of allCartItemsAfter) {
@@ -6527,27 +6527,27 @@ function simpleSetQuantity(itemId, quantity) {
                     // Buscar el input (puede ser readonly si tiene box_size o editable si no)
                     const inputAfter = cartItemElement.querySelector('.quantity-input');
                     if (inputAfter) {
-                        // SIEMPRE usar item.quantity como fuente de verdad (ya está normalizado)
+                        // SIEMPRE usar item.quantity como fuente de verdad (ya estÃ¡ normalizado)
                         const normalizedValue = item.quantity;
                         const currentValue = parseInt(inputAfter.value) || 0;
-                        // Si el valor del input no coincide con item.quantity, forzar actualización
+                        // Si el valor del input no coincide con item.quantity, forzar actualizaciÃ³n
                         if (currentValue !== normalizedValue) {
                             inputAfter.value = normalizedValue;
-                            console.log(`✅ Input actualizado después del render: ${currentValue} → ${normalizedValue}`);
+                            console.log(`âœ… Input actualizado despuÃ©s del render: ${currentValue} â†’ ${normalizedValue}`);
                         }
                     }
                     
-                    // Actualizar también el atributo data-quantity en el elemento de plazo de entrega
-                    // IMPORTANTE: Solo actualizar el elemento que pertenece a este itemId específico
+                    // Actualizar tambiÃ©n el atributo data-quantity en el elemento de plazo de entrega
+                    // IMPORTANTE: Solo actualizar el elemento que pertenece a este itemId especÃ­fico
                     const deliveryElementAfter = cartItemElement.querySelector('.delivery-time[data-phc-ref]');
                     if (deliveryElementAfter) {
                         // Verificar que el elemento tiene el itemId correcto antes de actualizar
                         const deliveryItemId = deliveryElementAfter.getAttribute('data-item-id');
                         if (String(deliveryItemId) === String(itemId) || deliveryItemId === itemId) {
                             deliveryElementAfter.setAttribute('data-quantity', item.quantity);
-                            console.log(`✅ Actualizado data-quantity para itemId: ${itemId}, cantidad: ${item.quantity}`);
+                            console.log(`âœ… Actualizado data-quantity para itemId: ${itemId}, cantidad: ${item.quantity}`);
                         } else {
-                            console.warn(`⚠️ No se actualizó data-quantity: itemId del elemento (${deliveryItemId}) no coincide con itemId esperado (${itemId})`);
+                            console.warn(`âš ï¸ No se actualizÃ³ data-quantity: itemId del elemento (${deliveryItemId}) no coincide con itemId esperado (${itemId})`);
                         }
                     }
                     
@@ -6560,22 +6560,22 @@ function simpleSetQuantity(itemId, quantity) {
         // Intentar actualizar inmediatamente
         forceInputUpdate();
         
-        // También intentar después de un pequeño delay por si acaso el render no ha terminado
+        // TambiÃ©n intentar despuÃ©s de un pequeÃ±o delay por si acaso el render no ha terminado
         setTimeout(() => {
             forceInputUpdate();
         }, 10);
         
-        // Y una vez más después de un delay mayor para asegurar
+        // Y una vez mÃ¡s despuÃ©s de un delay mayor para asegurar
         setTimeout(() => {
             forceInputUpdate();
         }, 100);
         
     } catch (error) {
-        console.error('❌ Error en simpleSetQuantity:', error);
+        console.error('âŒ Error en simpleSetQuantity:', error);
     }
 }
 
-// Exportar función globalmente
+// Exportar funciÃ³n globalmente
 window.simpleSetQuantity = simpleSetQuantity;
 
 /**
@@ -6588,11 +6588,11 @@ function applyUpsellSuggestion(itemId, suggestedQuantity) {
     }
     
     // Usar simpleSetQuantity para establecer la cantidad sugerida
-    // Esto recalculará automáticamente el precio y mostrará/ocultará la sugerencia
+    // Esto recalcularÃ¡ automÃ¡ticamente el precio y mostrarÃ¡/ocultarÃ¡ la sugerencia
     simpleSetQuantity(itemId, suggestedQuantity);
 }
 
-// Exportar función globalmente
+// Exportar funciÃ³n globalmente
 window.applyUpsellSuggestion = applyUpsellSuggestion;
 
 function simpleRemove(itemId) {
@@ -6602,17 +6602,17 @@ function simpleRemove(itemId) {
     }
     
     try {
-        // Usar el método removeItem del cartManager que ahora busca por cartItemId
+        // Usar el mÃ©todo removeItem del cartManager que ahora busca por cartItemId
         window.cartManager.removeItem(itemId);
         
     } catch (error) {
-        console.error('❌ Error en simpleRemove:', error);
+        console.error('âŒ Error en simpleRemove:', error);
     }
 }
 
 window.simpleRemove = simpleRemove;
 
-// Inicializar cuando el DOM esté listo
+// Inicializar cuando el DOM estÃ© listo
 document.addEventListener('DOMContentLoaded', () => {
     window.cartManager = new CartManager();
 });
@@ -6628,24 +6628,24 @@ function toggleMarginCalculator() {
 }
 window.toggleMarginCalculator = toggleMarginCalculator;
 
-// Función para agregar producto desde otras páginas
+// FunciÃ³n para agregar producto desde otras pÃ¡ginas
 window.addToCart = function(product, quantity = 1) {
     if (window.cartManager) {
-        // Usar el método addProduct del cartManager que ya normaliza correctamente
+        // Usar el mÃ©todo addProduct del cartManager que ya normaliza correctamente
         // Ahora siempre crea un nuevo item (permite duplicados)
         window.cartManager.addProduct(product, quantity);
     } else {
-        // Si no estamos en la página del carrito, normalizar manualmente
+        // Si no estamos en la pÃ¡gina del carrito, normalizar manualmente
         const cart = JSON.parse(localStorage.getItem('eppo_cart') || '[]');
 
-        // Normalizar cantidad según boxSize si existe
+        // Normalizar cantidad segÃºn boxSize si existe
         let normalizedQuantity = Number(quantity) || 1;
         if (product.box_size) {
             const boxSize = Number(product.box_size);
             if (boxSize > 0) {
-                // Normalizar al múltiplo superior más cercano
+                // Normalizar al mÃºltiplo superior mÃ¡s cercano
                 normalizedQuantity = Math.ceil(normalizedQuantity / boxSize) * boxSize;
-                // Si la cantidad fue ajustada, podría mostrar un aviso (opcional)
+                // Si la cantidad fue ajustada, podrÃ­a mostrar un aviso (opcional)
             }
         }
 
@@ -6662,12 +6662,12 @@ window.addToCart = function(product, quantity = 1) {
             product.precio;
 
         // Siempre crear un nuevo item (permitir duplicados)
-        // Generar un ID único para este item del carrito
+        // Generar un ID Ãºnico para este item del carrito
         const cartItemId = `cart-item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         
             cart.push({
                 id: product.id,
-            cartItemId: cartItemId, // ID único para identificar este item específico en el carrito
+            cartItemId: cartItemId, // ID Ãºnico para identificar este item especÃ­fico en el carrito
                 type: 'product',
                 name: product.nombre,
                 category: product.categoria,
@@ -6689,12 +6689,12 @@ window.addToCart = function(product, quantity = 1) {
 
         localStorage.setItem('eppo_cart', JSON.stringify(cart));
         
-        // Mostrar notificación
+        // Mostrar notificaciÃ³n
         showQuickNotification('Producto agregado al carrito');
     }
 };
 
-// Función para obtener especificaciones del producto (versión global)
+// FunciÃ³n para obtener especificaciones del producto (versiÃ³n global)
 function getProductSpecs(product) {
     const specs = [];
     
@@ -6712,7 +6712,7 @@ function getProductSpecs(product) {
         specs.push(typeName);
     }
 
-    return specs.join(' • ');
+    return specs.join(' â€¢ ');
 }
 
 /**
@@ -6725,12 +6725,12 @@ function showPersonalizedPriceWarningBanner(itemId) {
     
     const messages = {
         es: {
-            title: 'Precio sujeto a confirmación',
-            message: 'El precio mostrado está sujeto a confirmación después de la recepción del logo.'
+            title: 'Precio sujeto a confirmaciÃ³n',
+            message: 'El precio mostrado estÃ¡ sujeto a confirmaciÃ³n despuÃ©s de la recepciÃ³n del logo.'
         },
         pt: {
-            title: 'Preço sujeito a confirmação',
-            message: 'O preço mostrado está sujeito a confirmação após a recepção do logotipo.'
+            title: 'PreÃ§o sujeito a confirmaÃ§Ã£o',
+            message: 'O preÃ§o mostrado estÃ¡ sujeito a confirmaÃ§Ã£o apÃ³s a recepÃ§Ã£o do logotipo.'
         },
         en: {
             title: 'Price subject to confirmation',
@@ -6757,7 +6757,7 @@ function showPersonalizedPriceWarningBanner(itemId) {
     }
     
     if (!cartItemElement) {
-        console.warn('No se encontró el elemento del carrito para mostrar el banner');
+        console.warn('No se encontrÃ³ el elemento del carrito para mostrar el banner');
         return;
     }
     
@@ -6788,7 +6788,7 @@ function showPersonalizedPriceWarningBanner(itemId) {
         // Actualizar banner existente
         warningBanner.outerHTML = bannerHTML;
     } else {
-        // Insertar después del selector de variantes o antes del contenedor de observaciones
+        // Insertar despuÃ©s del selector de variantes o antes del contenedor de observaciones
         const variantSelector = cartItemElement.querySelector('.cart-item-variant-selector');
         const observationsContainer = cartItemElement.querySelector('.cart-item-observations-container');
         const existingUpsell = cartItemElement.querySelector('.upsell-suggestion');
@@ -6810,20 +6810,20 @@ function showPersonalizedPriceWarningBanner(itemId) {
 }
 
 /**
- * Función antigua de popup (mantenida por compatibilidad, pero ya no se usa)
+ * FunciÃ³n antigua de popup (mantenida por compatibilidad, pero ya no se usa)
  */
 function showPersonalizedPriceWarning() {
     const lang = window.cartManager?.currentLanguage || 'es';
     
     const messages = {
         es: {
-            title: 'Precio sujeto a confirmación',
-            message: 'El precio mostrado está sujeto a confirmación después de la recepción del logo, ya que el precio puede alterarse si el logo es muy complejo.',
+            title: 'Precio sujeto a confirmaciÃ³n',
+            message: 'El precio mostrado estÃ¡ sujeto a confirmaciÃ³n despuÃ©s de la recepciÃ³n del logo, ya que el precio puede alterarse si el logo es muy complejo.',
             button: 'Entendido'
         },
         pt: {
-            title: 'Preço sujeito a confirmação',
-            message: 'O preço mostrado está sujeito a confirmação após a recepção do logotipo, pois o preço pode alterar-se se o logotipo for muito complexo.',
+            title: 'PreÃ§o sujeito a confirmaÃ§Ã£o',
+            message: 'O preÃ§o mostrado estÃ¡ sujeito a confirmaÃ§Ã£o apÃ³s a recepÃ§Ã£o do logotipo, pois o preÃ§o pode alterar-se se o logotipo for muito complexo.',
             button: 'Entendido'
         },
         en: {
@@ -6924,7 +6924,7 @@ function showPersonalizedPriceWarning() {
         popup.style.transform = 'translate(-50%, -50%) scale(1)';
     }, 10);
     
-    // Función para cerrar
+    // FunciÃ³n para cerrar
     const closePopup = () => {
         overlay.style.opacity = '0';
         popup.style.opacity = '0';
@@ -6961,9 +6961,9 @@ function showPersonalizedPriceWarning() {
     document.addEventListener('keydown', escHandler);
 }
 
-// Función para mostrar notificación rápida
+// FunciÃ³n para mostrar notificaciÃ³n rÃ¡pida
 function showQuickNotification(message) {
-    // Calcular posición top basada en notificaciones existentes
+    // Calcular posiciÃ³n top basada en notificaciones existentes
     const existingNotifications = document.querySelectorAll('.notification-stack');
     let topOffset = 20;
     existingNotifications.forEach(notif => {
@@ -7006,7 +7006,7 @@ function showQuickNotification(message) {
     }, 3000);
 }
 
-// Función global para reposicionar notificaciones
+// FunciÃ³n global para reposicionar notificaciones
 function repositionNotificationsGlobal() {
     const notifications = document.querySelectorAll('.notification-stack');
     let topOffset = 20;
@@ -7019,16 +7019,16 @@ function repositionNotificationsGlobal() {
 /**
  * Generar PDF de la propuesta en formato tabla
  */
-// Función para abrir el modal de selección de idioma
+// FunciÃ³n para abrir el modal de selecciÃ³n de idioma
 
 /**
  * Generar PDF desde una propuesta guardada en Supabase
  */
 /**
- * Generar nombre de archivo para la propuesta según el formato solicitado:
- * "GGMPI_"Nombre del hotel"_categoria (o "varios" si hay más de una)_fecha.pdf"
+ * Generar nombre de archivo para la propuesta segÃºn el formato solicitado:
+ * "GGMPI_"Nombre del hotel"_categoria (o "varios" si hay mÃ¡s de una)_fecha.pdf"
  * @param {Object} proposalData - Datos de la propuesta (nombre_cliente, fecha_inicial, updated_at)
- * @param {Array} cartItems - Items del carrito para obtener categorías
+ * @param {Array} cartItems - Items del carrito para obtener categorÃ­as
  * @returns {string} - Nombre del archivo formateado
  */
 function generateProposalFileName(proposalData, cartItems) {
@@ -7061,7 +7061,7 @@ function generateProposalFileName(proposalData, cartItems) {
         
         fileName += cleanClientName || 'Sin_nombre';
         
-        // 3. Categoría del producto (o "varios" si hay más de una)
+        // 3. CategorÃ­a del producto (o "varios" si hay mÃ¡s de una)
         const categories = new Set();
         const specialItemNames = new Set();
         
@@ -7081,7 +7081,7 @@ function generateProposalFileName(proposalData, cartItems) {
                             .trim();
                         if (normalized) categories.add(normalized);
                     } catch (e) {
-                        // Ignorar errores de normalización
+                        // Ignorar errores de normalizaciÃ³n
                     }
                 } else if (item.type === 'special' && item.name) {
                     try {
@@ -7095,7 +7095,7 @@ function generateProposalFileName(proposalData, cartItems) {
                             .substring(0, 50);
                         if (normalized) specialItemNames.add(normalized);
                     } catch (e) {
-                        // Ignorar errores de normalización
+                        // Ignorar errores de normalizaciÃ³n
                     }
                 }
             });
@@ -7112,10 +7112,10 @@ function generateProposalFileName(proposalData, cartItems) {
         
         fileName += '_' + categoryPart;
         
-        // 4. Fecha de creación o modificación
+        // 4. Fecha de creaciÃ³n o modificaciÃ³n
         let dateToUse = null;
         if (proposalData) {
-            // Priorizar updated_at (fecha de modificación), luego fecha_inicial (fecha de creación)
+            // Priorizar updated_at (fecha de modificaciÃ³n), luego fecha_inicial (fecha de creaciÃ³n)
             dateToUse = proposalData.updated_at || proposalData.fecha_inicial;
         }
         
@@ -7159,10 +7159,10 @@ function generateProposalFileName(proposalData, cartItems) {
         
         fileName += '_' + dateStr + '.pdf';
         
-        // Validar que el nombre no tenga caracteres inválidos para archivos
+        // Validar que el nombre no tenga caracteres invÃ¡lidos para archivos
         fileName = fileName.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_');
         
-        console.log('✅ Nombre de archivo final generado:', fileName);
+        console.log('âœ… Nombre de archivo final generado:', fileName);
         return fileName;
     } catch (error) {
         console.error('Error en generateProposalFileName:', error);
@@ -7176,25 +7176,25 @@ function generateProposalFileName(proposalData, cartItems) {
     }
 }
 
-// Declarar función y también asignarla a window para asegurar disponibilidad global
+// Declarar funciÃ³n y tambiÃ©n asignarla a window para asegurar disponibilidad global
 async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt') {
-    console.log('🚀 ========== INICIO generateProposalPDFFromSavedProposal ==========');
-    console.log('📋 Parámetros:', { proposalId, language });
+    console.log('ðŸš€ ========== INICIO generateProposalPDFFromSavedProposal ==========');
+    console.log('ðŸ“‹ ParÃ¡metros:', { proposalId, language });
     
     if (!window.cartManager) {
-        console.error('❌ ERROR CRÍTICO: window.cartManager no está disponible');
+        console.error('âŒ ERROR CRÃTICO: window.cartManager no estÃ¡ disponible');
         return;
     }
     
     if (!window.cartManager.supabase) {
-        console.error('❌ ERROR CRÍTICO: window.cartManager.supabase no está disponible');
+        console.error('âŒ ERROR CRÃTICO: window.cartManager.supabase no estÃ¡ disponible');
         return;
     }
     
-    console.log('✅ cartManager y supabase disponibles');
+    console.log('âœ… cartManager y supabase disponibles');
 
     try {
-        console.log('📥 Cargando propuesta desde Supabase...');
+        console.log('ðŸ“¥ Cargando propuesta desde Supabase...');
         // Cargar la propuesta completa desde Supabase
         const { data: proposal, error: proposalError } = await window.cartManager.supabase
             .from('presupuestos')
@@ -7203,19 +7203,19 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
             .single();
 
         if (proposalError || !proposal) {
-            console.error('❌ Error cargando propuesta:', proposalError);
+            console.error('âŒ Error cargando propuesta:', proposalError);
             throw new Error('No se pudo cargar la propuesta desde Supabase');
         }
         
-        console.log('✅ Propuesta cargada:', {
+        console.log('âœ… Propuesta cargada:', {
             id: proposal.id,
             nombre_cliente: proposal.nombre_cliente,
             fecha_inicial: proposal.fecha_inicial,
             updated_at: proposal.updated_at
         });
 
-        // Cargar los artículos de la propuesta
-        // Ordenar por created_at para mantener el orden de inserción original, incluso con productos duplicados
+        // Cargar los artÃ­culos de la propuesta
+        // Ordenar por created_at para mantener el orden de inserciÃ³n original, incluso con productos duplicados
         const { data: articulos, error: articulosError } = await window.cartManager.supabase
             .from('presupuestos_articulos')
             .select('*')
@@ -7223,18 +7223,18 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
             .order('created_at', { ascending: true });
 
         if (articulosError) {
-            throw new Error('No se pudieron cargar los artículos desde Supabase');
+            throw new Error('No se pudieron cargar los artÃ­culos desde Supabase');
         }
 
-        // Convertir artículos a formato de carrito (incluye módulos y productos con precio especial)
+        // Convertir artÃ­culos a formato de carrito (incluye mÃ³dulos y productos con precio especial)
         const cartItems = [];
         const articulosListPdf = articulos || [];
         for (const articulo of articulosListPdf) {
             const qtyArt = articulo.cantidad ?? articulo.cantidad_encomendada ?? 1;
             // Buscar el producto SOLO por ID (referencia_articulo). No buscar por nombre: los productos
-            // de módulo o exclusivos tienen nombre propio y no deben heredar imagen/descripción de otro
-            // producto similar del catálogo (evita que "VV-Individual Retangular 55×35" tome la foto
-            // y descripción de "Individual Rectangular" del catálogo).
+            // de mÃ³dulo o exclusivos tienen nombre propio y no deben heredar imagen/descripciÃ³n de otro
+            // producto similar del catÃ¡logo (evita que "VV-Individual Retangular 55Ã—35" tome la foto
+            // y descripciÃ³n de "Individual Rectangular" del catÃ¡logo).
             const product = (articulo.referencia_articulo && window.cartManager.allProducts)
                 ? window.cartManager.allProducts.find(p => String(p.id) === String(articulo.referencia_articulo))
                 : null;
@@ -7264,8 +7264,8 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
                     id: product.id,
                     type: 'product',
                     name: articulo.nombre_articulo,
-                    category: product.categoria || product.category || '', // Agregar categoría del producto
-                    categoria: product.categoria || product.category || '', // También en español
+                    category: product.categoria || product.category || '', // Agregar categorÃ­a del producto
+                    categoria: product.categoria || product.category || '', // TambiÃ©n en espaÃ±ol
                     area_negocio: product.area_negocio || product.areaNegocio || '',
                     areaNegocio: product.area_negocio || product.areaNegocio || '',
                     quantity: qtyArt,
@@ -7274,7 +7274,7 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
                     referencia: articulo.referencia_articulo,
                     plazoEntrega: articulo.plazo_entrega || '',
                     image: product.foto || null,
-                    // Asegurar que se obtenga la descripción en ambos formatos (camelCase y snake_case)
+                    // Asegurar que se obtenga la descripciÃ³n en ambos formatos (camelCase y snake_case)
                     descripcionEs: product.descripcionEs || product.descripcion_es || '',
                     descripcionPt: product.descripcionPt || product.descripcion_pt || '',
                     descripcion_es: product.descripcion_es || product.descripcionEs || '',
@@ -7285,17 +7285,17 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
                     selectedVariant: (() => {
                         // Buscar la variante correcta por su nombre (tipo_personalizacion)
                         if (articulo.tipo_personalizacion && 
-                            articulo.tipo_personalizacion !== 'Sin personalización' && 
-                            articulo.tipo_personalizacion !== 'Sem personalização' && 
+                            articulo.tipo_personalizacion !== 'Sin personalizaciÃ³n' && 
+                            articulo.tipo_personalizacion !== 'Sem personalizaÃ§Ã£o' && 
                             articulo.tipo_personalizacion !== 'No customization' &&
                             product.variants && 
                             product.variants.length > 0) {
-                            // Buscar el índice de la variante que coincida con el nombre guardado
+                            // Buscar el Ã­ndice de la variante que coincida con el nombre guardado
                             const variantIndex = product.variants.findIndex(variant => 
                                 variant.name === articulo.tipo_personalizacion ||
                                 variant.nombre === articulo.tipo_personalizacion
                             );
-                            // Si se encuentra, devolver el índice; si no, devolver null
+                            // Si se encuentra, devolver el Ã­ndice; si no, devolver null
                             return variantIndex >= 0 ? variantIndex : null;
                         }
                         return null;
@@ -7321,14 +7321,14 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
                         
                         if (!productError && productData) {
                             productFromDB = productData;
-                            console.log('✅ Producto encontrado en BD para item especial:', productData.nombre);
+                            console.log('âœ… Producto encontrado en BD para item especial:', productData.nombre);
                         }
                     } catch (dbError) {
-                        console.warn('⚠️ Error buscando producto en BD:', dbError);
+                        console.warn('âš ï¸ Error buscando producto en BD:', dbError);
                     }
                 }
                 
-                // Crear un item especial (ej. módulo editable), incluir descripción, foto y plazo de entrega
+                // Crear un item especial (ej. mÃ³dulo editable), incluir descripciÃ³n, foto y plazo de entrega
                 const plazoEntregaSpecial = articulo.plazo_entrega || (productFromDB ? (productFromDB.plazo_entrega || productFromDB.plazoEntrega || '') : '');
                 cartItems.push({
                     id: articulo.referencia_articulo || `special_${articulo.id}`,
@@ -7342,7 +7342,7 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
                     notes: articulo.observaciones || '',
                     plazoEntrega: plazoEntregaSpecial,
                     plazo_entrega: plazoEntregaSpecial,
-                    // Incluir descripción y foto si el producto se encontró en la BD
+                    // Incluir descripciÃ³n y foto si el producto se encontrÃ³ en la BD
                     descripcionEs: productFromDB ? (productFromDB.descripcion_es || productFromDB.descripcionEs || '') : '',
                     descripcionPt: productFromDB ? (productFromDB.descripcion_pt || productFromDB.descripcionPt || '') : '',
                     descripcion_es: productFromDB ? (productFromDB.descripcion_es || productFromDB.descripcionEs || '') : '',
@@ -7367,23 +7367,23 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
             pais: proposal.pais
         };
 
-        // Guardar temporalmente el carrito y reemplazarlo con los artículos de la propuesta
+        // Guardar temporalmente el carrito y reemplazarlo con los artÃ­culos de la propuesta
         const originalCart = window.cartManager.cart;
         window.cartManager.cart = cartItems;
 
-        // Determinar el idioma basado en el país de la propuesta
-        let pdfLanguage = 'pt'; // Por defecto portugués
-        if (proposal.pais === 'España') {
+        // Determinar el idioma basado en el paÃ­s de la propuesta
+        let pdfLanguage = 'pt'; // Por defecto portuguÃ©s
+        if (proposal.pais === 'EspaÃ±a') {
             pdfLanguage = 'es';
         } else if (proposal.pais === 'Portugal') {
             pdfLanguage = 'pt';
         }
 
-        console.log('📄 Generando PDF con idioma:', pdfLanguage);
-        console.log('📦 Items del carrito para PDF:', cartItems.length);
+        console.log('ðŸ“„ Generando PDF con idioma:', pdfLanguage);
+        console.log('ðŸ“¦ Items del carrito para PDF:', cartItems.length);
         
-        // Generar el PDF con el idioma determinado por el país
-        console.log('📄 Llamando a generateProposalPDF...');
+        // Generar el PDF con el idioma determinado por el paÃ­s
+        console.log('ðŸ“„ Llamando a generateProposalPDF...');
         console.log('   - Idioma:', pdfLanguage);
         console.log('   - Items del carrito:', cartItems.length);
         console.log('   - Datos de propuesta:', {
@@ -7394,9 +7394,9 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
         
         try {
             await generateProposalPDF(pdfLanguage, proposal);
-            console.log('✅ PDF generado exitosamente desde propuesta guardada');
+            console.log('âœ… PDF generado exitosamente desde propuesta guardada');
         } catch (pdfError) {
-            console.error('❌ ERROR en generateProposalPDF:', pdfError);
+            console.error('âŒ ERROR en generateProposalPDF:', pdfError);
             console.error('   - Tipo:', pdfError.name);
             console.error('   - Mensaje:', pdfError.message);
             console.error('   - Stack:', pdfError.stack);
@@ -7404,33 +7404,33 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
         }
 
         // Restaurar el carrito original
-        console.log('🔄 Restaurando carrito original...');
+        console.log('ðŸ”„ Restaurando carrito original...');
         window.cartManager.cart = originalCart;
         window.cartManager.editingProposalData = originalEditingData;
-        console.log('✅ Carrito restaurado');
+        console.log('âœ… Carrito restaurado');
 
     } catch (error) {
-        console.error('❌ ERROR GENERAL en generateProposalPDFFromSavedProposal:', error);
+        console.error('âŒ ERROR GENERAL en generateProposalPDFFromSavedProposal:', error);
         console.error('   - Tipo:', error.name);
         console.error('   - Mensaje:', error.message);
         console.error('   - Stack:', error.stack);
         throw error;
     }
     
-    console.log('🏁 ========== FIN generateProposalPDFFromSavedProposal ==========');
+    console.log('ðŸ ========== FIN generateProposalPDFFromSavedProposal ==========');
 }
 
-// Asegurar que la función esté disponible globalmente
+// Asegurar que la funciÃ³n estÃ© disponible globalmente
 if (typeof window !== 'undefined') {
     window.generateProposalPDFFromSavedProposal = generateProposalPDFFromSavedProposal;
-    console.log('✅ generateProposalPDFFromSavedProposal asignada a window');
+    console.log('âœ… generateProposalPDFFromSavedProposal asignada a window');
 }
 
 /**
- * Pre-procesar todos los logos PDF del carrito, convirtiéndolos a imágenes
- * Esta función se ejecuta ANTES de generar el PDF para optimizar el proceso
+ * Pre-procesar todos los logos PDF del carrito, convirtiÃ©ndolos a imÃ¡genes
+ * Esta funciÃ³n se ejecuta ANTES de generar el PDF para optimizar el proceso
  * @param {Array} cartItems - Array de items del carrito
- * @returns {Promise<Object>} - Objeto con las imágenes convertidas indexadas por logoUrl
+ * @returns {Promise<Object>} - Objeto con las imÃ¡genes convertidas indexadas por logoUrl
  */
 async function preprocessPdfLogos(cartItems) {
     const pdfLogosMap = {}; // Mapa de URL original -> imagen convertida
@@ -7444,54 +7444,54 @@ async function preprocessPdfLogos(cartItems) {
     });
     
     if (itemsWithPdfLogos.length === 0) {
-        console.log('ℹ️ No hay logos PDF para pre-procesar');
+        console.log('â„¹ï¸ No hay logos PDF para pre-procesar');
         return pdfLogosMap;
     }
     
-    console.log(`🔄 Pre-procesando ${itemsWithPdfLogos.length} logo(s) PDF...`);
+    console.log(`ðŸ”„ Pre-procesando ${itemsWithPdfLogos.length} logo(s) PDF...`);
     
     // Procesar todos los PDFs en paralelo
     const conversionPromises = itemsWithPdfLogos.map(async (item) => {
         const pdfUrl = item.logoUrl.trim();
         
-        // Evitar procesar el mismo PDF múltiples veces
+        // Evitar procesar el mismo PDF mÃºltiples veces
         if (pdfLogosMap[pdfUrl]) {
-            console.log('⏭️ Logo PDF ya procesado:', pdfUrl);
+            console.log('â­ï¸ Logo PDF ya procesado:', pdfUrl);
             return;
         }
         
         try {
-            console.log(`📄 Convirtiendo logo PDF: ${pdfUrl}`);
+            console.log(`ðŸ“„ Convirtiendo logo PDF: ${pdfUrl}`);
             const imageData = await convertPdfToImage(pdfUrl);
             
             if (imageData && imageData.length > 0) {
                 // Guardar con la URL exacta (sin espacios)
                 pdfLogosMap[pdfUrl] = imageData;
-                console.log(`✅ Logo PDF convertido exitosamente: ${pdfUrl} (${imageData.length} bytes)`);
+                console.log(`âœ… Logo PDF convertido exitosamente: ${pdfUrl} (${imageData.length} bytes)`);
             } else {
-                console.warn(`⚠️ No se pudo convertir el logo PDF: ${pdfUrl} (imageData es null o vacío)`);
+                console.warn(`âš ï¸ No se pudo convertir el logo PDF: ${pdfUrl} (imageData es null o vacÃ­o)`);
             }
         } catch (error) {
-            console.error(`❌ Error procesando logo PDF ${pdfUrl}:`, error);
+            console.error(`âŒ Error procesando logo PDF ${pdfUrl}:`, error);
         }
     });
     
     // Esperar a que todos los PDFs se conviertan
     await Promise.all(conversionPromises);
     
-    console.log(`✅ Pre-procesamiento completado. ${Object.keys(pdfLogosMap).length} logo(s) convertido(s)`);
+    console.log(`âœ… Pre-procesamiento completado. ${Object.keys(pdfLogosMap).length} logo(s) convertido(s)`);
     
     return pdfLogosMap;
 }
 
 /**
- * Convertir la primera página de un PDF a imagen (base64)
+ * Convertir la primera pÃ¡gina de un PDF a imagen (base64)
  * @param {string} pdfUrl - URL del PDF
  * @returns {Promise<string|null>} - Data URL de la imagen o null si falla
  */
 async function convertPdfToImage(pdfUrl) {
     try {
-        // Esperar a que PDF.js esté disponible (puede tardar en cargar)
+        // Esperar a que PDF.js estÃ© disponible (puede tardar en cargar)
         let pdfjs = null;
         let attempts = 0;
         const maxAttempts = 20; // Aumentar intentos
@@ -7504,14 +7504,14 @@ async function convertPdfToImage(pdfUrl) {
             if (!pdfjs) {
                 attempts++;
                 if (attempts % 5 === 0) { // Log cada 5 intentos
-                    console.log(`⏳ Esperando PDF.js... (intento ${attempts}/${maxAttempts})`);
+                    console.log(`â³ Esperando PDF.js... (intento ${attempts}/${maxAttempts})`);
                 }
                 await new Promise(resolve => setTimeout(resolve, 100)); // Esperar 100ms
             }
         }
         
         if (!pdfjs) {
-            console.error('❌ PDF.js no está disponible después de esperar. Verifica que el script esté cargado correctamente.');
+            console.error('âŒ PDF.js no estÃ¡ disponible despuÃ©s de esperar. Verifica que el script estÃ© cargado correctamente.');
             console.error('Verificando disponibilidad:', {
                 'window.pdfjsLibInstance': typeof window.pdfjsLibInstance,
                 'window.pdfjsLib': typeof window.pdfjsLib,
@@ -7522,10 +7522,10 @@ async function convertPdfToImage(pdfUrl) {
             return null;
         }
         
-        console.log('✅ PDF.js encontrado y disponible');
+        console.log('âœ… PDF.js encontrado y disponible');
         
-        console.log('📄 Iniciando conversión de PDF a imagen:', pdfUrl);
-        console.log('📦 PDF.js disponible:', {
+        console.log('ðŸ“„ Iniciando conversiÃ³n de PDF a imagen:', pdfUrl);
+        console.log('ðŸ“¦ PDF.js disponible:', {
             version: pdfjs.version || 'desconocida',
             hasGetDocument: typeof pdfjs.getDocument === 'function'
         });
@@ -7533,7 +7533,7 @@ async function convertPdfToImage(pdfUrl) {
         // Configurar worker de pdf.js
         if (!pdfjs.GlobalWorkerOptions.workerSrc) {
             pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-            console.log('✅ Worker de PDF.js configurado');
+            console.log('âœ… Worker de PDF.js configurado');
         }
         
         // Cargar el PDF con opciones para manejar CORS
@@ -7544,13 +7544,13 @@ async function convertPdfToImage(pdfUrl) {
         });
         
         const pdf = await loadingTask.promise;
-        console.log('✅ PDF cargado, número de páginas:', pdf.numPages);
+        console.log('âœ… PDF cargado, nÃºmero de pÃ¡ginas:', pdf.numPages);
         
-        // Obtener la primera página
+        // Obtener la primera pÃ¡gina
         const page = await pdf.getPage(1);
         
-        // Configurar el viewport con una escala razonable (ajustada para logos pequeños)
-        const scale = 1.5; // Escala más pequeña para logos
+        // Configurar el viewport con una escala razonable (ajustada para logos pequeÃ±os)
+        const scale = 1.5; // Escala mÃ¡s pequeÃ±a para logos
         const viewport = page.getViewport({ scale: scale });
         
         // Crear canvas
@@ -7559,17 +7559,17 @@ async function convertPdfToImage(pdfUrl) {
         canvas.height = viewport.height;
         canvas.width = viewport.width;
         
-        // Renderizar la página en el canvas
+        // Renderizar la pÃ¡gina en el canvas
         const renderContext = {
             canvasContext: context,
             viewport: viewport
         };
         
         await page.render(renderContext).promise;
-        console.log('✅ PDF renderizado en canvas');
+        console.log('âœ… PDF renderizado en canvas');
         
         // Redimensionar y comprimir imagen antes de convertir a base64
-        const maxDimension = 300; // Máximo 300px para logos PDF
+        const maxDimension = 300; // MÃ¡ximo 300px para logos PDF
         let finalWidth = canvas.width;
         let finalHeight = canvas.height;
         
@@ -7579,25 +7579,25 @@ async function convertPdfToImage(pdfUrl) {
             finalWidth = Math.floor(finalWidth * ratio);
             finalHeight = Math.floor(finalHeight * ratio);
             
-            // Crear nuevo canvas con tamaño reducido
+            // Crear nuevo canvas con tamaÃ±o reducido
             const resizedCanvas = document.createElement('canvas');
             resizedCanvas.width = finalWidth;
             resizedCanvas.height = finalHeight;
             const resizedContext = resizedCanvas.getContext('2d');
             resizedContext.drawImage(canvas, 0, 0, finalWidth, finalHeight);
             
-            // Convertir a JPEG con compresión (calidad 80% para logos)
+            // Convertir a JPEG con compresiÃ³n (calidad 80% para logos)
             const imageData = resizedCanvas.toDataURL('image/jpeg', 0.8);
-            console.log('✅ PDF convertido a imagen JPEG comprimida, tamaño:', imageData.length, 'bytes');
+            console.log('âœ… PDF convertido a imagen JPEG comprimida, tamaÃ±o:', imageData.length, 'bytes');
             return imageData;
         } else {
-            // Si ya es pequeño, solo comprimir
+            // Si ya es pequeÃ±o, solo comprimir
             const imageData = canvas.toDataURL('image/jpeg', 0.8);
-            console.log('✅ PDF convertido a imagen JPEG comprimida, tamaño:', imageData.length, 'bytes');
+            console.log('âœ… PDF convertido a imagen JPEG comprimida, tamaÃ±o:', imageData.length, 'bytes');
             return imageData;
         }
     } catch (error) {
-        console.error('❌ Error convirtiendo PDF a imagen:', error);
+        console.error('âŒ Error convirtiendo PDF a imagen:', error);
         console.error('Detalles del error:', {
             message: error.message,
             stack: error.stack,
@@ -7608,8 +7608,8 @@ async function convertPdfToImage(pdfUrl) {
 }
 
 async function generateProposalPDF(selectedLanguage = null, proposalData = null) {
-    console.log('🚀 ========== INICIO generateProposalPDF ==========');
-    console.log('📋 Parámetros recibidos:', {
+    console.log('ðŸš€ ========== INICIO generateProposalPDF ==========');
+    console.log('ðŸ“‹ ParÃ¡metros recibidos:', {
         selectedLanguage: selectedLanguage,
         hasProposalData: proposalData !== null,
         proposalData: proposalData ? {
@@ -7624,71 +7624,71 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         try {
             window.cachedRole = await window.getUserRole?.();
         } catch (error) {
-            console.warn('⚠️ No se pudo obtener el rol del usuario para el PDF:', error);
+            console.warn('âš ï¸ No se pudo obtener el rol del usuario para el PDF:', error);
         }
     }
     
     // Si se proporciona proposalData, usar esos datos en lugar del carrito actual
     const useProposalData = proposalData !== null;
-    console.log('🔍 useProposalData:', useProposalData);
+    console.log('ðŸ” useProposalData:', useProposalData);
     
     if (!useProposalData && (!window.cartManager || window.cartManager.cart.length === 0)) {
-        console.error('❌ ERROR: Carrito vacío o cartManager no disponible');
+        console.error('âŒ ERROR: Carrito vacÃ­o o cartManager no disponible');
         console.error('   - window.cartManager existe:', !!window.cartManager);
         console.error('   - cart.length:', window.cartManager?.cart?.length || 0);
         const message = window.cartManager?.currentLanguage === 'es' ? 
-            'El presupuesto está vacío' : 
+            'El presupuesto estÃ¡ vacÃ­o' : 
             window.cartManager?.currentLanguage === 'pt' ?
-            'O orçamento está vazio' :
+            'O orÃ§amento estÃ¡ vazio' :
             'The budget is empty';
         window.cartManager?.showNotification(message, 'error');
         return;
     }
     
-    console.log('✅ Validación inicial pasada');
+    console.log('âœ… ValidaciÃ³n inicial pasada');
 
-    // Asegurar que el carrito esté actualizado (recargar desde localStorage)
-    // Esto garantiza que tengamos las observaciones más recientes y el color seleccionado
-    console.log('📦 Cargando carrito...');
+    // Asegurar que el carrito estÃ© actualizado (recargar desde localStorage)
+    // Esto garantiza que tengamos las observaciones mÃ¡s recientes y el color seleccionado
+    console.log('ðŸ“¦ Cargando carrito...');
     let savedCart;
     try {
         savedCart = useProposalData ? window.cartManager.cart : window.cartManager.loadCart();
-        console.log('✅ Carrito cargado:', {
+        console.log('âœ… Carrito cargado:', {
             itemsCount: savedCart ? savedCart.length : 0,
             useProposalData: useProposalData
         });
         
         if (!savedCart || !Array.isArray(savedCart)) {
-            console.error('❌ ERROR: savedCart no es un array válido:', savedCart);
-            throw new Error('Carrito inválido');
+            console.error('âŒ ERROR: savedCart no es un array vÃ¡lido:', savedCart);
+            throw new Error('Carrito invÃ¡lido');
         }
         
         if (savedCart.length === 0) {
-            console.error('❌ ERROR: Carrito vacío después de cargar');
-            throw new Error('Carrito vacío');
+            console.error('âŒ ERROR: Carrito vacÃ­o despuÃ©s de cargar');
+            throw new Error('Carrito vacÃ­o');
         }
         
         if (!useProposalData) {
             window.cartManager.cart = savedCart;
         }
     } catch (error) {
-        console.error('❌ ERROR al cargar carrito:', error);
+        console.error('âŒ ERROR al cargar carrito:', error);
         window.cartManager?.showNotification('Error al cargar el carrito', 'error');
         return;
     }
     
-    // PRE-PROCESAR LOGOS PDF: Convertir todos los PDFs a imágenes ANTES de generar el PDF
-    console.log('🚀 Iniciando pre-procesamiento de logos PDF...');
+    // PRE-PROCESAR LOGOS PDF: Convertir todos los PDFs a imÃ¡genes ANTES de generar el PDF
+    console.log('ðŸš€ Iniciando pre-procesamiento de logos PDF...');
     let pdfLogosMap = {};
     try {
         pdfLogosMap = await preprocessPdfLogos(savedCart);
-        console.log('✅ Pre-procesamiento de logos completado. Imágenes listas para usar en el PDF.');
+        console.log('âœ… Pre-procesamiento de logos completado. ImÃ¡genes listas para usar en el PDF.');
     } catch (error) {
-        console.error('⚠️ ADVERTENCIA: Error en pre-procesamiento de logos (continuando de todas formas):', error);
+        console.error('âš ï¸ ADVERTENCIA: Error en pre-procesamiento de logos (continuando de todas formas):', error);
         pdfLogosMap = {};
     }
     
-    // Debug: verificar que las observaciones y colores estén presentes
+    // Debug: verificar que las observaciones y colores estÃ©n presentes
     console.log('Carrito cargado para PDF:', savedCart.map(item => ({
         id: item.id,
         name: item.name,
@@ -7697,24 +7697,24 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         variantes_referencias: item.variantes_referencias ? item.variantes_referencias.length : 0
     })));
 
-    // Verificar que jsPDF esté disponible
-    console.log('📄 Verificando jsPDF...');
+    // Verificar que jsPDF estÃ© disponible
+    console.log('ðŸ“„ Verificando jsPDF...');
     if (!window.jspdf) {
-        console.error('❌ ERROR CRÍTICO: window.jspdf no está disponible');
-        window.cartManager?.showNotification('Error: jsPDF no está cargado', 'error');
+        console.error('âŒ ERROR CRÃTICO: window.jspdf no estÃ¡ disponible');
+        window.cartManager?.showNotification('Error: jsPDF no estÃ¡ cargado', 'error');
         return;
     }
     
-    console.log('✅ jsPDF disponible');
+    console.log('âœ… jsPDF disponible');
     const { jsPDF } = window.jspdf;
     
-    console.log('📄 Creando documento PDF...');
+    console.log('ðŸ“„ Creando documento PDF...');
     let doc;
     try {
         doc = new jsPDF('p', 'mm', 'a4');
-        console.log('✅ Documento PDF creado');
+        console.log('âœ… Documento PDF creado');
     } catch (error) {
-        console.error('❌ ERROR CRÍTICO al crear documento PDF:', error);
+        console.error('âŒ ERROR CRÃTICO al crear documento PDF:', error);
         window.cartManager?.showNotification('Error al crear el PDF', 'error');
         return;
     }
@@ -7722,12 +7722,12 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 10;
     const logoHeight = 15; // Altura de los logotipos
-    // startY se ajustará después de crear el encabezado
+    // startY se ajustarÃ¡ despuÃ©s de crear el encabezado
     let startY = logoHeight + 15;
     let currentY = startY;
-    const baseRowHeight = 12; // Altura base de cada fila (aún más compacta)
-    const minRowHeight = 8; // Altura mínima (compacta)
-    const imageSize = 20; // Tamaño de imagen en la tabla
+    const baseRowHeight = 12; // Altura base de cada fila (aÃºn mÃ¡s compacta)
+    const minRowHeight = 8; // Altura mÃ­nima (compacta)
+    const imageSize = 20; // TamaÃ±o de imagen en la tabla
 
     // Traducciones
     const translations = {
@@ -7735,12 +7735,12 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             proposal: 'Proposta',
             name: 'Nome',
             photo: 'Foto',
-            description: 'DESCRIÇÃO',
+            description: 'DESCRIÃ‡ÃƒO',
             quantity: 'Qtd.',
-            unitPrice: 'Preço',
+            unitPrice: 'PreÃ§o',
             total: 'Total',
             deliveryTime: 'Prazo',
-            personalizedPrice: 'Preço Personalizado',
+            personalizedPrice: 'PreÃ§o Personalizado',
             personalized: 'Personalizado',
             notes: 'Notas',
             totalProposal: 'Total da Proposta',
@@ -7766,18 +7766,18 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             unidadesEnStock: 'unidades en stock',
             restantes: 'Restantes',
             plazoEntrega: 'plazo de entrega',
-            sujetoConfirmacion: '(sujeto a confirmación en el momento de la adjudicación)'
+            sujetoConfirmacion: '(sujeto a confirmaciÃ³n en el momento de la adjudicaciÃ³n)'
         },
         pt: {
             proposal: 'Proposta',
             name: 'Nome',
             photo: 'Foto',
-            description: 'Descrição',
+            description: 'DescriÃ§Ã£o',
             quantity: 'Qtd.',
-            unitPrice: 'Preço',
+            unitPrice: 'PreÃ§o',
             total: 'Total',
             deliveryTime: 'Entrega',
-            personalizedPrice: 'Preço Personalizado',
+            personalizedPrice: 'PreÃ§o Personalizado',
             personalized: 'Personalizado',
             notes: 'Notas',
             totalProposal: 'Total da Proposta',
@@ -7787,7 +7787,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             unidadesEnStock: 'unidades em stock',
             restantes: 'Restantes',
             plazoEntrega: 'prazo de entrega',
-            sujetoConfirmacion: '(sujeito a confirmação no momento da adjudicação)'
+            sujetoConfirmacion: '(sujeito a confirmaÃ§Ã£o no momento da adjudicaÃ§Ã£o)'
         },
         en: {
             proposal: 'Proposal',
@@ -7812,24 +7812,24 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         }
     };
 
-    // Determinar el idioma: si hay proposalData con país, usar ese país para determinar el idioma
+    // Determinar el idioma: si hay proposalData con paÃ­s, usar ese paÃ­s para determinar el idioma
     // Si no, usar selectedLanguage o el idioma actual del carrito
-    let lang = 'pt'; // Por defecto portugués
+    let lang = 'pt'; // Por defecto portuguÃ©s
     
     if (proposalData && proposalData.pais) {
-        // Si hay datos de propuesta con país, usar el país para determinar el idioma
-        if (proposalData.pais === 'España') {
+        // Si hay datos de propuesta con paÃ­s, usar el paÃ­s para determinar el idioma
+        if (proposalData.pais === 'EspaÃ±a') {
             lang = 'es';
         } else if (proposalData.pais === 'Portugal') {
             lang = 'pt';
         }
     } else if (selectedLanguage) {
-        // Si se especificó un idioma directamente, usarlo
+        // Si se especificÃ³ un idioma directamente, usarlo
         lang = selectedLanguage;
     } else if (window.cartManager?.editingProposalData?.pais) {
-        // Si estamos editando una propuesta, usar el país de la propuesta
+        // Si estamos editando una propuesta, usar el paÃ­s de la propuesta
         const pais = window.cartManager.editingProposalData.pais;
-        if (pais === 'España') {
+        if (pais === 'EspaÃ±a') {
             lang = 'es';
         } else if (pais === 'Portugal') {
             lang = 'pt';
@@ -7841,7 +7841,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     
     const t = translations[lang] || translations.pt;
 
-    // Función para cargar logos desde Supabase y agregarlos al PDF
+    // FunciÃ³n para cargar logos desde Supabase y agregarlos al PDF
     async function loadAndAddLogosToPDF() {
         try {
             if (!window.cartManager || !window.cartManager.supabase) {
@@ -7868,10 +7868,10 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             const logoLeft = logos.find(l => l.tipo === 'izquierdo');
             const logoRight = logos.find(l => l.tipo === 'derecho');
 
-            const logoTopY = 5; // Posición Y superior
-            const logoHeight = 15; // Altura máxima de los logos
+            const logoTopY = 5; // PosiciÃ³n Y superior
+            const logoHeight = 15; // Altura mÃ¡xima de los logos
 
-            // Función para agregar un logo al PDF
+            // FunciÃ³n para agregar un logo al PDF
             const addLogoToPDF = (imageUrl, x, y, maxWidth, maxHeight) => {
                 return new Promise((resolve) => {
                     if (!imageUrl) {
@@ -7891,20 +7891,20 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                             const ctx = canvas.getContext('2d');
                             ctx.drawImage(img, 0, 0);
 
-                            // Convertir a JPEG con compresión para reducir tamaño del PDF
-                            const imgData = canvas.toDataURL('image/jpeg', 0.7); // Calidad 70% para reducir tamaño
+                            // Convertir a JPEG con compresiÃ³n para reducir tamaÃ±o del PDF
+                            const imgData = canvas.toDataURL('image/jpeg', 0.7); // Calidad 70% para reducir tamaÃ±o
 
-                            // Calcular dimensiones manteniendo proporción
+                            // Calcular dimensiones manteniendo proporciÃ³n
                             let imgWidth = img.width;
                             let imgHeight = img.height;
                             const ratio = imgWidth / imgHeight;
 
-                            // Convertir píxeles a milímetros (jsPDF usa mm)
+                            // Convertir pÃ­xeles a milÃ­metros (jsPDF usa mm)
                             const pxToMm = 0.264583;
                             imgWidth = imgWidth * pxToMm;
                             imgHeight = imgHeight * pxToMm;
 
-                            // Ajustar a maxWidth y maxHeight manteniendo proporción
+                            // Ajustar a maxWidth y maxHeight manteniendo proporciÃ³n
                             if (imgWidth > maxWidth) {
                                 imgWidth = maxWidth;
                                 imgHeight = imgWidth / ratio;
@@ -7916,7 +7916,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
 
                             // Agregar imagen al PDF (JPEG comprimido)
                             doc.addImage(imgData, 'JPEG', x, y, imgWidth, imgHeight);
-                            console.log('Logo agregado al PDF en posición x:', x, 'y:', y);
+                            console.log('Logo agregado al PDF en posiciÃ³n x:', x, 'y:', y);
                             resolve();
                         } catch (error) {
                             console.error('Error agregando logo al PDF:', error);
@@ -7950,10 +7950,10 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     }
 
     // Agregar logotipos en la parte superior
-    // logoHeight ya está declarado arriba (línea 4157)
+    // logoHeight ya estÃ¡ declarado arriba (lÃ­nea 4157)
     await loadAndAddLogosToPDF();
 
-    // Obtener información de la propuesta
+    // Obtener informaciÃ³n de la propuesta
     // Si se proporciona proposalData, usar esos datos; sino usar editingProposalData o valores por defecto
     const proposalCode = proposalData?.codigo_propuesta || window.cartManager?.editingProposalData?.codigo_propuesta || null;
     const proposalDate = proposalData?.fecha_inicial || proposalData?.fecha_creacion || window.cartManager?.editingProposalData?.fecha_creacion || new Date().toISOString();
@@ -7961,7 +7961,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     const clientName = proposalData?.nombre_cliente || window.cartManager?.editingProposalData?.nombre_cliente || '';
     const clientNumber = proposalData?.numero_cliente || window.cartManager?.editingProposalData?.numero_cliente || '0';
     
-    // Obtener versión de la propuesta
+    // Obtener versiÃ³n de la propuesta
     let version = 1;
     if (proposalData && proposalData.version) {
         version = proposalData.version;
@@ -7970,12 +7970,12 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     }
     const versionText = version > 1 ? ` V${version}` : '';
     
-    // Obtener email y teléfono del comercial desde user_roles
+    // Obtener email y telÃ©fono del comercial desde user_roles
     let commercialEmail = '';
     let commercialPhone = '';
     if (commercialName && window.cartManager && window.cartManager.supabase) {
         try {
-            console.log('🔍 Buscando datos del comercial:', commercialName);
+            console.log('ðŸ” Buscando datos del comercial:', commercialName);
             // Usar maybeSingle() en lugar de single() para evitar errores si no se encuentra
             const { data: commercialData, error: commercialError } = await window.cartManager.supabase
                 .from('user_roles')
@@ -7983,7 +7983,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                 .eq('Name', commercialName)
                 .maybeSingle();
             
-            console.log('📧 Datos del comercial obtenidos:', {
+            console.log('ðŸ“§ Datos del comercial obtenidos:', {
                 commercialName: commercialName,
                 commercialData: commercialData,
                 commercialError: commercialError,
@@ -7996,43 +7996,43 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             if (!commercialError && commercialData) {
                 commercialEmail = commercialData.Email || '';
                 commercialPhone = commercialData.Contacto || '';
-                console.log('✅ Email y teléfono del comercial asignados:', {
+                console.log('âœ… Email y telÃ©fono del comercial asignados:', {
                     email: commercialEmail,
                     phone: commercialPhone,
                     emailLength: commercialEmail.length,
                     phoneLength: commercialPhone.length
                 });
             } else {
-                console.warn('⚠️ No se encontraron datos del comercial o hubo un error:', {
+                console.warn('âš ï¸ No se encontraron datos del comercial o hubo un error:', {
                     error: commercialError,
                     data: commercialData
                 });
             }
         } catch (error) {
-            console.error('❌ Error al obtener datos del comercial:', error);
+            console.error('âŒ Error al obtener datos del comercial:', error);
         }
     } else {
-        console.warn('⚠️ No se puede obtener datos del comercial:', {
+        console.warn('âš ï¸ No se puede obtener datos del comercial:', {
             hasCommercialName: !!commercialName,
             hasCartManager: !!window.cartManager,
             hasSupabase: !!(window.cartManager && window.cartManager.supabase)
         });
     }
     
-    // Formatear fecha según idioma
+    // Formatear fecha segÃºn idioma
     const dateObj = new Date(proposalDate);
     const formattedDate = dateObj.toLocaleDateString(
         lang === 'pt' ? 'pt-PT' : lang === 'es' ? 'es-ES' : 'en-US',
         { day: '2-digit', month: '2-digit', year: 'numeric' }
     );
     
-    // Crear cuadro con información de la propuesta en dos columnas (izquierda y derecha)
-    const titleY = 5 + logoHeight + 8; // Espacio después de los logotipos
-    const boxPadding = 5; // Reducido aún más para hacer el cuadro más pequeño
-    const boxWidth = pageWidth - (margin * 2); // Ancho completo de la página
-    const boxX = margin; // Posición X (izquierda)
-    const boxY = titleY; // Posición Y
-    const lineSpacing = 3.5; // Espacio entre líneas (reducido aún más)
+    // Crear cuadro con informaciÃ³n de la propuesta en dos columnas (izquierda y derecha)
+    const titleY = 5 + logoHeight + 8; // Espacio despuÃ©s de los logotipos
+    const boxPadding = 5; // Reducido aÃºn mÃ¡s para hacer el cuadro mÃ¡s pequeÃ±o
+    const boxWidth = pageWidth - (margin * 2); // Ancho completo de la pÃ¡gina
+    const boxX = margin; // PosiciÃ³n X (izquierda)
+    const boxY = titleY; // PosiciÃ³n Y
+    const lineSpacing = 3.5; // Espacio entre lÃ­neas (reducido aÃºn mÃ¡s)
     
     // Texto dentro del cuadro
     doc.setFontSize(8);
@@ -8046,7 +8046,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     const leftColumnX = boxX + boxPadding;
     const rightColumnX = leftColumnX + leftColumnWidth + columnSpacing;
     
-    // Etiquetas según idioma
+    // Etiquetas segÃºn idioma
     const labels = {
         pt: {
             clientNumber: 'Num de cliente:',
@@ -8056,16 +8056,16 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             commercial: 'Comercial:'
         },
         es: {
-            clientNumber: 'Nº de cliente:',
+            clientNumber: 'NÂº de cliente:',
             clientName: 'Cliente:',
-            proposalNumber: 'Nº propuesta:',
+            proposalNumber: 'NÂº propuesta:',
             proposalDate: 'Fecha de la propuesta:',
             commercial: 'Comercial:'
         },
         en: {
             clientNumber: 'Client Number:',
             clientName: 'Client:',
-            proposalNumber: 'Proposal Nº:',
+            proposalNumber: 'Proposal NÂº:',
             proposalDate: 'Proposal Date:',
             commercial: 'Commercial:'
         }
@@ -8073,15 +8073,15 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     
     const l = labels[lang] || labels.pt;
     
-    // Función para dividir texto en palabras y ajustar a múltiples líneas si es necesario
+    // FunciÃ³n para dividir texto en palabras y ajustar a mÃºltiples lÃ­neas si es necesario
     function splitTextIntoLines(text, maxWidth) {
-        // Primero dividir por saltos de línea existentes
+        // Primero dividir por saltos de lÃ­nea existentes
         const paragraphs = text.split('\n');
         const lines = [];
         
         paragraphs.forEach((paragraph, paraIndex) => {
             if (paraIndex > 0) {
-                // Agregar línea vacía para mantener el salto de línea
+                // Agregar lÃ­nea vacÃ­a para mantener el salto de lÃ­nea
                 lines.push('');
             }
             
@@ -8098,7 +8098,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                 if (currentLine) {
                     lines.push(currentLine);
                 }
-                // Si una palabra sola es más ancha que maxWidth, dividirla por caracteres
+                // Si una palabra sola es mÃ¡s ancha que maxWidth, dividirla por caracteres
                 if (doc.getTextWidth(word) > maxWidth) {
                     let charLine = '';
                     for (let i = 0; i < word.length; i++) {
@@ -8125,36 +8125,36 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         return lines.length > 0 ? lines : [text];
     }
     
-    // Función para calcular altura de un campo sin dibujarlo
+    // FunciÃ³n para calcular altura de un campo sin dibujarlo
     function calculateFieldHeight(value, columnWidth) {
         const valueText = value || '-';
         const valueLines = splitTextIntoLines(valueText, columnWidth - 2);
-        return 3.5 + (valueLines.length * lineSpacing) + 1.5; // Label + valores + espacio (más reducido)
+        return 3.5 + (valueLines.length * lineSpacing) + 1.5; // Label + valores + espacio (mÃ¡s reducido)
     }
     
-    // Función para dibujar un campo con label y valor (formato vertical)
+    // FunciÃ³n para dibujar un campo con label y valor (formato vertical)
     function drawField(label, value, columnX, startY, columnWidth) {
     doc.setFont('helvetica', 'bold');
-        doc.setFontSize(6.5); // Tamaño de fuente más reducido
+        doc.setFontSize(6.5); // TamaÃ±o de fuente mÃ¡s reducido
         const labelY = startY;
         doc.text(label, columnX, labelY);
     
     doc.setFont('helvetica', 'normal');
-        doc.setFontSize(7.5); // Tamaño de fuente más reducido
+        doc.setFontSize(7.5); // TamaÃ±o de fuente mÃ¡s reducido
         const valueText = value || '-';
         const valueLines = splitTextIntoLines(valueText, columnWidth - 2);
-        const valueY = labelY + 3.5; // Reducido aún más
+        const valueY = labelY + 3.5; // Reducido aÃºn mÃ¡s
         
         valueLines.forEach((line, index) => {
             doc.text(line, columnX, valueY + (index * lineSpacing));
         });
         
-        // Retornar la altura total usada (más reducida)
-        return 3.5 + (valueLines.length * lineSpacing) + 1.5; // Label + valores + espacio (más reducido)
+        // Retornar la altura total usada (mÃ¡s reducida)
+        return 3.5 + (valueLines.length * lineSpacing) + 1.5; // Label + valores + espacio (mÃ¡s reducido)
     }
     
     // Preparar textos
-    // Formato del cliente: "325 - hotel savoy" (número - nombre) o solo nombre si no hay número
+    // Formato del cliente: "325 - hotel savoy" (nÃºmero - nombre) o solo nombre si no hay nÃºmero
     let clientDisplayText = '';
     if (clientNumber && clientNumber !== '0' && clientNumber !== '') {
         clientDisplayText = `${clientNumber} - ${clientName || '-'}`;
@@ -8162,22 +8162,22 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         clientDisplayText = clientName || '---';
     }
     
-    // Mostrar versión junto al número de propuesta: "2701SS0126 - V1"
+    // Mostrar versiÃ³n junto al nÃºmero de propuesta: "2701SS0126 - V1"
     const proposalCodeText = proposalCode ? `${proposalCode}${versionText ? ' - ' + versionText : ''}` : '-';
     
-    // Preparar texto del comercial con email y teléfono debajo (sin títulos)
-    // Separar en líneas distintas para evitar sobreposición
+    // Preparar texto del comercial con email y telÃ©fono debajo (sin tÃ­tulos)
+    // Separar en lÃ­neas distintas para evitar sobreposiciÃ³n
     let commercialText = commercialName || '-';
     if (commercialEmail || commercialPhone) {
         const contactInfo = [];
         if (commercialEmail) contactInfo.push(commercialEmail);
         if (commercialPhone) contactInfo.push(commercialPhone);
         if (contactInfo.length > 0) {
-            commercialText += '\n' + contactInfo.join('\n'); // Separar en líneas distintas
+            commercialText += '\n' + contactInfo.join('\n'); // Separar en lÃ­neas distintas
         }
     }
     
-    console.log('📝 Texto del comercial preparado para PDF:', {
+    console.log('ðŸ“ Texto del comercial preparado para PDF:', {
         commercialName: commercialName,
         commercialEmail: commercialEmail,
         commercialPhone: commercialPhone,
@@ -8194,7 +8194,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     leftColumnHeight += calculateFieldHeight(proposalCodeText, leftColumnWidth);
     leftColumnHeight += calculateFieldHeight(formattedDate, leftColumnWidth);
     
-    // Columna derecha - calcular alturas (solo el comercial con email y teléfono)
+    // Columna derecha - calcular alturas (solo el comercial con email y telÃ©fono)
     rightColumnHeight += calculateFieldHeight(commercialText, rightColumnWidth);
     
     // Calcular altura total del cuadro
@@ -8216,26 +8216,26 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     
     drawField(l.proposalDate, formattedDate, leftColumnX, currentYLeft, leftColumnWidth);
     
-    // Dibujar campos - Columna derecha (solo comercial con email y teléfono debajo)
+    // Dibujar campos - Columna derecha (solo comercial con email y telÃ©fono debajo)
     let currentYRight = boxY + boxPadding;
     drawField(l.commercial, commercialText, rightColumnX, currentYRight, rightColumnWidth);
     
-    // Línea decorativa debajo del cuadro
+    // LÃ­nea decorativa debajo del cuadro
     const headerBottomY = boxY + totalBoxHeight + 5;
     doc.setDrawColor(0, 0, 0);
     doc.setLineWidth(0.5);
     doc.line(margin, headerBottomY, pageWidth - margin, headerBottomY);
     
-    // Ajustar startY para que la tabla comience después del encabezado
+    // Ajustar startY para que la tabla comience despuÃ©s del encabezado
     startY = headerBottomY + 8;
     currentY = startY;
 
     // Procesar cada item del carrito
-    // IMPORTANTE: Siempre recargar el carrito desde localStorage para tener los datos más recientes
+    // IMPORTANTE: Siempre recargar el carrito desde localStorage para tener los datos mÃ¡s recientes
     // Esto asegura que tengamos el selectedReferenceVariant actualizado
     let cartToProcess = useProposalData ? window.cartManager.cart : window.cartManager.loadCart();
 
-    // Calcular ancho disponible (página menos márgenes)
+    // Calcular ancho disponible (pÃ¡gina menos mÃ¡rgenes)
     const availableWidth = pageWidth - (margin * 2);
     
     const normalizeTextNoAccents = (value) => (value || '')
@@ -8284,7 +8284,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
 
     // Consolidar duplicados de productos para que la fila se muestre una sola vez,
     // pero Cant./Precio/Total se repartan por ocurrencia.
-    // Para no mezclar productos distintos, la clave de fusión incluye la variante personalizada (si existe).
+    // Para no mezclar productos distintos, la clave de fusiÃ³n incluye la variante personalizada (si existe).
     const shouldMergeProductOccurrences = (item) => {
         return !!(item && item.type === 'product');
     };
@@ -8297,8 +8297,8 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             return;
         }
 
-        // Clave de fusión: mismo producto y misma selección de color/referencia (si aplica),
-        // además de que la observación sea igual (para evitar ocultar diferencias).
+        // Clave de fusiÃ³n: mismo producto y misma selecciÃ³n de color/referencia (si aplica),
+        // ademÃ¡s de que la observaciÃ³n sea igual (para evitar ocultar diferencias).
         const idKey = item.id || item.referencia_articulo || item.referencia || '';
         const refKey = item.selectedReferenceVariant !== null && item.selectedReferenceVariant !== undefined
             ? String(item.selectedReferenceVariant)
@@ -8343,7 +8343,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
 
         // Recalcular usando escalones por ocurrencia (NO por qtySum).
         // Prioridad de escalones: variante seleccionada > base.
-        // Si hay variante seleccionada pero SIN escalones válidos, NO caer a base:
+        // Si hay variante seleccionada pero SIN escalones vÃ¡lidos, NO caer a base:
         // se conserva el precio guardado por ocurrencia.
         const hasSelectedVariant = existing.selectedVariant !== null &&
             existing.selectedVariant !== undefined &&
@@ -8409,24 +8409,35 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         existing.price = newQtySumFinal > 0 ? (totalSum / newQtySumFinal) : Number(existing.price || 0);
     });
 
-    // Aplicar consolidación para el resto del render del PDF.
+    // Aplicar consolidaciÃ³n para el resto del render del PDF.
     cartToProcess = mergedOrder;
 
-    // Mostrar columna de logo si hay logos cargados o si hay artículos personalizados
-    // de Accesorios/Cosmética sin logo (requieren texto de confirmación).
+    // Mostrar columna de logo si hay logos cargados o si hay artÃ­culos personalizados
+    // de Accesorios/CosmÃ©tica sin logo (requieren texto de confirmaciÃ³n).
     const hasLogosFinal = cartToProcess.some(item => (item.logoUrl && item.logoUrl.trim() !== '') || requiresLogoConfirmationForItem(item));
     
-    // Definir anchos de columnas (ajustados para que quepan en la página)
-    const colWidths = {
-        name: 26,  // Reducida para ganar espacio a la descripción
-        photo: 32,  // Reducida para dar más espacio al texto
-        description: 62,  // Aumentada: menos saltos de línea = filas más compactas
-        quantity: 14,  // Para "Cant." o "Qtd."
-        unitPrice: 15,  // Más compacta (solo "Precio")
-        total: 14,  // Más compacta
-        deliveryTime: 16,  // Reducida para que entren 2-3 filas por página
-        logo: hasLogosFinal ? 20 : 0  // Columna de logo solo si hay logos
-    };
+    // Definir anchos de columnas (ajustados para que quepan en la pÃ¡gina)
+    const colWidths = hasLogosFinal
+        ? {
+            name: 22,
+            photo: 27,
+            description: 58,
+            quantity: 12,
+            unitPrice: 13,
+            total: 13,
+            deliveryTime: 21,
+            logo: 24
+        }
+        : {
+            name: 24,
+            photo: 29,
+            description: 70,
+            quantity: 12,
+            unitPrice: 14,
+            total: 14,
+            deliveryTime: 27,
+            logo: 0
+        };
 
     // Verificar que la suma de anchos no exceda el ancho disponible
     const totalWidth = Object.values(colWidths).reduce((sum, width) => sum + width, 0);
@@ -8438,7 +8449,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         });
     }
 
-    // Si sobran milímetros por redondeos, asignarlos a descripción para evitar hueco a la derecha.
+    // Si sobran milÃ­metros por redondeos, asignarlos a descripciÃ³n para evitar hueco a la derecha.
     const adjustedTotalWidth = Object.values(colWidths).reduce((sum, width) => sum + width, 0);
     const remainder = availableWidth - adjustedTotalWidth;
     if (remainder > 0) {
@@ -8457,11 +8468,11 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         logo: hasLogosFinal ? margin + colWidths.name + colWidths.photo + colWidths.description + colWidths.quantity + colWidths.unitPrice + colWidths.total + colWidths.deliveryTime : 0
     };
 
-    // Función para dibujar una celda
+    // FunciÃ³n para dibujar una celda
     function drawCell(x, y, width, height, text, options = {}) {
         const { align = 'left', bold = false, fontSize = 8, border = true, maxLines = null, noWrap = false, textColor = null, separatorBetweenLines = false, separatorLineWidth = 0.25, separatorPadding = 0.5, preserveWords = false, minFontSize = 5 } = options;
         
-        // Asegurar que los colores estén correctos antes de dibujar
+        // Asegurar que los colores estÃ©n correctos antes de dibujar
         doc.setDrawColor(0, 0, 0); // Negro para bordes
         
         // Si se especifica un color de texto, usarlo; sino, usar negro por defecto
@@ -8486,13 +8497,13 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         let textLines;
         let actualFontSize = fontSize;
 
-        // Modo especial: si pedimos divisores entre líneas, tratamos '\n' como separación real
+        // Modo especial: si pedimos divisores entre lÃ­neas, tratamos '\n' como separaciÃ³n real
         // y repartimos TODA la altura de la celda en segmentos iguales.
         if (separatorBetweenLines) {
             textLines = String(text).split('\n').map(s => (s ?? '').toString().trim());
             textLines = textLines.length ? textLines : [''];
 
-            // Reducir tamaño de fuente si alguna línea no cabe (solo si es necesario)
+            // Reducir tamaÃ±o de fuente si alguna lÃ­nea no cabe (solo si es necesario)
             // Mantenerlo simple: el contenido suele ser corto (cantidades / euros).
             doc.setFont('helvetica', bold ? 'bold' : 'normal');
 
@@ -8518,7 +8529,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                 if (align === 'center') textX = x + (width / 2);
                 if (align === 'right') textX = x + width - padding;
                 
-                // Ajustar el tamaño de la fuente para que NO se parta en varias líneas
+                // Ajustar el tamaÃ±o de la fuente para que NO se parta en varias lÃ­neas
                 let segFontSize = fontSize;
                 doc.setFontSize(segFontSize);
                 const rawText = line == null ? '' : String(line);
@@ -8534,16 +8545,16 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             return;
         }
         
-        // Si noWrap es true (para números), no dividir el texto
+        // Si noWrap es true (para nÃºmeros), no dividir el texto
         if (noWrap) {
-            // Establecer el tamaño de fuente primero
+            // Establecer el tamaÃ±o de fuente primero
             doc.setFontSize(fontSize);
             doc.setFont('helvetica', bold ? 'bold' : 'normal');
             
-            // Verificar si el texto cabe en una línea
+            // Verificar si el texto cabe en una lÃ­nea
             let textWidth = doc.getTextWidth(text);
             if (textWidth > availableWidth) {
-                // Si no cabe, reducir el tamaño de fuente hasta que quepa
+                // Si no cabe, reducir el tamaÃ±o de fuente hasta que quepa
                 actualFontSize = fontSize;
                 while (actualFontSize > 5 && textWidth > availableWidth) {
                     actualFontSize -= 0.5;
@@ -8553,7 +8564,6 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             }
             textLines = [text];
         } else if (preserveWords) {
-            // Ajuste de tamaño para que la palabra más larga quepa completa
             actualFontSize = fontSize;
             doc.setFont('helvetica', bold ? 'bold' : 'normal');
             doc.setFontSize(actualFontSize);
@@ -8571,8 +8581,6 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             while (actualFontSize > minFontSize && longestWordWidthAt(actualFontSize) > availableWidth) {
                 actualFontSize -= 0.25;
             }
-
-            // Wrap por palabras (sin partir palabras)
             textLines = [];
             doc.setFontSize(actualFontSize);
             const paragraphs = String(text).split('\n');
@@ -8595,13 +8603,13 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             }
             if (textLines.length === 0) textLines = [''];
         } else {
-            // Dividir texto en líneas que caben en el ancho de la celda
+            // Dividir texto en lÃ­neas que caben en el ancho de la celda
             textLines = doc.splitTextToSize(text, availableWidth);
         
-        // Limitar número de líneas si se especifica
+        // Limitar nÃºmero de lÃ­neas si se especifica
         if (maxLines && textLines.length > maxLines) {
             textLines = textLines.slice(0, maxLines);
-            // Agregar "..." si se cortó
+            // Agregar "..." si se cortÃ³
             const lastLine = textLines[textLines.length - 1];
             if (lastLine.length > 0) {
                 textLines[textLines.length - 1] = lastLine.substring(0, lastLine.length - 3) + '...';
@@ -8609,28 +8617,28 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             }
         }
         
-        // Calcular altura de línea usando el tamaño de fuente actual
+        // Calcular altura de lÃ­nea usando el tamaÃ±o de fuente actual
         const lineHeight = actualFontSize * 0.4;
         const totalTextHeight = textLines.length * lineHeight;
         const startY = y + (height - totalTextHeight) / 2 + lineHeight;
         
-        // Dibujar texto (ya establecimos el tamaño de fuente arriba si es noWrap)
+        // Dibujar texto (ya establecimos el tamaÃ±o de fuente arriba si es noWrap)
         if (!noWrap) {
         doc.setFontSize(actualFontSize);
         doc.setFont('helvetica', bold ? 'bold' : 'normal');
         } else {
-            // Asegurar que el tamaño de fuente esté establecido (ya lo hicimos arriba)
+            // Asegurar que el tamaÃ±o de fuente estÃ© establecido (ya lo hicimos arriba)
             doc.setFontSize(actualFontSize);
             doc.setFont('helvetica', bold ? 'bold' : 'normal');
         }
         
-        // Asegurar que el color de texto se mantenga antes de dibujar cada línea
+        // Asegurar que el color de texto se mantenga antes de dibujar cada lÃ­nea
         if (textColor !== null) {
             doc.setTextColor(textColor[0], textColor[1], textColor[2]);
         }
         
         textLines.forEach((line, index) => {
-            // Asegurar que el color se mantenga para cada línea
+            // Asegurar que el color se mantenga para cada lÃ­nea
             if (textColor !== null) {
                 doc.setTextColor(textColor[0], textColor[1], textColor[2]);
             }
@@ -8649,9 +8657,9 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     }
 
     /**
-     * Normaliza texto de descripción para PDF: elimina líneas en blanco entre párrafos
-     * (varios saltos de línea seguidos → uno solo). Mantiene los saltos de línea y no
-     * modifica espacios para que el texto no se vea extraño.
+     * Normaliza texto de descripciÃ³n para PDF: elimina lÃ­neas en blanco entre pÃ¡rrafos
+     * (varios saltos de lÃ­nea seguidos â†’ uno solo). Mantiene los saltos de lÃ­nea y no
+     * modifica espacios para que el texto no se vea extraÃ±o.
      */
     function normalizeDescriptionForPdf(text) {
         if (!text || typeof text !== 'string') return '';
@@ -8738,13 +8746,13 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         });
     }
 
-    /** Formatea cantidades con separador de miles para el PDF (ej. 50000 → 50.000). */
+    /** Formatea cantidades con separador de miles para el PDF (ej. 50000 â†’ 50.000). */
     function formatQuantityForPdf(value) {
         const n = Number(value) || 0;
         return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     }
 
-    /** Formatea importes para el PDF: separador de miles (.) y decimales con coma (ej. 309750.00 → 309.750,00). */
+    /** Formatea importes para el PDF: separador de miles (.) y decimales con coma (ej. 309750.00 â†’ 309.750,00). */
     function formatMoneyForPdf(value) {
         const n = Number(value);
         if (!Number.isFinite(n)) return '0,00';
@@ -8770,10 +8778,10 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     }
 
     /**
-     * Dibujar descripción con partes en negrita (variante y observaciones)
+     * Dibujar descripciÃ³n con partes en negrita (variante y observaciones)
      */
     function drawDescriptionWithBoldParts(x, y, width, height, baseDescription, variantText, observations, notesLabel, selectedColorText = '') {
-        // Obtener traducción de "Personalizado" según el idioma
+        // Obtener traducciÃ³n de "Personalizado" segÃºn el idioma
         const personalizedLabel = lang === 'pt' ? 'Personalizado' : 
                                   lang === 'es' ? 'Personalizado' : 
                                   'Custom';
@@ -8787,11 +8795,11 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         const fontSize = 7;
         const lineHeight = fontSize * 0.52; // Espaciado reducido para ganar espacio vertical
         
-        // Construir el texto completo: normalizar para reducir espacios y saltos de línea excesivos
+        // Construir el texto completo: normalizar para reducir espacios y saltos de lÃ­nea excesivos
         let fullText = normalizeDescriptionForPdf(baseDescription || '');
         let parts = [];
         
-        console.log('🔍 [drawDescriptionWithBoldParts] Parámetros recibidos:', {
+        console.log('ðŸ” [drawDescriptionWithBoldParts] ParÃ¡metros recibidos:', {
             baseDescription: baseDescription,
             baseDescriptionLength: baseDescription ? baseDescription.length : 0,
             fullText: fullText,
@@ -8804,38 +8812,38 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         // Verificar si variantText contiene solo color (empieza con "Color:" o "Cor:")
         const isOnlyColor = variantText && (variantText.trim().startsWith('Color:') || variantText.trim().startsWith('Cor:'));
         
-        // Si hay variante personalizada (no solo color), agregarla después de la descripción base
+        // Si hay variante personalizada (no solo color), agregarla despuÃ©s de la descripciÃ³n base
         if (variantText && !isOnlyColor) {
             if (fullText) {
                 parts.push({ text: fullText, bold: false });
             }
-            // "Personalizado" en su propia línea, en negrita, con espacio adicional antes
-            // Solo agregar salto de línea si hay descripción base
+            // "Personalizado" en su propia lÃ­nea, en negrita, con espacio adicional antes
+            // Solo agregar salto de lÃ­nea si hay descripciÃ³n base
             const separator = fullText ? '\n\n' : '';
             parts.push({ text: separator + personalizedLabel, bold: true });
-            // El texto de la variante en la siguiente línea, también en negrita
-            // Limpiar y normalizar (colapsar espacios y saltos de línea excesivos)
+            // El texto de la variante en la siguiente lÃ­nea, tambiÃ©n en negrita
+            // Limpiar y normalizar (colapsar espacios y saltos de lÃ­nea excesivos)
             const cleanVariantText = normalizeDescriptionForPdf(variantText);
-            // Dividir por saltos de línea si los tiene (puede incluir el color)
+            // Dividir por saltos de lÃ­nea si los tiene (puede incluir el color)
             const variantLines = cleanVariantText.split('\n');
             variantLines.forEach((line, index) => {
                 const trimmedLine = line.trim();
                 if (trimmedLine) {
-                    // Primera línea después de "Personalizado", agregar espacio y el texto
+                    // Primera lÃ­nea despuÃ©s de "Personalizado", agregar espacio y el texto
                     if (index === 0) {
                         parts.push({ text: ' ' + trimmedLine, bold: true });
                     } else {
-                        // Líneas adicionales (incluyendo el color), nueva línea, también en negrita
+                        // LÃ­neas adicionales (incluyendo el color), nueva lÃ­nea, tambiÃ©n en negrita
                         parts.push({ text: '\n' + trimmedLine, bold: true });
                     }
                 }
             });
         } else if (variantText && isOnlyColor) {
-            // Si solo hay color (sin variante personalizada), agregarlo después de la descripción
+            // Si solo hay color (sin variante personalizada), agregarlo despuÃ©s de la descripciÃ³n
             if (fullText) {
                 parts.push({ text: fullText, bold: false });
             }
-            // Color en negrita después de la descripción
+            // Color en negrita despuÃ©s de la descripciÃ³n
             const separator = fullText ? '\n\n' : '';
             parts.push({ text: separator + variantText.trim(), bold: true });
         } else {
@@ -8845,7 +8853,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         }
         
         // Si hay color seleccionado, agregarlo en un espacio aparte
-        console.log('🎨 Verificando color en drawDescriptionWithBoldParts:', {
+        console.log('ðŸŽ¨ Verificando color en drawDescriptionWithBoldParts:', {
             selectedColorText: selectedColorText,
             hasSelectedColorText: !!(selectedColorText && selectedColorText.trim()),
             fullText: fullText,
@@ -8853,32 +8861,32 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         });
         
         if (selectedColorText && selectedColorText.trim()) {
-            // Agregar salto de línea antes del color
+            // Agregar salto de lÃ­nea antes del color
             const hasContentBefore = (fullText && fullText.trim()) || (variantText && variantText.trim());
             const colorSeparator = hasContentBefore ? '\n\n' : '';
             // El color se muestra en negrita (normalizado)
             const colorPart = { text: colorSeparator + normalizeDescriptionForPdf(selectedColorText), bold: true };
             parts.push(colorPart);
-            console.log('✅ Color agregado a parts:', colorPart);
+            console.log('âœ… Color agregado a parts:', colorPart);
         } else {
-            console.warn('⚠️ No se agregó color porque selectedColorText está vacío o es undefined');
+            console.warn('âš ï¸ No se agregÃ³ color porque selectedColorText estÃ¡ vacÃ­o o es undefined');
         }
         
         // Si hay observaciones, agregarlas (normalizadas para reducir espacio)
         if (observations && observations.trim()) {
-            // Solo agregar salto de línea si ya hay contenido (descripción, variante o color)
+            // Solo agregar salto de lÃ­nea si ya hay contenido (descripciÃ³n, variante o color)
             const hasContent = (fullText && fullText.trim()) || (variantText && variantText.trim()) || (selectedColorText && selectedColorText.trim());
             const notesText = hasContent ? '\n\n' + notesLabel + ': ' : notesLabel + ': ';
             parts.push({ text: notesText, bold: false });
             parts.push({ text: normalizeDescriptionForPdf(observations), bold: true });
         }
         
-        // Si no hay nada, usar guión
+        // Si no hay nada, usar guiÃ³n
         if (parts.length === 0) {
             parts.push({ text: '-', bold: false });
         }
         
-        // Dividir cada parte en líneas, manejando saltos de línea explícitos
+        // Dividir cada parte en lÃ­neas, manejando saltos de lÃ­nea explÃ­citos
         let allLines = [];
         
         parts.forEach(part => {
@@ -8886,14 +8894,14 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             doc.setFont('helvetica', part.bold ? 'bold' : 'normal');
             doc.setFontSize(fontSize);
             
-            // Dividir por saltos de línea; no añadir líneas en blanco entre párrafos
+            // Dividir por saltos de lÃ­nea; no aÃ±adir lÃ­neas en blanco entre pÃ¡rrafos
             const paragraphs = part.text.split('\n');
             paragraphs.forEach((paragraph) => {
                 if (paragraph.trim() === '') return;
-                // Limpiar solo espacios al inicio/final del párrafo; no tocar espacios internos
+                // Limpiar solo espacios al inicio/final del pÃ¡rrafo; no tocar espacios internos
                 let cleanParagraph = paragraph.trim();
                     
-                    // Dividir el párrafo en líneas que caben en el ancho
+                    // Dividir el pÃ¡rrafo en lÃ­neas que caben en el ancho
                     // Usar el ancho disponible completo pero con cuidado
                     const lines = doc.splitTextToSize(cleanParagraph, availableWidth);
                     lines.forEach(line => {
@@ -8904,14 +8912,14 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             });
         });
         
-        // Calcular altura total y posición inicial
-        // Usar un lineHeight más generoso para evitar que se corte el texto
-        const actualLineHeight = fontSize * 0.55; // Reducir lineHeight para filas más compactas
+        // Calcular altura total y posiciÃ³n inicial
+        // Usar un lineHeight mÃ¡s generoso para evitar que se corte el texto
+        const actualLineHeight = fontSize * 0.55; // Reducir lineHeight para filas mÃ¡s compactas
         const totalTextHeight = allLines.length * actualLineHeight;
         // Asegurar que el texto no se salga del cuadro
         const maxY = y + height - padding;
         const minY = y + padding;
-        // Añadir separación superior para que el texto no quede pegado al borde.
+        // AÃ±adir separaciÃ³n superior para que el texto no quede pegado al borde.
         const descriptionTopInset = 1.2;
         let startY = minY + descriptionTopInset;
         const endY = startY + (allLines.length - 1) * actualLineHeight;
@@ -8920,17 +8928,17 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             if (startY < minY) startY = minY;
         }
         
-        // IMPORTANTE: Dibujar TODAS las líneas, incluso si se salen del cuadro
-        // Esto asegura que el texto completo se muestre (el PDF se ajustará automáticamente)
+        // IMPORTANTE: Dibujar TODAS las lÃ­neas, incluso si se salen del cuadro
+        // Esto asegura que el texto completo se muestre (el PDF se ajustarÃ¡ automÃ¡ticamente)
         doc.setFontSize(fontSize);
         allLines.forEach((line, index) => {
             // Usar el mismo actualLineHeight para el espaciado
             const lineY = startY + (index * actualLineHeight);
-            // Dibujar todas las líneas sin verificar límites para evitar que se corten
-            // El PDF ajustará automáticamente la altura si es necesario
+            // Dibujar todas las lÃ­neas sin verificar lÃ­mites para evitar que se corten
+            // El PDF ajustarÃ¡ automÃ¡ticamente la altura si es necesario
             doc.setFont('helvetica', line.bold ? 'bold' : 'normal');
             const textX = x + (width / 2);
-            // Limpiar el texto de la línea antes de dibujarlo para evitar espacios múltiples
+            // Limpiar el texto de la lÃ­nea antes de dibujarlo para evitar espacios mÃºltiples
             const cleanLineText = line.text.trim();
             if (cleanLineText && cleanLineText.length > 0) {
                 doc.text(cleanLineText, textX, lineY, { align: 'center', maxWidth: availableWidth });
@@ -8941,14 +8949,14 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     // Definir color blanco una sola vez para usar en encabezados y totales
     const whiteColor = [255, 255, 255];
     
-    // Agregar traducción para "Logo"
+    // Agregar traducciÃ³n para "Logo"
     const logoLabel = lang === 'pt' ? 'Logo' : lang === 'es' ? 'Logo' : 'Logo';
     const logoConfirmationText = lang === 'es'
-        ? 'precio a confirmar tras la recepción del logotipo'
-        : 'preço a confirmar após a receção do logotipo';
+        ? 'precio a confirmar tras la recepciÃ³n del logotipo'
+        : 'preÃ§o a confirmar apÃ³s a receÃ§Ã£o do logotipo';
     
-    // Dibujar encabezados (todos centrados) - fondo gris oscuro como el pie de página
-    doc.setFillColor(64, 64, 64); // Mismo gris oscuro que el pie de página
+    // Dibujar encabezados (todos centrados) - fondo gris oscuro como el pie de pÃ¡gina
+    doc.setFillColor(64, 64, 64); // Mismo gris oscuro que el pie de pÃ¡gina
     const headerWidth = Object.values(colWidths).reduce((sum, width) => sum + width, 0);
     doc.rect(margin, currentY, headerWidth, baseRowHeight, 'F');
     
@@ -8969,27 +8977,27 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     currentY += baseRowHeight;
     let totalProposal = 0;
 
-    // Calcular altura del footer ANTES del bucle para poder usarlo en la verificación del último producto
+    // Calcular altura del footer ANTES del bucle para poder usarlo en la verificaciÃ³n del Ãºltimo producto
     const footerPaddingTop = 12; // Padding superior
     const footerPaddingBottom = 0; // Sin padding inferior (pegado al final)
-    const footerTextSize = 9; // Tamaño de fuente
-    const lineHeight = 5; // Espaciado entre líneas
+    const footerTextSize = 9; // TamaÃ±o de fuente
+    const lineHeight = 5; // Espaciado entre lÃ­neas
     
-    // Texto del pie de página según idioma
+    // Texto del pie de pÃ¡gina segÃºn idioma
     const footerTexts = {
         pt: [
-            'Preços não incluem IVA e são válidos para uma única entrega.',
-            'Estes preços não incluem despesas de transporte.',
-            'Esta proposta é válida por 1 mês e está sempre sujeita a revisão no momento da adjudicação.',
-            'A quantidade de entrega poderá ter uma variação de até 10%.',
-            'Condições de pagamento: 30% do valor total do pedido no momento da adjudicação; 70% nas condições habituais.'
+            'PreÃ§os nÃ£o incluem IVA e sÃ£o vÃ¡lidos para uma Ãºnica entrega.',
+            'Estes preÃ§os nÃ£o incluem despesas de transporte.',
+            'Esta proposta Ã© vÃ¡lida por 1 mÃªs e estÃ¡ sempre sujeita a revisÃ£o no momento da adjudicaÃ§Ã£o.',
+            'A quantidade de entrega poderÃ¡ ter uma variaÃ§Ã£o de atÃ© 10%.',
+            'CondiÃ§Ãµes de pagamento: 30% do valor total do pedido no momento da adjudicaÃ§Ã£o; 70% nas condiÃ§Ãµes habituais.'
         ],
         es: [
-            'Los precios no incluyen IVA y son válidos para una única entrega.',
+            'Los precios no incluyen IVA y son vÃ¡lidos para una Ãºnica entrega.',
             'Estos precios no incluyen gastos de transporte.',
-            'Esta propuesta es válida por 1 mes y está siempre sujeta a revisión en el momento de la adjudicación.',
-            'La cantidad de entrega podrá tener una variación de hasta 10%.',
-            'Condiciones de pago: 30% del valor total del pedido en el momento de la adjudicación; 70% en las condiciones habituales.'
+            'Esta propuesta es vÃ¡lida por 1 mes y estÃ¡ siempre sujeta a revisiÃ³n en el momento de la adjudicaciÃ³n.',
+            'La cantidad de entrega podrÃ¡ tener una variaciÃ³n de hasta 10%.',
+            'Condiciones de pago: 30% del valor total del pedido en el momento de la adjudicaciÃ³n; 70% en las condiciones habituales.'
         ],
         en: [
             'Prices do not include VAT and are valid for a single delivery.',
@@ -9002,7 +9010,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     
     const footerText = footerTexts[lang] || footerTexts.pt;
     
-    // Calcular cuántas líneas necesitamos
+    // Calcular cuÃ¡ntas lÃ­neas necesitamos
     doc.setFontSize(footerTextSize);
     const maxWidth = pageWidth - (margin * 2) - (footerPaddingTop * 2);
     let totalLines = 0;
@@ -9011,21 +9019,21 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         totalLines += lines.length;
     });
     
-    // Calcular altura total del footer: líneas + espacios entre párrafos + padding superior
-    const spacesBetweenParagraphs = (footerText.length - 1) * 3; // Espacio entre párrafos
+    // Calcular altura total del footer: lÃ­neas + espacios entre pÃ¡rrafos + padding superior
+    const spacesBetweenParagraphs = (footerText.length - 1) * 3; // Espacio entre pÃ¡rrafos
     const footerHeight = (totalLines * lineHeight) + spacesBetweenParagraphs + footerPaddingTop + footerPaddingBottom;
     
-    console.log('📦 Carrito a procesar para PDF:', cartToProcess.map(item => ({
+    console.log('ðŸ“¦ Carrito a procesar para PDF:', cartToProcess.map(item => ({
         id: item.id,
         name: item.name,
         selectedReferenceVariant: item.selectedReferenceVariant,
         hasVariantesReferencias: !!item.variantes_referencias
     })));
     
-    console.log('🔄 Iniciando bucle de procesamiento de items...');
+    console.log('ðŸ”„ Iniciando bucle de procesamiento de items...');
     for (let i = 0; i < cartToProcess.length; i++) {
         const item = cartToProcess[i];
-        console.log(`📦 Procesando item ${i + 1}/${cartToProcess.length}:`, {
+        console.log(`ðŸ“¦ Procesando item ${i + 1}/${cartToProcess.length}:`, {
             type: item.type,
             name: item.name,
             id: item.id
@@ -9034,12 +9042,12 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         try {
         // Determinar si tiene precio personalizado y obtener el nombre de la variante
         // SOLO es personalizado si hay una variante seleccionada (selectedVariant !== null)
-        // Si selectedVariant === null, es precio base (sin personalización), aunque tenga price_tiers
+        // Si selectedVariant === null, es precio base (sin personalizaciÃ³n), aunque tenga price_tiers
         let hasPersonalizedPrice = false;
         let variantName = '';
         if (item.type === 'product') {
             // Solo es precio personalizado si hay una variante seleccionada
-            // selectedVariant === null significa que se está usando el precio base (sin personalización)
+            // selectedVariant === null significa que se estÃ¡ usando el precio base (sin personalizaciÃ³n)
             if (item.selectedVariant !== null && item.selectedVariant !== undefined && item.variants && item.variants.length > 0) {
                 // Hay una variante seleccionada, es precio personalizado
                 hasPersonalizedPrice = true;
@@ -9047,20 +9055,20 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                 variantName = selectedVariant?.name || '';
             }
             // Si selectedVariant === null, NO es personalizado, aunque tenga price_tiers
-            // Los price_tiers del producto base son solo escalones de precio, no personalización
+            // Los price_tiers del producto base son solo escalones de precio, no personalizaciÃ³n
         }
 
-        // Preparar descripción (primero la descripción base)
-        // Buscar descripción en ambos formatos (camelCase y snake_case) para compatibilidad
+        // Preparar descripciÃ³n (primero la descripciÃ³n base)
+        // Buscar descripciÃ³n en ambos formatos (camelCase y snake_case) para compatibilidad
         let description = '';
         if (item.type === 'product') {
-            // Intentar obtener descripción según el idioma, probando ambos formatos
+            // Intentar obtener descripciÃ³n segÃºn el idioma, probando ambos formatos
             if (lang === 'es') {
                 description = item.descripcion_es || item.descripcionEs || item.description || '';
             } else {
                 description = item.descripcion_pt || item.descripcionPt || item.descripcion_es || item.descripcionEs || item.description || '';
             }
-            console.log(`   📝 Item ${i + 1} (product): descripción obtenida`, {
+            console.log(`   ðŸ“ Item ${i + 1} (product): descripciÃ³n obtenida`, {
                 descripcion_es: item.descripcion_es,
                 descripcionEs: item.descripcionEs,
                 descripcion_pt: item.descripcion_pt,
@@ -9071,17 +9079,17 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                 hasDescription: !!description && description.trim() !== '' && description.trim() !== '.'
             });
         } else if (item.type === 'special') {
-            // Para items especiales, intentar usar descripción primero, luego notes
+            // Para items especiales, intentar usar descripciÃ³n primero, luego notes
             description = lang === 'es' ? 
                 (item.descripcionEs || item.descripcion_es || item.description || item.notes || '') :
                 (item.descripcionPt || item.descripcion_pt || item.descripcionEs || item.descripcion_es || item.description || item.notes || '');
-            console.log(`   📝 Item ${i + 1} (special): descripción obtenida:`, description ? 'tiene descripción' : 'sin descripción');
+            console.log(`   ðŸ“ Item ${i + 1} (special): descripciÃ³n obtenida:`, description ? 'tiene descripciÃ³n' : 'sin descripciÃ³n');
         } else {
             description = item.notes || '';
-            console.log(`   📋 Item ${i + 1} (${item.type}): usando notes como descripción`);
+            console.log(`   ðŸ“‹ Item ${i + 1} (${item.type}): usando notes como descripciÃ³n`);
         }
 
-        // Guardar información de variante y observaciones por separado para renderizar en negrita
+        // Guardar informaciÃ³n de variante y observaciones por separado para renderizar en negrita
         let variantText = '';
         if (hasPersonalizedPrice && variantName) {
             variantText = variantName;
@@ -9092,7 +9100,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         
         // IMPORTANTE: Buscar el item en el carrito actualizado para obtener el selectedReferenceVariant
         // Puede que el item pasado no tenga el selectedReferenceVariant actualizado
-        // Recargar el carrito desde localStorage para asegurar que tenemos los datos más recientes
+        // Recargar el carrito desde localStorage para asegurar que tenemos los datos mÃ¡s recientes
         const freshCart = window.cartManager.loadCart();
         const currentCartItem = freshCart.find(cartItem => {
             // Buscar por cartItemId primero (para items duplicados)
@@ -9106,7 +9114,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         // Usar el item del carrito actualizado si existe, sino usar el item pasado
         const itemToUse = currentCartItem || item;
         
-        console.log('🔍 Verificando color para item:', {
+        console.log('ðŸ” Verificando color para item:', {
             itemId: item.id,
             itemCartItemId: item.cartItemId,
             selectedReferenceVariant: itemToUse.selectedReferenceVariant,
@@ -9128,7 +9136,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                 }
             }
             
-            console.log('🔍 Variantes de referencia encontradas:', referenceVariants);
+            console.log('ðŸ” Variantes de referencia encontradas:', referenceVariants);
             
             // Priorizar el color guardado en la BD (puede no existir en las variantes actuales)
             if (itemToUse.colorSeleccionadoGuardado) {
@@ -9139,14 +9147,14 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                 } else {
                     selectedColorText = `Color selected ${itemToUse.colorSeleccionadoGuardado}`;
                 }
-                console.log('✅ Color seleccionado generado desde color guardado:', selectedColorText);
+                console.log('âœ… Color seleccionado generado desde color guardado:', selectedColorText);
             } else if (referenceVariants && Array.isArray(referenceVariants) && referenceVariants.length > 0) {
                 const selectedIndex = parseInt(itemToUse.selectedReferenceVariant);
-                console.log('🔍 Índice seleccionado:', selectedIndex, 'de', referenceVariants.length);
+                console.log('ðŸ” Ãndice seleccionado:', selectedIndex, 'de', referenceVariants.length);
                 
                 if (selectedIndex >= 0 && selectedIndex < referenceVariants.length) {
                     const selectedVariant = referenceVariants[selectedIndex];
-                    console.log('🔍 Variante seleccionada:', selectedVariant);
+                    console.log('ðŸ” Variante seleccionada:', selectedVariant);
                     
                     if (selectedVariant && selectedVariant.color) {
                         // Formato: "Cor seleccionada X" (PT) o "Color seleccionado X" (ES)
@@ -9157,18 +9165,18 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             } else {
                             selectedColorText = `Color selected ${selectedVariant.color}`;
                         }
-                        console.log('✅ Color seleccionado generado desde variantes:', selectedColorText);
+                        console.log('âœ… Color seleccionado generado desde variantes:', selectedColorText);
                     } else {
-                        console.warn('⚠️ La variante seleccionada no tiene color:', selectedVariant);
+                        console.warn('âš ï¸ La variante seleccionada no tiene color:', selectedVariant);
                     }
                 } else {
-                    console.warn('⚠️ Índice fuera de rango:', selectedIndex, 'de', referenceVariants.length);
+                    console.warn('âš ï¸ Ãndice fuera de rango:', selectedIndex, 'de', referenceVariants.length);
                 }
             } else {
-                console.warn('⚠️ No se encontraron variantes de referencia');
+                console.warn('âš ï¸ No se encontraron variantes de referencia');
             }
         } else {
-            console.log('ℹ️ No hay variante de referencia seleccionada. selectedReferenceVariant:', itemToUse.selectedReferenceVariant);
+            console.log('â„¹ï¸ No hay variante de referencia seleccionada. selectedReferenceVariant:', itemToUse.selectedReferenceVariant);
         }
 
         // Agregar notas especiales (observaciones) al final, con espacio adicional
@@ -9176,7 +9184,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         // Intentar leer de diferentes formas por si acaso
         let observations = item.observations || item.observations_text || '';
         
-        // Si no está en el item, intentar leer del carrito actualizado
+        // Si no estÃ¡ en el item, intentar leer del carrito actualizado
         if (!observations) {
             const currentItem = window.cartManager.cart.find(cartItem => 
                 String(cartItem.id) === String(item.id) || cartItem.id === item.id
@@ -9185,10 +9193,10 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                 observations = currentItem.observations;
             }
         }
-        // No imprimir Peso ni cantidad por caja en la propuesta PDF (artículos manuales)
+        // No imprimir Peso ni cantidad por caja en la propuesta PDF (artÃ­culos manuales)
         observations = stripPesoAndQtdCaixaFromObservations(observations);
 
-        // Si no hay descripción, usar guión
+        // Si no hay descripciÃ³n, usar guiÃ³n
         if (!description) {
             description = '-';
         }
@@ -9214,8 +9222,8 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         totalProposal += total;
 
         // Construir el texto completo para calcular la altura correcta
-        // Esto incluye descripción + variante + observaciones
-        // Obtener traducción de "Personalizado" según el idioma
+        // Esto incluye descripciÃ³n + variante + observaciones
+        // Obtener traducciÃ³n de "Personalizado" segÃºn el idioma
         const personalizedLabel = lang === 'pt' ? 'Personalizado' : 
                                   lang === 'es' ? 'Personalizado' : 
                                   'Custom';
@@ -9236,7 +9244,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                 }
             });
         }
-        // Agregar color seleccionado después de la variante personalizada
+        // Agregar color seleccionado despuÃ©s de la variante personalizada
         if (selectedColorText) {
             if (variantText) {
                 fullDescriptionText += '\n' + selectedColorText;
@@ -9259,8 +9267,8 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         doc.setFontSize(fontSize);
         doc.setFont('helvetica', 'normal');
         
-        // Simular el proceso de drawDescriptionWithBoldParts para contar líneas correctamente
-        // Usar la misma normalización (colapsar espacios y saltos de línea) para consistencia
+        // Simular el proceso de drawDescriptionWithBoldParts para contar lÃ­neas correctamente
+        // Usar la misma normalizaciÃ³n (colapsar espacios y saltos de lÃ­nea) para consistencia
         let allLinesCount = 0;
         if (description && description.trim()) {
             const cleanDesc = normalizeDescriptionForPdf(description);
@@ -9268,7 +9276,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             allLinesCount += descLines.length;
         }
         
-        // Agregar líneas de variante si existe (normalizado)
+        // Agregar lÃ­neas de variante si existe (normalizado)
         if (variantText && variantText.trim()) {
             const cleanVariant = normalizeDescriptionForPdf(variantText);
             const variantLines = cleanVariant.split('\n').filter(l => l.trim());
@@ -9276,36 +9284,36 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                 const lines = doc.splitTextToSize(line.trim(), availableWidth);
                 allLinesCount += lines.length;
             });
-            allLinesCount += 1; // Línea de "Personalizado"
+            allLinesCount += 1; // LÃ­nea de "Personalizado"
         }
         
-        // Agregar líneas de color si existe
+        // Agregar lÃ­neas de color si existe
         if (selectedColorText && selectedColorText.trim()) {
-            allLinesCount += 1; // Línea de color
+            allLinesCount += 1; // LÃ­nea de color
         }
         
-        // Agregar líneas de observaciones si existen (normalizado)
+        // Agregar lÃ­neas de observaciones si existen (normalizado)
         if (observations && observations.trim()) {
-            allLinesCount += 1; // Línea de "Notas:"
+            allLinesCount += 1; // LÃ­nea de "Notas:"
             const cleanObs = normalizeDescriptionForPdf(observations);
             const obsLines = doc.splitTextToSize(cleanObs, availableWidth);
             allLinesCount += obsLines.length;
         }
         
-        // Calcular altura considerando el espaciado entre líneas y saltos de línea adicionales
-        // Agregar espacio extra para saltos de línea entre secciones (descripción, variante, color, notas)
+        // Calcular altura considerando el espaciado entre lÃ­neas y saltos de lÃ­nea adicionales
+        // Agregar espacio extra para saltos de lÃ­nea entre secciones (descripciÃ³n, variante, color, notas)
         // Reducir el espacio entre secciones para evitar demasiado espacio en blanco
         const hasVariantText = !!(variantText && String(variantText).trim());
         const hasSelectedColorText = !!(selectedColorText && String(selectedColorText).trim());
         const hasObservationsText = !!(observations && String(observations).trim());
         const sectionBreaks = (hasVariantText ? 1 : 0) + (hasSelectedColorText ? 1 : 0) + (hasObservationsText ? 1 : 0);
-        // Calcular altura más precisa: líneas * lineHeight + saltos de línea + padding mínimo
+        // Calcular altura mÃ¡s precisa: lÃ­neas * lineHeight + saltos de lÃ­nea + padding mÃ­nimo
         const descriptionHeight = Math.max(
             (allLinesCount * actualLineHeight) + (sectionBreaks * actualLineHeight * 0.5) + (padding * 2), 
             minRowHeight
         );
         
-        console.log('📏 Cálculo de altura de descripción:', {
+        console.log('ðŸ“ CÃ¡lculo de altura de descripciÃ³n:', {
             itemName: item.name,
             fullDescriptionTextLength: fullDescriptionText.length,
             numLines: allLinesCount,
@@ -9347,56 +9355,62 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                 }
             }
             
-            // Determinar el texto a mostrar según el stock (solo si no hay plazo de variante)
+            // Determinar el texto a mostrar segÃºn el stock (solo si no hay plazo de variante)
             if (stockDisponible !== null && stockDisponible !== undefined) {
                 const plazoNormal = deliveryText; // Guardar el plazo original
                 if (stockDisponible >= quantity) {
-                    // Stock suficiente: mostrar "En stock" con advertencia en línea separada
+                    // Stock suficiente: mostrar "En stock" con advertencia en lÃ­nea separada
                     deliveryText = `${t.enStock}\n${t.sujetoConfirmacion}`;
                 } else if (stockDisponible > 0) {
                     // Stock parcial: mostrar stock disponible y plazo
                     deliveryText = `${stockDisponible.toLocaleString()} ${t.unidadesEnStock} / ${t.restantes} ${t.plazoEntrega} ${plazoNormal}`;
                 }
-                // Si stockDisponible === 0, mantener el plazo normal (ya está asignado arriba)
+                // Si stockDisponible === 0, mantener el plazo normal (ya estÃ¡ asignado arriba)
             }
         }
-        // Siempre que haya un plazo de entrega (no "Em stock" ni vacío), añadir sujeito a confirmação si no está ya
-        if (deliveryText && deliveryText !== '-' && !/adjudicação|adjudicación|award/i.test(deliveryText)) {
+        // Siempre que haya un plazo de entrega (no "Em stock" ni vacÃ­o), aÃ±adir sujeito a confirmaÃ§Ã£o si no estÃ¡ ya
+        if (deliveryText && deliveryText !== '-' && !/adjudicaÃ§Ã£o|adjudicaciÃ³n|award/i.test(deliveryText)) {
             deliveryText = `${deliveryText} ${t.sujetoConfirmacion}`;
         }
         
-        // Calcular altura de la celda de plazo con fuente más pequeña para que el texto quepa sin cortar palabras
+        // Calcular altura de la celda de plazo con fuente mÃ¡s pequeÃ±a para que el texto quepa sin cortar palabras
         const deliveryFontSize = 6;
+        doc.setFont('helvetica', 'normal');
         doc.setFontSize(deliveryFontSize);
         const deliveryLines = doc.splitTextToSize(deliveryText, colWidths.deliveryTime - (padding * 2));
         const deliveryLineHeight = deliveryFontSize * 0.4;
         const deliveryHeight = Math.max(deliveryLines.length * deliveryLineHeight, minRowHeight);
-        
-        // La altura de la fila es la máxima entre todas las celdas
-        // IMPORTANTE: Asegurar que la descripción tenga suficiente espacio
-        // Agregar padding adicional para evitar que el texto se corte
-        // Usar un factor de seguridad mayor para descripciones largas o con observaciones
+
+        const requiresLogoConfirmation = hasLogosFinal ? requiresLogoConfirmationForItem(item) : false;
+        let logoTextHeight = minRowHeight;
+        if (requiresLogoConfirmation) {
+            doc.setFontSize(6);
+            const logoTextLines = doc.splitTextToSize(logoConfirmationText, colWidths.logo - (padding * 2));
+            logoTextHeight = Math.max(logoTextLines.length * (6 * 0.4), minRowHeight);
+        }
+
         const hasObservations = observations && observations.trim();
-        // Evitar inflar de más la altura de descripción para no dejar espacio en blanco.
+        // Evitar inflar de mÃ¡s la altura de descripciÃ³n para no dejar espacio en blanco.
         const safetyFactor = hasObservations ? 1.02 : 1.0;
         const minDescriptionHeight = (descriptionHeight * safetyFactor) + padding;
         
-        // Si hay ocurrencias consolidadas, reservar altura para apilar Cant./Precio/Total (una línea por duplicado)
+        // Si hay ocurrencias consolidadas, reservar altura para apilar Cant./Precio/Total (una lÃ­nea por duplicado)
         const occCount = mergeOccurrences && mergeOccurrences.length > 0 ? mergeOccurrences.length : 0;
-        // Altura mínima para que las líneas (Cant./Precio/Total) queden repartidas
+        // Altura mÃ­nima para que las lÃ­neas (Cant./Precio/Total) queden repartidas
         // con buena legibilidad en toda la altura de la celda.
-        // No forzar altura adicional por escalones: la separación se dibuja dentro de la altura real de la fila.
+        // No forzar altura adicional por escalones: la separaciÃ³n se dibuja dentro de la altura real de la fila.
         const occCellHeight = 0;
 
         const calculatedRowHeight = Math.max(
             baseRowHeight,
             minDescriptionHeight,
             deliveryHeight + (padding * 2),
+            logoTextHeight + (padding * 2),
             imageSize + (padding * 2),
             occCellHeight
         );
         
-        console.log('📏 Altura final calculada para fila:', {
+        console.log('ðŸ“ Altura final calculada para fila:', {
             itemName: item.name,
             descriptionHeight: descriptionHeight,
             minDescriptionHeight: minDescriptionHeight,
@@ -9405,19 +9419,19 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             hasObservations: !!(observations && observations.trim())
         });
         
-        console.log(`🔄 Item ${i + 1}: Continuando después de calcular altura...`);
+        console.log(`ðŸ”„ Item ${i + 1}: Continuando despuÃ©s de calcular altura...`);
 
-        // Verificar si necesitamos una nueva página
-        console.log(`🔄 Item ${i + 1}: Verificando si necesita nueva página...`);
+        // Verificar si necesitamos una nueva pÃ¡gina
+        console.log(`ðŸ”„ Item ${i + 1}: Verificando si necesita nueva pÃ¡gina...`);
         // SOLO verificar si el producto individual cabe (sin considerar total ni condiciones)
-        // El total y las condiciones se manejan después
+        // El total y las condiciones se manejan despuÃ©s
         if (currentY + calculatedRowHeight > pageHeight - margin) {
             doc.addPage();
-            // En páginas siguientes, empezar desde el margen superior (sin espacio de logos)
+            // En pÃ¡ginas siguientes, empezar desde el margen superior (sin espacio de logos)
             currentY = margin;
             
-            // Redibujar encabezados en nueva página - fondo gris oscuro
-            doc.setFillColor(64, 64, 64); // Mismo gris oscuro que el pie de página
+            // Redibujar encabezados en nueva pÃ¡gina - fondo gris oscuro
+            doc.setFillColor(64, 64, 64); // Mismo gris oscuro que el pie de pÃ¡gina
             const headerWidth = Object.values(colWidths).reduce((sum, width) => sum + width, 0);
             doc.rect(margin, margin, headerWidth, baseRowHeight, 'F');
             // Texto blanco para los encabezados (usar margin en lugar de currentY para que quede alineado)
@@ -9443,7 +9457,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         // Foto
         drawCell(colPositions.photo, currentY, colWidths.photo, calculatedRowHeight, '', { border: true });
         
-        // Agregar imagen (centrada verticalmente) con compresión, manteniendo relación de aspecto
+        // Agregar imagen (centrada verticalmente) con compresiÃ³n, manteniendo relaciÃ³n de aspecto
         try {
             if (item.image) {
                 const img = new Image();
@@ -9460,7 +9474,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                             const originalHeight = img.height;
                             const aspectRatio = originalWidth / originalHeight;
                             
-                            // Calcular dimensiones manteniendo la relación de aspecto
+                            // Calcular dimensiones manteniendo la relaciÃ³n de aspecto
                             // Ajustar para que quepa dentro del espacio disponible
                             let finalWidth = availableWidth;
                             let finalHeight = availableWidth / aspectRatio;
@@ -9471,7 +9485,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                                 finalWidth = availableHeight * aspectRatio;
                             }
                             
-                            // Asegurar que no exceda los límites
+                            // Asegurar que no exceda los lÃ­mites
                             finalWidth = Math.min(finalWidth, availableWidth);
                             finalHeight = Math.min(finalHeight, availableHeight);
                             
@@ -9480,28 +9494,28 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                             const imgY = currentY + (calculatedRowHeight - finalHeight) / 2;
                             
                             // Redimensionar y comprimir imagen antes de agregar al PDF
-                            const maxDimension = 200; // Máximo 200px para reducir tamaño del archivo
+                            const maxDimension = 200; // MÃ¡ximo 200px para reducir tamaÃ±o del archivo
                             let canvasWidth = originalWidth;
                             let canvasHeight = originalHeight;
                             
-                            // Redimensionar si es muy grande (manteniendo relación de aspecto)
+                            // Redimensionar si es muy grande (manteniendo relaciÃ³n de aspecto)
                             if (canvasWidth > maxDimension || canvasHeight > maxDimension) {
                                 const ratio = Math.min(maxDimension / canvasWidth, maxDimension / canvasHeight);
                                 canvasWidth = Math.floor(canvasWidth * ratio);
                                 canvasHeight = Math.floor(canvasHeight * ratio);
                             }
                             
-                            // Crear canvas con tamaño reducido
+                            // Crear canvas con tamaÃ±o reducido
                             const canvas = document.createElement('canvas');
                             canvas.width = canvasWidth;
                             canvas.height = canvasHeight;
                             const ctx = canvas.getContext('2d');
                             ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
                             
-                            // Convertir a JPEG con compresión (calidad 75% para balance entre tamaño y calidad)
+                            // Convertir a JPEG con compresiÃ³n (calidad 75% para balance entre tamaÃ±o y calidad)
                             const imgData = canvas.toDataURL('image/jpeg', 0.75);
                             
-                            // Agregar imagen comprimida al PDF manteniendo la relación de aspecto
+                            // Agregar imagen comprimida al PDF manteniendo la relaciÃ³n de aspecto
                             doc.addImage(imgData, 'JPEG', imgX, imgY, finalWidth, finalHeight);
                         } catch (error) {
                             console.error('Error adding image:', error);
@@ -9509,26 +9523,26 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                         resolve();
                     };
                     img.onerror = () => {
-                        console.warn(`⚠️ Error cargando imagen para item ${i + 1}:`, item.image);
+                        console.warn(`âš ï¸ Error cargando imagen para item ${i + 1}:`, item.image);
                         resolve();
                     };
                     img.src = item.image;
                 });
             } else {
                 // Si no hay imagen, continuar sin esperar
-                console.log(`ℹ️ Item ${i + 1} no tiene imagen, continuando...`);
+                console.log(`â„¹ï¸ Item ${i + 1} no tiene imagen, continuando...`);
             }
         } catch (error) {
-            console.error(`❌ Error procesando imagen del item ${i + 1}:`, error);
+            console.error(`âŒ Error procesando imagen del item ${i + 1}:`, error);
             // Continuar aunque falle la imagen
         }
 
         // Preparar texto de variante (sin color, el color se maneja por separado)
         let variantTextForDescription = variantText || '';
         
-        // Dibujar descripción con partes en negrita (variante, color y observaciones)
-        // Pasamos el color seleccionado como un parámetro separado
-        console.log('📄 Dibujando descripción para PDF:', {
+        // Dibujar descripciÃ³n con partes en negrita (variante, color y observaciones)
+        // Pasamos el color seleccionado como un parÃ¡metro separado
+        console.log('ðŸ“„ Dibujando descripciÃ³n para PDF:', {
             itemId: item.id,
             itemName: item.name,
             description: description,
@@ -9545,10 +9559,10 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         
         // Asegurar que selectedColorText se pase correctamente
         if (!selectedColorText && item.selectedReferenceVariant !== null && item.selectedReferenceVariant !== undefined) {
-            console.warn('⚠️ selectedColorText está vacío pero hay selectedReferenceVariant:', item.selectedReferenceVariant);
+            console.warn('âš ï¸ selectedColorText estÃ¡ vacÃ­o pero hay selectedReferenceVariant:', item.selectedReferenceVariant);
         }
         
-        console.log(`🔄 Item ${i + 1}: Llamando a drawDescriptionWithBoldParts...`);
+        console.log(`ðŸ”„ Item ${i + 1}: Llamando a drawDescriptionWithBoldParts...`);
         try {
             drawDescriptionWithBoldParts(
                 colPositions.description, 
@@ -9559,16 +9573,16 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                 variantTextForDescription, 
                 observations,
                 t.notes,
-                selectedColorText || '' // Color seleccionado como parámetro adicional, asegurar que no sea undefined
+                selectedColorText || '' // Color seleccionado como parÃ¡metro adicional, asegurar que no sea undefined
             );
-            console.log(`✅ Item ${i + 1}: drawDescriptionWithBoldParts completado`);
+            console.log(`âœ… Item ${i + 1}: drawDescriptionWithBoldParts completado`);
         } catch (descError) {
-            console.error(`❌ ERROR en drawDescriptionWithBoldParts item ${i + 1}:`, descError);
+            console.error(`âŒ ERROR en drawDescriptionWithBoldParts item ${i + 1}:`, descError);
             console.error('   - Stack:', descError.stack);
             throw descError;
         }
         
-        console.log(`🔄 Item ${i + 1}: Dibujando cantidad...`);
+        console.log(`ðŸ”„ Item ${i + 1}: Dibujando cantidad...`);
         try {
             const quantityText = (mergeOccurrences && mergeOccurrences.length > 0)
                 ? mergeOccurrences.map(o => formatQuantityForPdf(o?.qty || 0)).join('\n')
@@ -9581,9 +9595,9 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                 quantityText,
                 { align: 'center', fontSize: 8, noWrap: false, separatorBetweenLines: !!(mergeOccurrences && mergeOccurrences.length > 1) }
             );
-            console.log(`✅ Item ${i + 1}: Cantidad dibujada`);
+            console.log(`âœ… Item ${i + 1}: Cantidad dibujada`);
         } catch (cellError) {
-            console.error(`❌ ERROR dibujando cantidad item ${i + 1}:`, cellError);
+            console.error(`âŒ ERROR dibujando cantidad item ${i + 1}:`, cellError);
             throw cellError;
         }
         // Formatear precio unitario: hasta 4 decimales si tiene 4 decimales significativos
@@ -9599,11 +9613,11 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             ? mergeOccurrences.map(o => {
                 const u = Number(o?.unitPrice || 0);
                 if (!Number.isFinite(u) || u === 0) return translations[currentLang] || translations['pt'];
-                return `€${formatMoneyForPdf(u)}`;
+                return `â‚¬${formatMoneyForPdf(u)}`;
             }).join('\n')
             : ((unitPrice === 0 || unitPrice === null || unitPrice === undefined)
                 ? (translations[currentLang] || translations['pt'])
-                : `€${formatMoneyForPdf(unitPrice)}`);
+                : `â‚¬${formatMoneyForPdf(unitPrice)}`);
 
         drawCell(colPositions.unitPrice, currentY, colWidths.unitPrice, calculatedRowHeight, precioParaMostrar, { align: 'center', fontSize: 8, noWrap: true, separatorBetweenLines: !!(mergeOccurrences && mergeOccurrences.length > 1) });
 
@@ -9613,11 +9627,11 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                 const q = Number(o?.qty || 0);
                 const t = (o && o.total !== undefined && o.total !== null) ? Number(o.total) : (u * q);
                 if (!Number.isFinite(u) || u === 0) return translations[currentLang] || translations['pt'];
-                return `€${formatMoneyForPdf(t)}`;
+                return `â‚¬${formatMoneyForPdf(t)}`;
             }).join('\n')
             : ((unitPrice === 0 || unitPrice === null || unitPrice === undefined)
                 ? (translations[currentLang] || translations['pt'])
-                : `€${formatMoneyForPdf(total)}`);
+                : `â‚¬${formatMoneyForPdf(total)}`);
 
         drawCell(colPositions.total, currentY, colWidths.total, calculatedRowHeight, totalParaMostrar, { align: 'center', bold: true, fontSize: 8, noWrap: true, separatorBetweenLines: !!(mergeOccurrences && mergeOccurrences.length > 1) });
         drawCell(
@@ -9626,11 +9640,11 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             colWidths.deliveryTime,
             calculatedRowHeight,
             deliveryText,
-            { align: 'center', fontSize: 6, preserveWords: true, minFontSize: 4.75 }
+            { align: 'center', fontSize: 6, maxLines: 8 }
         );
         
-        // Dibujar logo si existe o texto de confirmación para personalizados sin logotipo
-        console.log(`🔄 Item ${i + 1}: Verificando logo (hasLogosFinal: ${hasLogosFinal}, logoUrl: ${item.logoUrl ? 'existe' : 'no existe'})...`);
+        // Dibujar logo si existe o texto de confirmaciÃ³n para personalizados sin logotipo
+        console.log(`ðŸ”„ Item ${i + 1}: Verificando logo (hasLogosFinal: ${hasLogosFinal}, logoUrl: ${item.logoUrl ? 'existe' : 'no existe'})...`);
         if (hasLogosFinal) {
             drawCell(colPositions.logo, currentY, colWidths.logo, calculatedRowHeight, '', { border: true });
             const requiresLogoConfirmation = requiresLogoConfirmationForItem(item);
@@ -9646,7 +9660,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                         // Normalizar la URL (sin espacios) para buscar en el mapa
                         const normalizedLogoUrl = item.logoUrl.trim();
                         
-                        console.log('🔍 Buscando logo PDF en mapa:', {
+                        console.log('ðŸ” Buscando logo PDF en mapa:', {
                             logoUrl: item.logoUrl,
                             normalizedLogoUrl: normalizedLogoUrl,
                             mapKeys: Object.keys(pdfLogosMap),
@@ -9685,7 +9699,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                                             ctx.drawImage(tempImg, 0, 0, canvasWidth, canvasHeight);
                                             const compressedImgData = canvas.toDataURL('image/jpeg', 0.8);
                                             doc.addImage(compressedImgData, 'JPEG', logoX, logoY, logoSize, logoSize);
-                                            console.log('✅ Logo PDF (comprimido) agregado al PDF correctamente');
+                                            console.log('âœ… Logo PDF (comprimido) agregado al PDF correctamente');
                                         } catch (error) {
                                             console.error('Error comprimiendo logo PDF:', error);
                                             // Fallback: usar imagen original
@@ -9699,9 +9713,9 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                                     };
                                     tempImg.src = pdfImageData;
                                 });
-                                console.log('✅ Logo PDF (pre-procesado) agregado al PDF correctamente');
+                                console.log('âœ… Logo PDF (pre-procesado) agregado al PDF correctamente');
                             } catch (addImageError) {
-                                console.error('❌ Error agregando imagen PDF pre-procesada al documento:', addImageError);
+                                console.error('âŒ Error agregando imagen PDF pre-procesada al documento:', addImageError);
                                 // Si falla al agregar, mostrar "PDF"
                                 doc.setFontSize(6);
                                 doc.setTextColor(0, 0, 0);
@@ -9710,10 +9724,10 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                                 doc.text('PDF', pdfTextX, pdfTextY, { align: 'center' });
                             }
                         } else {
-                            console.warn('⚠️ No se encontró imagen pre-procesada para el PDF:', {
+                            console.warn('âš ï¸ No se encontrÃ³ imagen pre-procesada para el PDF:', {
                                 logoUrl: item.logoUrl,
                                 mapKeys: Object.keys(pdfLogosMap),
-                                pdfImageData: pdfImageData ? 'existe pero vacío' : 'no existe'
+                                pdfImageData: pdfImageData ? 'existe pero vacÃ­o' : 'no existe'
                             });
                             // Si no hay imagen pre-procesada, mostrar "PDF"
                             doc.setFontSize(6);
@@ -9723,7 +9737,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                             doc.text('PDF', pdfTextX, pdfTextY, { align: 'center' });
                         }
                     } else {
-                        // Para imágenes, cargar y mostrar
+                        // Para imÃ¡genes, cargar y mostrar
                         const logoImg = new Image();
                         logoImg.crossOrigin = 'anonymous';
                         await new Promise((resolve) => {
@@ -9734,7 +9748,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                                     const logoY = currentY + (calculatedRowHeight - logoSize) / 2;
                                     
                                     // Redimensionar y comprimir logo antes de agregar al PDF
-                                    const maxLogoDimension = 150; // Máximo 150px para logos
+                                    const maxLogoDimension = 150; // MÃ¡ximo 150px para logos
                                     let canvasWidth = logoImg.width;
                                     let canvasHeight = logoImg.height;
                                     
@@ -9745,14 +9759,14 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                                         canvasHeight = Math.floor(canvasHeight * ratio);
                                     }
                                     
-                                    // Crear canvas con tamaño reducido
+                                    // Crear canvas con tamaÃ±o reducido
                                     const canvas = document.createElement('canvas');
                                     canvas.width = canvasWidth;
                                     canvas.height = canvasHeight;
                                     const ctx = canvas.getContext('2d');
                                     ctx.drawImage(logoImg, 0, 0, canvasWidth, canvasHeight);
                                     
-                                    // Convertir a JPEG con compresión (calidad 80% para logos)
+                                    // Convertir a JPEG con compresiÃ³n (calidad 80% para logos)
                                     const imgData = canvas.toDataURL('image/jpeg', 0.8);
                                     
                                     // Agregar imagen comprimida al PDF
@@ -9803,9 +9817,9 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         }
 
         currentY += calculatedRowHeight;
-        console.log(`✅ Item ${i + 1} procesado. currentY: ${currentY}`);
+        console.log(`âœ… Item ${i + 1} procesado. currentY: ${currentY}`);
         } catch (itemError) {
-            console.error(`❌ ERROR procesando item ${i + 1}:`, itemError);
+            console.error(`âŒ ERROR procesando item ${i + 1}:`, itemError);
             console.error('   - Item:', item);
             console.error('   - Tipo de error:', itemError.name);
             console.error('   - Mensaje:', itemError.message);
@@ -9815,10 +9829,10 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         }
     }
     
-    console.log('✅ Bucle de procesamiento completado');
+    console.log('âœ… Bucle de procesamiento completado');
 
-    console.log('✅ Todos los items procesados. currentY final:', currentY);
-    console.log('📊 Resumen del procesamiento:', {
+    console.log('âœ… Todos los items procesados. currentY final:', currentY);
+    console.log('ðŸ“Š Resumen del procesamiento:', {
         itemsProcessed: cartToProcess.length,
         totalProposal: totalProposal,
         currentY: currentY,
@@ -9828,27 +9842,27 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
 
     // footerHeight ya fue calculado antes del bucle, no es necesario recalcularlo
 
-    // Dibujar total - DEBE estar pegado inmediatamente después del último producto
-    console.log('💰 Iniciando dibujo del total...');
-    console.log('📋 Datos disponibles para el total:', {
+    // Dibujar total - DEBE estar pegado inmediatamente despuÃ©s del Ãºltimo producto
+    console.log('ðŸ’° Iniciando dibujo del total...');
+    console.log('ðŸ“‹ Datos disponibles para el total:', {
         totalProposal: totalProposal,
         hasCartManager: !!window.cartManager,
         hasFormatTotal: !!(window.cartManager && window.cartManager.formatTotal),
         t_totalProposal: t.totalProposal
     });
     
-    // NO mover el total a una nueva página, solo verificar que cabe básicamente
+    // NO mover el total a una nueva pÃ¡gina, solo verificar que cabe bÃ¡sicamente
     if (currentY + baseRowHeight > pageHeight - margin) {
         doc.addPage();
         currentY = margin;
     }
     
-    // El total se dibuja en currentY (que ya está en la posición después del último producto)
+    // El total se dibuja en currentY (que ya estÃ¡ en la posiciÃ³n despuÃ©s del Ãºltimo producto)
     // NO agregar espacio antes del total
-    const spaceAfterTotal = 10; // Espacio después del total (solo para las condiciones)
+    const spaceAfterTotal = 10; // Espacio despuÃ©s del total (solo para las condiciones)
 
-    // Fila del total - fondo gris oscuro como el pie de página
-    doc.setFillColor(64, 64, 64); // Mismo gris oscuro que el pie de página
+    // Fila del total - fondo gris oscuro como el pie de pÃ¡gina
+    doc.setFillColor(64, 64, 64); // Mismo gris oscuro que el pie de pÃ¡gina
     // Calcular ancho total incluyendo la columna de logo si existe
     const totalRowWidth = colWidths.name + colWidths.photo + colWidths.description + colWidths.quantity + colWidths.unitPrice + colWidths.total + colWidths.deliveryTime + (hasLogosFinal ? colWidths.logo : 0);
     doc.rect(margin, currentY, totalRowWidth, baseRowHeight, 'F');
@@ -9862,49 +9876,49 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     
     // Celda del total - con separador de miles (ej. 309.750,00)
     const formattedTotalProposal = formatMoneyForPdf(totalProposal);
-    drawCell(colPositions.total, currentY, colWidths.total, baseRowHeight, `€${formattedTotalProposal}`, { align: 'center', bold: true, fontSize: 9, noWrap: true, textColor: whiteColor, border: true });
+    drawCell(colPositions.total, currentY, colWidths.total, baseRowHeight, `â‚¬${formattedTotalProposal}`, { align: 'center', bold: true, fontSize: 9, noWrap: true, textColor: whiteColor, border: true });
     
-    // Celda de plazo de entrega (vacía en la fila del total)
+    // Celda de plazo de entrega (vacÃ­a en la fila del total)
     drawCell(colPositions.deliveryTime, currentY, colWidths.deliveryTime, baseRowHeight, '', { align: 'center', border: true, textColor: whiteColor });
     
-    // Si hay columna de logo, dibujar celda vacía con borde para cerrar correctamente
+    // Si hay columna de logo, dibujar celda vacÃ­a con borde para cerrar correctamente
     if (hasLogosFinal) {
         drawCell(colPositions.logo, currentY, colWidths.logo, baseRowHeight, '', { align: 'center', border: true, textColor: whiteColor });
     }
     // Restaurar color de texto a negro
     doc.setTextColor(0, 0, 0);
-    console.log('✅ Total dibujado. currentY después del total:', currentY);
+    console.log('âœ… Total dibujado. currentY despuÃ©s del total:', currentY);
 
-    // Agregar pie de página con condiciones legales (estilo oscuro como en la imagen)
-    console.log('📄 Iniciando dibujo del pie de página...');
-    // Verificar si las condiciones caben completas en la página actual
-    // Si no caben, mover SOLO las condiciones a una nueva página (el total ya está dibujado)
+    // Agregar pie de pÃ¡gina con condiciones legales (estilo oscuro como en la imagen)
+    console.log('ðŸ“„ Iniciando dibujo del pie de pÃ¡gina...');
+    // Verificar si las condiciones caben completas en la pÃ¡gina actual
+    // Si no caben, mover SOLO las condiciones a una nueva pÃ¡gina (el total ya estÃ¡ dibujado)
     currentY += baseRowHeight + spaceAfterTotal;
     
-    // Verificación: si no cabe el footer completo, crear nueva página SOLO para las condiciones
+    // VerificaciÃ³n: si no cabe el footer completo, crear nueva pÃ¡gina SOLO para las condiciones
     if (currentY + footerHeight > pageHeight - margin) {
         doc.addPage();
         currentY = margin;
-        console.log('📄 Nueva página creada para condiciones (el total ya está en la página anterior)');
+        console.log('ðŸ“„ Nueva pÃ¡gina creada para condiciones (el total ya estÃ¡ en la pÃ¡gina anterior)');
     }
     
-    // Dibujar fondo gris oscuro (similar al de la imagen: gris oscuro sólido)
-    // Color gris oscuro: RGB(64, 64, 64) o similar - más oscuro que el anterior
+    // Dibujar fondo gris oscuro (similar al de la imagen: gris oscuro sÃ³lido)
+    // Color gris oscuro: RGB(64, 64, 64) o similar - mÃ¡s oscuro que el anterior
     doc.setFillColor(64, 64, 64); // Gris oscuro similar a la imagen
     const footerWidth = pageWidth - (margin * 2);
     doc.rect(margin, currentY, footerWidth, footerHeight, 'F');
     
-    // Configurar estilo para el texto del pie de página (blanco)
+    // Configurar estilo para el texto del pie de pÃ¡gina (blanco)
     doc.setFontSize(footerTextSize);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(255, 255, 255); // Texto blanco
     
-    // Posición inicial del texto dentro del cuadro (solo padding superior)
+    // PosiciÃ³n inicial del texto dentro del cuadro (solo padding superior)
     currentY += footerPaddingTop;
     
-    // Agregar cada línea del pie de página
+    // Agregar cada lÃ­nea del pie de pÃ¡gina
     footerText.forEach((text, index) => {
-        // Dividir texto en líneas si es muy largo
+        // Dividir texto en lÃ­neas si es muy largo
         const lines = doc.splitTextToSize(text, maxWidth);
         
         lines.forEach((line, lineIndex) => {
@@ -9912,23 +9926,23 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             currentY += lineHeight;
         });
         
-        // Espacio entre párrafos (excepto después del último)
+        // Espacio entre pÃ¡rrafos (excepto despuÃ©s del Ãºltimo)
         if (index < footerText.length - 1) {
-            currentY += 3; // Espacio entre párrafos
+            currentY += 3; // Espacio entre pÃ¡rrafos
         }
     });
     
     // Las condiciones quedan pegadas al final del cuadro (sin padding inferior)
-    console.log('✅ Pie de página dibujado. currentY final:', currentY);
+    console.log('âœ… Pie de pÃ¡gina dibujado. currentY final:', currentY);
 
-    // Verificar si hay artículos VACAVALIENTE y agregar página con imagen del Pantone
+    // Verificar si hay artÃ­culos VACAVALIENTE y agregar pÃ¡gina con imagen del Pantone
     const hasVacavalienteItems = savedCart.some(item => {
         const marca = item.marca || item.brand || '';
         return marca.toUpperCase().trim() === 'VACAVALIENTE';
     });
 
     if (hasVacavalienteItems) {
-        console.log('🎨 Detectados artículos VACAVALIENTE, agregando página con imagen del Pantone...');
+        console.log('ðŸŽ¨ Detectados artÃ­culos VACAVALIENTE, agregando pÃ¡gina con imagen del Pantone...');
         
         try {
             // Obtener cliente de Supabase
@@ -9983,15 +9997,15 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                 });
                 
                 if (imageBase64) {
-                    // Agregar nueva página
+                    // Agregar nueva pÃ¡gina
                     doc.addPage();
                     
-                    // Configurar página para la imagen del Pantone
+                    // Configurar pÃ¡gina para la imagen del Pantone
                     const pantoneMargin = 20;
                     const pantonePageWidth = pageWidth - (pantoneMargin * 2);
                     const pantonePageHeight = pageHeight - (pantoneMargin * 2);
                     
-                    // Título
+                    // TÃ­tulo
                     doc.setFontSize(18);
                     doc.setFont('helvetica', 'bold');
                     doc.setTextColor(29, 53, 87); // Color #1d3557
@@ -10000,7 +10014,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                                      'Vacavaliente Colors';
                     doc.text(titleText, pageWidth / 2, pantoneMargin + 10, { align: 'center' });
                     
-                    // Calcular dimensiones de la imagen manteniendo proporción
+                    // Calcular dimensiones de la imagen manteniendo proporciÃ³n
                     // Obtener dimensiones de la imagen desde el base64
                     const img = new Image();
                     await new Promise((resolve) => {
@@ -10009,7 +10023,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                     });
                     
                     const maxWidth = pantonePageWidth;
-                    const maxHeight = pantonePageHeight - 30; // Dejar espacio para título
+                    const maxHeight = pantonePageHeight - 30; // Dejar espacio para tÃ­tulo
                     
                     let imgWidth = img.width;
                     let imgHeight = img.height;
@@ -10024,13 +10038,13 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                     
                     // Agregar imagen al PDF
                     doc.addImage(imageBase64, 'PNG', x, y, imgWidth, imgHeight);
-                    console.log('✅ Imagen del Pantone agregada al PDF');
+                    console.log('âœ… Imagen del Pantone agregada al PDF');
                 }
             } else {
-                console.warn('⚠️ No se pudo obtener cliente de Supabase para cargar imagen del Pantone');
+                console.warn('âš ï¸ No se pudo obtener cliente de Supabase para cargar imagen del Pantone');
             }
         } catch (error) {
-            console.warn('⚠️ Error al agregar página del Pantone:', error);
+            console.warn('âš ï¸ Error al agregar pÃ¡gina del Pantone:', error);
             // Continuar con el PDF aunque falle la imagen del Pantone
         }
     }
@@ -10058,7 +10072,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             fileNameProposalDate = window.cartManager.editingProposalData.fecha_creacion || null;
         }
         
-        // Si aún no hay nombre de cliente, intentar obtenerlo del formulario
+        // Si aÃºn no hay nombre de cliente, intentar obtenerlo del formulario
         if (!fileNameClientName) {
             const clientInput = document.getElementById('clientNameInput');
             if (clientInput && clientInput.value) {
@@ -10067,16 +10081,16 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         }
     }
     
-    // Generar nombre de archivo - versión simplificada (temporalmente sin usar generateProposalFileName)
+    // Generar nombre de archivo - versiÃ³n simplificada (temporalmente sin usar generateProposalFileName)
     const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
     const cleanName = (fileNameClientName || 'Sin_nombre').replace(/[^a-zA-Z0-9]/g, '_').substring(0, 50);
     let fileName = `GGMPI_${cleanName}_varios_${dateStr}.pdf`;
     
-    // Validar y limpiar nombre de archivo (eliminar caracteres inválidos)
+    // Validar y limpiar nombre de archivo (eliminar caracteres invÃ¡lidos)
     fileName = fileName.replace(/[<>:"/\\|?*]/g, '_').substring(0, 255);
     
-    console.log('💾 Guardando PDF con nombre:', fileName);
-    console.log('📊 Estado del documento antes de guardar:', {
+    console.log('ðŸ’¾ Guardando PDF con nombre:', fileName);
+    console.log('ðŸ“Š Estado del documento antes de guardar:', {
         hasDoc: !!doc,
         docType: typeof doc,
         hasSaveMethod: typeof doc.save === 'function',
@@ -10086,18 +10100,18 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     
     try {
         if (!doc) {
-            throw new Error('Documento PDF no está disponible');
+            throw new Error('Documento PDF no estÃ¡ disponible');
         }
         
         if (typeof doc.save !== 'function') {
-            throw new Error('Método doc.save no está disponible');
+            throw new Error('MÃ©todo doc.save no estÃ¡ disponible');
         }
         
         if (!fileName || fileName.trim() === '') {
-            throw new Error('Nombre de archivo vacío');
+            throw new Error('Nombre de archivo vacÃ­o');
         }
         
-        console.log('💾 Generando PDF para mostrar diálogo de guardar...');
+        console.log('ðŸ’¾ Generando PDF para mostrar diÃ¡logo de guardar...');
         
         // Generar el PDF como blob
         const pdfBlob = doc.output('blob');
@@ -10119,19 +10133,19 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                 await writable.write(pdfBlob);
                 await writable.close();
                 
-                console.log('✅ PDF guardado exitosamente usando File System Access API');
+                console.log('âœ… PDF guardado exitosamente usando File System Access API');
                 return;
             } catch (fileError) {
-                // Si el usuario cancela el diálogo, no es un error
+                // Si el usuario cancela el diÃ¡logo, no es un error
                 if (fileError.name === 'AbortError') {
-                    console.log('ℹ️ Usuario canceló el guardado del PDF');
+                    console.log('â„¹ï¸ Usuario cancelÃ³ el guardado del PDF');
                     return;
                 }
-                console.warn('⚠️ Error con File System Access API, usando método alternativo:', fileError);
+                console.warn('âš ï¸ Error con File System Access API, usando mÃ©todo alternativo:', fileError);
             }
         }
         
-        // Método alternativo: crear un enlace de descarga temporal
+        // MÃ©todo alternativo: crear un enlace de descarga temporal
         const url = URL.createObjectURL(pdfBlob);
         const link = document.createElement('a');
         link.href = url;
@@ -10142,23 +10156,23 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         document.body.appendChild(link);
         link.click();
         
-        // Limpiar después de un breve delay
+        // Limpiar despuÃ©s de un breve delay
         setTimeout(() => {
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
         }, 100);
         
-        console.log('✅ PDF guardado exitosamente con nombre:', fileName);
+        console.log('âœ… PDF guardado exitosamente con nombre:', fileName);
     } catch (saveError) {
-        console.error('❌ ERROR al guardar PDF:', saveError);
+        console.error('âŒ ERROR al guardar PDF:', saveError);
         console.error('   - Tipo de error:', saveError.name);
         console.error('   - Mensaje:', saveError.message);
         console.error('   - Stack:', saveError.stack);
         
-        // Intentar con nombre más simple usando el método tradicional
+        // Intentar con nombre mÃ¡s simple usando el mÃ©todo tradicional
         try {
             const simpleName = `propuesta_${new Date().getTime()}.pdf`;
-            console.log('🔄 Intentando guardar con nombre simple:', simpleName);
+            console.log('ðŸ”„ Intentando guardar con nombre simple:', simpleName);
             
             // Generar blob con nombre simple
             const pdfBlob = doc.output('blob');
@@ -10174,16 +10188,16 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                 URL.revokeObjectURL(url);
             }, 100);
             
-            console.log('✅ PDF guardado con nombre simple');
+            console.log('âœ… PDF guardado con nombre simple');
         } catch (secondError) {
-            console.error('❌ ERROR CRÍTICO: No se pudo guardar ni con nombre simple:', secondError);
-            window.cartManager?.showNotification('Error crítico al guardar el PDF', 'error');
+            console.error('âŒ ERROR CRÃTICO: No se pudo guardar ni con nombre simple:', secondError);
+            window.cartManager?.showNotification('Error crÃ­tico al guardar el PDF', 'error');
         }
     }
     
-    console.log('🏁 ========== FIN generateProposalPDF ==========');
+    console.log('ðŸ ========== FIN generateProposalPDF ==========');
 
-    // Notificación de éxito
+    // NotificaciÃ³n de Ã©xito
     const message = lang === 'es' ? 
         'PDF generado correctamente' : 
         lang === 'pt' ?
@@ -10198,15 +10212,15 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
 async function openSendProposalModal() {
     if (!window.cartManager || window.cartManager.cart.length === 0) {
         const message = window.cartManager?.currentLanguage === 'es' ? 
-            'El presupuesto está vacío' : 
+            'El presupuesto estÃ¡ vacÃ­o' : 
             window.cartManager?.currentLanguage === 'pt' ?
-            'O orçamento está vazio' :
+            'O orÃ§amento estÃ¡ vazio' :
             'The budget is empty';
         window.cartManager?.showNotification(message, 'error');
         return;
     }
 
-    // Si se está editando una propuesta, guardar directamente sin mostrar el modal
+    // Si se estÃ¡ editando una propuesta, guardar directamente sin mostrar el modal
     if (window.cartManager.editingProposalId) {
         sendProposalToSupabase();
         return;
@@ -10217,14 +10231,14 @@ async function openSendProposalModal() {
     const oneMonthAgo = new Date(today);
     oneMonthAgo.setMonth(today.getMonth() - 1); // Restar un mes
     
-    const maxDate = today.toISOString().split('T')[0]; // Máximo: hoy
-    const minDate = oneMonthAgo.toISOString().split('T')[0]; // Mínimo: hace un mes
+    const maxDate = today.toISOString().split('T')[0]; // MÃ¡ximo: hoy
+    const minDate = oneMonthAgo.toISOString().split('T')[0]; // MÃ­nimo: hace un mes
     
     const dateInput = document.getElementById('proposalDateInput');
     if (dateInput) {
         dateInput.value = ''; // No establecer fecha por defecto
-        dateInput.setAttribute('max', maxDate); // Máximo: hoy
-        dateInput.setAttribute('min', minDate); // Mínimo: hace un mes
+        dateInput.setAttribute('max', maxDate); // MÃ¡ximo: hoy
+        dateInput.setAttribute('min', minDate); // MÃ­nimo: hace un mes
     }
 
     // Prellenar desde la barra de cliente si tiene valor; si no, limpiar campos
@@ -10267,16 +10281,16 @@ async function openSendProposalModal() {
 
     // Cargar clientes y comerciales existentes para autocompletado
     loadExistingClients();
-    // Asegurar que cartManager esté inicializado antes de cargar comerciales
+    // Asegurar que cartManager estÃ© inicializado antes de cargar comerciales
     if (window.cartManager && window.cartManager.supabase) {
         await loadExistingCommercials();
     } else {
-        // Si no está disponible, intentar inicializar
+        // Si no estÃ¡ disponible, intentar inicializar
         if (window.cartManager) {
             await window.cartManager.initializeSupabase();
             await loadExistingCommercials();
         } else {
-            // Fallback: cargar después de un breve delay
+            // Fallback: cargar despuÃ©s de un breve delay
             setTimeout(async () => {
                 if (window.cartManager) {
                     await window.cartManager.initializeSupabase();
@@ -10317,7 +10331,7 @@ let existingClients = [];
 let existingCommercials = [];
 
 /**
- * Abrir modal de productos orçamentados anteriormente para el cliente seleccionado
+ * Abrir modal de productos orÃ§amentados anteriormente para el cliente seleccionado
  */
 async function openPreviousBudgetProductsModal() {
     const input = document.getElementById('proposalClientNameInput');
@@ -10336,18 +10350,18 @@ async function openPreviousBudgetProductsModal() {
     if (!modal || !listEl) return;
 
     const t = window.cartManager?.currentLanguage === 'pt' ? {
-        title: 'Produtos orçamentados anteriormente',
+        title: 'Produtos orÃ§amentados anteriormente',
         subtitle: 'Cliente: ',
         loading: 'A carregar...',
         noProducts: 'Nenhum produto encontrado em propostas anteriores para este cliente.',
         add: 'Adicionar',
         close: 'Fechar'
     } : window.cartManager?.currentLanguage === 'es' ? {
-        title: 'Productos orçamentados anteriormente',
+        title: 'Productos orÃ§amentados anteriormente',
         subtitle: 'Cliente: ',
         loading: 'Cargando...',
         noProducts: 'No se encontraron productos en propuestas anteriores para este cliente.',
-        add: 'Añadir',
+        add: 'AÃ±adir',
         close: 'Cerrar'
     } : {
         title: 'Previously budgeted products',
@@ -10389,7 +10403,7 @@ async function openPreviousBudgetProductsModal() {
             return;
         }
 
-        // Agrupar por producto (referencia o nombre) y quedarnos con el más reciente (precio/cantidad)
+        // Agrupar por producto (referencia o nombre) y quedarnos con el mÃ¡s reciente (precio/cantidad)
         const byKey = {};
         articulos.forEach(a => {
             const key = (a.referencia_articulo || '').trim() || (a.nombre_articulo || '').trim();
@@ -10413,7 +10427,7 @@ async function openPreviousBudgetProductsModal() {
             <div class="previous-budget-item" style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--bg-gray-200); gap: 12px;">
                 <div style="flex: 1; min-width: 0;">
                     <div style="font-weight: 600; color: var(--text-primary);">${nombre}</div>
-                    <div style="font-size: 0.8rem; color: var(--text-secondary);">Ref: ${ref} · €${precio}</div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary);">Ref: ${ref} Â· â‚¬${precio}</div>
                 </div>
                 <button type="button" class="btn-primary" style="padding: 6px 14px; font-size: 0.875rem;" data-prev-articulo="${dataAttr}" onclick="addPreviousBudgetProductToCart(this.getAttribute('data-prev-articulo'))">
                     <i class="fas fa-plus"></i> ${t.add}
@@ -10427,7 +10441,7 @@ async function openPreviousBudgetProductsModal() {
 }
 
 /**
- * Cerrar modal de productos orçamentados anteriormente
+ * Cerrar modal de productos orÃ§amentados anteriormente
  */
 function closePreviousBudgetProductsModal() {
     const modal = document.getElementById('previousBudgetProductsModal');
@@ -10435,7 +10449,7 @@ function closePreviousBudgetProductsModal() {
 }
 
 /**
- * Añadir un producto de una propuesta anterior al carrito actual
+ * AÃ±adir un producto de una propuesta anterior al carrito actual
  * @param {string} dataJson - JSON string con { nombre_articulo, referencia_articulo, cantidad, precio, plazo_entrega }
  */
 function addPreviousBudgetProductToCart(dataJson) {
@@ -10468,7 +10482,7 @@ function addPreviousBudgetProductToCart(dataJson) {
     }
 
     if (!product) {
-        const msg = window.cartManager.currentLanguage === 'es' ? 'Producto no encontrado en el catálogo.' : window.cartManager.currentLanguage === 'pt' ? 'Produto não encontrado no catálogo.' : 'Product not found in catalog.';
+        const msg = window.cartManager.currentLanguage === 'es' ? 'Producto no encontrado en el catÃ¡logo.' : window.cartManager.currentLanguage === 'pt' ? 'Produto nÃ£o encontrado no catÃ¡logo.' : 'Product not found in catalog.';
         window.cartManager.showNotification(msg, 'warning');
         return;
     }
@@ -10507,7 +10521,7 @@ function addPreviousBudgetProductToCart(dataJson) {
     window.cartManager.saveCart();
     window.cartManager.renderCart();
     window.cartManager.updateSummary();
-    const msg = window.cartManager.currentLanguage === 'es' ? 'Producto añadido al presupuesto' : window.cartManager.currentLanguage === 'pt' ? 'Produto adicionado ao orçamento' : 'Product added to budget';
+    const msg = window.cartManager.currentLanguage === 'es' ? 'Producto aÃ±adido al presupuesto' : window.cartManager.currentLanguage === 'pt' ? 'Produto adicionado ao orÃ§amento' : 'Product added to budget';
     window.cartManager.showNotification(msg, 'success');
 }
 
@@ -10521,7 +10535,7 @@ async function loadExistingClients() {
     }
 
     try {
-        // Obtener nombres de clientes únicos de presupuestos existentes
+        // Obtener nombres de clientes Ãºnicos de presupuestos existentes
         const { data, error } = await window.cartManager.supabase
             .from('presupuestos')
             .select('nombre_cliente')
@@ -10532,17 +10546,17 @@ async function loadExistingClients() {
             return;
         }
 
-        // Obtener nombres únicos
+        // Obtener nombres Ãºnicos
         const uniqueClients = [...new Set(data.map(p => p.nombre_cliente))].filter(Boolean);
         existingClients = uniqueClients;
-        console.log('✅ Clientes cargados para autocompletado:', existingClients.length);
+        console.log('âœ… Clientes cargados para autocompletado:', existingClients.length);
     } catch (error) {
         console.error('Error en loadExistingClients:', error);
     }
 }
 
 /**
- * Lista predefinida de comerciales en orden alfabético
+ * Lista predefinida de comerciales en orden alfabÃ©tico
  */
 const PREDEFINED_COMMERCIALS = [
     'Adriana Gomez',
@@ -10572,14 +10586,14 @@ async function loadExistingCommercials() {
     }
 
     try {
-        // Limpiar opciones existentes (excepto la primera opción placeholder)
+        // Limpiar opciones existentes (excepto la primera opciÃ³n placeholder)
         while (commercialSelect.options.length > 1) {
             commercialSelect.remove(1);
         }
         
-        // Verificar que Supabase esté disponible
+        // Verificar que Supabase estÃ© disponible
         if (!window.cartManager || !window.cartManager.supabase) {
-            console.warn('⚠️ Supabase no disponible, usando lista predefinida');
+            console.warn('âš ï¸ Supabase no disponible, usando lista predefinida');
             // Fallback a lista predefinida si no hay Supabase
         PREDEFINED_COMMERCIALS.forEach(commercial => {
             const option = document.createElement('option');
@@ -10592,9 +10606,9 @@ async function loadExistingCommercials() {
         }
 
         // Obtener comerciales desde user_roles
-        // Nota: El campo "Name" está entre comillas en el esquema, así que es case-sensitive
+        // Nota: El campo "Name" estÃ¡ entre comillas en el esquema, asÃ­ que es case-sensitive
         
-        // 1. Obtener información del usuario actual
+        // 1. Obtener informaciÃ³n del usuario actual
         let currentUser = null;
         let currentUserRole = null;
         let currentUserName = null;
@@ -10613,7 +10627,7 @@ async function loadExistingCommercials() {
                     currentUserRole = currentUserData.role;
                     currentUserName = currentUserData.Name;
                     currentUserEspejo = currentUserData.comercial_espejo;
-                    console.log('👤 Usuario actual:', {
+                    console.log('ðŸ‘¤ Usuario actual:', {
                         nombre: currentUserName,
                         rol: currentUserRole,
                         espejo: currentUserEspejo
@@ -10621,7 +10635,7 @@ async function loadExistingCommercials() {
                 }
             }
         } catch (error) {
-            console.warn('⚠️ Error al obtener usuario actual:', error);
+            console.warn('âš ï¸ Error al obtener usuario actual:', error);
         }
 
         // 2. Si el usuario es comercial, solo mostrar su nombre y el de su espejo
@@ -10646,11 +10660,11 @@ async function loadExistingCommercials() {
                 if (!espejoError && espejoData && espejoData.Name) {
                     comercialesList.push(espejoData.Name);
                 } else {
-                    console.warn('⚠️ El comercial espejo no se encontró en la base de datos:', currentUserEspejo);
+                    console.warn('âš ï¸ El comercial espejo no se encontrÃ³ en la base de datos:', currentUserEspejo);
                 }
             }
             
-            // Ordenar alfabéticamente
+            // Ordenar alfabÃ©ticamente
             comercialesList.sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
             
             // Agregar comerciales al select
@@ -10662,9 +10676,9 @@ async function loadExistingCommercials() {
             });
             
             existingCommercials = comercialesList;
-            console.log('✅ Comerciales cargados (solo usuario y espejo):', comercialesList.length);
-            console.log('📋 Lista de comerciales:', comercialesList);
-            return; // Salir de la función, ya tenemos la lista
+            console.log('âœ… Comerciales cargados (solo usuario y espejo):', comercialesList.length);
+            console.log('ðŸ“‹ Lista de comerciales:', comercialesList);
+            return; // Salir de la funciÃ³n, ya tenemos la lista
         }
 
         // 3. Si el usuario es admin o no tiene rol, mostrar todos los comerciales
@@ -10675,9 +10689,9 @@ async function loadExistingCommercials() {
             .eq('role', 'comercial');
 
         if (comercialesError) {
-            console.error('❌ Error al cargar comerciales:', comercialesError);
+            console.error('âŒ Error al cargar comerciales:', comercialesError);
         } else {
-            console.log('✅ Comerciales encontrados:', comercialesData?.length || 0, comercialesData);
+            console.log('âœ… Comerciales encontrados:', comercialesData?.length || 0, comercialesData);
         }
 
         // 4. Obtener solo a Claudia Cruz si es admin
@@ -10688,9 +10702,9 @@ async function loadExistingCommercials() {
             .ilike('Name', 'Claudia Cruz');
 
         if (claudiaError) {
-            console.error('❌ Error al cargar Claudia Cruz:', claudiaError);
+            console.error('âŒ Error al cargar Claudia Cruz:', claudiaError);
         } else {
-            console.log('✅ Claudia Cruz encontrada:', claudiaData?.length || 0, claudiaData);
+            console.log('âœ… Claudia Cruz encontrada:', claudiaData?.length || 0, claudiaData);
         }
 
         // Combinar los resultados
@@ -10699,14 +10713,14 @@ async function loadExistingCommercials() {
             allUsers = [...comercialesData];
         }
         if (claudiaData && claudiaData.length > 0) {
-            // Verificar que Claudia Cruz no esté ya en la lista
+            // Verificar que Claudia Cruz no estÃ© ya en la lista
             const claudiaExists = allUsers.some(u => u.Name === 'Claudia Cruz');
             if (!claudiaExists) {
                 allUsers = [...allUsers, ...claudiaData];
             }
         }
 
-        console.log('🔍 Datos obtenidos de user_roles:', {
+        console.log('ðŸ” Datos obtenidos de user_roles:', {
             comerciales: comercialesData?.length || 0,
             claudia: claudiaData?.length || 0,
             total: allUsers.length,
@@ -10718,7 +10732,7 @@ async function loadExistingCommercials() {
         
         if (allUsers && allUsers.length > 0) {
             allUsers.forEach(user => {
-                // El campo Name está entre comillas en el esquema, acceder correctamente
+                // El campo Name estÃ¡ entre comillas en el esquema, acceder correctamente
                 const userName = user.Name || user['Name'];
                 
                 // Verificar que tenga nombre
@@ -10737,7 +10751,7 @@ async function loadExistingCommercials() {
             });
         }
 
-        // Ordenar alfabéticamente
+        // Ordenar alfabÃ©ticamente
         comercialesList.sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
 
         // Agregar comerciales al select
@@ -10749,11 +10763,11 @@ async function loadExistingCommercials() {
         });
         
         existingCommercials = comercialesList;
-        console.log('✅ Comerciales cargados desde user_roles:', comercialesList.length);
-        console.log('📋 Lista de comerciales:', comercialesList);
+        console.log('âœ… Comerciales cargados desde user_roles:', comercialesList.length);
+        console.log('ðŸ“‹ Lista de comerciales:', comercialesList);
         
         if (comercialesList.length === 0) {
-            console.warn('⚠️ No se encontraron comerciales. Verifica que haya usuarios con rol "comercial" o "admin" (solo Claudia Cruz) en user_roles.');
+            console.warn('âš ï¸ No se encontraron comerciales. Verifica que haya usuarios con rol "comercial" o "admin" (solo Claudia Cruz) en user_roles.');
         }
     } catch (error) {
         console.error('Error en loadExistingCommercials:', error);
@@ -10828,7 +10842,7 @@ function setupClientAutocomplete() {
         }
     });
 
-    // Manejar teclas de navegación
+    // Manejar teclas de navegaciÃ³n
     newInput.addEventListener('keydown', function(e) {
         const items = suggestionsContainer.querySelectorAll('.autocomplete-item');
         const activeItem = suggestionsContainer.querySelector('.autocomplete-item.active');
@@ -10868,7 +10882,7 @@ function setupClientAutocomplete() {
         }
     });
 
-    // Al salir del campo, rellenar número y tipo de cliente si existe una propuesta con ese nombre
+    // Al salir del campo, rellenar nÃºmero y tipo de cliente si existe una propuesta con ese nombre
     newInput.addEventListener('blur', function() {
         const name = (newInput.value || '').trim();
         if (name.length >= 2) fillClientDataFromPreviousProposal(name);
@@ -10884,7 +10898,7 @@ function highlightMatch(text, query) {
 }
 
 /**
- * Rellenar número de cliente y tipo de cliente desde la última propuesta con ese nombre de cliente
+ * Rellenar nÃºmero de cliente y tipo de cliente desde la Ãºltima propuesta con ese nombre de cliente
  */
 async function fillClientDataFromPreviousProposal(clientName) {
     const name = (clientName || '').trim();
@@ -10922,7 +10936,7 @@ function selectClient(clientName) {
     if (suggestionsContainer) {
         suggestionsContainer.style.display = 'none';
     }
-    // Rellenar número y tipo de cliente desde la última propuesta de ese cliente
+    // Rellenar nÃºmero y tipo de cliente desde la Ãºltima propuesta de ese cliente
     fillClientDataFromPreviousProposal(clientName);
     
     // Enfocar el siguiente campo
@@ -10933,8 +10947,8 @@ function selectClient(clientName) {
 }
 
 /**
- * Configurar barra de cliente en la página (campo cliente mientras se crea la propuesta)
- * y mostrar/ocultar botón "Productos orçamentados anteriormente" cuando el cliente existe.
+ * Configurar barra de cliente en la pÃ¡gina (campo cliente mientras se crea la propuesta)
+ * y mostrar/ocultar botÃ³n "Productos orÃ§amentados anteriormente" cuando el cliente existe.
  */
 function setupProposalClientBar() {
     const input = document.getElementById('proposalClientNameInput');
@@ -10990,7 +11004,7 @@ function setupProposalClientBar() {
 }
 
 /**
- * Seleccionar cliente desde la barra de la página (mientras se crea la propuesta)
+ * Seleccionar cliente desde la barra de la pÃ¡gina (mientras se crea la propuesta)
  */
 function selectClientFromProposalBar(clientName) {
     const input = document.getElementById('proposalClientNameInput');
@@ -11051,18 +11065,18 @@ function selectCommercial(commercialName) {
 }
 
 /**
- * Generar código identificador de propuesta
- * Formato: DDHHIIAAYY (Día, Hora, Iniciales Comercial, Iniciales Cliente, Año)
+ * Generar cÃ³digo identificador de propuesta
+ * Formato: DDHHIIAAYY (DÃ­a, Hora, Iniciales Comercial, Iniciales Cliente, AÃ±o)
  */
 async function generateProposalCode(proposalDate, commercialName, clientName) {
     // Obtener fecha actual
     const now = new Date(proposalDate || new Date());
-    const day = String(now.getDate()).padStart(2, '0'); // Día (2 dígitos)
-    const month = String(now.getMonth() + 1).padStart(2, '0'); // Mes (2 dígitos, +1 porque getMonth() es 0-11)
-    const year = String(now.getFullYear()).slice(-2); // Últimos 2 dígitos del año
+    const day = String(now.getDate()).padStart(2, '0'); // DÃ­a (2 dÃ­gitos)
+    const month = String(now.getMonth() + 1).padStart(2, '0'); // Mes (2 dÃ­gitos, +1 porque getMonth() es 0-11)
+    const year = String(now.getFullYear()).slice(-2); // Ãšltimos 2 dÃ­gitos del aÃ±o
     
-    // Extraer iniciales del comercial (máximo 2 letras)
-    // Ej: "María Fernanda López" → "MF"
+    // Extraer iniciales del comercial (mÃ¡ximo 2 letras)
+    // Ej: "MarÃ­a Fernanda LÃ³pez" â†’ "MF"
     let commercialInitials = '';
     if (commercialName) {
         const words = commercialName.trim().split(/\s+/).filter(w => w.length > 0);
@@ -11074,10 +11088,10 @@ async function generateProposalCode(proposalDate, commercialName, clientName) {
             commercialInitials = words[0].substring(0, 2).toUpperCase();
         }
     }
-    // Asegurar máximo 2 caracteres
+    // Asegurar mÃ¡ximo 2 caracteres
     commercialInitials = commercialInitials.substring(0, 2);
     
-    // Obtener número de propuesta del comercial (contar propuestas existentes + 1)
+    // Obtener nÃºmero de propuesta del comercial (contar propuestas existentes + 1)
     let proposalNumber = '01'; // Por defecto, primera propuesta
     if (commercialName && window.cartManager && window.cartManager.supabase) {
         try {
@@ -11089,7 +11103,7 @@ async function generateProposalCode(proposalDate, commercialName, clientName) {
             if (!error && proposals) {
                 // Contar propuestas existentes y sumar 1 para la nueva
                 const proposalCount = proposals.length + 1;
-                proposalNumber = String(proposalCount).padStart(2, '0'); // Asegurar 2 dígitos
+                proposalNumber = String(proposalCount).padStart(2, '0'); // Asegurar 2 dÃ­gitos
             }
         } catch (error) {
             console.error('Error al contar propuestas del comercial:', error);
@@ -11098,10 +11112,10 @@ async function generateProposalCode(proposalDate, commercialName, clientName) {
     }
     
     // Concatenar todo sin separadores
-    // Formato: Día + Mes + Iniciales Comercial + Número Propuesta + Año
+    // Formato: DÃ­a + Mes + Iniciales Comercial + NÃºmero Propuesta + AÃ±o
     const code = day + month + commercialInitials + proposalNumber + year;
     
-    console.log('🔢 Código de propuesta generado:', {
+    console.log('ðŸ”¢ CÃ³digo de propuesta generado:', {
         day,
         month,
         commercialName,
@@ -11123,12 +11137,12 @@ async function sendProposalToSupabase() {
         return;
     }
 
-    // Validar que el carrito no esté vacío
+    // Validar que el carrito no estÃ© vacÃ­o
     if (window.cartManager.cart.length === 0) {
         const message = window.cartManager.currentLanguage === 'es' ? 
-            'El presupuesto está vacío' : 
+            'El presupuesto estÃ¡ vacÃ­o' : 
             window.cartManager.currentLanguage === 'pt' ?
-            'O orçamento está vazio' :
+            'O orÃ§amento estÃ¡ vazio' :
             'The budget is empty';
         window.cartManager.showNotification(message, 'error');
         return;
@@ -11140,16 +11154,16 @@ async function sendProposalToSupabase() {
     let clientName, commercialName, proposalDate, proposalCountry, clientNumber, reposicaoValue;
 
     if (isEditing) {
-        // Si se está editando, usar los datos existentes de la propuesta
+        // Si se estÃ¡ editando, usar los datos existentes de la propuesta
         clientName = window.cartManager.editingProposalData?.nombre_cliente || '';
         commercialName = window.cartManager.editingProposalData?.nombre_comercial || '';
         proposalDate = window.cartManager.editingProposalData?.fecha_inicial || '';
         clientNumber = window.cartManager.editingProposalData?.numero_cliente || '0';
         reposicaoValue = window.cartManager.editingProposalData?.reposicao === true ? 'true' : 'false';
-        // Para ediciones, obtener el país desde el campo pais de la propuesta o usar el idioma actual
-        // Para ediciones, obtener el país desde el campo pais de la propuesta
+        // Para ediciones, obtener el paÃ­s desde el campo pais de la propuesta o usar el idioma actual
+        // Para ediciones, obtener el paÃ­s desde el campo pais de la propuesta
         const paisFromData = window.cartManager.editingProposalData?.pais;
-        if (paisFromData === 'España') {
+        if (paisFromData === 'EspaÃ±a') {
             proposalCountry = 'es';
         } else if (paisFromData === 'Portugal') {
             proposalCountry = 'pt';
@@ -11166,7 +11180,7 @@ async function sendProposalToSupabase() {
         const clientNumberInput = document.getElementById('clientNumberInput');
         clientNumber = clientNumberInput ? clientNumberInput.value.trim() : '';
         
-        // Si el número de cliente está vacío, usar "0" (cliente no creado)
+        // Si el nÃºmero de cliente estÃ¡ vacÃ­o, usar "0" (cliente no creado)
         if (!clientNumber) {
             clientNumber = '0';
         }
@@ -11179,14 +11193,14 @@ async function sendProposalToSupabase() {
             const message = window.cartManager.currentLanguage === 'es' ? 
                 'Por favor completa todos los campos obligatorios' : 
                 window.cartManager.currentLanguage === 'pt' ?
-                'Por favor preencha todos os campos obrigatórios' :
+                'Por favor preencha todos os campos obrigatÃ³rios' :
                 'Please fill in all required fields';
             window.cartManager.showNotification(message, 'error');
             return;
         }
     }
 
-    // Verificar que Supabase esté inicializado
+    // Verificar que Supabase estÃ© inicializado
     if (!window.cartManager.supabase) {
         await window.cartManager.initializeSupabase();
         if (!window.cartManager.supabase) {
@@ -11217,18 +11231,18 @@ async function sendProposalToSupabase() {
                     
                     if (!roleError && userRoleData && userRoleData.Name) {
                         responsableName = userRoleData.Name;
-                        console.log('✅ Nombre del responsable obtenido desde user_roles:', responsableName);
+                        console.log('âœ… Nombre del responsable obtenido desde user_roles:', responsableName);
                     } else {
-                        console.warn('⚠️ No se encontró nombre en user_roles para el responsable');
+                        console.warn('âš ï¸ No se encontrÃ³ nombre en user_roles para el responsable');
                     }
                 }
             } catch (error) {
-                console.warn('⚠️ Error al obtener nombre del responsable:', error);
+                console.warn('âš ï¸ Error al obtener nombre del responsable:', error);
             }
             
-            // Cuando se edita, solo actualizar los artículos
+            // Cuando se edita, solo actualizar los artÃ­culos
             // Los datos del cliente, comercial y fecha se mantienen iguales
-            // La fecha de última modificación se actualiza automáticamente por el trigger de la base de datos
+            // La fecha de Ãºltima modificaciÃ³n se actualiza automÃ¡ticamente por el trigger de la base de datos
             
             presupuesto = {
                 id: window.cartManager.editingProposalId,
@@ -11246,50 +11260,50 @@ async function sendProposalToSupabase() {
                     .eq('id', window.cartManager.editingProposalId);
                 
                 if (updateResponsavelError) {
-                    console.warn('⚠️ Error al actualizar responsavel:', updateResponsavelError);
+                    console.warn('âš ï¸ Error al actualizar responsavel:', updateResponsavelError);
                 } else {
-                    console.log('✅ Campo responsavel actualizado en la propuesta:', responsableName);
+                    console.log('âœ… Campo responsavel actualizado en la propuesta:', responsableName);
                 }
             }
 
 
-            // Obtener artículos originales antes de eliminarlos para comparar
+            // Obtener artÃ­culos originales antes de eliminarlos para comparar
             const { data: articulosOriginales, error: fetchError } = await window.cartManager.supabase
                 .from('presupuestos_articulos')
                 .select('*')
                 .eq('presupuesto_id', window.cartManager.editingProposalId);
 
             if (fetchError) {
-                console.warn('⚠️ Error al obtener artículos originales:', fetchError);
+                console.warn('âš ï¸ Error al obtener artÃ­culos originales:', fetchError);
             }
 
-            // Eliminar artículos existentes
+            // Eliminar artÃ­culos existentes
             const { error: deleteError } = await window.cartManager.supabase
                 .from('presupuestos_articulos')
                 .delete()
                 .eq('presupuesto_id', window.cartManager.editingProposalId);
 
             if (deleteError) {
-                console.warn('⚠️ Error al eliminar artículos antiguos:', deleteError);
+                console.warn('âš ï¸ Error al eliminar artÃ­culos antiguos:', deleteError);
                 throw deleteError;
             }
 
-            // Preparar artículos nuevos del carrito para comparación
-            // NOTA: Los precios ya están actualizados en item.price (con modo 200+ si está activo)
-            // porque renderCartItem ya los aplicó. Solo necesitamos usar item.price directamente.
+            // Preparar artÃ­culos nuevos del carrito para comparaciÃ³n
+            // NOTA: Los precios ya estÃ¡n actualizados en item.price (con modo 200+ si estÃ¡ activo)
+            // porque renderCartItem ya los aplicÃ³. Solo necesitamos usar item.price directamente.
             const articulosNuevos = [];
             for (const item of window.cartManager.cart) {
                 if (item.type === 'product' || item.type === 'special') {
                     const nombreArticulo = item.name || item.nombre || '';
                     const referenciaArticulo = item.referencia || item.id || '';
                     const cantidad = item.quantity || 1;
-                    // Usar el precio actual del item (ya incluye modo 200+ si está activo o precio manual para Laser Build)
+                    // Usar el precio actual del item (ya incluye modo 200+ si estÃ¡ activo o precio manual para Laser Build)
                     // Si tiene precio manual, asegurarse de usar ese precio
                     const precio = (item.manualPrice && item.price !== undefined && item.price !== null) 
                         ? Number(item.price) 
                         : Number(item.price) || 0;
                     const observaciones = (item.observations || item.observations_text || '').trim();
-                    // Normalizar tipo de personalización: obtener valor y limpiar
+                    // Normalizar tipo de personalizaciÃ³n: obtener valor y limpiar
                     const tipoPersonalizacionRaw = item.personalization || item.tipo_personalizacion || '';
                     const tipoPersonalizacion = tipoPersonalizacionRaw ? String(tipoPersonalizacionRaw).trim() : '';
 
@@ -11307,7 +11321,7 @@ async function sendProposalToSupabase() {
                         }
                     }
 
-                    console.log(`💾 Preparando artículo para edición: ${nombreArticulo}, Cantidad: ${cantidad}, Precio: ${precio}, Color: ${colorSeleccionado || 'N/A'} (modo 200+: ${window.cartManager?.modo200 || false})`);
+                    console.log(`ðŸ’¾ Preparando artÃ­culo para ediciÃ³n: ${nombreArticulo}, Cantidad: ${cantidad}, Precio: ${precio}, Color: ${colorSeleccionado || 'N/A'} (modo 200+: ${window.cartManager?.modo200 || false})`);
 
                     articulosNuevos.push({
                         nombre_articulo: nombreArticulo,
@@ -11328,11 +11342,11 @@ async function sendProposalToSupabase() {
                 articulosNuevos
             );
 
-            console.log('🔍 Cambios detectados:', cambios.length, cambios);
+            console.log('ðŸ” Cambios detectados:', cambios.length, cambios);
 
-            // Si hay cambios, preguntar si quiere crear una nueva versión
+            // Si hay cambios, preguntar si quiere crear una nueva versiÃ³n
             if (cambios.length > 0) {
-                // Obtener la versión actual de la propuesta
+                // Obtener la versiÃ³n actual de la propuesta
                 const { data: proposalData, error: proposalFetchError } = await window.cartManager.supabase
                 .from('presupuestos')
                     .select('version')
@@ -11342,47 +11356,47 @@ async function sendProposalToSupabase() {
                 const currentVersion = proposalData?.version || 1;
                 const newVersion = currentVersion + 1;
 
-                // Mostrar modal de confirmación de versión
-                console.log('📋 Mostrando modal de versión...');
+                // Mostrar modal de confirmaciÃ³n de versiÃ³n
+                console.log('ðŸ“‹ Mostrando modal de versiÃ³n...');
                 const createNewVersion = await showVersionModal(currentVersion, newVersion, cambios.length);
-                console.log('📋 Respuesta del modal de versión:', createNewVersion);
+                console.log('ðŸ“‹ Respuesta del modal de versiÃ³n:', createNewVersion);
                 
-                // Si el usuario canceló el modal, no guardar
+                // Si el usuario cancelÃ³ el modal, no guardar
                 if (createNewVersion === null) {
-                    console.log('❌ Usuario canceló el modal, no se guardará');
-                    return; // Usuario cerró el modal sin decidir
+                    console.log('âŒ Usuario cancelÃ³ el modal, no se guardarÃ¡');
+                    return; // Usuario cerrÃ³ el modal sin decidir
                 }
 
-                // Preparar datos de actualización
+                // Preparar datos de actualizaciÃ³n
                 const updateData = {
                     numero_cliente: clientNumber || '0',
                     modo_200_plus: window.cartManager?.modo200 || false
                 };
 
-                // Si el usuario confirmó, incrementar la versión
+                // Si el usuario confirmÃ³, incrementar la versiÃ³n
                 if (createNewVersion) {
                     updateData.version = newVersion;
-                    console.log(`✅ Creando nueva versión: V${newVersion}`);
+                    console.log(`âœ… Creando nueva versiÃ³n: V${newVersion}`);
                 } else {
-                    console.log(`ℹ️ Manteniendo versión actual: V${currentVersion}`);
+                    console.log(`â„¹ï¸ Manteniendo versiÃ³n actual: V${currentVersion}`);
                 }
 
                 // Actualizar el presupuesto
-                console.log('💾 Actualizando propuesta en base de datos...');
+                console.log('ðŸ’¾ Actualizando propuesta en base de datos...');
                 const { error: updateError } = await window.cartManager.supabase
                     .from('presupuestos')
                     .update(updateData)
                 .eq('id', window.cartManager.editingProposalId);
 
             if (updateError) {
-                    console.warn('⚠️ Error al actualizar propuesta:', updateError);
+                    console.warn('âš ï¸ Error al actualizar propuesta:', updateError);
                     throw updateError; // Lanzar error para que se maneje en el catch
                 } else {
-                    console.log('✅ Propuesta actualizada correctamente');
+                    console.log('âœ… Propuesta actualizada correctamente');
             }
 
             // Registrar las ediciones en historial_modificaciones
-                // Obtener el nombre del usuario actual (el que está haciendo la modificación)
+                // Obtener el nombre del usuario actual (el que estÃ¡ haciendo la modificaciÃ³n)
                 let currentUserName = null;
                 try {
                     const user = await window.authManager?.getCurrentUser();
@@ -11398,27 +11412,27 @@ async function sendProposalToSupabase() {
                         }
                     }
                 } catch (error) {
-                    console.warn('⚠️ Error al obtener nombre del usuario:', error);
+                    console.warn('âš ï¸ Error al obtener nombre del usuario:', error);
                 }
 
-                console.log('📝 Registrando ediciones en historial...');
+                console.log('ðŸ“ Registrando ediciones en historial...');
                 try {
                 await window.cartManager.registrarEdicionesPropuesta(
                     window.cartManager.editingProposalId,
                     cambios,
                         currentUserName // Pasar el nombre del usuario actual, no el comercial de la propuesta
                     );
-                    console.log('✅ Ediciones registradas correctamente');
+                    console.log('âœ… Ediciones registradas correctamente');
                 } catch (error) {
-                    console.error('❌ Error al registrar ediciones:', error);
-                    // Continuar de todas formas para insertar los artículos
+                    console.error('âŒ Error al registrar ediciones:', error);
+                    // Continuar de todas formas para insertar los artÃ­culos
                 }
                 
-                // Los artículos ya fueron eliminados arriba (línea 8995)
-                // Continuar con la inserción de artículos más abajo en el código
-                console.log('➡️ Continuando con la inserción de artículos...');
+                // Los artÃ­culos ya fueron eliminados arriba (lÃ­nea 8995)
+                // Continuar con la inserciÃ³n de artÃ­culos mÃ¡s abajo en el cÃ³digo
+                console.log('âž¡ï¸ Continuando con la inserciÃ³n de artÃ­culos...');
             } else {
-                // Si no hay cambios, solo actualizar número de cliente y modo 200+ si cambió
+                // Si no hay cambios, solo actualizar nÃºmero de cliente y modo 200+ si cambiÃ³
                 const { error: updateError } = await window.cartManager.supabase
                     .from('presupuestos')
                     .update({ 
@@ -11428,33 +11442,33 @@ async function sendProposalToSupabase() {
                     .eq('id', window.cartManager.editingProposalId);
 
                 if (updateError) {
-                    console.warn('⚠️ Error al actualizar número de cliente:', updateError);
+                    console.warn('âš ï¸ Error al actualizar nÃºmero de cliente:', updateError);
             }
                 
-                // Aunque no haya cambios detectados, los artículos pueden haber cambiado
-                // Eliminar artículos antiguos e insertar los nuevos del carrito
-                console.log('🔄 No hay cambios detectados, pero actualizando artículos del carrito...');
+                // Aunque no haya cambios detectados, los artÃ­culos pueden haber cambiado
+                // Eliminar artÃ­culos antiguos e insertar los nuevos del carrito
+                console.log('ðŸ”„ No hay cambios detectados, pero actualizando artÃ­culos del carrito...');
                 const { error: deleteError } = await window.cartManager.supabase
                     .from('presupuestos_articulos')
                     .delete()
                     .eq('presupuesto_id', window.cartManager.editingProposalId);
 
                 if (deleteError) {
-                    console.warn('⚠️ Error al eliminar artículos antiguos:', deleteError);
+                    console.warn('âš ï¸ Error al eliminar artÃ­culos antiguos:', deleteError);
                 } else {
-                    console.log('✅ Artículos antiguos eliminados');
+                    console.log('âœ… ArtÃ­culos antiguos eliminados');
                 }
             }
             
-            // Establecer presupuesto para que el código de inserción de artículos funcione
+            // Establecer presupuesto para que el cÃ³digo de inserciÃ³n de artÃ­culos funcione
             presupuesto = { id: window.cartManager.editingProposalId };
-            console.log('📋 Presupuesto establecido para inserción de artículos:', presupuesto.id);
+            console.log('ðŸ“‹ Presupuesto establecido para inserciÃ³n de artÃ­culos:', presupuesto.id);
         } else {
             // Crear nueva propuesta
             // Todas las propuestas se registran como "propuesta en curso"
             const estadoInicial = 'propuesta_en_curso';
             
-            console.log('📋 Estado inicial de la propuesta:', estadoInicial);
+            console.log('ðŸ“‹ Estado inicial de la propuesta:', estadoInicial);
             
             // Obtener el nombre del usuario autenticado desde user_roles para el campo responsavel
             let responsableName = null;
@@ -11469,20 +11483,20 @@ async function sendProposalToSupabase() {
                     
                     if (!roleError && userRoleData && userRoleData.Name) {
                         responsableName = userRoleData.Name;
-                        console.log('✅ Nombre del responsable obtenido desde user_roles:', responsableName);
+                        console.log('âœ… Nombre del responsable obtenido desde user_roles:', responsableName);
                     } else {
-                        console.warn('⚠️ No se encontró nombre en user_roles para el responsable');
+                        console.warn('âš ï¸ No se encontrÃ³ nombre en user_roles para el responsable');
                     }
                 }
             } catch (error) {
-                console.warn('⚠️ Error al obtener nombre del responsable:', error);
+                console.warn('âš ï¸ Error al obtener nombre del responsable:', error);
             }
             
-            // Generar código identificador de la propuesta (usar commercialName para el código)
+            // Generar cÃ³digo identificador de la propuesta (usar commercialName para el cÃ³digo)
             const codigoPropuesta = await generateProposalCode(proposalDate, commercialName, clientName);
             
-            // Determinar país completo según selección
-            const paisCompleto = proposalCountry === 'es' ? 'España' : 'Portugal';
+            // Determinar paÃ­s completo segÃºn selecciÃ³n
+            const paisCompleto = proposalCountry === 'es' ? 'EspaÃ±a' : 'Portugal';
             
             const reposicao = reposicaoValue === 'true';
             const tipoClienteEl = document.getElementById('tipoClienteInput');
@@ -11499,8 +11513,8 @@ async function sendProposalToSupabase() {
                 tipo_cliente: tipoCliente,
                 modo_200_plus: window.cartManager?.modo200 || false,
                 responsavel: responsableName, // Guardar el nombre del usuario autenticado en responsavel
-                version: 1, // Inicializar con versión 1
-                reposicao: reposicao // Obligatorio: indica si el presupuesto es una reposición
+                version: 1, // Inicializar con versiÃ³n 1
+                reposicao: reposicao // Obligatorio: indica si el presupuesto es una reposiciÃ³n
             };
 
 
@@ -11515,19 +11529,19 @@ async function sendProposalToSupabase() {
             }
 
             presupuesto = newPresupuesto;
-            console.log('✅ Presupuesto guardado:', presupuesto);
+            console.log('âœ… Presupuesto guardado:', presupuesto);
         }
 
-        // Preparar artículos del presupuesto
-        console.log('📦 Preparando artículos del carrito para guardar...');
-        console.log('📦 Carrito actual:', window.cartManager.cart.length, 'items');
+        // Preparar artÃ­culos del presupuesto
+        console.log('ðŸ“¦ Preparando artÃ­culos del carrito para guardar...');
+        console.log('ðŸ“¦ Carrito actual:', window.cartManager.cart.length, 'items');
         const articulos = [];
         const cart = window.cartManager.cart;
 
         for (const item of cart) {
             // Solo procesar productos y pedidos especiales
             if (item.type === 'product' || item.type === 'special') {
-                // Módulo vacío (Nuevo módulo): registrar como producto en la tabla products, igual que el antiguo pedido especial
+                // MÃ³dulo vacÃ­o (Nuevo mÃ³dulo): registrar como producto en la tabla products, igual que el antiguo pedido especial
                 if (item.isEmptyModule) {
                     let priceForProduct = Number(item.price) || 0;
                     if (window.cartManager && window.cartManager.supabase) {
@@ -11547,7 +11561,7 @@ async function sendProposalToSupabase() {
                         } catch (_) {}
                     }
                     const productPayload = {
-                        nombre: (item.name || '').trim() || 'Produto módulo',
+                        nombre: (item.name || '').trim() || 'Produto mÃ³dulo',
                         descripcion_es: item.description || null,
                         descripcion_pt: item.description || null,
                         precio: priceForProduct,
@@ -11565,20 +11579,20 @@ async function sendProposalToSupabase() {
                         .select()
                         .single();
                     if (productError) {
-                        console.error('Error creando producto desde módulo:', productError);
+                        console.error('Error creando producto desde mÃ³dulo:', productError);
                         throw productError;
                     }
                     item.id = newProduct.id;
                     item.referencia = newProduct.id;
-                    console.log('✅ Producto creado desde módulo en tabla products:', newProduct.id);
+                    console.log('âœ… Producto creado desde mÃ³dulo en tabla products:', newProduct.id);
                 }
 
-                // Para productos, recalcular el precio según la cantidad actual antes de guardar
+                // Para productos, recalcular el precio segÃºn la cantidad actual antes de guardar
                 if (item.type === 'product') {
                     // Verificar si el precio fue editado manualmente (para Laser Build)
                     if (item.manualPrice && item.price !== undefined && item.price !== null) {
                         // Mantener el precio manual sin recalcular
-                        console.log(`💾 sendProposalToSupabase - Precio manual mantenido para ${item.name}: €${item.price.toFixed(4)}`);
+                        console.log(`ðŸ’¾ sendProposalToSupabase - Precio manual mantenido para ${item.name}: â‚¬${item.price.toFixed(4)}`);
                     } else {
                         // Asegurar que tenemos los price_tiers
                         if (!item.price_tiers || item.price_tiers.length === 0) {
@@ -11593,12 +11607,12 @@ async function sendProposalToSupabase() {
                             }
                         }
                         
-                        // Verificar si el modo 200+ está activo y este producto debe mantener el precio máximo
+                        // Verificar si el modo 200+ estÃ¡ activo y este producto debe mantener el precio mÃ¡ximo
                         const modo200Activo = window.cartManager?.modo200 || false;
                         let debeMantenerPrecioMaximo = false;
                         
                         if (modo200Activo) {
-                            // Buscar el producto en la base de datos para verificar área de negocio y marca
+                            // Buscar el producto en la base de datos para verificar Ã¡rea de negocio y marca
                             const productFromDB = window.cartManager.allProducts.find(p => {
                                 return String(p.id) === String(item.id) || p.id === item.id;
                             });
@@ -11609,17 +11623,17 @@ async function sendProposalToSupabase() {
                                 const marca = productFromDB.marca || productFromDB.brand || '';
                                 const marcaUpper = marca.toUpperCase().trim();
                                 
-                                // Solo mantener precio máximo si es equipamiento y no está excluido
+                                // Solo mantener precio mÃ¡ximo si es equipamiento y no estÃ¡ excluido
                                 if (areaNegocioLower === 'equipamiento' && 
                                     marcaUpper !== 'VACAVALIENTE' && 
                                     marcaUpper !== 'LASER BUILD') {
                                     debeMantenerPrecioMaximo = true;
-                                    console.log(`💾 sendProposalToSupabase - Modo 200+ activo: Manteniendo precio máximo para ${item.name}`);
+                                    console.log(`ðŸ’¾ sendProposalToSupabase - Modo 200+ activo: Manteniendo precio mÃ¡ximo para ${item.name}`);
                                 }
                             }
                         }
                         
-                        // Determinar qué price_tiers usar: variante seleccionada o base
+                        // Determinar quÃ© price_tiers usar: variante seleccionada o base
                         let priceTiersToUse = item.price_tiers || [];
                         if (item.selectedVariant !== null && item.selectedVariant !== undefined && item.variants && item.variants.length > 0) {
                             const selectedVariant = item.variants[item.selectedVariant];
@@ -11628,10 +11642,10 @@ async function sendProposalToSupabase() {
                             }
                         }
                         
-                        // Recalcular precio según escalones con la cantidad actual (a menos que el modo 200+ esté activo)
+                        // Recalcular precio segÃºn escalones con la cantidad actual (a menos que el modo 200+ estÃ© activo)
                         if (priceTiersToUse && Array.isArray(priceTiersToUse) && priceTiersToUse.length > 0) {
                             if (debeMantenerPrecioMaximo) {
-                                // Si el modo 200+ está activo, usar el precio del escalón máximo
+                                // Si el modo 200+ estÃ¡ activo, usar el precio del escalÃ³n mÃ¡ximo
                                 const sortedTiers = [...priceTiersToUse].sort((a, b) => {
                                     const minA = a?.min_qty !== null && a?.min_qty !== undefined ? Number(a.min_qty) : 0;
                                     const minB = b?.min_qty !== null && b?.min_qty !== undefined ? Number(b.min_qty) : 0;
@@ -11643,15 +11657,15 @@ async function sendProposalToSupabase() {
                                 
                                 if (maxPrice !== null && Number.isFinite(maxPrice)) {
                                     item.price = maxPrice;
-                                    console.log(`✅ sendProposalToSupabase - Precio máximo aplicado (modo 200+): €${maxPrice} para ${item.name}`);
+                                    console.log(`âœ… sendProposalToSupabase - Precio mÃ¡ximo aplicado (modo 200+): â‚¬${maxPrice} para ${item.name}`);
                                 } else {
-                                    // Si no se puede obtener precio máximo, recalcular normalmente
+                                    // Si no se puede obtener precio mÃ¡ximo, recalcular normalmente
                                     const basePriceForCalc = item.basePrice !== undefined && item.basePrice !== null ? item.basePrice : (item.price || 0);
                                     const priceResult = window.cartManager.getPriceForQuantity(priceTiersToUse, item.quantity, basePriceForCalc);
                                     item.price = priceResult.price;
                                 }
                             } else {
-                                // Comportamiento normal: recalcular según cantidad
+                                // Comportamiento normal: recalcular segÃºn cantidad
                                 const basePriceForCalc = item.basePrice !== undefined && item.basePrice !== null ? item.basePrice : (item.price || 0);
                                 const priceResult = window.cartManager.getPriceForQuantity(priceTiersToUse, item.quantity, basePriceForCalc);
                                 item.price = priceResult.price;
@@ -11673,11 +11687,11 @@ async function sendProposalToSupabase() {
                         const selectedVariant = item.variants[item.selectedVariant];
                         tipoPersonalizacion = selectedVariant?.name || 'Personalizado';
                     } else {
-                        // Sin personalización
+                        // Sin personalizaciÃ³n
                         tipoPersonalizacion = window.cartManager.currentLanguage === 'es' ? 
-                            'Sin personalización' : 
+                            'Sin personalizaciÃ³n' : 
                             window.cartManager.currentLanguage === 'pt' ?
-                            'Sem personalização' :
+                            'Sem personalizaÃ§Ã£o' :
                             'No customization';
                     }
                 } else if (item.type === 'special') {
@@ -11690,12 +11704,12 @@ async function sendProposalToSupabase() {
                 const nombreArticulo = item.name || '';
                 const referenciaArticulo = item.referencia || item.id || '';
                 const cantidad = item.quantity || 1;
-                const precio = Number(item.price) || 0; // Asegurar que sea número
+                const precio = Number(item.price) || 0; // Asegurar que sea nÃºmero
                 let observaciones = item.observations || item.observations_text || '';
                 // No incluir Peso ni Qtd/caixa en observaciones: no deben aparecer en la propuesta impresa (PDF)
                 const plazoEntrega = item.plazoEntrega || item.plazo_entrega || null;
 
-                console.log(`📦 Guardando artículo: ${nombreArticulo}, Cantidad: ${cantidad}, Precio: ${precio}`);
+                console.log(`ðŸ“¦ Guardando artÃ­culo: ${nombreArticulo}, Cantidad: ${cantidad}, Precio: ${precio}`);
 
                 // Obtener variante de referencia seleccionada (color)
                 const varianteReferencia = (item.selectedReferenceVariant !== null && item.selectedReferenceVariant !== undefined) 
@@ -11711,7 +11725,7 @@ async function sendProposalToSupabase() {
                     }
                 }
 
-                console.log(`📦 Guardando artículo: ${nombreArticulo}, Cantidad: ${cantidad}, Precio: ${precio}, Color: ${colorSeleccionado || 'N/A'}`);
+                console.log(`ðŸ“¦ Guardando artÃ­culo: ${nombreArticulo}, Cantidad: ${cantidad}, Precio: ${precio}, Color: ${colorSeleccionado || 'N/A'}`);
 
                 // Obtener el orden del item (para mantener el orden de drag and drop)
                 const orden = item.order !== undefined && item.order !== null ? item.order : index;
@@ -11734,36 +11748,36 @@ async function sendProposalToSupabase() {
             }
         }
 
-        console.log('📦 Artículos a guardar:', articulos.length, articulos);
+        console.log('ðŸ“¦ ArtÃ­culos a guardar:', articulos.length, articulos);
 
-        // Insertar artículos
+        // Insertar artÃ­culos
         let articulosData = null;
         if (articulos.length > 0) {
-            console.log('💾 Insertando artículos en base de datos...');
+            console.log('ðŸ’¾ Insertando artÃ­culos en base de datos...');
             const { data: insertedArticulos, error: articulosError } = await window.cartManager.supabase
                 .from('presupuestos_articulos')
                 .insert(articulos)
                 .select();
 
             if (articulosError) {
-                console.error('❌ Error al insertar artículos:', articulosError);
+                console.error('âŒ Error al insertar artÃ­culos:', articulosError);
                 throw articulosError;
             }
 
             articulosData = insertedArticulos;
-            console.log('✅ Artículos guardados correctamente:', articulosData?.length || 0, 'artículos');
+            console.log('âœ… ArtÃ­culos guardados correctamente:', articulosData?.length || 0, 'artÃ­culos');
         } else {
-            console.warn('⚠️ No hay artículos para guardar');
+            console.warn('âš ï¸ No hay artÃ­culos para guardar');
         }
 
-        // Webhook n8n: cuando la propuesta incluye producto especial o producto añadido manualmente (solo perfiles comerciales; quien editó = usuario actual)
+        // Webhook n8n: cuando la propuesta incluye producto especial o producto aÃ±adido manualmente (solo perfiles comerciales; quien editÃ³ = usuario actual)
         const specialOrManualItems = (cart || []).filter(it => it.type === 'special' || it.isEmptyModule === true);
         if (specialOrManualItems.length > 0 && presupuesto) {
             try {
                 const role = window.cachedRole || await window.getUserRole?.();
                 if ((role || '').toString().toLowerCase() === 'comercial') {
                     const quienEdito = await window.cartManager.getCurrentUserName();
-                    // Dados dos produtos especiais em português de Portugal para o webhook
+                    // Dados dos produtos especiais em portuguÃªs de Portugal para o webhook
                     const artigosEspeciais = specialOrManualItems.map(it => ({
                         nome: (it.name || '').trim() || 'Produto especial',
                         descricao: it.description || null,
@@ -11796,7 +11810,7 @@ async function sendProposalToSupabase() {
             } catch (e) { console.warn('Webhook producto especial:', e); }
         }
 
-        // Webhook pedido_artigo_laserbuild: solo cuando un comercial guarda una propuesta con artículos a precio "sobre consulta" (precio 0) DEL FORNECEDOR LASER BUILD
+        // Webhook pedido_artigo_laserbuild: solo cuando un comercial guarda una propuesta con artÃ­culos a precio "sobre consulta" (precio 0) DEL FORNECEDOR LASER BUILD
         const cartForWebhook = window.cartManager.cart || [];
         const articulosLaserBuildSobreConsulta = cartForWebhook
             .filter(it => it.type === 'product' && (Number(it.price) === 0 || Number(it.basePrice) === 0))
@@ -11851,7 +11865,7 @@ async function sendProposalToSupabase() {
             } catch (e) { console.warn('Webhook pedido artigo Laserbuild:', e); }
         }
 
-        // Si se editó una propuesta existente (se alteraron artículos), pasar de "Propuesta Enviada" a "Propuesta en Edición"
+        // Si se editÃ³ una propuesta existente (se alteraron artÃ­culos), pasar de "Propuesta Enviada" a "Propuesta en EdiciÃ³n"
         if (window.cartManager.editingProposalId && window.cartManager.supabase) {
             try {
                 const { data: presupuesto, error: fetchErr } = await window.cartManager.supabase
@@ -11870,7 +11884,7 @@ async function sendProposalToSupabase() {
                                 fecha_ultima_actualizacion: new Date().toISOString()
                             })
                             .eq('id', window.cartManager.editingProposalId);
-                        console.log('✅ Estado pasado a Propuesta en Edición por edición del presupuesto');
+                        console.log('âœ… Estado pasado a Propuesta en EdiciÃ³n por ediciÃ³n del presupuesto');
                     }
                 }
             } catch (e) {
@@ -11878,41 +11892,41 @@ async function sendProposalToSupabase() {
             }
         }
         
-        // Renombrar logotipos temporales con el nombre del cliente después de guardar
+        // Renombrar logotipos temporales con el nombre del cliente despuÃ©s de guardar
         if (clientName && articulosData && articulosData.length > 0) {
             await renameTemporaryLogos(clientName, articulosData);
         }
 
-        // Cerrar modal solo si se abrió (no cuando se está editando)
+        // Cerrar modal solo si se abriÃ³ (no cuando se estÃ¡ editando)
         if (!isEditing) {
             closeSendProposalModal();
         }
 
-        // Limpiar datos de edición
+        // Limpiar datos de ediciÃ³n
         if (window.cartManager.editingProposalId) {
             localStorage.removeItem('editing_proposal');
             window.cartManager.editingProposalId = null;
             window.cartManager.editingProposalData = null;
             
-            // Remover indicador de edición superior
+            // Remover indicador de ediciÃ³n superior
             const indicator = document.getElementById('editing-proposal-indicator');
             if (indicator) {
                 indicator.remove();
             }
 
-            // Ocultar información en la barra del carrito
+            // Ocultar informaciÃ³n en la barra del carrito
             const infoContainer = document.getElementById('editing-proposal-info');
             if (infoContainer) {
                 infoContainer.style.display = 'none';
             }
 
-            // Mostrar nuevamente el botón de crear propuesta
+            // Mostrar nuevamente el botÃ³n de crear propuesta
             const generateProposalBtn = document.getElementById('generateProposalBtn');
             if (generateProposalBtn) {
                 generateProposalBtn.style.display = 'block';
             }
 
-            // Restaurar texto del botón de enviar propuesta
+            // Restaurar texto del botÃ³n de enviar propuesta
             const sendProposalText = document.getElementById('send-proposal-text');
             if (sendProposalText) {
                 if (window.cartManager.currentLanguage === 'es') {
@@ -11925,7 +11939,7 @@ async function sendProposalToSupabase() {
             }
         }
 
-        // Mostrar mensaje de éxito
+        // Mostrar mensaje de Ã©xito
         const message = window.cartManager.currentLanguage === 'es' ? 
             (isEditing ? 'Propuesta actualizada correctamente' : 'Propuesta enviada correctamente') : 
             window.cartManager.currentLanguage === 'pt' ?
@@ -11933,10 +11947,10 @@ async function sendProposalToSupabase() {
             (isEditing ? 'Proposal updated successfully' : 'Proposal sent successfully');
         window.cartManager.showNotification(message, 'success');
 
-        // Limpiar el carrito después de enviar/guardar (sin pedir confirmación)
+        // Limpiar el carrito despuÃ©s de enviar/guardar (sin pedir confirmaciÃ³n)
         window.cartManager.clearCart(true);
         
-        // Mostrar mensaje de éxito
+        // Mostrar mensaje de Ã©xito
         const successMessage = window.cartManager.currentLanguage === 'es' ? 
             'Propuesta guardada correctamente' : 
             window.cartManager.currentLanguage === 'pt' ?
@@ -11944,13 +11958,13 @@ async function sendProposalToSupabase() {
             'Proposal saved successfully';
         window.cartManager.showNotification(successMessage, 'success');
         
-        // Redirigir a consultar propuestas después de un breve delay
+        // Redirigir a consultar propuestas despuÃ©s de un breve delay
         setTimeout(() => {
             window.location.href = 'consultar-propuestas.html';
         }, 1500);
 
     } catch (error) {
-        console.error('❌ Error al guardar propuesta:', error);
+        console.error('âŒ Error al guardar propuesta:', error);
         const message = window.cartManager.currentLanguage === 'es' ? 
             `Error al guardar la propuesta: ${error.message}` : 
             window.cartManager.currentLanguage === 'pt' ?
@@ -11979,11 +11993,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 clientName: 'Nome do Cliente *',
                 commercialName: 'Nome do Comercial *',
                 proposalDate: 'Data do Pedido *',
-                proposalCountry: 'País *',
-                clientNumber: 'Número de Cliente *',
+                proposalCountry: 'PaÃ­s *',
+                clientNumber: 'NÃºmero de Cliente *',
                 tipoCliente: 'Tipo de Cliente',
-                reposicao: 'É uma reposição? *',
-                reposicaoNo: 'Não',
+                reposicao: 'Ã‰ uma reposiÃ§Ã£o? *',
+                reposicaoNo: 'NÃ£o',
                 reposicaoSim: 'Sim',
                 cancel: 'Cancelar',
                 send: 'Enviar Proposta'
@@ -11993,12 +12007,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 clientName: 'Nombre del Cliente *',
                 commercialName: 'Nombre del Comercial *',
                 proposalDate: 'Fecha del Pedido *',
-                proposalCountry: 'País *',
-                clientNumber: 'Número de Cliente *',
+                proposalCountry: 'PaÃ­s *',
+                clientNumber: 'NÃºmero de Cliente *',
                 tipoCliente: 'Tipo de Cliente',
-                reposicao: '¿Es una reposición? *',
+                reposicao: 'Â¿Es una reposiciÃ³n? *',
                 reposicaoNo: 'No',
-                reposicaoSim: 'Sí',
+                reposicaoSim: 'SÃ­',
                 cancel: 'Cancelar',
                 send: 'Enviar Propuesta'
             },
@@ -12045,8 +12059,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (reposicaoSiOpt) reposicaoSiOpt.textContent = t.reposicaoSim;
         const selectCountryOption = document.getElementById('select-country-option');
         if (selectCountryOption) {
-            selectCountryOption.textContent = lang === 'pt' ? 'Selecionar país...' : 
-                                            lang === 'es' ? 'Seleccionar país...' : 
+            selectCountryOption.textContent = lang === 'pt' ? 'Selecionar paÃ­s...' : 
+                                            lang === 'es' ? 'Seleccionar paÃ­s...' : 
                                             'Select country...';
         }
         if (cancelBtn) cancelBtn.textContent = t.cancel;
@@ -12137,7 +12151,7 @@ function showPriceTiersModal(itemId, productName) {
         return;
     }
     
-    // Determinar qué price_tiers usar: variante seleccionada o base
+    // Determinar quÃ© price_tiers usar: variante seleccionada o base
     let priceTiersToUse = item.price_tiers || [];
     
     // Si hay una variante seleccionada, usar sus price_tiers
@@ -12215,15 +12229,15 @@ function showPriceTiersModal(itemId, productName) {
             currentPrice: 'Precio actual'
         },
         pt: {
-            title: 'Escalões de Preço',
-            noTiers: 'Este produto não tem escalões de preço configurados.',
-            basePrice: 'Preço base',
+            title: 'EscalÃµes de PreÃ§o',
+            noTiers: 'Este produto nÃ£o tem escalÃµes de preÃ§o configurados.',
+            basePrice: 'PreÃ§o base',
             from: 'De',
-            to: 'Até',
+            to: 'AtÃ©',
             units: 'unidades',
-            price: 'Preço',
+            price: 'PreÃ§o',
             currentQuantity: 'Quantidade atual',
-            currentPrice: 'Preço atual'
+            currentPrice: 'PreÃ§o atual'
         },
         en: {
             title: 'Price Tiers',
@@ -12244,7 +12258,7 @@ function showPriceTiersModal(itemId, productName) {
     if (!priceTiersToUse || priceTiersToUse.length === 0) {
         list.innerHTML = `<p style="text-align: center; color: var(--text-secondary); padding: 20px;">${t.noTiers}</p>`;
     } else {
-        // Ordenar escalones por cantidad mínima
+        // Ordenar escalones por cantidad mÃ­nima
         const sortedTiers = [...priceTiersToUse].sort((a, b) => {
             const minA = a?.min_qty !== null && a?.min_qty !== undefined ? Number(a.min_qty) : 0;
             const minB = b?.min_qty !== null && b?.min_qty !== undefined ? Number(b.min_qty) : 0;
@@ -12261,7 +12275,7 @@ function showPriceTiersModal(itemId, productName) {
                 <div class="price-tiers-current-info">
                     <div>
                         <div class="price-tiers-current-label">${t.currentQuantity}: ${currentQuantity} ${t.units}</div>
-                        <div class="price-tiers-current-value">${t.currentPrice}: €${currentPrice.toFixed(2)}</div>
+                        <div class="price-tiers-current-value">${t.currentPrice}: â‚¬${currentPrice.toFixed(2)}</div>
                     </div>
                     <i class="fas fa-info-circle price-tiers-current-icon"></i>
                 </div>
@@ -12285,16 +12299,16 @@ function showPriceTiersModal(itemId, productName) {
             
             const isCurrentTier = currentQuantity >= minQty && (maxQty === null || currentQuantity <= maxQty);
             
-            // Si es el último escalón y maxQty es null, mostrar "200+" en lugar de "∞"
+            // Si es el Ãºltimo escalÃ³n y maxQty es null, mostrar "200+" en lugar de "âˆž"
             const isLastTier = index === sortedTiers.length - 1;
-            const maxQtyDisplay = maxQty !== null ? `${maxQty} ${t.units}` : (isLastTier ? `${minQty}+` : '∞');
+            const maxQtyDisplay = maxQty !== null ? `${maxQty} ${t.units}` : (isLastTier ? `${minQty}+` : 'âˆž');
             
             html += `
                 <tr class="${isCurrentTier ? 'active-tier' : ''}">
                     <td>${minQty} ${t.units}</td>
                     <td>${maxQtyDisplay}</td>
                     <td class="price-cell">
-                        €${tierPrice.toFixed(2)}
+                        â‚¬${tierPrice.toFixed(2)}
                         ${isCurrentTier ? '<i class="fas fa-check-circle check-icon"></i>' : ''}
                     </td>
                 </tr>
@@ -12314,19 +12328,19 @@ function showPriceTiersModal(itemId, productName) {
     modal.style.display = 'block';
 }
 
-// Asegurar que la función esté disponible globalmente
+// Asegurar que la funciÃ³n estÃ© disponible globalmente
 window.showPriceTiersModal = showPriceTiersModal;
 
 /**
- * Aplicar precio del escalón máximo (200+) a todos los productos del carrito
+ * Aplicar precio del escalÃ³n mÃ¡ximo (200+) a todos los productos del carrito
  */
 function applyMaxPriceToAllItems() {
     if (!window.cartManager || !window.cartManager.cart || window.cartManager.cart.length === 0) {
         const lang = window.cartManager?.currentLanguage || 'es';
         const message = lang === 'es' ? 
-            'El carrito está vacío' : 
+            'El carrito estÃ¡ vacÃ­o' : 
             lang === 'pt' ? 
-            'O carrinho está vazio' : 
+            'O carrinho estÃ¡ vazio' : 
             'The cart is empty';
         window.cartManager?.showNotification(message, 'error');
         return;
@@ -12334,9 +12348,9 @@ function applyMaxPriceToAllItems() {
 
     const lang = window.cartManager?.currentLanguage || 'es';
     const confirmMessage = lang === 'es' ? 
-        '¿Estás seguro de que deseas aplicar el precio del escalón máximo (200+) a todos los productos? Esta acción actualizará todos los precios independientemente de la cantidad.' :
+        'Â¿EstÃ¡s seguro de que deseas aplicar el precio del escalÃ³n mÃ¡ximo (200+) a todos los productos? Esta acciÃ³n actualizarÃ¡ todos los precios independientemente de la cantidad.' :
         lang === 'pt' ?
-        'Tem certeza de que deseja aplicar o preço do escalão máximo (200+) a todos os produtos? Esta ação atualizará todos os preços independentemente da quantidade.' :
+        'Tem certeza de que deseja aplicar o preÃ§o do escalÃ£o mÃ¡ximo (200+) a todos os produtos? Esta aÃ§Ã£o atualizarÃ¡ todos os preÃ§os independentemente da quantidade.' :
         'Are you sure you want to apply the maximum tier price (200+) to all products? This action will update all prices regardless of quantity.';
 
     if (!confirm(confirmMessage)) {
@@ -12353,7 +12367,7 @@ function applyMaxPriceToAllItems() {
             return;
         }
 
-        // Determinar qué price_tiers usar: variante seleccionada o base
+        // Determinar quÃ© price_tiers usar: variante seleccionada o base
         let priceTiersToUse = item.price_tiers || [];
         
         // Si hay una variante seleccionada, usar sus price_tiers
@@ -12364,7 +12378,7 @@ function applyMaxPriceToAllItems() {
             }
         }
 
-        // Ordenar escalones por cantidad mínima
+        // Ordenar escalones por cantidad mÃ­nima
         const sortedTiers = [...priceTiersToUse].sort((a, b) => {
             const minA = a?.min_qty !== null && a?.min_qty !== undefined ? Number(a.min_qty) : 0;
             const minB = b?.min_qty !== null && b?.min_qty !== undefined ? Number(b.min_qty) : 0;
@@ -12376,12 +12390,12 @@ function applyMaxPriceToAllItems() {
             return;
         }
 
-        // Obtener el último escalón (el que tiene max_qty === null o es el último)
+        // Obtener el Ãºltimo escalÃ³n (el que tiene max_qty === null o es el Ãºltimo)
         const lastTier = sortedTiers[sortedTiers.length - 1];
         const maxPrice = lastTier?.price !== null && lastTier?.price !== undefined ? Number(lastTier.price) : null;
 
         if (maxPrice !== null && Number.isFinite(maxPrice)) {
-            // Aplicar el precio máximo al item
+            // Aplicar el precio mÃ¡ximo al item
             item.price = maxPrice;
             itemsUpdated++;
         } else {
@@ -12394,28 +12408,28 @@ function applyMaxPriceToAllItems() {
     window.cartManager.renderCart();
     window.cartManager.updateSummary();
 
-    // Mostrar mensaje de confirmación
+    // Mostrar mensaje de confirmaciÃ³n
     const successMessage = lang === 'es' ? 
-        `Se aplicó el precio máximo a ${itemsUpdated} producto(s). ${itemsSkipped > 0 ? `${itemsSkipped} producto(s) no se pudieron actualizar.` : ''}` :
+        `Se aplicÃ³ el precio mÃ¡ximo a ${itemsUpdated} producto(s). ${itemsSkipped > 0 ? `${itemsSkipped} producto(s) no se pudieron actualizar.` : ''}` :
         lang === 'pt' ?
-        `Preço máximo aplicado a ${itemsUpdated} produto(s). ${itemsSkipped > 0 ? `${itemsSkipped} produto(s) não puderam ser atualizados.` : ''}` :
+        `PreÃ§o mÃ¡ximo aplicado a ${itemsUpdated} produto(s). ${itemsSkipped > 0 ? `${itemsSkipped} produto(s) nÃ£o puderam ser atualizados.` : ''}` :
         `Maximum price applied to ${itemsUpdated} product(s). ${itemsSkipped > 0 ? `${itemsSkipped} product(s) could not be updated.` : ''}`;
     
     window.cartManager.showNotification(successMessage, 'success');
 }
 
-// Asegurar que la función esté disponible globalmente
+// Asegurar que la funciÃ³n estÃ© disponible globalmente
 window.applyMaxPriceToAllItems = applyMaxPriceToAllItems;
 
 /**
- * Toggle del modo 200+ - Aplica precio del escalón máximo solo a productos de equipamiento
+ * Toggle del modo 200+ - Aplica precio del escalÃ³n mÃ¡ximo solo a productos de equipamiento
  * (excluyendo vacavaliente y Laser Build)
  */
 async function toggleMode200() {
-    console.log('🔄 ========== INICIO toggleMode200 ==========');
+    console.log('ðŸ”„ ========== INICIO toggleMode200 ==========');
     
     if (!window.cartManager) {
-        console.error('❌ window.cartManager no está disponible');
+        console.error('âŒ window.cartManager no estÃ¡ disponible');
         return;
     }
 
@@ -12424,13 +12438,13 @@ async function toggleMode200() {
     if (!canUse) {
         const lang = window.cartManager?.currentLanguage || 'es';
         const message = lang === 'pt' 
-            ? 'Não tem permissão para usar o Modo 200+. Apenas administradores e Claudia Cruz podem usar esta funcionalidade.'
+            ? 'NÃ£o tem permissÃ£o para usar o Modo 200+. Apenas administradores e Claudia Cruz podem usar esta funcionalidade.'
             : lang === 'es'
             ? 'No tiene permiso para usar el Modo 200+. Solo administradores y Claudia Cruz pueden usar esta funcionalidad.'
             : 'You do not have permission to use Mode 200+. Only administrators and Claudia Cruz can use this feature.';
         
         window.cartManager.showNotification(message, 'error');
-        console.warn('❌ Usuario no tiene permisos para usar Modo 200+');
+        console.warn('âŒ Usuario no tiene permisos para usar Modo 200+');
         return;
     }
 
@@ -12439,20 +12453,20 @@ async function toggleMode200() {
     // Cambiar estado
     window.cartManager.modo200 = !window.cartManager.modo200;
     
-    console.log(`🔄 Estado del modo 200+: ${estadoAnterior} -> ${window.cartManager.modo200}`);
-    console.log(`📦 Items en carrito: ${window.cartManager.cart?.length || 0}`);
+    console.log(`ðŸ”„ Estado del modo 200+: ${estadoAnterior} -> ${window.cartManager.modo200}`);
+    console.log(`ðŸ“¦ Items en carrito: ${window.cartManager.cart?.length || 0}`);
 
-    // Aplicar o revertir precios según el estado
+    // Aplicar o revertir precios segÃºn el estado
     if (window.cartManager.modo200) {
-        console.log('✅ Modo 200+ ACTIVADO - Aplicando precios...');
+        console.log('âœ… Modo 200+ ACTIVADO - Aplicando precios...');
         window.cartManager.applyMode200Prices();
     } else {
-        console.log('❌ Modo 200+ DESACTIVADO - Revirtiendo precios...');
-        // Si se desactiva, recalcular precios según cantidad normal
+        console.log('âŒ Modo 200+ DESACTIVADO - Revirtiendo precios...');
+        // Si se desactiva, recalcular precios segÃºn cantidad normal
         window.cartManager.revertMode200Prices();
     }
 
-    // Actualizar botón visualmente
+    // Actualizar botÃ³n visualmente
     await window.cartManager.updateMode200Button();
 
     // Guardar carrito
@@ -12460,10 +12474,10 @@ async function toggleMode200() {
     window.cartManager.renderCart();
     window.cartManager.updateSummary();
     
-    console.log('🔄 ========== FIN toggleMode200 ==========\n');
+    console.log('ðŸ”„ ========== FIN toggleMode200 ==========\n');
 }
 
-// Asegurar que la función esté disponible globalmente
+// Asegurar que la funciÃ³n estÃ© disponible globalmente
 window.toggleMode200 = toggleMode200;
 
 /**
@@ -12477,7 +12491,7 @@ function normalizeClientName(clientName) {
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '') // Eliminar acentos
         .replace(/[^a-z0-9]/g, '-') // Reemplazar caracteres especiales con guiones
-        .replace(/-+/g, '-') // Reemplazar múltiples guiones con uno solo
+        .replace(/-+/g, '-') // Reemplazar mÃºltiples guiones con uno solo
         .replace(/^-|-$/g, ''); // Eliminar guiones al inicio y final
 }
 
@@ -12488,7 +12502,7 @@ async function handleLogoUpload(itemId, file) {
     if (!file) return;
     
     if (!window.cartManager || !window.cartManager.supabase) {
-        alert('Error: No se pudo conectar con la base de datos. Por favor, recarga la página.');
+        alert('Error: No se pudo conectar con la base de datos. Por favor, recarga la pÃ¡gina.');
         return;
     }
     
@@ -12500,22 +12514,22 @@ async function handleLogoUpload(itemId, file) {
     if (!validTypes.includes(file.type) && !validExtensions.includes(fileExtensionWithDot)) {
         const lang = window.cartManager.currentLanguage || 'es';
         const errorMsg = lang === 'es' 
-            ? 'Tipo de archivo no válido. Solo se permiten PDF, PNG, JPG, JPEG o SVG.'
+            ? 'Tipo de archivo no vÃ¡lido. Solo se permiten PDF, PNG, JPG, JPEG o SVG.'
             : lang === 'pt'
-            ? 'Tipo de arquivo inválido. Apenas são permitidos PDF, PNG, JPG, JPEG ou SVG.'
+            ? 'Tipo de arquivo invÃ¡lido. Apenas sÃ£o permitidos PDF, PNG, JPG, JPEG ou SVG.'
             : 'Invalid file type. Only PDF, PNG, JPG, JPEG or SVG are allowed.';
         alert(errorMsg);
         return;
     }
     
-    // Validar tamaño (máximo 2MB)
+    // Validar tamaÃ±o (mÃ¡ximo 2MB)
     const maxSize = 2 * 1024 * 1024; // 2MB
     if (file.size > maxSize) {
         const lang = window.cartManager.currentLanguage || 'es';
         const errorMsg = lang === 'es'
-            ? 'El archivo es demasiado grande. El tamaño máximo es 2MB.'
+            ? 'El archivo es demasiado grande. El tamaÃ±o mÃ¡ximo es 2MB.'
             : lang === 'pt'
-            ? 'O arquivo é muito grande. O tamanho máximo é 2MB.'
+            ? 'O arquivo Ã© muito grande. O tamanho mÃ¡ximo Ã© 2MB.'
             : 'File is too large. Maximum size is 2MB.';
         alert(errorMsg);
         return;
@@ -12541,7 +12555,7 @@ async function handleLogoUpload(itemId, file) {
     
     const fileExtension = file.name.split('.').pop().toLowerCase(); // Sin punto para usar en nombres de archivo
     
-    // Crear un cliente específico para Storage sin headers globales que interfieran
+    // Crear un cliente especÃ­fico para Storage sin headers globales que interfieran
     // Esto evita que el header 'Content-Type': 'application/json' afecte las subidas de archivos
     let storageClient;
     try {
@@ -12553,9 +12567,9 @@ async function handleLogoUpload(itemId, file) {
                     autoRefreshToken: true,
                     detectSessionInUrl: true
                 },
-                // NO incluir 'global.headers' para que Supabase maneje automáticamente el Content-Type según el archivo
+                // NO incluir 'global.headers' para que Supabase maneje automÃ¡ticamente el Content-Type segÃºn el archivo
             });
-            // Copiar la sesión del cliente principal si existe
+            // Copiar la sesiÃ³n del cliente principal si existe
             if (window.cartManager.supabase && window.cartManager.supabase.auth) {
                 const { data: { session } } = await window.cartManager.supabase.auth.getSession();
                 if (session) {
@@ -12567,7 +12581,7 @@ async function handleLogoUpload(itemId, file) {
             storageClient = window.cartManager.supabase;
         }
     } catch (error) {
-        console.warn('⚠️ No se pudo crear cliente específico para Storage, usando cliente compartido:', error);
+        console.warn('âš ï¸ No se pudo crear cliente especÃ­fico para Storage, usando cliente compartido:', error);
         storageClient = window.cartManager.supabase;
     }
     
@@ -12585,7 +12599,7 @@ async function handleLogoUpload(itemId, file) {
             'pdf': 'application/pdf'
         };
         const correctMimeType = mimeTypeMap[fileExt] || 'image/png';
-        console.log(`🔧 Corrigiendo tipo MIME de "${file.type}" a "${correctMimeType}"`);
+        console.log(`ðŸ”§ Corrigiendo tipo MIME de "${file.type}" a "${correctMimeType}"`);
         finalFile = new File([file], file.name, { type: correctMimeType });
     }
     
@@ -12607,7 +12621,7 @@ async function handleLogoUpload(itemId, file) {
                 for (const existingFile of existingFiles) {
                     const fileNameWithoutExt = existingFile.name.replace(/\.[^/.]+$/, '');
                     // Verificar si el nombre del archivo coincide exactamente con el nombre del cliente
-                    // o si empieza con el nombre del cliente seguido de un guión y un número
+                    // o si empieza con el nombre del cliente seguido de un guiÃ³n y un nÃºmero
                     const exactMatch = fileNameWithoutExt === normalizedClientName;
                     const numberedMatch = fileNameWithoutExt.match(new RegExp(`^${normalizedClientName}-\\d+$`));
                     
@@ -12657,14 +12671,14 @@ async function handleLogoUpload(itemId, file) {
             const selectedLogo = await showClientLogosModal(clientName, allAvailableLogos, file);
             
             if (selectedLogo === null) {
-                // Usuario canceló
+                // Usuario cancelÃ³
                 return;
             } else if (selectedLogo === 'new') {
-                // Usuario quiere subir un nuevo logotipo (nombre único para no duplicar en el bucket)
+                // Usuario quiere subir un nuevo logotipo (nombre Ãºnico para no duplicar en el bucket)
                 const baseName = (file.name && file.name.trim()) ? file.name.trim() : `logo.${fileExtension}`;
                 const tempFileName = await getUniqueStorageFilePath(storageClient, 'proposal-logos', 'logos', baseName);
                 
-                // Subir nuevo logotipo con nombre único
+                // Subir nuevo logotipo con nombre Ãºnico
                 const { data, error } = await storageClient.storage
                     .from('proposal-logos')
                     .upload(tempFileName, finalFile, {
@@ -12677,22 +12691,22 @@ async function handleLogoUpload(itemId, file) {
                     throw error;
                 }
                 
-                // Obtener URL pública
+                // Obtener URL pÃºblica
                 const { data: urlData } = storageClient.storage
                     .from('proposal-logos')
                     .getPublicUrl(tempFileName);
                 
                 logoUrl = urlData.publicUrl;
             } else {
-                // Usuario seleccionó un logotipo existente
+                // Usuario seleccionÃ³ un logotipo existente
                 logoUrl = selectedLogo;
             }
         } else {
-            // No hay logotipos existentes o no hay nombre de cliente (nombre único para no duplicar en el bucket)
+            // No hay logotipos existentes o no hay nombre de cliente (nombre Ãºnico para no duplicar en el bucket)
             const baseName = (file.name && file.name.trim()) ? file.name.trim() : `logo.${fileExtension}`;
             const tempFileName = await getUniqueStorageFilePath(storageClient, 'proposal-logos', 'logos', baseName);
             
-            // Subir logotipo con nombre único
+            // Subir logotipo con nombre Ãºnico
             const { data, error } = await storageClient.storage
                 .from('proposal-logos')
                 .upload(tempFileName, finalFile, {
@@ -12705,7 +12719,7 @@ async function handleLogoUpload(itemId, file) {
                 throw error;
             }
             
-            // Obtener URL pública
+            // Obtener URL pÃºblica
             const { data: urlData } = storageClient.storage
                 .from('proposal-logos')
                 .getPublicUrl(tempFileName);
@@ -12713,7 +12727,7 @@ async function handleLogoUpload(itemId, file) {
             logoUrl = urlData.publicUrl;
         }
         
-        // Guardar URL en el item del carrito (solo para este producto específico)
+        // Guardar URL en el item del carrito (solo para este producto especÃ­fico)
         item.logoUrl = logoUrl;
         window.cartManager.saveCart();
         window.cartManager.renderCart();
@@ -12747,7 +12761,7 @@ async function handleLogoUpload(itemId, file) {
 function extractLogoFilePathFromUrl(url) {
     if (!url || typeof url !== 'string') return null;
     
-    // Patrón: https://[project].supabase.co/storage/v1/object/public/proposal-logos/logos/[filename]
+    // PatrÃ³n: https://[project].supabase.co/storage/v1/object/public/proposal-logos/logos/[filename]
     const match = url.match(/\/storage\/v1\/object\/public\/proposal-logos\/(.+)$/);
     if (match && match[1]) {
         return decodeURIComponent(match[1]);
@@ -12764,7 +12778,7 @@ function extractLogoFilePathFromUrl(url) {
 /**
  * Eliminar logo del bucket de Supabase Storage
  * @param {string} logoUrl - URL del logo a eliminar
- * @returns {Promise<boolean>} - true si se eliminó correctamente, false en caso contrario
+ * @returns {Promise<boolean>} - true si se eliminÃ³ correctamente, false en caso contrario
  */
 async function deleteLogoFromStorage(logoUrl) {
     if (!logoUrl) return false;
@@ -12772,11 +12786,11 @@ async function deleteLogoFromStorage(logoUrl) {
     try {
         const filePath = extractLogoFilePathFromUrl(logoUrl);
         if (!filePath) {
-            console.warn('⚠️ No se pudo extraer la ruta del logo desde la URL:', logoUrl);
+            console.warn('âš ï¸ No se pudo extraer la ruta del logo desde la URL:', logoUrl);
             return false;
         }
         
-        // Crear cliente específico para Storage
+        // Crear cliente especÃ­fico para Storage
         let storageClient;
         if (typeof supabase !== 'undefined' && window.SUPABASE_CONFIG) {
             storageClient = supabase.createClient(window.SUPABASE_CONFIG.url, window.SUPABASE_CONFIG.anonKey, {
@@ -12786,7 +12800,7 @@ async function deleteLogoFromStorage(logoUrl) {
                     detectSessionInUrl: true
                 }
             });
-            // Copiar sesión si existe
+            // Copiar sesiÃ³n si existe
             if (window.cartManager && window.cartManager.supabase && window.cartManager.supabase.auth) {
                 const { data: { session } } = await window.cartManager.supabase.auth.getSession();
                 if (session) {
@@ -12796,12 +12810,12 @@ async function deleteLogoFromStorage(logoUrl) {
         } else if (window.cartManager && window.cartManager.supabase) {
             storageClient = window.cartManager.supabase;
         } else {
-            console.warn('⚠️ Cliente de Supabase no disponible');
+            console.warn('âš ï¸ Cliente de Supabase no disponible');
             return false;
         }
         
         if (!storageClient || !storageClient.storage) {
-            console.warn('⚠️ Cliente de Storage no disponible');
+            console.warn('âš ï¸ Cliente de Storage no disponible');
             return false;
         }
         
@@ -12810,13 +12824,13 @@ async function deleteLogoFromStorage(logoUrl) {
             .remove([filePath]);
         
         if (error) {
-            console.error('❌ Error al eliminar logo del bucket:', error);
+            console.error('âŒ Error al eliminar logo del bucket:', error);
             return false;
         }
         
         return true;
     } catch (error) {
-        console.error('❌ Error al eliminar logo del bucket:', error);
+        console.error('âŒ Error al eliminar logo del bucket:', error);
         return false;
     }
 }
@@ -12845,7 +12859,7 @@ async function removeLogo(itemId) {
     
     const lang = window.cartManager.currentLanguage || 'es';
     const confirmMsg = lang === 'es'
-        ? '¿Estás seguro de que deseas eliminar el logotipo?'
+        ? 'Â¿EstÃ¡s seguro de que deseas eliminar el logotipo?'
         : lang === 'pt'
         ? 'Tem certeza de que deseja remover o logotipo?'
         : 'Are you sure you want to remove the logo?';
@@ -12863,11 +12877,11 @@ async function removeLogo(itemId) {
         if (!deleted) {
             const lang = window.cartManager.currentLanguage || 'es';
             const warningMsg = lang === 'es'
-                ? 'El logotipo se eliminó del carrito, pero no se pudo eliminar del almacenamiento. Puede que ya haya sido eliminado.'
+                ? 'El logotipo se eliminÃ³ del carrito, pero no se pudo eliminar del almacenamiento. Puede que ya haya sido eliminado.'
                 : lang === 'pt'
-                ? 'O logotipo foi removido do carrinho, mas não foi possível removê-lo do armazenamento. Pode já ter sido removido.'
+                ? 'O logotipo foi removido do carrinho, mas nÃ£o foi possÃ­vel removÃª-lo do armazenamento. Pode jÃ¡ ter sido removido.'
                 : 'The logo was removed from the cart, but could not be removed from storage. It may have already been deleted.';
-            console.warn('⚠️', warningMsg);
+            console.warn('âš ï¸', warningMsg);
         }
     }
     
@@ -12934,7 +12948,7 @@ async function checkAndSuggestClientLogo(itemId) {
         for (const file of existingFiles) {
             const fileNameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
             // Verificar si el nombre del archivo coincide exactamente con el nombre del cliente
-            // o si empieza con el nombre del cliente seguido de un guión y un número
+            // o si empieza con el nombre del cliente seguido de un guiÃ³n y un nÃºmero
             const exactMatch = fileNameWithoutExt === normalizedClientName;
             const numberedMatch = fileNameWithoutExt.match(new RegExp(`^${normalizedClientName}-\\d+$`));
             
@@ -12951,14 +12965,14 @@ async function checkAndSuggestClientLogo(itemId) {
         }
         
         if (clientLogos.length > 0) {
-            // Si hay múltiples logotipos, mostrar modal
+            // Si hay mÃºltiples logotipos, mostrar modal
             // Si hay solo uno, preguntar directamente
             if (clientLogos.length === 1) {
                 const lang = window.cartManager.currentLanguage || 'es';
                 const confirmMsg = lang === 'es'
-                    ? `Se encontró un logotipo guardado para el cliente "${clientName}". ¿Deseas usarlo para este producto?`
+                    ? `Se encontrÃ³ un logotipo guardado para el cliente "${clientName}". Â¿Deseas usarlo para este producto?`
                     : lang === 'pt'
-                    ? `Foi encontrado um logotipo salvo para o cliente "${clientName}". Deseja usá-lo para este produto?`
+                    ? `Foi encontrado um logotipo salvo para o cliente "${clientName}". Deseja usÃ¡-lo para este produto?`
                     : `A saved logo was found for client "${clientName}". Do you want to use it for this product?`;
                 
                 const useExisting = confirm(confirmMsg);
@@ -12978,8 +12992,8 @@ async function checkAndSuggestClientLogo(itemId) {
                     showQuickNotification(successMsg);
                 }
             } else {
-                // Múltiples logotipos - mostrar modal (aunque no hay archivo nuevo, solo para seleccionar)
-                // En este caso, no se puede subir uno nuevo desde aquí, solo seleccionar existente
+                // MÃºltiples logotipos - mostrar modal (aunque no hay archivo nuevo, solo para seleccionar)
+                // En este caso, no se puede subir uno nuevo desde aquÃ­, solo seleccionar existente
                 const selectedLogo = await showClientLogosModal(clientName, clientLogos, null);
                 
                 if (selectedLogo && selectedLogo !== 'new' && selectedLogo !== null) {
@@ -13017,9 +13031,9 @@ async function showClientLogosModal(clientName, clientLogos, newFile) {
             // Si no existe el modal, usar confirm simple
             const lang = window.cartManager.currentLanguage || 'es';
             const confirmMsg = lang === 'es'
-                ? `Ya existen ${clientLogos.length} logotipo(s) guardado(s) para el cliente "${clientName}". ¿Deseas subir un nuevo logotipo?`
+                ? `Ya existen ${clientLogos.length} logotipo(s) guardado(s) para el cliente "${clientName}". Â¿Deseas subir un nuevo logotipo?`
                 : lang === 'pt'
-                ? `Já existem ${clientLogos.length} logotipo(s) salvo(s) para o cliente "${clientName}". Deseja carregar um novo logotipo?`
+                ? `JÃ¡ existem ${clientLogos.length} logotipo(s) salvo(s) para o cliente "${clientName}". Deseja carregar um novo logotipo?`
                 : `${clientLogos.length} logo(s) already exist for client "${clientName}". Do you want to upload a new logo?`;
             
             const uploadNew = confirm(confirmMsg);
@@ -13045,12 +13059,12 @@ async function showClientLogosModal(clientName, clientLogos, newFile) {
                 fromClient: ' (del cliente)'
             },
             pt: {
-                title: clientName ? `Logotipos do Cliente: ${clientName}` : 'Logotipos Disponíveis',
+                title: clientName ? `Logotipos do Cliente: ${clientName}` : 'Logotipos DisponÃ­veis',
                 subtitle: 'Selecione um logotipo existente ou carregue um novo',
                 selectExisting: 'Usar este logotipo',
                 uploadNew: 'Carregar novo logotipo',
                 cancel: 'Cancelar',
-                noPreview: 'Pré-visualização não disponível',
+                noPreview: 'PrÃ©-visualizaÃ§Ã£o nÃ£o disponÃ­vel',
                 fromPreviousProduct: ' (de produto anterior)',
                 fromClient: ' (do cliente)'
             },
@@ -13106,7 +13120,7 @@ async function showClientLogosModal(clientName, clientLogos, newFile) {
         
         logosHTML += '</div>';
         
-        // Solo mostrar botón de "Subir nuevo" si hay un archivo nuevo para subir
+        // Solo mostrar botÃ³n de "Subir nuevo" si hay un archivo nuevo para subir
         const showUploadNewButton = newFile !== null && newFile !== undefined;
         
         logosHTML += `
@@ -13213,7 +13227,7 @@ async function renameTemporaryLogos(clientName, articulosData) {
                 // No existe, usar nombre base
                 newFileName = baseFileName;
             } else {
-                // Existe, buscar siguiente número disponible
+                // Existe, buscar siguiente nÃºmero disponible
                 while (allFiles.find(f => f.name === `${normalizedClientName}-${counter}.${fileExtension}`)) {
                     counter++;
                 }
@@ -13244,7 +13258,7 @@ async function renameTemporaryLogos(clientName, articulosData) {
             }
         }
         
-        // Actualizar URLs en los artículos guardados
+        // Actualizar URLs en los artÃ­culos guardados
         if (logoRenames.size > 0 && articulosData) {
             for (const articulo of articulosData) {
                 if (articulo.logo_url && logoRenames.has(articulo.logo_url)) {
@@ -13277,9 +13291,9 @@ async function updateManualPrice(itemId, newPrice) {
         // Verificar que el usuario es administrador
         const userRole = await window.getUserRole?.();
         if (userRole !== 'admin') {
-            console.warn('⚠️ Solo los administradores pueden editar precios manualmente');
+            console.warn('âš ï¸ Solo los administradores pueden editar precios manualmente');
             const currentLang = window.cartManager?.currentLanguage || localStorage.getItem('language') || 'pt';
-            alert(currentLang === 'pt' ? 'Apenas administradores podem editar preços manualmente.' : 
+            alert(currentLang === 'pt' ? 'Apenas administradores podem editar preÃ§os manualmente.' : 
                   currentLang === 'es' ? 'Solo los administradores pueden editar precios manualmente.' :
                   'Only administrators can manually edit prices.');
             
@@ -13328,9 +13342,9 @@ async function updateManualPrice(itemId, newPrice) {
         if (currentPrice !== 0 && !alreadyManual) {
             // Solo bloquear si el producto no era "sobre consulta" (basePrice !== 0) y no tiene precio manual
             if (!baseIsZero) {
-                console.warn('⚠️ Solo se pueden editar precios de productos con precio 0 (sobre consulta)');
+                console.warn('âš ï¸ Solo se pueden editar precios de productos con precio 0 (sobre consulta)');
                 alert(window.cartManager.currentLanguage === 'pt' ? 
-                      'Apenas produtos com preço 0 (sobre consulta) podem ter preço editado manualmente.' :
+                      'Apenas produtos com preÃ§o 0 (sobre consulta) podem ter preÃ§o editado manualmente.' :
                       window.cartManager.currentLanguage === 'es' ?
                       'Solo se pueden editar precios de productos con precio 0 (sobre consulta).' :
                       'Only products with price 0 (on request) can have manually edited prices.');
@@ -13345,9 +13359,9 @@ async function updateManualPrice(itemId, newPrice) {
         // Verificar si hay una variante personalizada seleccionada
         // Si hay variante seleccionada, NO permitir editar el precio
         if (item.selectedVariant !== null && item.selectedVariant !== undefined && item.variants && item.variants.length > 0) {
-            console.warn('⚠️ No se puede editar el precio cuando hay una variante personalizada seleccionada');
+            console.warn('âš ï¸ No se puede editar el precio cuando hay una variante personalizada seleccionada');
             alert(window.cartManager.currentLanguage === 'pt' ? 
-                  'Não é possível editar o preço quando há uma variante personalizada selecionada.' :
+                  'NÃ£o Ã© possÃ­vel editar o preÃ§o quando hÃ¡ uma variante personalizada selecionada.' :
                   window.cartManager.currentLanguage === 'es' ?
                   'No se puede editar el precio cuando hay una variante personalizada seleccionada.' :
                   'Cannot edit price when a personalized variant is selected.');
@@ -13360,10 +13374,10 @@ async function updateManualPrice(itemId, newPrice) {
             return;
         }
         
-        // Validar que el precio sea válido
+        // Validar que el precio sea vÃ¡lido
         const priceNum = parseFloat(newPrice);
         if (isNaN(priceNum) || priceNum < 0) {
-            console.error('Precio inválido:', newPrice);
+            console.error('Precio invÃ¡lido:', newPrice);
             // Restaurar precio anterior
             const priceInput = document.querySelector(`input.cart-item-price-input[onchange*="${itemId}"]`);
             if (priceInput && item.price) {
@@ -13374,7 +13388,7 @@ async function updateManualPrice(itemId, newPrice) {
         
         // Actualizar precio del item
         item.price = priceNum;
-        // Marcar que el precio fue editado manualmente para evitar recálculos automáticos
+        // Marcar que el precio fue editado manualmente para evitar recÃ¡lculos automÃ¡ticos
         item.manualPrice = true;
         
         // Guardar carrito
@@ -13383,7 +13397,7 @@ async function updateManualPrice(itemId, newPrice) {
         // Actualizar resumen
         window.cartManager.updateSummary();
         
-        console.log(`✅ Precio actualizado manualmente para ${item.name}: €${priceNum.toFixed(4)}`);
+        console.log(`âœ… Precio actualizado manualmente para ${item.name}: â‚¬${priceNum.toFixed(4)}`);
     } catch (error) {
         console.error('Error al actualizar precio manual:', error);
     }
@@ -13392,15 +13406,15 @@ async function updateManualPrice(itemId, newPrice) {
 window.handleLogoUpload = handleLogoUpload;
 
 /**
- * Variable global para almacenar la resolución de la promesa del modal de versión
+ * Variable global para almacenar la resoluciÃ³n de la promesa del modal de versiÃ³n
  */
 let versionModalResolve = null;
 
 /**
- * Mostrar modal de confirmación de nueva versión
- * @param {number} currentVersion - Versión actual de la propuesta
- * @param {number} newVersion - Nueva versión que se crearía
- * @param {number} changesCount - Número de cambios detectados
+ * Mostrar modal de confirmaciÃ³n de nueva versiÃ³n
+ * @param {number} currentVersion - VersiÃ³n actual de la propuesta
+ * @param {number} newVersion - Nueva versiÃ³n que se crearÃ­a
+ * @param {number} changesCount - NÃºmero de cambios detectados
  * @returns {Promise<boolean|null>} - true si confirma, false si cancela, null si cierra sin decidir
  */
 async function showVersionModal(currentVersion, newVersion, changesCount) {
@@ -13409,8 +13423,8 @@ async function showVersionModal(currentVersion, newVersion, changesCount) {
         
         const modal = document.getElementById('versionModal');
         if (!modal) {
-            console.error('Modal de versión no encontrado');
-            resolve(false); // Por defecto, no crear nueva versión
+            console.error('Modal de versiÃ³n no encontrado');
+            resolve(false); // Por defecto, no crear nueva versiÃ³n
             return;
         }
 
@@ -13419,22 +13433,22 @@ async function showVersionModal(currentVersion, newVersion, changesCount) {
         // Traducciones
         const translations = {
             pt: {
-                title: 'Nova Versão',
-                message: `Foram detectadas ${changesCount} alteração(ões) nesta proposta. Deseja criar uma nova versão do documento?`,
-                currentVersion: 'Versão atual:',
-                newVersion: 'Nova versão:',
-                cancel: 'Manter Versão Atual',
-                confirm: 'Criar Nova Versão',
-                explanation: 'Se esta alteração foi solicitada pelo cliente, crie uma nova versão. Se foi apenas uma correção (ex: produto esquecido), mantenha a versão atual.'
+                title: 'Nova VersÃ£o',
+                message: `Foram detectadas ${changesCount} alteraÃ§Ã£o(Ãµes) nesta proposta. Deseja criar uma nova versÃ£o do documento?`,
+                currentVersion: 'VersÃ£o atual:',
+                newVersion: 'Nova versÃ£o:',
+                cancel: 'Manter VersÃ£o Atual',
+                confirm: 'Criar Nova VersÃ£o',
+                explanation: 'Se esta alteraÃ§Ã£o foi solicitada pelo cliente, crie uma nova versÃ£o. Se foi apenas uma correÃ§Ã£o (ex: produto esquecido), mantenha a versÃ£o atual.'
             },
             es: {
-                title: 'Nueva Versión',
-                message: `Se han detectado ${changesCount} modificación(es) en esta propuesta. ¿Desea crear una nueva versión del documento?`,
-                currentVersion: 'Versión actual:',
-                newVersion: 'Nueva versión:',
-                cancel: 'Mantener Versión Actual',
-                confirm: 'Crear Nueva Versión',
-                explanation: 'Si esta modificación fue solicitada por el cliente, cree una nueva versión. Si fue solo una corrección (ej: producto olvidado), mantenga la versión actual.'
+                title: 'Nueva VersiÃ³n',
+                message: `Se han detectado ${changesCount} modificaciÃ³n(es) en esta propuesta. Â¿Desea crear una nueva versiÃ³n del documento?`,
+                currentVersion: 'VersiÃ³n actual:',
+                newVersion: 'Nueva versiÃ³n:',
+                cancel: 'Mantener VersiÃ³n Actual',
+                confirm: 'Crear Nueva VersiÃ³n',
+                explanation: 'Si esta modificaciÃ³n fue solicitada por el cliente, cree una nueva versiÃ³n. Si fue solo una correcciÃ³n (ej: producto olvidado), mantenga la versiÃ³n actual.'
             },
             en: {
                 title: 'New Version',
@@ -13462,16 +13476,16 @@ async function showVersionModal(currentVersion, newVersion, changesCount) {
         document.getElementById('versionModalConfirm').textContent = t.confirm;
 
         // Mostrar modal
-        console.log('📋 Mostrando modal de versión en pantalla...');
+        console.log('ðŸ“‹ Mostrando modal de versiÃ³n en pantalla...');
         modal.style.display = 'flex';
         modal.classList.add('active');
-        console.log('✅ Modal de versión mostrado, esperando respuesta del usuario...');
+        console.log('âœ… Modal de versiÃ³n mostrado, esperando respuesta del usuario...');
     });
 }
 
 /**
- * Cerrar modal de versión
- * @param {boolean|null} createNewVersion - true para crear nueva versión, false para mantener actual, null para cancelar
+ * Cerrar modal de versiÃ³n
+ * @param {boolean|null} createNewVersion - true para crear nueva versiÃ³n, false para mantener actual, null para cancelar
  */
 function closeVersionModal(createNewVersion) {
     const modal = document.getElementById('versionModal');
@@ -13486,12 +13500,12 @@ function closeVersionModal(createNewVersion) {
 }
 
 /**
- * Función global para actualizar el contador del carrito en el botón de navegación
- * Puede ser llamada desde cualquier página
+ * FunciÃ³n global para actualizar el contador del carrito en el botÃ³n de navegaciÃ³n
+ * Puede ser llamada desde cualquier pÃ¡gina
  */
 window.updateCartBadge = function() {
     try {
-        // Intentar usar el cartManager si está disponible
+        // Intentar usar el cartManager si estÃ¡ disponible
         if (window.cartManager && typeof window.cartManager.updateCartBadge === 'function') {
             window.cartManager.updateCartBadge();
             return;
@@ -13510,7 +13524,7 @@ window.updateCartBadge = function() {
             }
         }
         
-        // Buscar el botón en todas las páginas
+        // Buscar el botÃ³n en todas las pÃ¡ginas
         const cartLink = document.getElementById('nav-cart-link');
         
         if (cartLink) {
@@ -13524,7 +13538,7 @@ window.updateCartBadge = function() {
             if (cartCount > 0) {
                 const badge = document.createElement('span');
                 badge.className = 'cart-badge';
-                // Agregar clase para números de dos dígitos
+                // Agregar clase para nÃºmeros de dos dÃ­gitos
                 if (cartCount > 9) {
                     badge.classList.add('double-digit');
                 }
@@ -13546,7 +13560,13 @@ window.selectClientLogo = selectClientLogo;
 window.closeClientLogoModal = closeClientLogoModal;
 window.updateManualPrice = updateManualPrice;
 
-// Asegurar que generateProposalPDFFromSavedProposal esté disponible globalmente
+// Asegurar que generateProposalPDFFromSavedProposal estÃ© disponible globalmente
 if (typeof generateProposalPDFFromSavedProposal !== 'undefined') {
     window.generateProposalPDFFromSavedProposal = generateProposalPDFFromSavedProposal;
 }
+
+
+
+
+
+
