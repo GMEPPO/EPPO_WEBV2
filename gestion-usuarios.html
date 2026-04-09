@@ -10,71 +10,93 @@
     <link rel="stylesheet" href="menu-hamburguesa.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .users-shell { max-width: 1280px; margin: 0 auto; padding: 2rem 1.25rem 3rem; }
-        .users-header { display:flex; justify-content:space-between; align-items:flex-end; gap:1rem; margin-bottom:1.5rem; }
-        .users-header-copy h1 { margin:0 0 .35rem; color:var(--text-primary); font-size:2rem; }
-        .users-header-copy p { margin:0; color:var(--text-secondary); }
+        :root {
+            --users-page-bg: #111b31;
+            --users-panel-bg: #202c43;
+            --users-panel-border: #32425f;
+            --users-input-bg: #121a2d;
+            --users-input-border: #36507d;
+            --users-muted: #95afd6;
+            --users-text: #f6f8fc;
+            --users-accent: #ffc533;
+            --users-accent-strong: #f1b400;
+            --users-blue-border: #295887;
+            --users-green: #7ef0ae;
+            --users-red: #ff9f9f;
+        }
+        body { background: var(--users-page-bg); }
+        .users-shell { max-width: 1500px; margin: 0 auto; padding: 2rem 1.5rem 3rem; color: var(--users-text); }
+        .users-page-header { display:flex; justify-content:space-between; align-items:flex-start; gap:1.5rem; margin-bottom:1.5rem; }
+        .users-page-title h1 { margin:0 0 .4rem; font-size:2.1rem; color:var(--users-text); }
+        .users-page-title p { margin:0; color:var(--users-muted); max-width:780px; }
         .header-actions { display:flex; gap:.75rem; flex-wrap:wrap; }
-        .users-toolbar { display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-bottom:1rem; }
-        .users-status { color:var(--text-secondary); font-size:.95rem; }
-        .users-alert { display:none; margin-bottom:1rem; padding:.9rem 1rem; border-radius:12px; border:1px solid transparent; }
+        .users-alert { display:none; margin-bottom:1rem; padding:1rem 1.1rem; border-radius:14px; border:1px solid transparent; }
         .users-alert.show { display:block; }
-        .users-alert.error { background:rgba(239,68,68,.12); border-color:rgba(239,68,68,.3); color:#fecaca; }
-        .users-alert.success { background:rgba(16,185,129,.12); border-color:rgba(16,185,129,.3); color:#a7f3d0; }
-        .users-card { background:var(--bg-secondary, #1e293b); border:1px solid var(--border-color, #334155); border-radius:16px; overflow:hidden; }
-        .users-table { width:100%; border-collapse:collapse; }
-        .users-table thead { background:var(--bg-primary, #0f172a); }
-        .users-table th { padding:14px 16px; text-align:left; color:var(--text-primary); font-size:.82rem; text-transform:uppercase; letter-spacing:.04em; }
-        .users-table td { padding:16px; border-top:1px solid var(--border-color, #334155); color:var(--text-primary); vertical-align:middle; }
-        .users-table tbody tr:hover { background:var(--bg-hover, #334155); }
-        .user-email { font-weight:600; }
-        .user-meta { color:var(--text-secondary); font-size:.86rem; margin-top:.2rem; }
-        .role-select { width:100%; min-width:160px; padding:.6rem .75rem; background:var(--bg-primary, #0f172a); border:1px solid var(--border-color, #334155); border-radius:8px; color:var(--text-primary); }
-        .role-legacy { display:block; color:#fbbf24; font-size:.78rem; margin-top:.35rem; }
-        .user-actions { display:flex; justify-content:flex-end; }
-        .btn-danger { background:rgba(239,68,68,.14); color:#fecaca; border:1px solid rgba(239,68,68,.35); }
-        .btn-danger:hover { background:rgba(239,68,68,.22); }
-        .btn-success { background:rgba(16,185,129,.14); color:#a7f3d0; border:1px solid rgba(16,185,129,.35); }
-        .btn-success:hover { background:rgba(16,185,129,.22); }
-        .mirror-cell { min-width: 260px; }
-        .mirror-select { width:100%; min-width:200px; padding:.6rem .75rem; background:var(--bg-primary, #0f172a); border:1px solid var(--border-color, #334155); border-radius:8px; color:var(--text-primary); }
+        .users-alert.error { background:rgba(160,38,38,.18); border-color:rgba(255,128,128,.28); color:#ffd1d1; }
+        .users-alert.success { background:rgba(17,120,69,.18); border-color:rgba(126,240,174,.28); color:#d4ffe4; }
+        .users-panel { background: var(--users-panel-bg); border:1px solid var(--users-panel-border); border-radius:18px; padding:1.25rem; box-shadow:0 18px 36px rgba(5,10,20,.22); }
+        .users-panel + .users-panel { margin-top:1.35rem; }
+        .panel-header { display:flex; justify-content:space-between; align-items:flex-end; gap:1rem; margin-bottom:1rem; }
+        .panel-header h2 { margin:0 0 .3rem; font-size:1.85rem; color:var(--users-text); }
+        .panel-header p { margin:0; color:var(--users-muted); }
+        .panel-meta { color:var(--users-muted); font-size:.95rem; text-align:right; }
+        .create-user-grid { display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:1rem; align-items:end; }
+        .form-group label, .field-label { display:block; margin-bottom:.45rem; font-weight:600; color:var(--users-text); font-size:.92rem; }
+        .form-group input, .form-group select, .role-select, .mirror-select { width:100%; min-height:54px; padding:.9rem 1rem; border-radius:12px; border:1px solid var(--users-input-border); background:var(--users-input-bg); color:var(--users-text); }
+        .form-group input::placeholder { color:#7e96bc; }
+        .create-submit { display:flex; align-items:end; }
+        .users-list { display:grid; gap:1rem; }
+        .user-card { background: linear-gradient(180deg, rgba(24,34,56,.72), rgba(17,27,49,.86)); border:1px solid var(--users-panel-border); border-radius:16px; padding:1rem; }
+        .user-card-head { display:flex; justify-content:space-between; gap:1rem; margin-bottom:1rem; }
+        .user-identity strong { display:block; font-size:1.25rem; color:var(--users-text); }
+        .user-identity span { display:block; margin-top:.2rem; color:var(--users-muted); }
+        .user-top-meta { display:flex; flex-wrap:wrap; gap:.55rem; justify-content:flex-end; }
+        .user-pill { display:inline-flex; align-items:center; gap:.4rem; padding:.38rem .72rem; border-radius:999px; font-size:.8rem; font-weight:700; letter-spacing:.01em; border:1px solid transparent; }
+        .user-pill.auth, .user-pill.profile { background:rgba(31,63,111,.45); border-color:rgba(95,145,214,.35); color:#e5eeff; }
+        .user-pill.self { background:rgba(255,197,51,.16); border-color:rgba(255,197,51,.25); color:#ffd970; }
+        .user-card-meta { color:var(--users-muted); margin-bottom:1rem; }
+        .user-card-grid { display:grid; grid-template-columns:1.05fr 1.05fr 1fr 1fr; gap:1rem; align-items:start; }
+        .field-box { min-height:54px; padding:.9rem 1rem; border-radius:12px; border:1px solid var(--users-input-border); background:var(--users-input-bg); color:var(--users-text); display:flex; align-items:center; }
         .mirror-select:disabled { opacity:.6; cursor:not-allowed; }
-        .mirror-help { color:var(--text-secondary); font-size:.78rem; margin-top:.4rem; line-height:1.35; }
-        .mirror-toggle { display:flex; align-items:center; gap:.6rem; margin-top:.65rem; color:var(--text-primary); font-size:.88rem; }
-        .mirror-toggle input[type="checkbox"] { accent-color: var(--brand-blue, #2563eb); width:16px; height:16px; }
-        .mirror-inline-status { display:block; margin-top:.35rem; color:#fbbf24; font-size:.76rem; }
-        .loading-row, .empty-row { text-align:center; padding:2rem; color:var(--text-secondary); }
-        .access-badge { display:inline-flex; align-items:center; gap:.4rem; margin-top:.4rem; font-size:.78rem; font-weight:600; }
-        .access-badge.active { color:#86efac; }
-        .access-badge.inactive { color:#fca5a5; }
-        .action-stack { display:flex; flex-direction:column; gap:.5rem; align-items:flex-end; }
-        .btn-secondary-alt { background:rgba(59,130,246,.12); color:#bfdbfe; border:1px solid rgba(59,130,246,.3); }
-        .btn-secondary-alt:hover { background:rgba(59,130,246,.2); }
-        .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.72); z-index:1100; align-items:center; justify-content:center; padding:1rem; }
+        .mirror-help { color:var(--users-muted); font-size:.78rem; line-height:1.45; margin-top:.5rem; }
+        .mirror-toggle { display:flex; align-items:flex-start; gap:.6rem; color:var(--users-text); font-size:.88rem; margin-top:.65rem; }
+        .mirror-toggle input[type="checkbox"] { margin-top:.15rem; accent-color: var(--users-accent); width:16px; height:16px; }
+        .mirror-inline-status { display:block; margin-top:.35rem; color:#ffda83; font-size:.76rem; }
+        .access-badge { display:inline-flex; align-items:center; gap:.45rem; font-size:.9rem; font-weight:700; }
+        .access-badge.active { color:var(--users-green); }
+        .access-badge.inactive { color:var(--users-red); }
+        .user-actions { display:flex; gap:.7rem; flex-wrap:wrap; justify-content:flex-start; align-items:center; margin-top:1rem; }
+        .users-empty, .users-loading { text-align:center; padding:2rem; color:var(--users-muted); }
+        .btn-primary-solid { background: var(--users-accent); border:1px solid var(--users-accent); color:#151515; font-weight:700; }
+        .btn-primary-solid:hover { background:var(--users-accent-strong); border-color:var(--users-accent-strong); }
+        .btn-panel { background: var(--users-input-bg); border:1px solid var(--users-input-border); color:var(--users-text); }
+        .btn-panel:hover { background:#17233a; }
+        .btn-activity { background: rgba(18,61,99,.35); border:1px solid var(--users-blue-border); color:#d4e9ff; }
+        .btn-activity:hover { background: rgba(18,61,99,.52); }
+        .btn-danger { background: rgba(120,25,35,.18); border:1px solid rgba(230,103,116,.4); color:#ffd0d4; }
+        .btn-danger:hover { background: rgba(120,25,35,.28); }
+        .btn-success { background: rgba(21,99,64,.18); border:1px solid rgba(126,240,174,.35); color:#d6ffe5; }
+        .btn-success:hover { background: rgba(21,99,64,.28); }
+        .modal { display:none; position:fixed; inset:0; background:rgba(4,8,15,.72); z-index:1100; align-items:center; justify-content:center; padding:1rem; }
         .modal.show { display:flex; }
-        .modal-content { width:min(560px, 100%); background:var(--bg-secondary, #1e293b); border:1px solid var(--border-color, #334155); border-radius:16px; padding:1.5rem; box-shadow:0 24px 48px rgba(0,0,0,.35); }
-        .modal-content.activity-modal-content { width:min(920px, 100%); max-height:85vh; overflow:auto; }
-        .modal-header h2 { margin:0 0 .35rem; color:var(--text-primary); }
-        .modal-header p { margin:0 0 1rem; color:var(--text-secondary); }
-        .form-grid { display:grid; gap:1rem; }
-        .form-group label { display:block; margin-bottom:.45rem; color:var(--text-primary); font-weight:600; }
-        .form-group input, .form-group select { width:100%; padding:.8rem .9rem; background:var(--bg-primary, #0f172a); border:1px solid var(--border-color, #334155); border-radius:10px; color:var(--text-primary); }
-        .form-help { color:var(--text-secondary); font-size:.82rem; margin-top:.35rem; }
-        .modal-actions { display:flex; justify-content:flex-end; gap:.75rem; margin-top:1.25rem; }
-        .activity-list { display:grid; gap:.85rem; }
-        .activity-item { background:var(--bg-primary, #0f172a); border:1px solid var(--border-color, #334155); border-radius:12px; padding:1rem; }
-        .activity-item-header { display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; margin-bottom:.5rem; }
-        .activity-item-title { font-weight:600; color:var(--text-primary); }
-        .activity-item-time { color:#93c5fd; font-size:.88rem; white-space:nowrap; }
-        .activity-meta { display:grid; gap:.3rem; color:var(--text-secondary); font-size:.85rem; word-break:break-word; }
-        @media (max-width: 900px) {
-            .users-header, .users-toolbar { flex-direction:column; align-items:stretch; }
-            .users-table thead { display:none; }
-            .users-table, .users-table tbody, .users-table tr, .users-table td { display:block; width:100%; }
-            .users-table tr { border-top:1px solid var(--border-color, #334155); padding:.35rem 0; }
-            .users-table td { border-top:none; padding:.5rem 1rem; }
-            .users-table td::before { content:attr(data-label); display:block; font-size:.75rem; text-transform:uppercase; color:var(--text-secondary); margin-bottom:.25rem; }
-            .user-actions { justify-content:flex-start; }
+        .modal-content { width:min(980px, 100%); background:var(--users-panel-bg); border:1px solid var(--users-panel-border); border-radius:18px; padding:1.4rem; box-shadow:0 24px 48px rgba(4,8,15,.4); }
+        .modal-header h2 { margin:0 0 .3rem; color:var(--users-text); }
+        .modal-header p { margin:0 0 1rem; color:var(--users-muted); }
+        .modal-actions { display:flex; justify-content:flex-end; gap:.75rem; margin-top:1.1rem; }
+        .activity-list { display:grid; gap:.85rem; max-height:62vh; overflow:auto; padding-right:.25rem; }
+        .activity-item { background:var(--users-input-bg); border:1px solid var(--users-input-border); border-radius:14px; padding:1rem; }
+        .activity-item-header { display:flex; justify-content:space-between; gap:1rem; margin-bottom:.55rem; }
+        .activity-item-title { font-weight:700; color:var(--users-text); }
+        .activity-item-time { color:#9fc8ff; white-space:nowrap; }
+        .activity-meta { display:grid; gap:.35rem; color:var(--users-muted); font-size:.86rem; word-break:break-word; }
+        @media (max-width: 1220px) { .create-user-grid, .user-card-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); } }
+        @media (max-width: 760px) {
+            .users-shell { padding:1.25rem .9rem 2rem; }
+            .users-page-header, .panel-header { flex-direction:column; align-items:stretch; }
+            .create-user-grid, .user-card-grid { grid-template-columns:1fr; }
+            .user-card-head { flex-direction:column; }
+            .user-top-meta { justify-content:flex-start; }
+            .header-actions { width:100%; }
         }
     </style>
 </head>
@@ -116,86 +138,69 @@
 
     <main class="main-content">
         <div class="users-shell">
-            <div class="users-header">
-                <div class="users-header-copy">
+            <div class="users-page-header">
+                <div class="users-page-title">
                     <h1><i class="fas fa-users-cog"></i> Gestion de Usuarios</h1>
-                    <p>Solo administradores pueden crear usuarios, asignar roles y gestionar acceso y espejo comercial.</p>
+                    <p>Solo administradores pueden crear usuarios, asignar roles, gestionar acceso, configurar espejo comercial y revisar el historico de actividad.</p>
                 </div>
                 <div class="header-actions">
-                    <button class="btn btn-secondary" type="button" onclick="window.location.href='index.html'">
+                    <button class="btn btn-panel" type="button" onclick="window.location.href='index.html'">
                         <i class="fas fa-arrow-left"></i> Volver
-                    </button>
-                    <button class="btn btn-primary" type="button" id="openAddUserBtn">
-                        <i class="fas fa-user-plus"></i> Agregar usuario
                     </button>
                 </div>
             </div>
 
             <div id="usersAlert" class="users-alert"></div>
 
-            <div class="users-toolbar">
-                <div class="users-status" id="usersStatus">Cargando usuarios...</div>
-                <div class="users-status">Roles oficiales: admin, comercial, compras</div>
-            </div>
-
-            <div class="users-card">
-                <table class="users-table">
-                    <thead>
-                        <tr>
-                            <th>Usuario</th>
-                            <th>Rol</th>
-                            <th>Espejo</th>
-                            <th>Ultimo acceso web</th>
-                            <th>Fecha de creacion</th>
-                            <th>Acceso</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody id="usersTableBody">
-                        <tr><td colspan="7" class="loading-row"><i class="fas fa-spinner fa-spin"></i> Cargando usuarios...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </main>
-
-    <div id="addUserModal" class="modal" aria-hidden="true">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Agregar usuario</h2>
-                <p>Se creara una cuenta en Supabase Auth con contrasena temporal y se asignara el rol elegido.</p>
-            </div>
-            <form id="addUserForm">
-                <div class="form-grid">
+            <section class="users-panel">
+                <div class="panel-header">
+                    <div>
+                        <h2>Criar utilizador</h2>
+                        <p>Creacion directa en Supabase Auth con nombre, password temporal y rol inicial.</p>
+                    </div>
+                    <div class="panel-meta">Roles oficiales: admin, comercial, compras</div>
+                </div>
+                <form id="addUserForm" class="create-user-grid">
                     <div class="form-group">
-                        <label for="newUserName">Nombre de la persona</label>
-                        <input type="text" id="newUserName" required autocomplete="name">
+                        <label for="newUserName">Nombre</label>
+                        <input type="text" id="newUserName" required autocomplete="name" placeholder="Nombre completo">
                     </div>
                     <div class="form-group">
                         <label for="newUserEmail">Email</label>
-                        <input type="email" id="newUserEmail" required autocomplete="email">
+                        <input type="email" id="newUserEmail" required autocomplete="email" placeholder="utilizador@empresa.com">
                     </div>
                     <div class="form-group">
-                        <label for="newUserPassword">Contrasena temporal</label>
-                        <input type="password" id="newUserPassword" required minlength="6" autocomplete="new-password">
-                        <div class="form-help">Minimo 6 caracteres. Esta contrasena se podra cambiar despues.</div>
+                        <label for="newUserPassword">Palabra-passe temporaria</label>
+                        <input type="password" id="newUserPassword" required minlength="6" autocomplete="new-password" placeholder="Minimo 6 caracteres">
                     </div>
                     <div class="form-group">
-                        <label for="newUserRole">Rol</label>
+                        <label for="newUserRole">Papel</label>
                         <select id="newUserRole" required>
-                            <option value="comercial">Comercial</option>
-                            <option value="compras">Compras</option>
-                            <option value="admin">Administrador</option>
+                            <option value="comercial">COMERCIAL</option>
+                            <option value="compras">COMPRAS</option>
+                            <option value="admin">ADMIN</option>
                         </select>
                     </div>
+                    <div class="create-submit">
+                        <button type="submit" class="btn btn-primary-solid" id="submitAddUserBtn">Criar utilizador</button>
+                    </div>
+                </form>
+            </section>
+
+            <section class="users-panel">
+                <div class="panel-header">
+                    <div>
+                        <h2>Utilizadores e permissões</h2>
+                        <p>Gestiona roles, espejo comercial, acceso a la web y el historico de actividad de cada cuenta.</p>
+                    </div>
+                    <div class="panel-meta" id="usersStatus">Cargando usuarios...</div>
                 </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary" id="cancelAddUserBtn">Cancelar</button>
-                    <button type="submit" class="btn btn-primary" id="submitAddUserBtn">Crear usuario</button>
+                <div id="usersList" class="users-list">
+                    <div class="users-loading"><i class="fas fa-spinner fa-spin"></i> Cargando usuarios...</div>
                 </div>
-            </form>
+            </section>
         </div>
-    </div>
+    </main>
 
     <div id="activityModal" class="modal" aria-hidden="true">
         <div class="modal-content activity-modal-content">
@@ -303,6 +308,11 @@
             return normalized || '-';
         }
 
+        function getCurrentDisplayIdentity() {
+            const userBarName = document.getElementById('user-bar-name');
+            return (userBarName?.textContent || '').trim().toLowerCase();
+        }
+
         function renderActivityModal(user, entries) {
             const titleEl = document.getElementById('activityModalTitle');
             const subtitleEl = document.getElementById('activityModalSubtitle');
@@ -364,20 +374,20 @@
         }
 
         function renderUsers() {
-            const tbody = document.getElementById('usersTableBody');
-            if (!tbody) return;
+            const list = document.getElementById('usersList');
+            if (!list) return;
 
             if (!usersState.length) {
-                tbody.innerHTML = '<tr><td colspan="7" class="empty-row">No hay usuarios registrados.</td></tr>';
+                list.innerHTML = '<div class="users-empty">No hay usuarios registrados.</div>';
                 setStatus('0 usuarios');
                 return;
             }
 
-            tbody.innerHTML = usersState.map(user => {
+            const currentIdentity = getCurrentDisplayIdentity();
+            list.innerHTML = usersState.map(user => {
                 const role = normalizeRole(user.role);
                 const isLegacyRole = !OFFICIAL_ROLES.includes(role);
                 const selectedRole = isLegacyRole ? 'comercial' : role;
-                const legacyText = isLegacyRole ? `<span class="role-legacy">Rol legado detectado: ${escapeHtml(role)}</span>` : '';
                 const disabled = !!user.disabled;
                 const accessBadge = disabled
                     ? '<span class="access-badge inactive"><i class="fas fa-ban"></i> Desactivado</span>'
@@ -391,8 +401,9 @@
                 const mirrorMissingSelection = isCommercial && mirrorEnabled && !mirrorUserId;
                 const mirrorContent = isCommercial
                     ? `
-                        <div class="mirror-cell">
-                            <select class="mirror-select" data-mirror-user-id="${escapeHtml(user.id)}" data-previous-mirror-user-id="${escapeHtml(mirrorUserId)}">
+                        <div>
+                            <label class="field-label" for="mirror-${escapeHtml(user.id)}">Espejo</label>
+                            <select id="mirror-${escapeHtml(user.id)}" class="mirror-select" data-mirror-user-id="${escapeHtml(user.id)}" data-previous-mirror-user-id="${escapeHtml(mirrorUserId)}">
                                 ${buildMirrorOptions(user.id, mirrorUserId)}
                             </select>
                             <label class="mirror-toggle">
@@ -403,40 +414,69 @@
                             ${mirrorMissingSelection ? '<span class="mirror-inline-status">Asigna un espejo antes de activar el permiso.</span>' : ''}
                         </div>
                     `
-                    : '<span class="user-meta">Solo disponible para comerciales.</span>';
+                    : `
+                        <div>
+                            <span class="field-label">Espejo</span>
+                            <div class="field-box">Solo disponible para comerciales.</div>
+                        </div>
+                    `;
+                const pills = [
+                    '<span class="user-pill auth"><i class="fas fa-shield-alt"></i> AUTH OK</span>',
+                    '<span class="user-pill profile"><i class="fas fa-id-badge"></i> PERFIL OK</span>'
+                ];
+                if ((user.name || user.email || '').toLowerCase() === currentIdentity) {
+                    pills.push('<span class="user-pill self">TUA CONTA</span>');
+                }
                 return `
-                    <tr>
-                        <td data-label="Usuario">
-                            <div class="user-email">${escapeHtml(user.email || '')}</div>
-                            <div class="user-meta">${escapeHtml(user.name || user.pais || '')}</div>
-                        </td>
-                        <td data-label="Rol">
-                            <select class="role-select" data-user-id="${escapeHtml(user.id)}" data-previous-role="${escapeHtml(selectedRole)}">
-                                ${buildRoleOptions(selectedRole)}
-                            </select>
-                            ${legacyText}
-                        </td>
-                        <td data-label="Espejo">${mirrorContent}</td>
-                        <td data-label="Ultimo acceso web">${escapeHtml(formatDateTime(user.last_access_at || user.last_sign_in_at))}</td>
-                        <td data-label="Fecha de creacion">${escapeHtml(formatDateTime(user.created_at))}</td>
-                        <td data-label="Acceso">${accessBadge}</td>
-                        <td data-label="Acciones">
-                            <div class="action-stack">
-                                <button class="btn btn-secondary-alt" type="button" data-activity-user="${escapeHtml(user.id)}">
-                                    <i class="fas fa-history"></i> Historico
-                                </button>
-                                <button class="btn ${actionClass}" type="button" data-toggle-user="${escapeHtml(user.id)}" data-toggle-email="${escapeHtml(user.email || '')}" data-disabled="${disabled ? 'true' : 'false'}">
-                                    <i class="fas ${actionIcon}"></i> ${actionLabel}
-                                </button>
+                    <article class="user-card">
+                        <div class="user-card-head">
+                            <div class="user-identity">
+                                <strong>${escapeHtml(user.email || '')}</strong>
+                                <span>${escapeHtml(user.name || user.pais || '')}</span>
                             </div>
-                        </td>
-                    </tr>
+                            <div class="user-top-meta">${pills.join('')}</div>
+                        </div>
+                        <div class="user-card-meta">
+                            Creado: ${escapeHtml(formatDateTime(user.created_at))} · Ultimo acceso web: ${escapeHtml(formatDateTime(user.last_access_at || user.last_sign_in_at))}
+                        </div>
+                        <div class="user-card-grid">
+                            <div>
+                                <label class="field-label">Nombre</label>
+                                <div class="field-box">${escapeHtml(user.name || '-')}</div>
+                            </div>
+                            <div>
+                                <label class="field-label">Email</label>
+                                <div class="field-box">${escapeHtml(user.email || '-')}</div>
+                            </div>
+                            <div>
+                                <label class="field-label">Papel</label>
+                                <select class="role-select" data-user-id="${escapeHtml(user.id)}" data-previous-role="${escapeHtml(selectedRole)}">
+                                    ${buildRoleOptions(selectedRole)}
+                                </select>
+                                ${isLegacyRole ? `<span class="mirror-inline-status">Rol legado detectado: ${escapeHtml(role)}</span>` : ''}
+                            </div>
+                            <div>
+                                <label class="field-label">Acceso</label>
+                                <div class="field-box">${accessBadge}</div>
+                            </div>
+                            ${mirrorContent}
+                        </div>
+                        <div class="user-actions">
+                            <button class="btn btn-activity" type="button" data-activity-user="${escapeHtml(user.id)}">
+                                <i class="fas fa-history"></i> Historico
+                            </button>
+                            <button class="btn ${actionClass}" type="button" data-toggle-user="${escapeHtml(user.id)}" data-toggle-email="${escapeHtml(user.email || '')}" data-disabled="${disabled ? 'true' : 'false'}">
+                                <i class="fas ${actionIcon}"></i> ${actionLabel}
+                            </button>
+                            <span class="user-card-meta">ID: ${escapeHtml(user.id)}</span>
+                        </div>
+                    </article>
                 `;
             }).join('');
 
             setStatus(`${usersState.length} usuarios`);
 
-            tbody.querySelectorAll('.role-select').forEach(select => {
+            list.querySelectorAll('.role-select').forEach(select => {
                 select.addEventListener('change', async (event) => {
                     const userId = event.target.dataset.userId;
                     const previousRole = event.target.dataset.previousRole || 'comercial';
@@ -456,7 +496,7 @@
                 });
             });
 
-            tbody.querySelectorAll('[data-mirror-user-id]').forEach(select => {
+            list.querySelectorAll('[data-mirror-user-id]').forEach(select => {
                 select.addEventListener('change', async (event) => {
                     const userId = event.target.dataset.mirrorUserId;
                     const previousMirrorUserId = event.target.dataset.previousMirrorUserId || '';
@@ -482,7 +522,7 @@
                 });
             });
 
-            tbody.querySelectorAll('[data-mirror-enabled-user-id]').forEach(checkbox => {
+            list.querySelectorAll('[data-mirror-enabled-user-id]').forEach(checkbox => {
                 checkbox.addEventListener('change', async (event) => {
                     const userId = event.target.dataset.mirrorEnabledUserId;
                     const nextMirrorEnabled = !!event.target.checked;
@@ -513,7 +553,7 @@
                 });
             });
 
-            tbody.querySelectorAll('[data-toggle-user]').forEach(button => {
+            list.querySelectorAll('[data-toggle-user]').forEach(button => {
                 button.addEventListener('click', async () => {
                     const userId = button.dataset.toggleUser;
                     const email = button.dataset.toggleEmail;
@@ -543,7 +583,7 @@
                 });
             });
 
-            tbody.querySelectorAll('[data-activity-user]').forEach(button => {
+            list.querySelectorAll('[data-activity-user]').forEach(button => {
                 button.addEventListener('click', async () => {
                     await openActivityModal(button.dataset.activityUser);
                 });
@@ -559,21 +599,10 @@
                 activityCache = new Map();
                 renderUsers();
             } catch (error) {
-                document.getElementById('usersTableBody').innerHTML = `<tr><td colspan="7" class="empty-row">${escapeHtml(error.message || 'Error al cargar usuarios.')}</td></tr>`;
+                document.getElementById('usersList').innerHTML = `<div class="users-empty">${escapeHtml(error.message || 'Error al cargar usuarios.')}</div>`;
                 setStatus('Error al cargar usuarios');
                 showAlert(error.message || 'Error al cargar usuarios.', 'error');
             }
-        }
-
-        function openAddUserModal() {
-            document.getElementById('addUserModal').classList.add('show');
-            document.getElementById('addUserModal').setAttribute('aria-hidden', 'false');
-            document.getElementById('addUserForm').reset();
-        }
-
-        function closeAddUserModal() {
-            document.getElementById('addUserModal').classList.remove('show');
-            document.getElementById('addUserModal').setAttribute('aria-hidden', 'true');
         }
 
         async function handleAddUser(event) {
@@ -615,19 +644,13 @@
         document.addEventListener('DOMContentLoaded', async () => {
             try {
                 if (!(await ensureAdminAccess())) return;
-                document.getElementById('openAddUserBtn').addEventListener('click', openAddUserModal);
-                document.getElementById('cancelAddUserBtn').addEventListener('click', closeAddUserModal);
                 document.getElementById('closeActivityModalBtn').addEventListener('click', closeActivityModal);
                 document.getElementById('addUserForm').addEventListener('submit', handleAddUser);
-                document.getElementById('addUserModal').addEventListener('click', (e) => {
-                    if (e.target.id === 'addUserModal') closeAddUserModal();
-                });
                 document.getElementById('activityModal').addEventListener('click', (e) => {
                     if (e.target.id === 'activityModal') closeActivityModal();
                 });
                 document.addEventListener('keydown', (e) => {
                     if (e.key === 'Escape') {
-                        closeAddUserModal();
                         closeActivityModal();
                     }
                 });
