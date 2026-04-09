@@ -1,5 +1,6 @@
 {
   "rewrites": [
+    { "source": "/api/admin-users", "destination": "/api/admin-users/index" },
     { "source": "/reset-password", "destination": "/reset-password.html" },
     { "source": "/reset-password/", "destination": "/reset-password.html" },
     { "source": "/:path((?!api/)(?!.*\\.).*)", "destination": "/index.html" }
