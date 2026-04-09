@@ -182,7 +182,8 @@
     <script src="menu-hamburguesa.js"></script>
     <script>
         const OFFICIAL_ROLES = ['admin', 'comercial', 'compras'];
-        const ADMIN_USERS_BASE_API = '/api/admin-users/index';
+        const ADMIN_USERS_BASE_API = '/api/admin-users-list';
+        const ADMIN_USER_API = '/api/admin-user';
         let usersState = [];
 
         function escapeHtml(value) {
@@ -303,7 +304,7 @@
                     const previousRole = event.target.dataset.previousRole || 'comercial';
                     try {
                         clearAlert();
-                        await apiFetch(`/api/admin-users/${encodeURIComponent(userId)}`, {
+                        await apiFetch(`${ADMIN_USER_API}?id=${encodeURIComponent(userId)}`, {
                             method: 'PATCH',
                             body: JSON.stringify({ role: event.target.value })
                         });
@@ -330,7 +331,7 @@
                     try {
                         clearAlert();
                         button.disabled = true;
-                        await apiFetch(`/api/admin-users/${encodeURIComponent(userId)}`, {
+                        await apiFetch(`${ADMIN_USER_API}?id=${encodeURIComponent(userId)}`, {
                             method: 'PATCH',
                             body: JSON.stringify({ disabled: nextDisabled })
                         });
