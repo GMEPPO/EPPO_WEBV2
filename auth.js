@@ -9,6 +9,7 @@ class AuthManager {
         this.supabase = null;
         this.currentUser = null;
         this.isInitialized = false;
+        this.accessLogPromise = null;
         this.authStateChangeListenerAdded = false; // Evitar múltiples listeners
         this.processingSignIn = false; // Evitar procesar SIGNED_IN múltiples veces
     }
@@ -52,6 +53,7 @@ class AuthManager {
             const { data: { session } } = await this.supabase.auth.getSession();
             if (session) {
                 this.currentUser = session.user;
+                this.logAccess().catch(() => {});
             }
                 } catch (error) {
                     // Si falla por CORS, es porque estamos en file://
@@ -73,6 +75,7 @@ class AuthManager {
                                 this.processingSignIn = true;
                     this.currentUser = session?.user || null;
                                 if (this.currentUser) this.syncIdentityFromUserRoles().catch(() => {});
+                                if (this.currentUser) this.logAccess(true).catch(() => {});
                                 this.processingSignIn = false;
                 } else if (event === 'SIGNED_OUT') {
                     this.currentUser = null;
@@ -125,6 +128,76 @@ class AuthManager {
                 if (fallback) localStorage.setItem('commercial_name', String(fallback));
             }
         } catch (e) {}
+    }
+
+    getAccessSessionKey() {
+        try {
+            const existing = sessionStorage.getItem('eppo_access_session_key');
+            if (existing) return existing;
+            const created = (typeof crypto !== 'undefined' && crypto.randomUUID)
+                ? crypto.randomUUID()
+                : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+            sessionStorage.setItem('eppo_access_session_key', created);
+            return created;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    async logAccess(force = false) {
+        if (window.location.protocol === 'file:') return;
+        const user = this.currentUser || await this.getCurrentUser();
+        if (!user) return;
+
+        const markerKey = `eppo_access_logged:${user.id}`;
+        try {
+            if (!force && sessionStorage.getItem(markerKey)) {
+                return;
+            }
+        } catch (e) {}
+
+        if (this.accessLogPromise) {
+            return this.accessLogPromise;
+        }
+
+        this.accessLogPromise = (async () => {
+            const client = await this.getClient();
+            if (!client) return;
+
+            const { data: sessionData } = await client.auth.getSession();
+            const token = sessionData?.session?.access_token;
+            if (!token) return;
+
+            const response = await fetch('/api/user-access-log', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    source_path: window.location.pathname || window.location.href || null,
+                    page_title: document.title || null,
+                    referrer: document.referrer || null,
+                    user_agent: navigator.userAgent || null,
+                    session_key: this.getAccessSessionKey()
+                })
+            });
+
+            if (!response.ok) {
+                const payload = await response.json().catch(() => ({}));
+                throw new Error(payload.error || `HTTP ${response.status}`);
+            }
+
+            try {
+                sessionStorage.setItem(markerKey, new Date().toISOString());
+            } catch (e) {}
+        })().catch((error) => {
+            console.warn('No se pudo registrar el acceso web del usuario:', error);
+        }).finally(() => {
+            this.accessLogPromise = null;
+        });
+
+        return this.accessLogPromise;
     }
 
     /**
@@ -316,6 +389,7 @@ class AuthManager {
             }
             this.currentUser = userData.user;
             this.syncIdentityFromUserRoles().catch(() => {});
+            this.logAccess().catch(() => {});
             return true;
         } catch (error) {
             if (error.message && (
@@ -451,4 +525,3 @@ if (typeof window.authManager === 'undefined') {
         window.authManager.initialize();
     }
 }
-

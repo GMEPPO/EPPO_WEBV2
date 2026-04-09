@@ -37,12 +37,30 @@ module.exports = async function handler(req, res) {
             if (userIds.length > 0) {
                 const { data: rolesData, error: rolesError } = await adminClient
                     .from('user_roles')
-                    .select('user_id, role, "Pais", "Name"')
+                    .select('user_id, role, "Pais", "Name", mirror_user_id, mirror_enabled, comercial_espejo')
                     .in('user_id', userIds);
                 if (rolesError) {
                     return res.status(500).json({ error: rolesError.message });
                 }
                 roles = rolesData || [];
+            }
+
+            let latestAccessMap = new Map();
+            if (userIds.length > 0) {
+                const { data: accessLogs, error: accessLogsError } = await adminClient
+                    .from('user_access_logs')
+                    .select('user_id, accessed_at')
+                    .in('user_id', userIds)
+                    .order('accessed_at', { ascending: false });
+
+                if (!accessLogsError && Array.isArray(accessLogs)) {
+                    for (const log of accessLogs) {
+                        const key = String(log.user_id || '');
+                        if (key && !latestAccessMap.has(key)) {
+                            latestAccessMap.set(key, log.accessed_at || null);
+                        }
+                    }
+                }
             }
 
             const rolesMap = new Map(roles.map(item => [String(item.user_id), item]));
@@ -55,15 +73,28 @@ module.exports = async function handler(req, res) {
                     email: user.email || '',
                     created_at: user.created_at || null,
                     last_sign_in_at: user.last_sign_in_at || null,
+                    last_access_at: latestAccessMap.get(String(user.id)) || null,
                     banned_until: bannedUntil,
                     disabled: isDisabled,
                     role: normalizeRole(roleRow?.role) || 'comercial',
                     pais: roleRow?.Pais || null,
-                    name: roleRow?.Name || null
+                    name: roleRow?.Name || null,
+                    mirror_user_id: roleRow?.mirror_user_id || null,
+                    mirror_enabled: !!roleRow?.mirror_enabled,
+                    comercial_espejo: roleRow?.comercial_espejo || null
                 };
             });
 
-            return res.status(200).json({ users: payload });
+            const commercials = payload
+                .filter(user => user.role === 'comercial' && user.name)
+                .map(user => ({
+                    id: user.id,
+                    name: user.name,
+                    email: user.email || ''
+                }))
+                .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+
+            return res.status(200).json({ users: payload, commercials });
         } catch (error) {
             return res.status(500).json({ error: error.message || 'Failed to list users' });
         }
@@ -74,10 +105,11 @@ module.exports = async function handler(req, res) {
             const body = jsonBody(req);
             const email = (body.email || '').toString().trim().toLowerCase();
             const password = (body.password || '').toString();
+            const name = (body.name || '').toString().trim();
             const role = ensureAllowedRole(body.role);
 
-            if (!email || !password || !role) {
-                return res.status(400).json({ error: 'email, password and valid role are required' });
+            if (!email || !password || !role || !name) {
+                return res.status(400).json({ error: 'name, email, password and valid role are required' });
             }
 
             if (password.length < 6) {
@@ -101,6 +133,9 @@ module.exports = async function handler(req, res) {
                     {
                         user_id: userId,
                         role,
+                        Name: name,
+                        mirror_user_id: null,
+                        mirror_enabled: false,
                         updated_at: new Date().toISOString()
                     },
                     { onConflict: 'user_id' }
@@ -119,7 +154,10 @@ module.exports = async function handler(req, res) {
                     last_sign_in_at: created.user.last_sign_in_at || null,
                     banned_until: created.user.banned_until || null,
                     disabled: false,
-                    role
+                    role,
+                    name,
+                    mirror_user_id: null,
+                    mirror_enabled: false
                 }
             });
         } catch (error) {

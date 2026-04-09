@@ -293,33 +293,25 @@ class ProposalsManager {
                     
                     if (role === 'comercial') {
                         console.log('🔒 [consultar-propuestas] Usuario comercial detectado, filtrando propuestas...');
-                        
-                        // Obtener nombre del usuario desde user_roles
-                        const user = await window.authManager?.getCurrentUser();
-                        if (user) {
-                            const client = await window.universalSupabase?.getClient();
-                            if (client) {
-                                const { data: userRoleData, error: userRoleError } = await client
-                                    .from('user_roles')
-                                    .select('Name')
-                                    .eq('user_id', user.id)
-                                    .single();
-                                
-                                if (!userRoleError && userRoleData && userRoleData.Name) {
-                                    const userName = userRoleData.Name;
-                                    console.log('👤 [consultar-propuestas] Filtrando por comercial:', userName);
-                                    
-                                    // Filtrar propuestas donde nombre_comercial coincida con el nombre del usuario
-                                    filteredPresupuestos = presupuestos.filter(p => {
-                                        const nombreComercial = p.nombre_comercial || '';
-                                        return nombreComercial.trim() === userName.trim();
-                                    });
-                                    
-                                    console.log(`📊 [consultar-propuestas] Propuestas filtradas: ${filteredPresupuestos.length} de ${presupuestos.length}`);
-                                } else {
-                                    console.warn('⚠️ [consultar-propuestas] No se pudo obtener el nombre del usuario, mostrando todas las propuestas');
-                                }
-                            }
+
+                        const allowedCommercialNames = await this.getCurrentCommercialAccessNames();
+                        if (allowedCommercialNames.length > 0) {
+                            console.log('👤 [consultar-propuestas] Filtrando por comerciales permitidos:', allowedCommercialNames);
+
+                            const allowedNamesSet = new Set(
+                                allowedCommercialNames
+                                    .map(name => (name || '').trim())
+                                    .filter(Boolean)
+                            );
+
+                            filteredPresupuestos = presupuestos.filter(p => {
+                                const nombreComercial = (p.nombre_comercial || '').trim();
+                                return allowedNamesSet.has(nombreComercial);
+                            });
+
+                            console.log(`📊 [consultar-propuestas] Propuestas filtradas: ${filteredPresupuestos.length} de ${presupuestos.length}`);
+                        } else {
+                            console.warn('⚠️ [consultar-propuestas] No se pudo resolver el alcance comercial, mostrando todas las propuestas');
                         }
                     } else {
                         console.log('✅ [consultar-propuestas] Usuario admin, mostrando todas las propuestas');
@@ -3580,6 +3572,62 @@ class ProposalsManager {
             return (data && data.Name) ? data.Name : null;
         } catch (e) {
             return null;
+        }
+    }
+
+    async getCurrentCommercialAccessNames() {
+        try {
+            const user = await window.authManager?.getCurrentUser();
+            if (!user) return [];
+
+            const client = window.universalSupabase?.getClient ? await window.universalSupabase.getClient() : this.supabase;
+            if (!client) return [];
+
+            const { data: currentRoleData, error: currentRoleError } = await client
+                .from('user_roles')
+                .select('Name, mirror_user_id, mirror_enabled, comercial_espejo')
+                .eq('user_id', user.id)
+                .single();
+
+            if (currentRoleError || !currentRoleData) {
+                return [];
+            }
+
+            const names = [];
+            const currentName = (currentRoleData.Name || '').trim();
+            if (currentName) {
+                names.push(currentName);
+            }
+
+            if (!currentRoleData.mirror_enabled || !currentRoleData.mirror_user_id) {
+                return Array.from(new Set(names));
+            }
+
+            const { data: mirrorRoleData, error: mirrorRoleError } = await client
+                .from('user_roles')
+                .select('Name')
+                .eq('user_id', currentRoleData.mirror_user_id)
+                .single();
+
+            if (!mirrorRoleError && mirrorRoleData && mirrorRoleData.Name) {
+                const mirrorName = String(mirrorRoleData.Name).trim();
+                if (mirrorName) {
+                    names.push(mirrorName);
+                }
+            } else if (currentRoleData.comercial_espejo) {
+                const legacyMirrorName = String(currentRoleData.comercial_espejo).trim();
+                if (legacyMirrorName) {
+                    console.warn('⚠️ [consultar-propuestas] Usando comercial_espejo como fallback para el espejo');
+                    names.push(legacyMirrorName);
+                }
+            } else {
+                console.warn('⚠️ [consultar-propuestas] El espejo está activo pero no se pudo resolver su nombre');
+            }
+
+            return Array.from(new Set(names.filter(Boolean)));
+        } catch (error) {
+            console.warn('⚠️ [consultar-propuestas] Error resolviendo nombres permitidos del comercial:', error);
+            return [];
         }
     }
 

@@ -32,7 +32,7 @@ function getBearerToken(req) {
     return match ? match[1] : null;
 }
 
-async function requireAdmin(req) {
+async function requireAuthenticated(req) {
     const token = getBearerToken(req);
     if (!token) {
         return { ok: false, status: 401, body: { error: 'Missing bearer token' } };
@@ -44,7 +44,17 @@ async function requireAdmin(req) {
         return { ok: false, status: 401, body: { error: 'Invalid token' } };
     }
 
-    const userId = authData.user.id;
+    return { ok: true, adminClient, requester: authData.user };
+}
+
+async function requireAdmin(req) {
+    const auth = await requireAuthenticated(req);
+    if (!auth.ok) {
+        return auth;
+    }
+
+    const { adminClient } = auth;
+    const userId = auth.requester.id;
     const { data: roleData, error: roleError } = await adminClient
         .from('user_roles')
         .select('role')
@@ -60,7 +70,7 @@ async function requireAdmin(req) {
         return { ok: false, status: 403, body: { error: 'Admin access required' } };
     }
 
-    return { ok: true, adminClient, requester: authData.user };
+    return auth;
 }
 
 function normalizeRole(role) {
@@ -88,6 +98,7 @@ module.exports = {
     getAdminClient,
     jsonBody,
     normalizeRole,
+    requireAuthenticated,
     requireAdmin,
     setCors
 };

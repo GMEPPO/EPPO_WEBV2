@@ -36,13 +36,24 @@
         .btn-danger:hover { background:rgba(239,68,68,.22); }
         .btn-success { background:rgba(16,185,129,.14); color:#a7f3d0; border:1px solid rgba(16,185,129,.35); }
         .btn-success:hover { background:rgba(16,185,129,.22); }
+        .mirror-cell { min-width: 260px; }
+        .mirror-select { width:100%; min-width:200px; padding:.6rem .75rem; background:var(--bg-primary, #0f172a); border:1px solid var(--border-color, #334155); border-radius:8px; color:var(--text-primary); }
+        .mirror-select:disabled { opacity:.6; cursor:not-allowed; }
+        .mirror-help { color:var(--text-secondary); font-size:.78rem; margin-top:.4rem; line-height:1.35; }
+        .mirror-toggle { display:flex; align-items:center; gap:.6rem; margin-top:.65rem; color:var(--text-primary); font-size:.88rem; }
+        .mirror-toggle input[type="checkbox"] { accent-color: var(--brand-blue, #2563eb); width:16px; height:16px; }
+        .mirror-inline-status { display:block; margin-top:.35rem; color:#fbbf24; font-size:.76rem; }
         .loading-row, .empty-row { text-align:center; padding:2rem; color:var(--text-secondary); }
         .access-badge { display:inline-flex; align-items:center; gap:.4rem; margin-top:.4rem; font-size:.78rem; font-weight:600; }
         .access-badge.active { color:#86efac; }
         .access-badge.inactive { color:#fca5a5; }
+        .action-stack { display:flex; flex-direction:column; gap:.5rem; align-items:flex-end; }
+        .btn-secondary-alt { background:rgba(59,130,246,.12); color:#bfdbfe; border:1px solid rgba(59,130,246,.3); }
+        .btn-secondary-alt:hover { background:rgba(59,130,246,.2); }
         .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.72); z-index:1100; align-items:center; justify-content:center; padding:1rem; }
         .modal.show { display:flex; }
         .modal-content { width:min(560px, 100%); background:var(--bg-secondary, #1e293b); border:1px solid var(--border-color, #334155); border-radius:16px; padding:1.5rem; box-shadow:0 24px 48px rgba(0,0,0,.35); }
+        .modal-content.activity-modal-content { width:min(920px, 100%); max-height:85vh; overflow:auto; }
         .modal-header h2 { margin:0 0 .35rem; color:var(--text-primary); }
         .modal-header p { margin:0 0 1rem; color:var(--text-secondary); }
         .form-grid { display:grid; gap:1rem; }
@@ -50,6 +61,12 @@
         .form-group input, .form-group select { width:100%; padding:.8rem .9rem; background:var(--bg-primary, #0f172a); border:1px solid var(--border-color, #334155); border-radius:10px; color:var(--text-primary); }
         .form-help { color:var(--text-secondary); font-size:.82rem; margin-top:.35rem; }
         .modal-actions { display:flex; justify-content:flex-end; gap:.75rem; margin-top:1.25rem; }
+        .activity-list { display:grid; gap:.85rem; }
+        .activity-item { background:var(--bg-primary, #0f172a); border:1px solid var(--border-color, #334155); border-radius:12px; padding:1rem; }
+        .activity-item-header { display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; margin-bottom:.5rem; }
+        .activity-item-title { font-weight:600; color:var(--text-primary); }
+        .activity-item-time { color:#93c5fd; font-size:.88rem; white-space:nowrap; }
+        .activity-meta { display:grid; gap:.3rem; color:var(--text-secondary); font-size:.85rem; word-break:break-word; }
         @media (max-width: 900px) {
             .users-header, .users-toolbar { flex-direction:column; align-items:stretch; }
             .users-table thead { display:none; }
@@ -102,7 +119,7 @@
             <div class="users-header">
                 <div class="users-header-copy">
                     <h1><i class="fas fa-users-cog"></i> Gestion de Usuarios</h1>
-                    <p>Solo administradores pueden crear usuarios, asignar roles y eliminar cuentas.</p>
+                    <p>Solo administradores pueden crear usuarios, asignar roles y gestionar acceso y espejo comercial.</p>
                 </div>
                 <div class="header-actions">
                     <button class="btn btn-secondary" type="button" onclick="window.location.href='index.html'">
@@ -127,14 +144,15 @@
                         <tr>
                             <th>Usuario</th>
                             <th>Rol</th>
-                            <th>Ultimo acceso</th>
+                            <th>Espejo</th>
+                            <th>Ultimo acceso web</th>
                             <th>Fecha de creacion</th>
                             <th>Acceso</th>
                             <th>Acciones</th>
                         </tr>
                     </thead>
                     <tbody id="usersTableBody">
-                        <tr><td colspan="6" class="loading-row"><i class="fas fa-spinner fa-spin"></i> Cargando usuarios...</td></tr>
+                        <tr><td colspan="7" class="loading-row"><i class="fas fa-spinner fa-spin"></i> Cargando usuarios...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -149,6 +167,10 @@
             </div>
             <form id="addUserForm">
                 <div class="form-grid">
+                    <div class="form-group">
+                        <label for="newUserName">Nombre de la persona</label>
+                        <input type="text" id="newUserName" required autocomplete="name">
+                    </div>
                     <div class="form-group">
                         <label for="newUserEmail">Email</label>
                         <input type="email" id="newUserEmail" required autocomplete="email">
@@ -175,6 +197,21 @@
         </div>
     </div>
 
+    <div id="activityModal" class="modal" aria-hidden="true">
+        <div class="modal-content activity-modal-content">
+            <div class="modal-header">
+                <h2 id="activityModalTitle">Historico de actividad</h2>
+                <p id="activityModalSubtitle">Accesos recientes del usuario a la web.</p>
+            </div>
+            <div id="activityModalBody" class="activity-list">
+                <div class="loading-row"><i class="fas fa-spinner fa-spin"></i> Cargando actividad...</div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" id="closeActivityModalBtn">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="load-config.js"></script>
     <script src="supabase-config-universal.js"></script>
@@ -185,6 +222,8 @@
         const ADMIN_USERS_BASE_API = '/api/admin-users-list';
         const ADMIN_USER_API = '/api/admin-user';
         let usersState = [];
+        let commercialsState = [];
+        let activityCache = new Map();
 
         function escapeHtml(value) {
             return (value || '')
@@ -248,12 +287,88 @@
             return OFFICIAL_ROLES.map(role => `<option value="${role}" ${role === selectedRole ? 'selected' : ''}>${role}</option>`).join('');
         }
 
+        function buildMirrorOptions(currentUserId, selectedMirrorId) {
+            const options = ['<option value="">Sin espejo</option>'];
+            commercialsState
+                .filter(commercial => String(commercial.id) !== String(currentUserId))
+                .forEach(commercial => {
+                    const label = commercial.name + (commercial.email ? ` (${commercial.email})` : '');
+                    options.push(`<option value="${escapeHtml(commercial.id)}" ${String(commercial.id) === String(selectedMirrorId || '') ? 'selected' : ''}>${escapeHtml(label)}</option>`);
+                });
+            return options.join('');
+        }
+
+        function formatActivityValue(value) {
+            const normalized = (value || '').toString().trim();
+            return normalized || '-';
+        }
+
+        function renderActivityModal(user, entries) {
+            const titleEl = document.getElementById('activityModalTitle');
+            const subtitleEl = document.getElementById('activityModalSubtitle');
+            const bodyEl = document.getElementById('activityModalBody');
+            if (titleEl) titleEl.textContent = `Historico de actividad de ${user.name || user.email || 'usuario'}`;
+            if (subtitleEl) subtitleEl.textContent = `Se muestran los ${entries.length} accesos web mas recientes registrados.`;
+
+            if (!entries.length) {
+                bodyEl.innerHTML = '<div class="empty-row">No hay actividad registrada para este usuario.</div>';
+                return;
+            }
+
+            bodyEl.innerHTML = entries.map(entry => `
+                <div class="activity-item">
+                    <div class="activity-item-header">
+                        <div class="activity-item-title">${escapeHtml(formatActivityValue(entry.page_title || entry.source_path || 'Acceso web'))}</div>
+                        <div class="activity-item-time">${escapeHtml(formatDateTime(entry.accessed_at))}</div>
+                    </div>
+                    <div class="activity-meta">
+                        <div><strong>Ruta:</strong> ${escapeHtml(formatActivityValue(entry.source_path))}</div>
+                        <div><strong>Referrer:</strong> ${escapeHtml(formatActivityValue(entry.referrer))}</div>
+                        <div><strong>Sesion:</strong> ${escapeHtml(formatActivityValue(entry.session_key))}</div>
+                        <div><strong>User agent:</strong> ${escapeHtml(formatActivityValue(entry.user_agent))}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function openActivityModalShell() {
+            document.getElementById('activityModal').classList.add('show');
+            document.getElementById('activityModal').setAttribute('aria-hidden', 'false');
+        }
+
+        function closeActivityModal() {
+            document.getElementById('activityModal').classList.remove('show');
+            document.getElementById('activityModal').setAttribute('aria-hidden', 'true');
+        }
+
+        async function openActivityModal(userId) {
+            const user = usersState.find(item => String(item.id) === String(userId));
+            if (!user) return;
+
+            openActivityModalShell();
+            document.getElementById('activityModalTitle').textContent = `Historico de actividad de ${user.name || user.email || 'usuario'}`;
+            document.getElementById('activityModalSubtitle').textContent = 'Cargando accesos recientes...';
+            document.getElementById('activityModalBody').innerHTML = '<div class="loading-row"><i class="fas fa-spinner fa-spin"></i> Cargando actividad...</div>';
+
+            try {
+                let entries = activityCache.get(String(userId));
+                if (!entries) {
+                    const payload = await apiFetch(`${ADMIN_USER_API}?id=${encodeURIComponent(userId)}`, { method: 'GET' });
+                    entries = Array.isArray(payload.activity) ? payload.activity : [];
+                    activityCache.set(String(userId), entries);
+                }
+                renderActivityModal(user, entries);
+            } catch (error) {
+                document.getElementById('activityModalBody').innerHTML = `<div class="empty-row">${escapeHtml(error.message || 'No se pudo cargar la actividad del usuario.')}</div>`;
+            }
+        }
+
         function renderUsers() {
             const tbody = document.getElementById('usersTableBody');
             if (!tbody) return;
 
             if (!usersState.length) {
-                tbody.innerHTML = '<tr><td colspan="6" class="empty-row">No hay usuarios registrados.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-row">No hay usuarios registrados.</td></tr>';
                 setStatus('0 usuarios');
                 return;
             }
@@ -270,6 +385,25 @@
                 const actionClass = disabled ? 'btn-success' : 'btn-danger';
                 const actionLabel = disabled ? 'Reactivar' : 'Desactivar';
                 const actionIcon = disabled ? 'fa-user-check' : 'fa-user-slash';
+                const isCommercial = role === 'comercial';
+                const mirrorUserId = user.mirror_user_id || '';
+                const mirrorEnabled = !!user.mirror_enabled;
+                const mirrorMissingSelection = isCommercial && mirrorEnabled && !mirrorUserId;
+                const mirrorContent = isCommercial
+                    ? `
+                        <div class="mirror-cell">
+                            <select class="mirror-select" data-mirror-user-id="${escapeHtml(user.id)}" data-previous-mirror-user-id="${escapeHtml(mirrorUserId)}">
+                                ${buildMirrorOptions(user.id, mirrorUserId)}
+                            </select>
+                            <label class="mirror-toggle">
+                                <input type="checkbox" data-mirror-enabled-user-id="${escapeHtml(user.id)}" ${mirrorEnabled ? 'checked' : ''} ${mirrorUserId ? '' : 'disabled'}>
+                                <span>Puede ver propuestas del espejo</span>
+                            </label>
+                            <div class="mirror-help">Acceso unidireccional al historico del comercial seleccionado.</div>
+                            ${mirrorMissingSelection ? '<span class="mirror-inline-status">Asigna un espejo antes de activar el permiso.</span>' : ''}
+                        </div>
+                    `
+                    : '<span class="user-meta">Solo disponible para comerciales.</span>';
                 return `
                     <tr>
                         <td data-label="Usuario">
@@ -282,11 +416,15 @@
                             </select>
                             ${legacyText}
                         </td>
-                        <td data-label="Ultimo acceso">${escapeHtml(formatDateTime(user.last_sign_in_at))}</td>
+                        <td data-label="Espejo">${mirrorContent}</td>
+                        <td data-label="Ultimo acceso web">${escapeHtml(formatDateTime(user.last_access_at || user.last_sign_in_at))}</td>
                         <td data-label="Fecha de creacion">${escapeHtml(formatDateTime(user.created_at))}</td>
                         <td data-label="Acceso">${accessBadge}</td>
                         <td data-label="Acciones">
-                            <div class="user-actions">
+                            <div class="action-stack">
+                                <button class="btn btn-secondary-alt" type="button" data-activity-user="${escapeHtml(user.id)}">
+                                    <i class="fas fa-history"></i> Historico
+                                </button>
                                 <button class="btn ${actionClass}" type="button" data-toggle-user="${escapeHtml(user.id)}" data-toggle-email="${escapeHtml(user.email || '')}" data-disabled="${disabled ? 'true' : 'false'}">
                                     <i class="fas ${actionIcon}"></i> ${actionLabel}
                                 </button>
@@ -309,10 +447,68 @@
                             body: JSON.stringify({ role: event.target.value })
                         });
                         event.target.dataset.previousRole = event.target.value;
+                        await loadUsers();
                         showAlert('Rol actualizado correctamente.', 'success');
                     } catch (error) {
                         event.target.value = previousRole;
                         showAlert(error.message || 'No se pudo actualizar el rol.', 'error');
+                    }
+                });
+            });
+
+            tbody.querySelectorAll('[data-mirror-user-id]').forEach(select => {
+                select.addEventListener('change', async (event) => {
+                    const userId = event.target.dataset.mirrorUserId;
+                    const previousMirrorUserId = event.target.dataset.previousMirrorUserId || '';
+                    const user = usersState.find(item => String(item.id) === String(userId));
+                    const currentlyEnabled = !!user?.mirror_enabled;
+                    const nextMirrorUserId = event.target.value || null;
+
+                    try {
+                        clearAlert();
+                        await apiFetch(`${ADMIN_USER_API}?id=${encodeURIComponent(userId)}`, {
+                            method: 'PATCH',
+                            body: JSON.stringify({
+                                mirror_user_id: nextMirrorUserId,
+                                mirror_enabled: nextMirrorUserId ? currentlyEnabled : false
+                            })
+                        });
+                        await loadUsers();
+                        showAlert(nextMirrorUserId ? 'Espejo comercial actualizado.' : 'Espejo comercial eliminado.', 'success');
+                    } catch (error) {
+                        event.target.value = previousMirrorUserId;
+                        showAlert(error.message || 'No se pudo actualizar el espejo comercial.', 'error');
+                    }
+                });
+            });
+
+            tbody.querySelectorAll('[data-mirror-enabled-user-id]').forEach(checkbox => {
+                checkbox.addEventListener('change', async (event) => {
+                    const userId = event.target.dataset.mirrorEnabledUserId;
+                    const nextMirrorEnabled = !!event.target.checked;
+                    const user = usersState.find(item => String(item.id) === String(userId));
+                    const mirrorUserId = user?.mirror_user_id || null;
+
+                    if (nextMirrorEnabled && !mirrorUserId) {
+                        event.target.checked = false;
+                        showAlert('Selecciona primero un espejo comercial.', 'error');
+                        return;
+                    }
+
+                    try {
+                        clearAlert();
+                        await apiFetch(`${ADMIN_USER_API}?id=${encodeURIComponent(userId)}`, {
+                            method: 'PATCH',
+                            body: JSON.stringify({
+                                mirror_user_id: mirrorUserId,
+                                mirror_enabled: nextMirrorEnabled
+                            })
+                        });
+                        await loadUsers();
+                        showAlert(`Acceso al espejo ${nextMirrorEnabled ? 'activado' : 'desactivado'} correctamente.`, 'success');
+                    } catch (error) {
+                        event.target.checked = !nextMirrorEnabled;
+                        showAlert(error.message || 'No se pudo actualizar el acceso al espejo.', 'error');
                     }
                 });
             });
@@ -346,6 +542,12 @@
                     }
                 });
             });
+
+            tbody.querySelectorAll('[data-activity-user]').forEach(button => {
+                button.addEventListener('click', async () => {
+                    await openActivityModal(button.dataset.activityUser);
+                });
+            });
         }
 
         async function loadUsers() {
@@ -353,9 +555,11 @@
                 setStatus('Cargando usuarios...');
                 const payload = await apiFetch(ADMIN_USERS_BASE_API, { method: 'GET' });
                 usersState = Array.isArray(payload.users) ? payload.users : [];
+                commercialsState = Array.isArray(payload.commercials) ? payload.commercials : [];
+                activityCache = new Map();
                 renderUsers();
             } catch (error) {
-                document.getElementById('usersTableBody').innerHTML = `<tr><td colspan="6" class="empty-row">${escapeHtml(error.message || 'Error al cargar usuarios.')}</td></tr>`;
+                document.getElementById('usersTableBody').innerHTML = `<tr><td colspan="7" class="empty-row">${escapeHtml(error.message || 'Error al cargar usuarios.')}</td></tr>`;
                 setStatus('Error al cargar usuarios');
                 showAlert(error.message || 'Error al cargar usuarios.', 'error');
             }
@@ -375,6 +579,7 @@
         async function handleAddUser(event) {
             event.preventDefault();
             const submitBtn = document.getElementById('submitAddUserBtn');
+            const name = document.getElementById('newUserName').value.trim();
             const email = document.getElementById('newUserEmail').value.trim();
             const password = document.getElementById('newUserPassword').value;
             const role = document.getElementById('newUserRole').value;
@@ -384,7 +589,7 @@
                 clearAlert();
                 await apiFetch(ADMIN_USERS_BASE_API, {
                     method: 'POST',
-                    body: JSON.stringify({ email, password, role })
+                    body: JSON.stringify({ name, email, password, role })
                 });
                 closeAddUserModal();
                 showAlert('Usuario creado correctamente.', 'success');
@@ -412,12 +617,19 @@
                 if (!(await ensureAdminAccess())) return;
                 document.getElementById('openAddUserBtn').addEventListener('click', openAddUserModal);
                 document.getElementById('cancelAddUserBtn').addEventListener('click', closeAddUserModal);
+                document.getElementById('closeActivityModalBtn').addEventListener('click', closeActivityModal);
                 document.getElementById('addUserForm').addEventListener('submit', handleAddUser);
                 document.getElementById('addUserModal').addEventListener('click', (e) => {
                     if (e.target.id === 'addUserModal') closeAddUserModal();
                 });
+                document.getElementById('activityModal').addEventListener('click', (e) => {
+                    if (e.target.id === 'activityModal') closeActivityModal();
+                });
                 document.addEventListener('keydown', (e) => {
-                    if (e.key === 'Escape') closeAddUserModal();
+                    if (e.key === 'Escape') {
+                        closeAddUserModal();
+                        closeActivityModal();
+                    }
                 });
                 await loadUsers();
             } catch (error) {
