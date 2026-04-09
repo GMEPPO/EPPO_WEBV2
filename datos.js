@@ -215,7 +215,7 @@
 
             const { data: products, error: productsErr } = await client
                 .from('products')
-                .select('id, nombre, categoria, category, categorias')
+                .select('id, nombre, categoria, categorias')
                 .limit(10000);
             if (productsErr) throw productsErr;
 
