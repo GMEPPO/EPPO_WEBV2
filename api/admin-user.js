@@ -24,28 +24,109 @@ module.exports = async function handler(req, res) {
         return res.status(400).json({ error: 'User id is required' });
     }
 
+    if (req.method === 'GET') {
+        try {
+            const { data: accessLogs, error: accessLogsError } = await adminClient
+                .from('user_access_logs')
+                .select('id, accessed_at, source_path, page_title, referrer, user_agent, session_key')
+                .eq('user_id', userId)
+                .order('accessed_at', { ascending: false })
+                .limit(100);
+
+            if (accessLogsError) {
+                return res.status(500).json({ error: accessLogsError.message });
+            }
+
+            return res.status(200).json({
+                user_id: userId,
+                activity: Array.isArray(accessLogs) ? accessLogs : []
+            });
+        } catch (error) {
+            return res.status(500).json({ error: error.message || 'Failed to load user activity' });
+        }
+    }
+
     if (req.method === 'PATCH') {
         try {
             const body = jsonBody(req);
             const hasRole = Object.prototype.hasOwnProperty.call(body, 'role');
             const hasDisabled = Object.prototype.hasOwnProperty.call(body, 'disabled');
+            const hasMirrorUserId = Object.prototype.hasOwnProperty.call(body, 'mirror_user_id');
+            const hasMirrorEnabled = Object.prototype.hasOwnProperty.call(body, 'mirror_enabled');
             const role = hasRole ? ensureAllowedRole(body.role) : null;
+            const requestedMirrorUserId = hasMirrorUserId
+                ? ((body.mirror_user_id || '').toString().trim() || null)
+                : undefined;
+            const requestedMirrorEnabled = hasMirrorEnabled ? !!body.mirror_enabled : undefined;
 
-            if (!hasRole && !hasDisabled) {
+            if (!hasRole && !hasDisabled && !hasMirrorUserId && !hasMirrorEnabled) {
                 return res.status(400).json({ error: 'Nothing to update' });
             }
+
+            const { data: existingRoleRow, error: existingRoleError } = await adminClient
+                .from('user_roles')
+                .select('role, mirror_user_id, mirror_enabled')
+                .eq('user_id', userId)
+                .maybeSingle();
+
+            if (existingRoleError) {
+                return res.status(500).json({ error: existingRoleError.message });
+            }
+
+            const currentRole = existingRoleRow?.role || 'comercial';
+            const finalRole = hasRole ? role : currentRole;
+
+            let finalMirrorUserId = hasMirrorUserId
+                ? requestedMirrorUserId
+                : (existingRoleRow?.mirror_user_id || null);
+            let finalMirrorEnabled = hasMirrorEnabled
+                ? requestedMirrorEnabled
+                : !!existingRoleRow?.mirror_enabled;
 
             if (hasRole) {
                 if (!role) {
                     return res.status(400).json({ error: 'Valid role is required' });
                 }
+            }
 
+            if (finalRole !== 'comercial') {
+                finalMirrorUserId = null;
+                finalMirrorEnabled = false;
+            } else {
+                if (finalMirrorUserId && String(finalMirrorUserId) === String(userId)) {
+                    return res.status(400).json({ error: 'Un comercial no puede ser su propio espejo' });
+                }
+
+                if (finalMirrorEnabled && !finalMirrorUserId) {
+                    return res.status(400).json({ error: 'No se puede activar el espejo sin asignar un comercial espejo' });
+                }
+
+                if (finalMirrorUserId) {
+                    const { data: mirrorRoleRow, error: mirrorRoleError } = await adminClient
+                        .from('user_roles')
+                        .select('role, "Name"')
+                        .eq('user_id', finalMirrorUserId)
+                        .maybeSingle();
+
+                    if (mirrorRoleError) {
+                        return res.status(500).json({ error: mirrorRoleError.message });
+                    }
+
+                    if (!mirrorRoleRow || mirrorRoleRow.role !== 'comercial') {
+                        return res.status(400).json({ error: 'El espejo asignado debe ser un usuario con rol comercial' });
+                    }
+                }
+            }
+
+            if (hasRole || hasMirrorUserId || hasMirrorEnabled) {
                 const { error } = await adminClient
                     .from('user_roles')
                     .upsert(
                         {
                             user_id: userId,
-                            role,
+                            role: finalRole,
+                            mirror_user_id: finalMirrorUserId,
+                            mirror_enabled: finalMirrorEnabled,
                             updated_at: new Date().toISOString()
                         },
                         { onConflict: 'user_id' }
@@ -77,8 +158,10 @@ module.exports = async function handler(req, res) {
 
             return res.status(200).json({
                 success: true,
-                role: hasRole ? role : undefined,
-                disabled: hasDisabled ? disabled : undefined
+                role: finalRole,
+                disabled: hasDisabled ? disabled : undefined,
+                mirror_user_id: finalMirrorUserId,
+                mirror_enabled: finalMirrorEnabled
             });
         } catch (error) {
             return res.status(500).json({ error: error.message || 'Failed to update user' });
