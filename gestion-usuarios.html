@@ -182,6 +182,7 @@
     <script src="menu-hamburguesa.js"></script>
     <script>
         const OFFICIAL_ROLES = ['admin', 'comercial', 'compras'];
+        const ADMIN_USERS_BASE_API = '/api/admin-users/index';
         let usersState = [];
 
         function escapeHtml(value) {
@@ -349,7 +350,7 @@
         async function loadUsers() {
             try {
                 setStatus('Cargando usuarios...');
-                const payload = await apiFetch('/api/admin-users', { method: 'GET' });
+                const payload = await apiFetch(ADMIN_USERS_BASE_API, { method: 'GET' });
                 usersState = Array.isArray(payload.users) ? payload.users : [];
                 renderUsers();
             } catch (error) {
@@ -380,7 +381,7 @@
             try {
                 submitBtn.disabled = true;
                 clearAlert();
-                await apiFetch('/api/admin-users', {
+                await apiFetch(ADMIN_USERS_BASE_API, {
                     method: 'POST',
                     body: JSON.stringify({ email, password, role })
                 });
