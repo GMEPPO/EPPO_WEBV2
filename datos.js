@@ -119,7 +119,6 @@
 
     function getProposalDisplayName(proposal) {
         return proposal?.nombre_cliente
-            || proposal?.commercial_name
             || proposal?.codigo_propuesta
             || `Propuesta ${proposal?.id || ''}`.trim();
     }
@@ -330,7 +329,7 @@
 
             const { data: propuestas, error: pErr } = await client
                 .from('presupuestos')
-                .select('id, estado_propuesta, codigo_propuesta, nombre_cliente, commercial_name');
+                .select('id, estado_propuesta, codigo_propuesta, nombre_cliente');
             if (pErr) throw pErr;
 
             const abiertoIds = [];
