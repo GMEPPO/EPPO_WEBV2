@@ -2460,7 +2460,7 @@ class DynamicProductsPage {
                         `).join('')}
                     </div>
                     <div style="margin-top:auto; padding-top:12px;">
-                        <div style="font-size:1.2rem;color:var(--brand-gold);font-weight:600;text-align:center;">${formattedPrice}</div>
+                        <div class="product-price-trigger" onclick="event.stopPropagation(); window.showProductPriceTiersModal && window.showProductPriceTiersModal('${product.id}')" title="${this.currentLanguage === 'es' ? 'Ver escalones de precio' : this.currentLanguage === 'en' ? 'View price tiers' : 'Ver escalões de preço'}" style="font-size:1.2rem;color:var(--brand-gold);font-weight:600;text-align:center;cursor:pointer;">${formattedPrice}</div>
                     ${
                         tierLabel
                             ? `<div style="margin-top:4px;font-size:0.85rem;color:var(--text-secondary);text-align:center;">Escalón aplicado: ${tierLabel}</div>`
@@ -2701,7 +2701,156 @@ class DynamicProductsPage {
         }
 
         const formattedPrice = this.formatCurrency(selectedPrice, currency);
-        return { formattedPrice, tierLabel };
+        return { formattedPrice, tierLabel, price: selectedPrice, currency, quantity };
+    }
+
+    showPriceTiersModal(productId) {
+        const product = this.allProducts.find(p => String(p.id) === String(productId));
+        if (!product) {
+            console.error('Producto no encontrado para mostrar escalones');
+            return;
+        }
+
+        const lang = this.currentLanguage || 'es';
+        const translations = {
+            es: {
+                title: 'Escalones de Precio',
+                noTiers: 'Este producto no tiene escalones de precio configurados.',
+                from: 'Desde',
+                to: 'Hasta',
+                units: 'unidades',
+                price: 'Precio',
+                currentQuantity: 'Cantidad actual',
+                currentPrice: 'Precio actual'
+            },
+            pt: {
+                title: 'Escalões de Preço',
+                noTiers: 'Este produto não tem escalões de preço configurados.',
+                from: 'De',
+                to: 'Até',
+                units: 'unidades',
+                price: 'Preço',
+                currentQuantity: 'Quantidade atual',
+                currentPrice: 'Preço atual'
+            },
+            en: {
+                title: 'Price Tiers',
+                noTiers: 'This product does not have price tiers configured.',
+                from: 'From',
+                to: 'To',
+                units: 'units',
+                price: 'Price',
+                currentQuantity: 'Current quantity',
+                currentPrice: 'Current price'
+            }
+        };
+        const t = translations[lang] || translations.es;
+
+        let modal = document.getElementById('product-price-tiers-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'product-price-tiers-modal';
+            modal.className = 'product-price-tiers-modal';
+            modal.innerHTML = `
+                <div class="product-price-tiers-modal-content">
+                    <div class="product-price-tiers-modal-header">
+                        <h3 class="product-price-tiers-modal-title"></h3>
+                        <button type="button" class="product-price-tiers-modal-close" aria-label="Close">&times;</button>
+                    </div>
+                    <div class="product-price-tiers-modal-body">
+                        <div class="product-price-tiers-list"></div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            const closeBtn = modal.querySelector('.product-price-tiers-modal-close');
+            closeBtn.addEventListener('click', () => {
+                modal.style.display = 'none';
+            });
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && modal.style.display === 'block') {
+                    modal.style.display = 'none';
+                }
+            });
+        }
+
+        const title = modal.querySelector('.product-price-tiers-modal-title');
+        const list = modal.querySelector('.product-price-tiers-list');
+        title.textContent = `${t.title} - ${this.getDisplayName(product.nombre || product.modelo || '')}`;
+
+        const basePrice = Number.isFinite(product.precio) ? Number(product.precio) : 0;
+        const priceTiers = Array.isArray(product.price_tiers) ? product.price_tiers : [];
+        const currentPriceInfo = this.getPriceForQuantity(product);
+
+        if (!priceTiers.length) {
+            list.innerHTML = `<p class="product-price-tiers-empty">${t.noTiers}</p>`;
+            modal.style.display = 'block';
+            return;
+        }
+
+        const sortedTiers = [...priceTiers].sort((a, b) => {
+            const minA = a?.min_qty !== null && a?.min_qty !== undefined ? Number(a.min_qty) : 0;
+            const minB = b?.min_qty !== null && b?.min_qty !== undefined ? Number(b.min_qty) : 0;
+            return minA - minB;
+        });
+
+        let html = `
+            <div class="product-price-tiers-current">
+                <div class="product-price-tiers-current-info">
+                    <div>
+                        <div class="product-price-tiers-current-label">${t.currentQuantity}: ${currentPriceInfo.quantity} ${t.units}</div>
+                        <div class="product-price-tiers-current-value">${t.currentPrice}: ${currentPriceInfo.formattedPrice}</div>
+                    </div>
+                    <i class="fas fa-info-circle product-price-tiers-current-icon"></i>
+                </div>
+            </div>
+            <div class="product-price-tiers-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>${t.from}</th>
+                            <th>${t.to}</th>
+                            <th>${t.price}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        sortedTiers.forEach((tier, index) => {
+            const minQty = tier?.min_qty !== null && tier?.min_qty !== undefined ? Number(tier.min_qty) : 0;
+            const maxQty = tier?.max_qty !== null && tier?.max_qty !== undefined ? Number(tier.max_qty) : null;
+            const tierPrice = tier?.price !== null && tier?.price !== undefined ? Number(tier.price) : basePrice;
+            const tierCurrency = tier?.currency || currentPriceInfo.currency || product.moneda || 'EUR';
+            const isCurrentTier = currentPriceInfo.quantity >= minQty && (maxQty === null || currentPriceInfo.quantity <= maxQty);
+            const isLastTier = index === sortedTiers.length - 1;
+            const maxQtyDisplay = maxQty !== null ? `${maxQty} ${t.units}` : (isLastTier ? `${minQty}+` : '∞');
+
+            html += `
+                <tr class="${isCurrentTier ? 'active-tier' : ''}">
+                    <td>${minQty} ${t.units}</td>
+                    <td>${maxQtyDisplay}</td>
+                    <td class="price-cell">
+                        ${this.formatCurrency(tierPrice, tierCurrency)}
+                        ${isCurrentTier ? '<i class="fas fa-check-circle check-icon"></i>' : ''}
+                    </td>
+                </tr>
+            `;
+        });
+
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+        list.innerHTML = html;
+        modal.style.display = 'block';
     }
 
     formatCurrency(amount, currencyCode = 'EUR') {
@@ -3267,6 +3416,9 @@ if (!window.productManagerInitialized) {
         
         try {
             window.productManager = new DynamicProductsPage();
+            window.showProductPriceTiersModal = (productId) => {
+                window.productManager?.showPriceTiersModal(productId);
+            };
             // Llamar init() manualmente ya que lo removimos del constructor
             if (window.productManager && typeof window.productManager.init === 'function') {
                 window.productManager.init().catch(error => {

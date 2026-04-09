@@ -27,6 +27,8 @@
             padding: 1rem;
             box-shadow: var(--shadow-sm);
         }
+        .datos-card.clickable { cursor: pointer; transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease; }
+        .datos-card.clickable:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: var(--primary-500); }
         .datos-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
         .datos-card-title { font-size: 1rem; font-weight: 700; color: var(--text-primary); margin: 0; }
         .datos-card-value { font-size: 2rem; font-weight: 700; color: var(--primary-500); margin: .75rem 0 .25rem 0; }
@@ -58,6 +60,28 @@
         .datos-info-content ul { margin: .5rem 0 0 1rem; color: var(--text-secondary); }
         .datos-info-content li { margin-bottom: .35rem; }
         .datos-info-close { margin-top: .75rem; }
+        .datos-detail-modal { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.58); z-index: 1001; padding: 1rem; }
+        .datos-detail-modal.active { display: flex; }
+        .datos-detail-content { width: min(920px, 96vw); max-height: 88vh; overflow: auto; background: var(--bg-white); border: 1px solid var(--bg-gray-300); border-radius: 16px; padding: 1rem; box-shadow: var(--shadow-lg); }
+        .datos-detail-header { display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; margin-bottom:1rem; }
+        .datos-detail-header h3 { margin:0 0 .25rem 0; color: var(--text-primary); }
+        .datos-detail-subtitle { margin:0; color: var(--text-secondary); font-size:.925rem; }
+        .datos-detail-list { display:grid; gap:.75rem; }
+        .datos-detail-item { position: relative; border: 1px solid var(--bg-gray-200); border-radius: 12px; padding: .875rem 1rem; background: var(--bg-gray-50); }
+        .datos-detail-item:hover { border-color: var(--primary-500); }
+        .datos-detail-main { display:flex; justify-content:space-between; gap:1rem; align-items:flex-start; }
+        .datos-detail-client { font-weight:700; color: var(--text-primary); margin:0 0 .2rem 0; }
+        .datos-detail-code, .datos-detail-state, .datos-detail-amount { color: var(--text-secondary); font-size:.9rem; }
+        .datos-detail-amount { text-align:right; white-space:nowrap; }
+        .datos-detail-preview { display:none; position:absolute; left:1rem; top:calc(100% + 8px); width:min(540px, calc(100vw - 4rem)); z-index:4; background:#111827; color:#f9fafb; border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:.875rem 1rem; box-shadow:0 18px 42px rgba(0,0,0,.35); }
+        .datos-detail-item:hover .datos-detail-preview { display:block; }
+        .datos-preview-title { font-size:.82rem; text-transform:uppercase; letter-spacing:.04em; color:#cbd5e1; margin-bottom:.5rem; }
+        .datos-preview-list { display:grid; gap:.45rem; }
+        .datos-preview-row { display:flex; justify-content:space-between; gap:1rem; font-size:.9rem; }
+        .datos-preview-name { color:#f9fafb; }
+        .datos-preview-meta { color:#cbd5e1; white-space:nowrap; }
+        .datos-detail-empty { color: var(--text-secondary); padding: 1rem 0; }
+        .datos-detail-close { margin-top: 1rem; }
     </style>
 </head>
 <body>
@@ -105,7 +129,7 @@
             <div id="datosLoading" class="datos-loading"><i class="fas fa-spinner fa-spin"></i> Cargando indicadores...</div>
             <div id="datosError" class="datos-error" style="display:none;"></div>
             <div id="datosGrid" class="datos-grid" style="display:none;">
-                <div class="datos-card">
+                <div class="datos-card clickable" id="cardAbierto" role="button" tabindex="0" aria-label="Ver detalle de valor abierto">
                     <div class="datos-card-top">
                         <h2 class="datos-card-title">Valor abierto (propuestas enviadas)</h2>
                         <button class="datos-info-btn" data-card="abierto" title="Qué incluye"><i class="fas fa-info"></i></button>
@@ -113,7 +137,7 @@
                     <div class="datos-card-value" id="valorAbierto">€0,00</div>
                     <div class="datos-card-meta" id="metaAbierto">0 propuestas</div>
                 </div>
-                <div class="datos-card">
+                <div class="datos-card clickable" id="cardAvanzado" role="button" tabindex="0" aria-label="Ver detalle de valor avanzado">
                     <div class="datos-card-top">
                         <h2 class="datos-card-title">Valor en estados avanzados</h2>
                         <button class="datos-info-btn" data-card="avanzado" title="Qué incluye"><i class="fas fa-info"></i></button>
@@ -130,6 +154,20 @@
             <h3 id="datosInfoTitle">Información del cálculo</h3>
             <div id="datosInfoBody"></div>
             <button id="datosInfoClose" class="btn-secondary datos-info-close">Cerrar</button>
+        </div>
+    </div>
+
+    <div id="datosDetailModal" class="datos-detail-modal" aria-hidden="true">
+        <div class="datos-detail-content">
+            <div class="datos-detail-header">
+                <div>
+                    <h3 id="datosDetailTitle">Detalle</h3>
+                    <p id="datosDetailSubtitle" class="datos-detail-subtitle"></p>
+                </div>
+                <button id="datosDetailCloseTop" class="btn-secondary" type="button">Cerrar</button>
+            </div>
+            <div id="datosDetailBody"></div>
+            <button id="datosDetailCloseBottom" class="btn-secondary datos-detail-close" type="button">Cerrar</button>
         </div>
     </div>
 

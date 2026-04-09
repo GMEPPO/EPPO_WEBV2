@@ -100,6 +100,68 @@
         }).format(num(v));
     }
 
+    function escapeHtml(value) {
+        return (value || '')
+            .toString()
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function formatStateLabel(value) {
+        return (value || '')
+            .toString()
+            .replace(/_/g, ' ')
+            .replace(/\b\w/g, (char) => char.toUpperCase());
+    }
+
+    function getProposalDisplayName(proposal) {
+        return proposal?.nombre_cliente
+            || proposal?.commercial_name
+            || proposal?.codigo_propuesta
+            || `Propuesta ${proposal?.id || ''}`.trim();
+    }
+
+    function consolidateProposalLines(lines, productById, productsByName) {
+        const minLineByKey = new Map();
+        (lines || []).forEach(line => {
+            const key = productDupKey(line);
+            const qty = Math.max(0, num(line.cantidad));
+            const price = Math.max(0, num(line.precio));
+            const lineTotal = qty * price;
+            const existing = minLineByKey.get(key);
+            const shouldReplace = !existing
+                || qty < existing.qty
+                || (qty === existing.qty && price < existing.price)
+                || (qty === existing.qty && price === existing.price && lineTotal < existing.lineTotal);
+            if (shouldReplace) {
+                minLineByKey.set(key, { line, qty, price, lineTotal });
+            }
+        });
+
+        const minLineByCategory = new Map();
+        minLineByKey.forEach((entry) => {
+            const refId = entry.line?.referencia_articulo != null ? String(entry.line.referencia_articulo) : '';
+            const byRef = refId ? productById.get(refId) : null;
+            const normalizedName = normalizeText(entry.line?.nombre_articulo);
+            const byName = !byRef && normalizedName ? (productsByName.get(normalizedName) || [])[0] : null;
+            const product = byRef || byName || null;
+            const categoryKey = pickCategoryKey(product, entry.line);
+            const existing = minLineByCategory.get(categoryKey);
+            if (!existing || entry.lineTotal < existing.lineTotal) {
+                minLineByCategory.set(categoryKey, {
+                    ...entry,
+                    product,
+                    categoryKey
+                });
+            }
+        });
+
+        return Array.from(minLineByCategory.values()).sort((a, b) => b.lineTotal - a.lineTotal);
+    }
+
     async function getClient() {
         if (window.universalSupabase?.getClient) return window.universalSupabase.getClient();
         return null;
@@ -179,6 +241,84 @@
         });
     }
 
+    function setupDetailModal() {
+        const modal = document.getElementById('datosDetailModal');
+        const closeTop = document.getElementById('datosDetailCloseTop');
+        const closeBottom = document.getElementById('datosDetailCloseBottom');
+        if (!modal || !closeTop || !closeBottom) return;
+
+        const close = () => {
+            modal.classList.remove('active');
+            modal.setAttribute('aria-hidden', 'true');
+        };
+
+        closeTop.addEventListener('click', close);
+        closeBottom.addEventListener('click', close);
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) close();
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && modal.classList.contains('active')) close();
+        });
+    }
+
+    function renderPreviewLines(entries) {
+        if (!entries.length) {
+            return '<div class="datos-detail-empty">Sin artículos contabilizados.</div>';
+        }
+
+        return `
+            <div class="datos-preview-title">Artículos contabilizados en este valor</div>
+            <div class="datos-preview-list">
+                ${entries.map((entry) => `
+                    <div class="datos-preview-row">
+                        <span class="datos-preview-name">${escapeHtml(entry.line?.nombre_articulo || 'Artículo sin nombre')}</span>
+                        <span class="datos-preview-meta">${escapeHtml(`${num(entry.qty)} x ${money(entry.price)} = ${money(entry.lineTotal)}`)}</span>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    function openDetailModal(type, calc) {
+        const modal = document.getElementById('datosDetailModal');
+        const title = document.getElementById('datosDetailTitle');
+        const subtitle = document.getElementById('datosDetailSubtitle');
+        const body = document.getElementById('datosDetailBody');
+        if (!modal || !title || !subtitle || !body) return;
+
+        const isOpen = type === 'abierto';
+        title.textContent = isOpen ? 'Detalle de valor abierto' : 'Detalle de estados avanzados';
+        subtitle.textContent = `${calc.countedProposals} propuestas · ${money(calc.total)}. Pasa el cursor por una propuesta para ver los artículos contabilizados.`;
+
+        if (!calc.details.length) {
+            body.innerHTML = '<div class="datos-detail-empty">No hay propuestas en esta categoría.</div>';
+        } else {
+            body.innerHTML = `
+                <div class="datos-detail-list">
+                    ${calc.details.map((detail) => `
+                        <div class="datos-detail-item">
+                            <div class="datos-detail-main">
+                                <div>
+                                    <div class="datos-detail-client">${escapeHtml(getProposalDisplayName(detail.proposal))}</div>
+                                    <div class="datos-detail-code">${escapeHtml(detail.proposal?.codigo_propuesta || 'Sin código')}</div>
+                                    <div class="datos-detail-state">${escapeHtml(formatStateLabel(normalizeStatus(detail.proposal?.estado_propuesta)))}</div>
+                                </div>
+                                <div class="datos-detail-amount">${money(detail.total)}</div>
+                            </div>
+                            <div class="datos-detail-preview">
+                                ${renderPreviewLines(detail.entries)}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        modal.classList.add('active');
+        modal.setAttribute('aria-hidden', 'false');
+    }
+
     async function loadDatos() {
         const loadingEl = document.getElementById('datosLoading');
         const errorEl = document.getElementById('datosError');
@@ -190,7 +330,7 @@
 
             const { data: propuestas, error: pErr } = await client
                 .from('presupuestos')
-                .select('id, estado_propuesta, codigo_propuesta');
+                .select('id, estado_propuesta, codigo_propuesta, nombre_cliente, commercial_name');
             if (pErr) throw pErr;
 
             const abiertoIds = [];
@@ -246,54 +386,29 @@
                 }
             }
 
+            const proposalsById = new Map((propuestas || []).map((proposal) => [String(proposal.id), proposal]));
             const computeTotal = (proposalIds) => {
                 let total = 0;
-                let countedProposals = 0;
-                (proposalIds || []).forEach(pid => {
+                const details = [];
+
+                (proposalIds || []).forEach((pid) => {
                     const lines = articulosByProposal[pid] || [];
                     if (!lines.length) return;
-                    countedProposals += 1;
 
-                    const minLineByKey = new Map();
-                    lines.forEach(line => {
-                        const key = productDupKey(line);
-                        const qty = Math.max(0, num(line.cantidad));
-                        const price = Math.max(0, num(line.precio));
-                        const lineTotal = qty * price;
-                        const existing = minLineByKey.get(key);
-                        const shouldReplace = !existing
-                            || qty < existing.qty
-                            || (qty === existing.qty && price < existing.price)
-                            || (qty === existing.qty && price === existing.price && lineTotal < existing.lineTotal);
-                        if (shouldReplace) {
-                            minLineByKey.set(key, {
-                                line,
-                                qty,
-                                price,
-                                lineTotal
-                            });
-                        }
-                    });
+                    const entries = consolidateProposalLines(lines, productById, productsByName);
+                    if (!entries.length) return;
 
-                    const minLineByCategory = new Map();
-                    minLineByKey.forEach(v => {
-                        const refId = v.line?.referencia_articulo != null ? String(v.line.referencia_articulo) : '';
-                        const byRef = refId ? productById.get(refId) : null;
-                        const normalizedName = normalizeText(v.line?.nombre_articulo);
-                        const byName = !byRef && normalizedName ? (productsByName.get(normalizedName) || [])[0] : null;
-                        const product = byRef || byName || null;
-                        const categoryKey = pickCategoryKey(product, v.line);
-                        const existing = minLineByCategory.get(categoryKey);
-                        if (!existing || v.lineTotal < existing.lineTotal) {
-                            minLineByCategory.set(categoryKey, v);
-                        }
-                    });
-
-                    minLineByCategory.forEach(v => {
-                        total += v.lineTotal;
+                    const proposalTotal = entries.reduce((sum, entry) => sum + entry.lineTotal, 0);
+                    total += proposalTotal;
+                    details.push({
+                        proposal: proposalsById.get(String(pid)) || { id: pid },
+                        total: proposalTotal,
+                        entries
                     });
                 });
-                return { total, countedProposals };
+
+                details.sort((a, b) => b.total - a.total);
+                return { total, countedProposals: details.length, details };
             };
 
             const openCalc = computeTotal(abiertoIds);
@@ -309,6 +424,24 @@
             if (metaAbiertoEl) metaAbiertoEl.textContent = `${openCalc.countedProposals} propuestas`;
             if (metaAvanzadoEl) metaAvanzadoEl.textContent = `${advCalc.countedProposals} propuestas`;
 
+            const cardAbierto = document.getElementById('cardAbierto');
+            const cardAvanzado = document.getElementById('cardAvanzado');
+            const bindCard = (element, type, calc) => {
+                if (!element) return;
+                element.addEventListener('click', (event) => {
+                    if (event.target.closest('.datos-info-btn')) return;
+                    openDetailModal(type, calc);
+                });
+                element.addEventListener('keydown', (event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        openDetailModal(type, calc);
+                    }
+                });
+            };
+            bindCard(cardAbierto, 'abierto', openCalc);
+            bindCard(cardAvanzado, 'avanzado', advCalc);
+
             if (loadingEl) loadingEl.style.display = 'none';
             if (gridEl) gridEl.style.display = 'grid';
         } catch (e) {
@@ -322,6 +455,7 @@
 
     document.addEventListener('DOMContentLoaded', () => {
         setupInfoModal();
+        setupDetailModal();
         loadDatos();
     });
 })();
