@@ -449,7 +449,7 @@ class ProposalsManager {
                     } catch (_) { /* ignorar */ }
                 }
 
-                // Cargar dossiers para cada presupuesto
+                // Cargar contenedor legacy de dossiers para cada presupuesto
                 let dossiersPorPresupuesto = {};
                 if (presupuestoIds && presupuestoIds.length > 0) {
                     try {
@@ -466,6 +466,30 @@ class ProposalsManager {
                         }
                     } catch (error) {
                         console.warn('⚠️ No se pudo cargar dossiers:', error);
+                    }
+                }
+
+                // Cargar documentos individuales de dossier (modelo nuevo con histórico)
+                let dossierDocumentosPorPresupuesto = {};
+                if (presupuestoIds && presupuestoIds.length > 0) {
+                    try {
+                        const { data: dossierDocs, error: dossierDocsError } = await this.supabase
+                            .from('presupuestos_dossiers_documentos')
+                            .select('*')
+                            .in('presupuesto_id', presupuestoIds)
+                            .order('created_at', { ascending: false });
+
+                        if (!dossierDocsError && dossierDocs) {
+                            dossierDocs.forEach(doc => {
+                                if (!dossierDocumentosPorPresupuesto[doc.presupuesto_id]) {
+                                    dossierDocumentosPorPresupuesto[doc.presupuesto_id] = [];
+                                }
+                                dossierDocumentosPorPresupuesto[doc.presupuesto_id].push(doc);
+                            });
+                            console.log('📁 Documentos de dossier cargados:', dossierDocs.length);
+                        }
+                    } catch (error) {
+                        console.warn('⚠️ No se pudo cargar presupuestos_dossiers_documentos, se usará compatibilidad legacy:', error);
                     }
                 }
 
@@ -509,8 +533,12 @@ class ProposalsManager {
 
                     // Obtener documentos del dossier
                     const dossier = dossiersPorPresupuesto[presupuesto.id];
-                    let documentosUrls = [];
-                    if (dossier && dossier.documentos_urls) {
+                    let documentosDossier = [];
+                    const dossierDocs = dossierDocumentosPorPresupuesto[presupuesto.id] || [];
+                    if (dossierDocs.length > 0) {
+                        documentosDossier = this.normalizeProposalDossierDocuments(dossierDocs, dossier?.id || null);
+                    } else if (dossier && dossier.documentos_urls) {
+                        let documentosUrls = [];
                         if (typeof dossier.documentos_urls === 'string') {
                             try {
                                 documentosUrls = JSON.parse(dossier.documentos_urls);
@@ -520,6 +548,7 @@ class ProposalsManager {
                         } else if (Array.isArray(dossier.documentos_urls)) {
                             documentosUrls = dossier.documentos_urls;
                         }
+                        documentosDossier = this.normalizeProposalDossierDocuments(documentosUrls, dossier?.id || null);
                     }
 
                     // Obtener artículos de esta propuesta (clave normalizada; fallback por si hay desajuste de formato UUID)
@@ -545,8 +574,8 @@ class ProposalsManager {
                     total: articulosPresupuesto.reduce((sum, art) => {
                         return sum + (parseFloat(art.precio) || 0) * (parseInt(art.cantidad) || 0);
                     }, 0),
-                    dossier_documentos: documentosUrls,
-                    presupuesto_dossier_id: dossier?.id || null,
+                    dossier_documentos: documentosDossier,
+                    presupuesto_dossier_id: dossier?.id || documentosDossier.find(doc => doc.presupuesto_dossier_id)?.presupuesto_dossier_id || null,
                     categorias: categorias, // Agregar categorías únicas
                     follow_ups: followUpsPorPresupuesto[presupuesto.id] || []
                     };
@@ -1748,7 +1777,6 @@ class ProposalsManager {
                     <i class="fas fa-image"></i> <span id="view-logos-text">${this.currentLanguage === 'es' ? 'Ver Logotipos' : this.currentLanguage === 'pt' ? 'Ver Logotipos' : 'View Logos'} (${logos.length})</span>
                 </button>
                 ` : ''}
-                ${proposal.dossier_documentos && proposal.dossier_documentos.length > 0 ? `
                 <button class="btn-view-dossiers" onclick="window.proposalsManager.viewProposalDossiers('${proposal.id}')" style="
                     background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
                     color: white;
@@ -1762,39 +1790,8 @@ class ProposalsManager {
                     gap: 8px;
                     transition: all 0.2s;
                 " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(139,92,246,0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
-                    <i class="fas fa-folder"></i> <span id="view-dossiers-text">${detailLabels.viewDossiers} (${proposal.dossier_documentos.length})</span>
+                    <i class="fas fa-folder"></i> <span id="view-dossiers-text">${detailLabels.viewDossiers} (${this.getProposalDossierCounts(proposal).active})</span>
                 </button>
-                <button class="btn-replace-dossier" onclick="window.proposalsManager.openProposalDossierManager('${proposal.id}', 'replace')" style="
-                    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-                    color: white;
-                    border: none;
-                    padding: 10px 20px;
-                    border-radius: 8px;
-                    font-weight: 600;
-                    cursor: pointer;
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                    transition: all 0.2s;
-                " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(99,102,241,0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
-                    <i class="fas fa-rotate"></i> <span>${detailLabels.replaceDossier}</span>
-                </button>
-                <button class="btn-append-dossier" onclick="window.proposalsManager.openProposalDossierManager('${proposal.id}', 'append')" style="
-                    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
-                    color: white;
-                    border: none;
-                    padding: 10px 20px;
-                    border-radius: 8px;
-                    font-weight: 600;
-                    cursor: pointer;
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                    transition: all 0.2s;
-                " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(14,165,233,0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
-                    <i class="fas fa-file-circle-plus"></i> <span>${detailLabels.appendDossier}</span>
-                </button>
-                ` : ''}
                 ${window.cachedRole !== 'comercial' ? `
                 <button class="btn-delete-proposal" onclick="window.proposalsManager.openDeleteConfirmModal('${proposal.id}')" style="
                     background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
@@ -3851,6 +3848,117 @@ class ProposalsManager {
 
 
     /**
+     * Normalizar dossiers de propuesta a una colección de objetos
+     */
+    normalizeProposalDossierDocuments(rawDocuments, presupuestoDossierId = null) {
+        if (!rawDocuments) return [];
+
+        let items = rawDocuments;
+        if (typeof items === 'string') {
+            try {
+                items = JSON.parse(items);
+            } catch (_) {
+                items = [items];
+            }
+        }
+
+        if (!Array.isArray(items)) return [];
+
+        return items
+            .map((item, index) => {
+                if (!item) return null;
+                if (typeof item === 'string') {
+                    const url = item.trim();
+                    if (!url) return null;
+                    return {
+                        id: `legacy-${index}-${url}`,
+                        url,
+                        dossier_url: url,
+                        file_name: this.extractDossierFileName(url),
+                        is_active: true,
+                        created_at: null,
+                        updated_at: null,
+                        presupuesto_dossier_id: presupuestoDossierId || null
+                    };
+                }
+
+                const url = String(item.dossier_url || item.url || '').trim();
+                if (!url) return null;
+                return {
+                    id: item.id || `legacy-${index}-${url}`,
+                    url,
+                    dossier_url: url,
+                    file_name: String(item.file_name || item.nombre || this.extractDossierFileName(url)).trim(),
+                    is_active: item.is_active !== false,
+                    created_at: item.created_at || null,
+                    updated_at: item.updated_at || null,
+                    presupuesto_id: item.presupuesto_id || null,
+                    presupuesto_dossier_id: item.presupuesto_dossier_id || presupuestoDossierId || null
+                };
+            })
+            .filter(Boolean)
+            .sort((a, b) => {
+                if (a.is_active !== b.is_active) return a.is_active ? -1 : 1;
+                const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
+                const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
+                return bTime - aTime;
+            });
+    }
+
+    extractDossierFileName(url) {
+        const cleanUrl = String(url || '').split('?')[0];
+        const lastSegment = cleanUrl.split('/').pop() || 'documento';
+        try {
+            return decodeURIComponent(lastSegment.replace(/^[0-9]+_/, ''));
+        } catch (_) {
+            return lastSegment.replace(/^[0-9]+_/, '');
+        }
+    }
+
+    getProposalDossierDocuments(proposal, options = {}) {
+        const { activeOnly = false, historicalOnly = false, urlsOnly = false } = options;
+        const normalized = this.normalizeProposalDossierDocuments(proposal?.dossier_documentos, proposal?.presupuesto_dossier_id || null);
+        const filtered = normalized.filter(doc => {
+            if (activeOnly) return doc.is_active === true;
+            if (historicalOnly) return doc.is_active === false;
+            return true;
+        });
+        return urlsOnly ? filtered.map(doc => doc.url) : filtered;
+    }
+
+    getActiveProposalDossierDocuments(proposal, urlsOnly = false) {
+        return this.getProposalDossierDocuments(proposal, { activeOnly: true, urlsOnly });
+    }
+
+    getHistoricalProposalDossierDocuments(proposal, urlsOnly = false) {
+        return this.getProposalDossierDocuments(proposal, { historicalOnly: true, urlsOnly });
+    }
+
+    getProposalDossierCounts(proposal) {
+        const all = this.getProposalDossierDocuments(proposal);
+        const active = all.filter(doc => doc.is_active).length;
+        return {
+            active,
+            historical: all.length - active,
+            total: all.length
+        };
+    }
+
+    applyProposalDossierDocumentsToLocalState(proposalId, documents) {
+        const proposal = this.allProposals.find(p => p.id === proposalId);
+        if (!proposal) return [];
+        proposal.dossier_documentos = this.normalizeProposalDossierDocuments(
+            documents,
+            proposal.presupuesto_dossier_id || documents?.[0]?.presupuesto_dossier_id || null
+        );
+        if (!proposal.presupuesto_dossier_id) {
+            const fromDoc = proposal.dossier_documentos.find(doc => doc.presupuesto_dossier_id);
+            if (fromDoc?.presupuesto_dossier_id) proposal.presupuesto_dossier_id = fromDoc.presupuesto_dossier_id;
+        }
+        return proposal.dossier_documentos;
+    }
+
+    /**
      * Obtener etiquetas traducidas para los detalles de la propuesta
      */
     getDetailLabels() {
@@ -4508,15 +4616,7 @@ class ProposalsManager {
 
         listEl.innerHTML = '';
         const productMap = {};
-        const existingDocsFromProposal = [];
-        if (proposal.dossier_documentos && Array.isArray(proposal.dossier_documentos)) {
-            proposal.dossier_documentos.forEach(u => { if (u && String(u).trim()) existingDocsFromProposal.push(String(u).trim()); });
-        } else if (proposal.dossier_documentos && typeof proposal.dossier_documentos === 'string') {
-            try {
-                const arr = JSON.parse(proposal.dossier_documentos);
-                if (Array.isArray(arr)) arr.forEach(u => { if (u && String(u).trim()) existingDocsFromProposal.push(String(u).trim()); });
-            } catch (_) { if (proposal.dossier_documentos.trim()) existingDocsFromProposal.push(proposal.dossier_documentos.trim()); }
-        }
+        const existingDocsFromProposal = this.getActiveProposalDossierDocuments(proposal, true);
         (proposal.articulos || []).forEach(a => {
             if (a.logo_url && String(a.logo_url).trim() !== '') existingDocsFromProposal.push(String(a.logo_url).trim());
         });
@@ -6024,19 +6124,6 @@ class ProposalsManager {
             return;
         }
 
-        // Obtener documentos del dossier
-        const documentos = proposal.dossier_documentos || [];
-
-        if (documentos.length === 0) {
-            const message = this.currentLanguage === 'es' ? 
-                'No hay documentos en el dossier de esta propuesta' : 
-                this.currentLanguage === 'pt' ?
-                'Não há documentos no dossier desta proposta' :
-                'No documents in this proposal dossier';
-            this.showNotification(message, 'info');
-            return;
-        }
-
         const modal = document.getElementById('proposalDossiersModal');
         const content = document.getElementById('proposalDossiersContent');
         const title = document.getElementById('dossiers-modal-title');
@@ -6046,149 +6133,49 @@ class ProposalsManager {
             return;
         }
 
-        // Traducciones
-        const translations = {
-            es: {
-                title: 'Documentos del Dossier',
-                document: 'Documento',
-                viewDocument: 'Ver Documento',
-                viewPDF: 'Ver PDF',
-                close: 'Cerrar'
-            },
-            pt: {
-                title: 'Documentos do Dossier',
-                document: 'Documento',
-                viewDocument: 'Ver Documento',
-                viewPDF: 'Ver PDF',
-                close: 'Fechar'
-            },
-            en: {
-                title: 'Dossier Documents',
-                document: 'Document',
-                viewDocument: 'View Document',
-                viewPDF: 'View PDF',
-                close: 'Close'
-            }
-        };
-
-        const t = translations[this.currentLanguage] || translations.es;
+        const t = this.getProposalDossierManagerLabels();
+        const activeDocuments = this.getActiveProposalDossierDocuments(proposal);
+        const historicalDocuments = this.getHistoricalProposalDossierDocuments(proposal);
 
         if (title) {
             title.textContent = t.title;
         }
 
-        // Función auxiliar para detectar si es PDF
-        const isPDF = (url) => {
-            if (!url) return false;
-            const urlLower = url.toLowerCase();
-            return urlLower.endsWith('.pdf') || 
-                   urlLower.includes('.pdf?') || 
-                   urlLower.includes('content-type=application/pdf') ||
-                   urlLower.includes('type=pdf');
-        };
-
-        // Función auxiliar para detectar si es imagen
-        const isImage = (url) => {
-            if (!url) return false;
-            const urlLower = url.toLowerCase();
-            return urlLower.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?|$)/i);
-        };
-
-        // Generar HTML con los documentos
         content.innerHTML = `
-            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; padding: 20px 0;">
-                ${documentos.map((docUrl, index) => {
-                    const isPdfFile = isPDF(docUrl);
-                    const isImgFile = isImage(docUrl);
-                    const viewPdfText = t.viewPDF;
-                    const viewDocText = t.viewDocument;
-                    
-                    return `
-                    <div style="
-                        background: var(--bg-secondary, #1f2937);
-                        border: 1px solid var(--border-color, #374151);
-                        border-radius: 12px;
-                        padding: 16px;
-                        display: flex;
-                        flex-direction: column;
-                        align-items: center;
-                        gap: 12px;
-                    ">
-                        <div style="
-                            width: 100%;
-                            height: 200px;
-                            background: white;
-                            border-radius: 8px;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            overflow: hidden;
-                            border: 2px solid var(--border-color, #374151);
-                            position: relative;
-                        ">
-                            ${isPdfFile ? `
-                                <div style="text-align: center; padding: 20px; width: 100%;">
-                                    <i class="fas fa-file-pdf" style="font-size: 3rem; color: #ef4444; margin-bottom: 10px;"></i>
-                                    <div style="color: #1f2937; font-weight: 600; margin-bottom: 10px;">PDF</div>
-                                    <a href="${docUrl}" target="_blank" rel="noopener noreferrer" style="
-                                        color: #3b82f6;
-                                        text-decoration: none;
-                                        padding: 8px 16px;
-                                        background: #3b82f6;
-                                        color: white;
-                                        border-radius: 6px;
-                                        display: inline-block;
-                                        font-weight: 600;
-                                        transition: all 0.2s;
-                                    " onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">${viewPdfText}</a>
-                                </div>
-                            ` : isImgFile ? `
-                                <img src="${docUrl}" 
-                                     alt="${t.document} ${index + 1}" 
-                                     style="
-                                         max-width: 100%;
-                                         max-height: 100%;
-                                         object-fit: contain;
-                                         display: block;
-                                     "
-                                     onerror="
-                                         const parent = this.parentElement;
-                                         parent.innerHTML = '<div style=\\'text-align: center; padding: 20px; width: 100%;\\'><i class=\\'fas fa-file\\' style=\\'font-size: 3rem; color: #6b7280; margin-bottom: 10px;\\'></i><div style=\\'color: #1f2937; font-size: 0.875rem;\\'>Imagen no disponible</div><a href=\\'${docUrl}\\' target=\\'_blank\\' rel=\\'noopener noreferrer\\' style=\\'color: #3b82f6; text-decoration: none; margin-top: 10px; display: inline-block;\\'>Abrir enlace</a></div>';
-                                         console.error('Error cargando documento:', '${docUrl}');
-                                     ">
-                            ` : `
-                                <div style="text-align: center; padding: 20px; width: 100%;">
-                                    <i class="fas fa-file" style="font-size: 3rem; color: #6b7280; margin-bottom: 10px;"></i>
-                                    <div style="color: #1f2937; font-weight: 600; margin-bottom: 10px;">${t.document}</div>
-                                    <a href="${docUrl}" target="_blank" rel="noopener noreferrer" style="
-                                        color: #3b82f6;
-                                        text-decoration: none;
-                                        padding: 8px 16px;
-                                        background: #3b82f6;
-                                        color: white;
-                                        border-radius: 6px;
-                                        display: inline-block;
-                                        font-weight: 600;
-                                        transition: all 0.2s;
-                                    " onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">${viewDocText}</a>
-                                </div>
-                            `}
-                        </div>
-                        <div style="width: 100%; text-align: center;">
-                            <div style="
-                                font-weight: 600;
-                                color: var(--text-primary, #f9fafb);
-                                margin-bottom: 8px;
-                                font-size: 0.9rem;
-                                word-break: break-word;
-                            ">${t.document} ${index + 1}</div>
-                        </div>
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;padding:8px 0 20px;">
+                <div>
+                    <div style="font-size:0.95rem;color:var(--text-secondary,#9ca3af);">${t.summary}</div>
+                    <div style="font-weight:700;color:var(--text-primary,#f9fafb);margin-top:6px;">
+                        ${t.activeCount.replace('{active}', activeDocuments.length).replace('{total}', activeDocuments.length + historicalDocuments.length)}
                     </div>
-                `;
-                }).join('')}
+                </div>
+                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                    <button type="button" onclick="openProposalDossierUploadPicker()" style="background:linear-gradient(135deg,#0ea5e9 0%,#0284c7 100%);color:white;border:none;padding:10px 16px;border-radius:8px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px;">
+                        <i class="fas fa-file-circle-plus"></i> ${t.upload}
+                    </button>
+                    <input type="file" id="proposal-dossier-manager-input" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.rar" multiple style="display:none;" onchange="handleProposalDossierManagerUpload(event)">
+                </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;">
+                <div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+                        <h4 style="margin:0;color:var(--text-primary,#f9fafb);font-size:1rem;">${t.activeSection}</h4>
+                        <span style="padding:4px 10px;border-radius:999px;background:rgba(16,185,129,.18);color:#34d399;font-size:12px;font-weight:700;">${activeDocuments.length}/3</span>
+                    </div>
+                    ${this.renderProposalDossierManagerSection(proposal.id, activeDocuments, true, t)}
+                </div>
+                <div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+                        <h4 style="margin:0;color:var(--text-primary,#f9fafb);font-size:1rem;">${t.historySection}</h4>
+                        <span style="padding:4px 10px;border-radius:999px;background:rgba(148,163,184,.18);color:#cbd5e1;font-size:12px;font-weight:700;">${historicalDocuments.length}</span>
+                    </div>
+                    ${this.renderProposalDossierManagerSection(proposal.id, historicalDocuments, false, t)}
+                </div>
             </div>
         `;
 
+        modal.setAttribute('data-proposal-id', proposal.id);
         modal.classList.add('active');
         document.body.style.overflow = 'hidden';
     }
@@ -9261,21 +9248,127 @@ class ProposalsManager {
         return langTranslations[mode] || langTranslations.status;
     }
 
-    getProposalDossierDocuments(proposal) {
-        if (!proposal) return [];
-        if (Array.isArray(proposal.dossier_documentos)) {
-            return proposal.dossier_documentos.filter(url => !!String(url || '').trim()).map(url => String(url).trim());
+    getProposalDossierDocuments(proposal, options = {}) {
+        const { activeOnly = false, historicalOnly = false, urlsOnly = false } = options;
+        const normalized = this.normalizeProposalDossierDocuments(proposal?.dossier_documentos, proposal?.presupuesto_dossier_id || null);
+        const filtered = normalized.filter(doc => {
+            if (activeOnly) return doc.is_active === true;
+            if (historicalOnly) return doc.is_active === false;
+            return true;
+        });
+        return urlsOnly ? filtered.map(doc => doc.url) : filtered;
+    }
+
+    getProposalDossierManagerLabels() {
+        const translations = {
+            pt: {
+                title: 'Gestão de Dossiers',
+                summary: 'Gerir documentos ativos e histórico sem apagar ficheiros já carregados.',
+                activeCount: '{active} ativos de {total} documentos totais',
+                upload: 'Subir Documento',
+                activeSection: 'Dossiers Ativos',
+                historySection: 'Histórico',
+                activeBadge: 'Ativo',
+                historicalBadge: 'Histórico',
+                view: 'Ver',
+                moveToHistory: 'Mover para histórico',
+                activate: 'Marcar como ativo',
+                emptyActive: 'Não há dossiers ativos. Pode subir até 3 documentos ativos.',
+                emptyHistory: 'Ainda não há documentos no histórico.',
+                limitReached: 'Já existem 3 dossiers ativos. Mova um para histórico antes de adicionar outro.',
+                uploadSuccess: 'Documento adicionado ao dossier com sucesso.',
+                uploadError: 'Erro ao adicionar documento ao dossier',
+                statusChangeError: 'Erro ao atualizar o estado do dossier',
+                stateActivated: 'Documento marcado como ativo.',
+                stateHistorical: 'Documento movido para histórico.'
+            },
+            es: {
+                title: 'Gestión de Dossiers',
+                summary: 'Gestione documentos activos e histórico sin borrar archivos ya cargados.',
+                activeCount: '{active} activos de {total} documentos totales',
+                upload: 'Subir Documento',
+                activeSection: 'Dossiers Activos',
+                historySection: 'Histórico',
+                activeBadge: 'Activo',
+                historicalBadge: 'Histórico',
+                view: 'Ver',
+                moveToHistory: 'Mover a histórico',
+                activate: 'Marcar como activo',
+                emptyActive: 'No hay dossiers activos. Puede subir hasta 3 documentos activos.',
+                emptyHistory: 'Todavía no hay documentos en el histórico.',
+                limitReached: 'Ya hay 3 dossiers activos. Mueva uno a histórico antes de añadir otro.',
+                uploadSuccess: 'Documento añadido al dossier correctamente.',
+                uploadError: 'Error al añadir documento al dossier',
+                statusChangeError: 'Error al actualizar el estado del dossier',
+                stateActivated: 'Documento marcado como activo.',
+                stateHistorical: 'Documento movido a histórico.'
+            },
+            en: {
+                title: 'Dossier Management',
+                summary: 'Manage active documents and history without deleting uploaded files.',
+                activeCount: '{active} active out of {total} total documents',
+                upload: 'Upload Document',
+                activeSection: 'Active Dossiers',
+                historySection: 'History',
+                activeBadge: 'Active',
+                historicalBadge: 'History',
+                view: 'View',
+                moveToHistory: 'Move to history',
+                activate: 'Mark as active',
+                emptyActive: 'There are no active dossiers yet. You can upload up to 3 active documents.',
+                emptyHistory: 'There are no historical documents yet.',
+                limitReached: 'There are already 3 active dossiers. Move one to history before adding another.',
+                uploadSuccess: 'Document added to dossier successfully.',
+                uploadError: 'Error adding document to dossier',
+                statusChangeError: 'Error updating dossier status',
+                stateActivated: 'Document marked as active.',
+                stateHistorical: 'Document moved to history.'
+            }
+        };
+        return translations[this.currentLanguage] || translations.pt;
+    }
+
+    renderProposalDossierManagerSection(proposalId, documents, isActiveSection, t) {
+        if (!documents.length) {
+            return `<div style="padding:18px;border:1px dashed var(--border-color,#374151);border-radius:12px;background:rgba(15,23,42,.35);color:var(--text-secondary,#9ca3af);font-size:.9rem;">${isActiveSection ? t.emptyActive : t.emptyHistory}</div>`;
         }
-        if (typeof proposal.dossier_documentos === 'string' && proposal.dossier_documentos.trim()) {
-            try {
-                const parsed = JSON.parse(proposal.dossier_documentos);
-                if (Array.isArray(parsed)) {
-                    return parsed.filter(url => !!String(url || '').trim()).map(url => String(url).trim());
-                }
-            } catch (_) {}
-            return [proposal.dossier_documentos.trim()];
-        }
-        return [];
+
+        return `
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;">
+                ${documents.map(doc => this.renderProposalDossierManagerCard(proposalId, doc, isActiveSection, t)).join('')}
+            </div>
+        `;
+    }
+
+    renderProposalDossierManagerCard(proposalId, doc, isActiveSection, t) {
+        const publicUrl = String(doc?.url || doc?.dossier_url || '').trim();
+        const fileName = String(doc?.file_name || this.extractDossierFileName(publicUrl)).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const isImage = /\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?|$)/i.test(publicUrl || '');
+        const isPdf = /\.pdf(\?|$)/i.test(publicUrl || '');
+        const badgeLabel = isActiveSection ? t.activeBadge : t.historicalBadge;
+        const badgeColor = isActiveSection ? '#10b981' : '#64748b';
+        const toggleLabel = isActiveSection ? t.moveToHistory : t.activate;
+        const iconClass = isPdf ? 'fa-file-pdf' : 'fa-file';
+        const iconColor = isPdf ? '#ef4444' : '#94a3b8';
+
+        return `
+            <div style="background:var(--bg-secondary,#1f2937);border:1px solid var(--border-color,#374151);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:12px;">
+                <div style="height:180px;border-radius:10px;background:rgba(255,255,255,.96);display:flex;align-items:center;justify-content:center;overflow:hidden;border:1px solid rgba(148,163,184,.3);">
+                    ${isImage
+                        ? `<img src="${publicUrl}" alt="${fileName}" style="max-width:100%;max-height:100%;object-fit:contain;display:block;" onerror="this.style.display='none';this.parentElement.innerHTML='<div style=&quot;text-align:center;color:#475569;&quot;><i class=&quot;fas ${iconClass}&quot; style=&quot;font-size:2.5rem;color:${iconColor};&quot;></i></div>';">`
+                        : `<div style="text-align:center;color:#475569;"><i class="fas ${iconClass}" style="font-size:2.8rem;color:${iconColor};margin-bottom:10px;"></i><div style="font-size:.85rem;font-weight:700;">${isPdf ? 'PDF' : t.view}</div></div>`
+                    }
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+                    <span style="display:inline-flex;align-items:center;justify-content:center;padding:4px 10px;border-radius:999px;background:${badgeColor};color:white;font-size:11px;font-weight:700;">${badgeLabel}</span>
+                    <a href="${publicUrl}" target="_blank" rel="noopener noreferrer" style="color:var(--primary-500,#60a5fa);text-decoration:underline;font-size:.85rem;">${t.view}</a>
+                </div>
+                <div style="font-size:.86rem;color:var(--text-primary,#f9fafb);word-break:break-word;min-height:38px;">${fileName}</div>
+                <button type="button" onclick="window.proposalsManager.toggleProposalDossierDocumentState('${proposalId}','${doc.id}',${isActiveSection ? 'false' : 'true'})" style="background:${isActiveSection ? 'rgba(245,158,11,.15)' : 'rgba(16,185,129,.15)'};color:${isActiveSection ? '#fbbf24' : '#34d399'};border:1px solid ${isActiveSection ? 'rgba(245,158,11,.35)' : 'rgba(16,185,129,.35)'};padding:10px 12px;border-radius:8px;font-weight:600;cursor:pointer;">
+                    ${toggleLabel}
+                </button>
+            </div>
+        `;
     }
 
     renderDossierDocumentCard(container, publicUrl, fileName, source = 'existing') {
@@ -9331,51 +9424,177 @@ class ProposalsManager {
 
     async persistProposalDossierDocuments(proposalId, documentosUrls) {
         const cleanedUrls = Array.from(new Set((documentosUrls || []).filter(url => !!String(url || '').trim()).map(url => String(url).trim()))).slice(0, 3);
-        if (!this.supabase) {
-            await this.initializeSupabase();
-        }
+        if (!this.supabase) await this.initializeSupabase();
 
-        const dossierData = { presupuesto_id: proposalId, documentos_urls: cleanedUrls };
-        const { data: existing } = await this.supabase.from('presupuestos_dossiers').select('id').eq('presupuesto_id', proposalId).maybeSingle();
-
-        if (existing) {
-            await this.supabase.from('presupuestos_dossiers').update(dossierData).eq('presupuesto_id', proposalId);
-        } else {
-            await this.supabase.from('presupuestos_dossiers').insert([dossierData]);
-        }
-
+        const containerRow = await this.ensureProposalDossierContainer(proposalId);
         const proposal = this.allProposals.find(p => p.id === proposalId);
-        if (proposal) proposal.dossier_documentos = cleanedUrls;
-        return cleanedUrls;
+        const existingDocuments = this.getProposalDossierDocuments(proposal);
+        const requestedUrls = new Set(cleanedUrls);
+
+        for (const doc of existingDocuments) {
+            const shouldBeActive = requestedUrls.has(doc.url);
+            if (!String(doc.id || '').startsWith('legacy-') && doc.is_active !== shouldBeActive) {
+                const { error } = await this.supabase
+                    .from('presupuestos_dossiers_documentos')
+                    .update({ is_active: shouldBeActive })
+                    .eq('id', doc.id);
+                if (error) throw error;
+            }
+        }
+
+        for (const url of cleanedUrls) {
+            const existingDoc = existingDocuments.find(doc => doc.url === url);
+            if (!existingDoc || String(existingDoc.id || '').startsWith('legacy-')) {
+                const { error } = await this.supabase
+                    .from('presupuestos_dossiers_documentos')
+                    .upsert([{
+                        presupuesto_id: proposalId,
+                        presupuesto_dossier_id: containerRow.id,
+                        dossier_url: url,
+                        file_name: existingDoc?.file_name || this.extractDossierFileName(url),
+                        is_active: true
+                    }], { onConflict: 'presupuesto_id,dossier_url' });
+                if (error) throw error;
+            }
+        }
+
+        return await this.reloadProposalDossierDocuments(proposalId);
     }
 
-    openProposalDossierManager(proposalId, mode = 'append') {
+    async ensureProposalDossierContainer(proposalId) {
+        if (!this.supabase) await this.initializeSupabase();
+
+        const { data: existing, error: existingError } = await this.supabase
+            .from('presupuestos_dossiers')
+            .select('id,presupuesto_id')
+            .eq('presupuesto_id', proposalId)
+            .maybeSingle();
+        if (existingError) throw existingError;
+
+        if (existing) {
+            const proposal = this.allProposals.find(p => p.id === proposalId);
+            if (proposal) proposal.presupuesto_dossier_id = existing.id;
+            return existing;
+        }
+
+        const { data: inserted, error: insertError } = await this.supabase
+            .from('presupuestos_dossiers')
+            .insert([{ presupuesto_id: proposalId, documentos_urls: [] }])
+            .select('id,presupuesto_id')
+            .single();
+        if (insertError) throw insertError;
+
         const proposal = this.allProposals.find(p => p.id === proposalId);
-        if (!proposal) {
-            console.error('Propuesta no encontrada:', proposalId);
+        if (proposal) proposal.presupuesto_dossier_id = inserted.id;
+        return inserted;
+    }
+
+    async syncLegacyProposalDossierUrls(proposalId, documents = null) {
+        if (!this.supabase) await this.initializeSupabase();
+        const proposal = this.allProposals.find(p => p.id === proposalId);
+        const normalizedDocs = documents
+            ? this.normalizeProposalDossierDocuments(documents, proposal?.presupuesto_dossier_id || null)
+            : this.getProposalDossierDocuments(proposal);
+        const activeUrls = normalizedDocs.filter(doc => doc.is_active).map(doc => doc.url).slice(0, 3);
+        const container = await this.ensureProposalDossierContainer(proposalId);
+        const { error } = await this.supabase
+            .from('presupuestos_dossiers')
+            .update({ documentos_urls: activeUrls })
+            .eq('id', container.id);
+        if (error) throw error;
+        return container.id;
+    }
+
+    async reloadProposalDossierDocuments(proposalId) {
+        if (!this.supabase) await this.initializeSupabase();
+
+        const proposal = this.allProposals.find(p => p.id === proposalId);
+        const { data, error } = await this.supabase
+            .from('presupuestos_dossiers_documentos')
+            .select('*')
+            .eq('presupuesto_id', proposalId)
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+
+        const normalizedDocs = this.normalizeProposalDossierDocuments(data || [], proposal?.presupuesto_dossier_id || null);
+        this.applyProposalDossierDocumentsToLocalState(proposalId, normalizedDocs);
+        await this.syncLegacyProposalDossierUrls(proposalId, normalizedDocs);
+        this.viewProposalDetails(proposalId);
+        return this.getActiveProposalDossierDocuments(this.allProposals.find(p => p.id === proposalId), true);
+    }
+
+    async addProposalDossierDocumentRecord(proposalId, publicUrl, fileName) {
+        if (!this.supabase) await this.initializeSupabase();
+        const proposal = this.allProposals.find(p => p.id === proposalId);
+        const activeDocuments = this.getActiveProposalDossierDocuments(proposal);
+        if (activeDocuments.length >= 3) {
+            throw new Error(this.getProposalDossierManagerLabels().limitReached);
+        }
+
+        const container = await this.ensureProposalDossierContainer(proposalId);
+        const { error } = await this.supabase
+            .from('presupuestos_dossiers_documentos')
+            .upsert([{
+                presupuesto_id: proposalId,
+                presupuesto_dossier_id: container.id,
+                dossier_url: publicUrl,
+                file_name: fileName || this.extractDossierFileName(publicUrl),
+                is_active: true
+            }], { onConflict: 'presupuesto_id,dossier_url' });
+        if (error) throw error;
+
+        await this.reloadProposalDossierDocuments(proposalId);
+    }
+
+    async toggleProposalDossierDocumentState(proposalId, documentId, nextIsActive) {
+        if (!this.supabase) await this.initializeSupabase();
+        const proposal = this.allProposals.find(p => p.id === proposalId);
+        const allDocuments = this.getProposalDossierDocuments(proposal);
+        const document = allDocuments.find(doc => String(doc.id) === String(documentId));
+        if (!document) return;
+
+        if (nextIsActive && !document.is_active && this.getActiveProposalDossierDocuments(proposal).length >= 3) {
+            this.showNotification(this.getProposalDossierManagerLabels().limitReached, 'warning');
             return;
         }
 
-        const modal = document.getElementById('aguardaAprovacaoDossierModal');
-        const documentsContainer = document.getElementById('aguarda-dossier-documents-container');
-        if (!modal || !documentsContainer) {
-            console.error('Modal de dossier no encontrado');
+        if (String(document.id || '').startsWith('legacy-')) {
+            const container = await this.ensureProposalDossierContainer(proposalId);
+            const { error } = await this.supabase
+                .from('presupuestos_dossiers_documentos')
+                .upsert([{
+                    presupuesto_id: proposalId,
+                    presupuesto_dossier_id: container.id,
+                    dossier_url: document.url,
+                    file_name: document.file_name || this.extractDossierFileName(document.url),
+                    is_active: !!nextIsActive
+                }], { onConflict: 'presupuesto_id,dossier_url' });
+            if (error) {
+                this.showNotification(`${this.getProposalDossierManagerLabels().statusChangeError}: ${error.message}`, 'error');
+                return;
+            }
+            await this.reloadProposalDossierDocuments(proposalId);
+            this.viewProposalDossiers(proposalId);
             return;
         }
 
-        documentsContainer.innerHTML = '';
-        documentsContainer.setAttribute('data-mode', mode);
-        modal.setAttribute('data-proposal-id', proposal.id);
-        modal.setAttribute('data-dossier-mode', mode);
-        modal.setAttribute('data-update-status', 'false');
+        const { error } = await this.supabase
+            .from('presupuestos_dossiers_documentos')
+            .update({ is_active: !!nextIsActive })
+            .eq('id', document.id);
+        if (error) {
+            this.showNotification(`${this.getProposalDossierManagerLabels().statusChangeError}: ${error.message}`, 'error');
+            return;
+        }
 
-        this.getProposalDossierDocuments(proposal).forEach((url, index) => {
-            this.renderDossierDocumentCard(documentsContainer, url, `dossier-${index + 1}`, 'existing');
-        });
+        await this.reloadProposalDossierDocuments(proposalId);
+        this.viewProposalDossiers(proposalId);
+        const labels = this.getProposalDossierManagerLabels();
+        this.showNotification(nextIsActive ? labels.stateActivated : labels.stateHistorical, 'success');
+    }
 
-        this.updateAguardaAprovacaoDossierTranslations();
-        modal.classList.add('active');
-        document.body.style.overflow = 'hidden';
+    openProposalDossierManager(proposalId) {
+        this.viewProposalDossiers(proposalId);
     }
 
     openAguardaAprovacaoDossierModal(proposal) {
@@ -9541,7 +9760,7 @@ class ProposalsManager {
             this.showNotification(successMessage, 'success');
 
             const proposal = this.allProposals.find(p => p.id === proposalId);
-            if (proposal) proposal.dossier_documentos = savedDocuments;
+            if (proposal) proposal.dossier_documentos = this.normalizeProposalDossierDocuments(proposal.dossier_documentos, proposal.presupuesto_dossier_id || null);
         } catch (error) {
             console.error('Error al guardar dossier:', error);
             const message = this.currentLanguage === 'es'
@@ -10991,6 +11210,95 @@ function removeDossierDocument(button) {
         return;
     }
     button.closest('div')?.remove();
+}
+
+function openProposalDossierUploadPicker() {
+    const input = document.getElementById('proposal-dossier-manager-input');
+    const proposalId = document.getElementById('proposalDossiersModal')?.getAttribute('data-proposal-id');
+    const proposal = proposalId ? window.proposalsManager?.allProposals?.find(p => p.id === proposalId) : null;
+    if (proposal && window.proposalsManager?.getActiveProposalDossierDocuments(proposal).length >= 3) {
+        window.proposalsManager?.showNotification(window.proposalsManager.getProposalDossierManagerLabels().limitReached, 'warning');
+        return;
+    }
+    if (input) input.click();
+}
+
+async function handleProposalDossierManagerUpload(event) {
+    const files = Array.from(event.target.files || []);
+    if (!files.length || !window.proposalsManager) return;
+
+    const modal = document.getElementById('proposalDossiersModal');
+    const proposalId = modal?.getAttribute('data-proposal-id');
+    if (!proposalId) return;
+
+    const manager = window.proposalsManager;
+    const labels = manager.getProposalDossierManagerLabels();
+    const proposal = manager.allProposals.find(p => p.id === proposalId);
+    const activeCount = manager.getActiveProposalDossierDocuments(proposal).length;
+
+    if (activeCount >= 3 || activeCount + files.length > 3) {
+        manager.showNotification(labels.limitReached, 'warning');
+        event.target.value = '';
+        return;
+    }
+
+    if (!manager.supabase) {
+        await manager.initializeSupabase();
+    }
+
+    let storageClient;
+    try {
+        if (typeof supabase !== 'undefined' && window.SUPABASE_CONFIG) {
+            storageClient = supabase.createClient(window.SUPABASE_CONFIG.url, window.SUPABASE_CONFIG.anonKey, {
+                auth: {
+                    persistSession: true,
+                    autoRefreshToken: true,
+                    detectSessionInUrl: true
+                }
+            });
+            const { data: { session } } = await manager.supabase.auth.getSession();
+            if (session) await storageClient.auth.setSession(session);
+        } else {
+            storageClient = manager.supabase;
+        }
+    } catch (_) {
+        storageClient = manager.supabase;
+    }
+
+    for (const file of files) {
+        try {
+            const fileExt = (file.name.split('.').pop() || 'bin').toLowerCase();
+            const baseName = (file.name && file.name.trim()) ? file.name.trim() : `doc.${fileExt}`;
+            const fileName = await getUniqueStorageFilePathConsultar(storageClient, 'proposal-logos', 'dossiers', baseName);
+            const contentType = file.type || 'application/octet-stream';
+            const uploadFile = (!file.type || file.type === 'application/json')
+                ? new File([file], file.name, { type: contentType })
+                : file;
+
+            const { error: uploadError } = await storageClient.storage
+                .from('proposal-logos')
+                .upload(fileName, uploadFile, {
+                    contentType,
+                    upsert: false
+                });
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = storageClient.storage
+                .from('proposal-logos')
+                .getPublicUrl(fileName);
+
+            await manager.addProposalDossierDocumentRecord(proposalId, publicUrl, file.name);
+        } catch (error) {
+            console.error('Error subiendo documento del gestor de dossiers:', error);
+            manager.showNotification(`${labels.uploadError}: ${error.message}`, 'error');
+            event.target.value = '';
+            return;
+        }
+    }
+
+    manager.viewProposalDossiers(proposalId);
+    manager.showNotification(labels.uploadSuccess, 'success');
+    event.target.value = '';
 }
 
 // Funciones globales para modal de aguarda pagamento
