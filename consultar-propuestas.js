@@ -8379,6 +8379,9 @@ class ProposalsManager {
     }
 
     showNotification(message, type = 'info') {
+        const safeMessage = typeof window.fixMojibakeText === 'function'
+            ? window.fixMojibakeText(String(message ?? ''))
+            : String(message ?? '');
         // Crear notificación temporal
         const notification = document.createElement('div');
         notification.style.cssText = `
@@ -8402,7 +8405,7 @@ class ProposalsManager {
             notification.style.background = '#3b82f6';
         }
 
-        notification.textContent = message;
+        notification.textContent = safeMessage;
         document.body.appendChild(notification);
 
         if (type === 'success' && typeof window.refreshUserBar === 'function') {

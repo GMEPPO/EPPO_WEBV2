@@ -50,6 +50,42 @@
         return `name:${name}`;
     }
 
+    function normalizeText(value) {
+        return (value || '')
+            .toString()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .trim();
+    }
+
+    function parseCategories(raw) {
+        if (Array.isArray(raw)) return raw.filter(Boolean).map(String);
+        if (typeof raw === 'string') {
+            try {
+                const parsed = JSON.parse(raw);
+                return Array.isArray(parsed) ? parsed.filter(Boolean).map(String) : [];
+            } catch (_) {
+                return [];
+            }
+        }
+        return [];
+    }
+
+    function pickCategoryKey(product, art) {
+        const directCategory = (product?.categoria || product?.category || '').toString().trim();
+        if (directCategory) return `cat:${normalizeText(directCategory)}`;
+
+        const extraCategories = parseCategories(product?.categorias);
+        const firstExtra = extraCategories.find(Boolean);
+        if (firstExtra) return `cat:${normalizeText(firstExtra)}`;
+
+        const customType = (art?.tipo_personalizacion || '').toString().trim().toLowerCase();
+        if (customType === 'pedido especial') return `item:${productDupKey(art)}`;
+
+        return `item:${productDupKey(art)}`;
+    }
+
     function num(v) {
         const n = Number(v);
         return Number.isFinite(n) ? n : 0;
@@ -174,6 +210,25 @@
 
             const uniqueAllIds = [...new Set(allIds)];
             const articulosByProposal = {};
+            const productById = new Map();
+            const productsByName = new Map();
+
+            const { data: products, error: productsErr } = await client
+                .from('products')
+                .select('id, nombre, categoria, category, categorias')
+                .limit(10000);
+            if (productsErr) throw productsErr;
+
+            (products || []).forEach(product => {
+                productById.set(String(product.id), product);
+                const normalizedName = normalizeText(product.nombre);
+                if (!normalizedName) return;
+                if (!productsByName.has(normalizedName)) {
+                    productsByName.set(normalizedName, []);
+                }
+                productsByName.get(normalizedName).push(product);
+            });
+
             if (uniqueAllIds.length > 0) {
                 const chunkSize = 200;
                 for (let i = 0; i < uniqueAllIds.length; i += chunkSize) {
@@ -203,16 +258,39 @@
                     lines.forEach(line => {
                         const key = productDupKey(line);
                         const qty = Math.max(0, num(line.cantidad));
+                        const price = Math.max(0, num(line.precio));
+                        const lineTotal = qty * price;
                         const existing = minLineByKey.get(key);
-                        if (!existing || qty < existing.qty) {
+                        const shouldReplace = !existing
+                            || qty < existing.qty
+                            || (qty === existing.qty && price < existing.price)
+                            || (qty === existing.qty && price === existing.price && lineTotal < existing.lineTotal);
+                        if (shouldReplace) {
                             minLineByKey.set(key, {
+                                line,
                                 qty,
-                                price: num(line.precio)
+                                price,
+                                lineTotal
                             });
                         }
                     });
+
+                    const minLineByCategory = new Map();
                     minLineByKey.forEach(v => {
-                        total += v.qty * v.price;
+                        const refId = v.line?.referencia_articulo != null ? String(v.line.referencia_articulo) : '';
+                        const byRef = refId ? productById.get(refId) : null;
+                        const normalizedName = normalizeText(v.line?.nombre_articulo);
+                        const byName = !byRef && normalizedName ? (productsByName.get(normalizedName) || [])[0] : null;
+                        const product = byRef || byName || null;
+                        const categoryKey = pickCategoryKey(product, v.line);
+                        const existing = minLineByCategory.get(categoryKey);
+                        if (!existing || v.lineTotal < existing.lineTotal) {
+                            minLineByCategory.set(categoryKey, v);
+                        }
+                    });
+
+                    minLineByCategory.forEach(v => {
+                        total += v.lineTotal;
                     });
                 });
                 return { total, countedProposals };

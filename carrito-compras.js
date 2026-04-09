@@ -3711,6 +3711,9 @@ class CartManager {
      * Mostrar notificaciÃ³n
      */
     showNotification(message, type = 'info') {
+        const safeMessage = typeof window.fixMojibakeText === 'function'
+            ? window.fixMojibakeText(String(message ?? ''))
+            : String(message ?? '');
         // Calcular posiciÃ³n top basada en notificaciones existentes
         const existingNotifications = document.querySelectorAll('.notification-stack');
         let topOffset = 20;
@@ -3736,7 +3739,7 @@ class CartManager {
             transition: transform 0.3s ease, top 0.3s ease;
             max-width: 350px;
         `;
-        notification.textContent = message;
+        notification.textContent = safeMessage;
 
         document.body.appendChild(notification);
 
