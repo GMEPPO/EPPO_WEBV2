@@ -1,616 +1,428 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script>(function(){try{var r=localStorage.getItem('eppo_user_role');if(r==='compras')document.documentElement.classList.add('role-compras');}catch(e){}})();</script>
-    <title>Gestión de Usuarios - Sistema Interno</title>
+    <title>Gestion de Usuarios - EPPO</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="theme.css">
+    <link rel="stylesheet" href="menu-hamburguesa.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .users-container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 40px 20px;
-        }
-
-        .users-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 2px solid var(--border-color, #334155);
-        }
-
-        .users-header h1 {
-            color: var(--text-primary, #f1f5f9);
-            font-size: 2rem;
-            font-weight: 700;
-        }
-
-        .header-actions {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-        }
-
-        .btn {
-            padding: 10px 20px;
-            border-radius: 8px;
-            border: none;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
-        }
-
-        .btn-secondary {
-            background: var(--bg-secondary, #1e293b);
-            color: var(--text-primary, #f1f5f9);
-            border: 1px solid var(--border-color, #334155);
-        }
-
-        .btn-secondary:hover {
-            background: var(--bg-hover, #334155);
-        }
-
-        .users-table-container {
-            background: var(--bg-secondary, #1e293b);
-            border-radius: 12px;
-            border: 1px solid var(--border-color, #334155);
-            overflow: hidden;
-        }
-
-        .users-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .users-table thead {
-            background: var(--bg-primary, #0f172a);
-        }
-
-        .users-table th {
-            padding: 16px;
-            text-align: left;
-            color: var(--text-primary, #f1f5f9);
-            font-weight: 600;
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .users-table td {
-            padding: 16px;
-            color: var(--text-primary, #f1f5f9);
-            border-top: 1px solid var(--border-color, #334155);
-        }
-
-        .users-table tbody tr:hover {
-            background: var(--bg-hover, #334155);
-        }
-
-        .user-email {
-            font-weight: 500;
-        }
-
-        .user-actions {
-            display: flex;
-            gap: 8px;
-        }
-
-        .btn-icon {
-            padding: 6px 12px;
-            border-radius: 6px;
-            border: none;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-size: 0.9rem;
-        }
-
-        .btn-delete {
-            background: rgba(239, 68, 68, 0.1);
-            color: #fca5a5;
-            border: 1px solid rgba(239, 68, 68, 0.3);
-        }
-
-        .btn-delete:hover {
-            background: rgba(239, 68, 68, 0.2);
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .modal.show {
-            display: flex;
-        }
-
-        .modal-content {
-            background: var(--bg-secondary, #1e293b);
-            border-radius: 12px;
-            padding: 30px;
-            max-width: 500px;
-            width: 90%;
-            border: 1px solid var(--border-color, #334155);
-        }
-
-        .modal-header {
-            margin-bottom: 20px;
-        }
-
-        .modal-header h2 {
-            color: var(--text-primary, #f1f5f9);
-            margin-bottom: 8px;
-        }
-
-        .modal-header p {
-            color: var(--text-secondary, #94a3b8);
-            font-size: 0.9rem;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            display: block;
-            color: var(--text-primary, #f1f5f9);
-            margin-bottom: 8px;
-            font-weight: 500;
-        }
-
-        .form-group input {
-            width: 100%;
-            padding: 12px;
-            background: var(--bg-primary, #0f172a);
-            border: 1px solid var(--border-color, #334155);
-            border-radius: 8px;
-            color: var(--text-primary, #f1f5f9);
-            font-size: 1rem;
-        }
-
-        .form-group input:focus {
-            outline: none;
-            border-color: var(--accent-500, #3b82f6);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        }
-
-        .modal-actions {
-            display: flex;
-            gap: 12px;
-            justify-content: flex-end;
-            margin-top: 24px;
-        }
-
-        .error-message {
-            padding: 12px;
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            border-radius: 8px;
-            color: #fca5a5;
-            margin-bottom: 20px;
-            display: none;
-        }
-
-        .error-message.show {
-            display: block;
-        }
-
-        .success-message {
-            padding: 12px;
-            background: rgba(16, 185, 129, 0.1);
-            border: 1px solid rgba(16, 185, 129, 0.3);
-            border-radius: 8px;
-            color: #6ee7b7;
-            margin-bottom: 20px;
-            display: none;
-        }
-
-        .success-message.show {
-            display: block;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: var(--text-secondary, #94a3b8);
+        .users-shell { max-width: 1280px; margin: 0 auto; padding: 2rem 1.25rem 3rem; }
+        .users-header { display:flex; justify-content:space-between; align-items:flex-end; gap:1rem; margin-bottom:1.5rem; }
+        .users-header-copy h1 { margin:0 0 .35rem; color:var(--text-primary); font-size:2rem; }
+        .users-header-copy p { margin:0; color:var(--text-secondary); }
+        .header-actions { display:flex; gap:.75rem; flex-wrap:wrap; }
+        .users-toolbar { display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-bottom:1rem; }
+        .users-status { color:var(--text-secondary); font-size:.95rem; }
+        .users-alert { display:none; margin-bottom:1rem; padding:.9rem 1rem; border-radius:12px; border:1px solid transparent; }
+        .users-alert.show { display:block; }
+        .users-alert.error { background:rgba(239,68,68,.12); border-color:rgba(239,68,68,.3); color:#fecaca; }
+        .users-alert.success { background:rgba(16,185,129,.12); border-color:rgba(16,185,129,.3); color:#a7f3d0; }
+        .users-card { background:var(--bg-secondary, #1e293b); border:1px solid var(--border-color, #334155); border-radius:16px; overflow:hidden; }
+        .users-table { width:100%; border-collapse:collapse; }
+        .users-table thead { background:var(--bg-primary, #0f172a); }
+        .users-table th { padding:14px 16px; text-align:left; color:var(--text-primary); font-size:.82rem; text-transform:uppercase; letter-spacing:.04em; }
+        .users-table td { padding:16px; border-top:1px solid var(--border-color, #334155); color:var(--text-primary); vertical-align:middle; }
+        .users-table tbody tr:hover { background:var(--bg-hover, #334155); }
+        .user-email { font-weight:600; }
+        .user-meta { color:var(--text-secondary); font-size:.86rem; margin-top:.2rem; }
+        .role-select { width:100%; min-width:160px; padding:.6rem .75rem; background:var(--bg-primary, #0f172a); border:1px solid var(--border-color, #334155); border-radius:8px; color:var(--text-primary); }
+        .role-legacy { display:block; color:#fbbf24; font-size:.78rem; margin-top:.35rem; }
+        .user-actions { display:flex; justify-content:flex-end; }
+        .btn-danger { background:rgba(239,68,68,.14); color:#fecaca; border:1px solid rgba(239,68,68,.35); }
+        .btn-danger:hover { background:rgba(239,68,68,.22); }
+        .btn-success { background:rgba(16,185,129,.14); color:#a7f3d0; border:1px solid rgba(16,185,129,.35); }
+        .btn-success:hover { background:rgba(16,185,129,.22); }
+        .loading-row, .empty-row { text-align:center; padding:2rem; color:var(--text-secondary); }
+        .access-badge { display:inline-flex; align-items:center; gap:.4rem; margin-top:.4rem; font-size:.78rem; font-weight:600; }
+        .access-badge.active { color:#86efac; }
+        .access-badge.inactive { color:#fca5a5; }
+        .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.72); z-index:1100; align-items:center; justify-content:center; padding:1rem; }
+        .modal.show { display:flex; }
+        .modal-content { width:min(560px, 100%); background:var(--bg-secondary, #1e293b); border:1px solid var(--border-color, #334155); border-radius:16px; padding:1.5rem; box-shadow:0 24px 48px rgba(0,0,0,.35); }
+        .modal-header h2 { margin:0 0 .35rem; color:var(--text-primary); }
+        .modal-header p { margin:0 0 1rem; color:var(--text-secondary); }
+        .form-grid { display:grid; gap:1rem; }
+        .form-group label { display:block; margin-bottom:.45rem; color:var(--text-primary); font-weight:600; }
+        .form-group input, .form-group select { width:100%; padding:.8rem .9rem; background:var(--bg-primary, #0f172a); border:1px solid var(--border-color, #334155); border-radius:10px; color:var(--text-primary); }
+        .form-help { color:var(--text-secondary); font-size:.82rem; margin-top:.35rem; }
+        .modal-actions { display:flex; justify-content:flex-end; gap:.75rem; margin-top:1.25rem; }
+        @media (max-width: 900px) {
+            .users-header, .users-toolbar { flex-direction:column; align-items:stretch; }
+            .users-table thead { display:none; }
+            .users-table, .users-table tbody, .users-table tr, .users-table td { display:block; width:100%; }
+            .users-table tr { border-top:1px solid var(--border-color, #334155); padding:.35rem 0; }
+            .users-table td { border-top:none; padding:.5rem 1rem; }
+            .users-table td::before { content:attr(data-label); display:block; font-size:.75rem; text-transform:uppercase; color:var(--text-secondary); margin-bottom:.25rem; }
+            .user-actions { justify-content:flex-start; }
         }
     </style>
 </head>
 <body>
-    <div class="users-container">
-        <div class="users-header">
-            <h1><i class="fas fa-users"></i> Gestión de Usuarios</h1>
-            <div class="header-actions">
-                <button class="btn btn-secondary" onclick="window.location.href='index.html'">
-                    <i class="fas fa-arrow-left"></i> Volver
-                </button>
-                <button class="btn btn-primary" onclick="openAddUserModal()">
-                    <i class="fas fa-plus"></i> Agregar Usuario
-                </button>
-                <button class="btn btn-secondary" onclick="logout()">
-                    <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
-                </button>
+    <header class="header">
+        <div class="header-content">
+            <a href="index.html" class="logo">
+                <span class="logo-line1">EPPO by</span>
+                <span class="logo-line2 groupe-gm">Groupe GM</span>
+            </a>
+            <nav class="nav">
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="productos-dinamico.html" class="nav-link">Products</a>
+                <a href="carrito-compras.html" class="nav-link" id="nav-cart-link">Presupuesto</a>
+                <a href="consultar-propuestas.html" class="nav-link" id="nav-proposals-link">Historico</a>
+                <div class="menu-dropdown">
+                    <button class="menu-toggle" id="menuToggle" onclick="toggleMenu()" aria-label="Toggle menu">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="dropdown-menu" id="dropdownMenu">
+                        <a href="comparar-productos.html" class="dropdown-link"><i class="fas fa-balance-scale"></i><span>Comparar</span></a>
+                        <a href="selector-productos.html" class="dropdown-link" id="nav-create-product-link"><i class="fas fa-edit"></i><span>Creador/Editor</span></a>
+                        <a href="gestao-encomendas.html" class="dropdown-link"><i class="fas fa-truck-loading"></i><span>Gestao de Encomendas</span></a>
+                    </div>
+                </div>
+                <div class="language-selector">
+                    <button class="flag-btn active" data-lang="pt" title="Portugues"><img src="https://flagcdn.com/w20/pt.png" alt="Portugal"></button>
+                    <button class="flag-btn" data-lang="es" title="Espanol"><img src="https://flagcdn.com/w20/es.png" alt="Espana"></button>
+                </div>
+                <div class="user-bar" id="user-bar">
+                    <span class="user-bar-name" id="user-bar-name">-</span>
+                    <span class="user-bar-sep" aria-hidden="true">|</span>
+                    <span class="user-bar-role" id="user-bar-role">-</span>
+                    <button type="button" class="user-bar-logout" id="user-bar-logout">Logout</button>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="users-shell">
+            <div class="users-header">
+                <div class="users-header-copy">
+                    <h1><i class="fas fa-users-cog"></i> Gestion de Usuarios</h1>
+                    <p>Solo administradores pueden crear usuarios, asignar roles y eliminar cuentas.</p>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-secondary" type="button" onclick="window.location.href='index.html'">
+                        <i class="fas fa-arrow-left"></i> Volver
+                    </button>
+                    <button class="btn btn-primary" type="button" id="openAddUserBtn">
+                        <i class="fas fa-user-plus"></i> Agregar usuario
+                    </button>
+                </div>
+            </div>
+
+            <div id="usersAlert" class="users-alert"></div>
+
+            <div class="users-toolbar">
+                <div class="users-status" id="usersStatus">Cargando usuarios...</div>
+                <div class="users-status">Roles oficiales: admin, comercial, compras</div>
+            </div>
+
+            <div class="users-card">
+                <table class="users-table">
+                    <thead>
+                        <tr>
+                            <th>Usuario</th>
+                            <th>Rol</th>
+                            <th>Ultimo acceso</th>
+                            <th>Fecha de creacion</th>
+                            <th>Acceso</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody">
+                        <tr><td colspan="6" class="loading-row"><i class="fas fa-spinner fa-spin"></i> Cargando usuarios...</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
+    </main>
 
-        <div class="users-table-container">
-            <table class="users-table">
-                <thead>
-                    <tr>
-                        <th>Email</th>
-                        <th>Rol</th>
-                        <th>Último Acceso</th>
-                        <th>Fecha de Creación</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody id="usersTableBody">
-                    <tr>
-                        <td colspan="5" class="loading">
-                            <i class="fas fa-spinner fa-spin"></i> Cargando usuarios...
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Modal para agregar usuario -->
-    <div id="addUserModal" class="modal">
+    <div id="addUserModal" class="modal" aria-hidden="true">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Agregar Nuevo Usuario</h2>
-                <p>Ingresa el email y contraseña para el nuevo usuario</p>
+                <h2>Agregar usuario</h2>
+                <p>Se creara una cuenta en Supabase Auth con contrasena temporal y se asignara el rol elegido.</p>
             </div>
-            <div class="error-message" id="errorMessage"></div>
-            <div class="success-message" id="successMessage"></div>
             <form id="addUserForm">
-                <div class="form-group">
-                    <label for="newUserEmail">Email</label>
-                    <input type="email" id="newUserEmail" required autocomplete="email">
-                </div>
-                <div class="form-group">
-                    <label for="newUserPassword">Contraseña</label>
-                    <input type="password" id="newUserPassword" required autocomplete="new-password" minlength="6">
-                </div>
-                <div class="form-group">
-                    <label for="newUserRole">Rol</label>
-                    <select id="newUserRole" required style="width: 100%; padding: 12px; background: var(--bg-primary, #0f172a); border: 1px solid var(--border-color, #334155); border-radius: 8px; color: var(--text-primary, #f1f5f9); font-size: 1rem;">
-                        <option value="viewer">Visualizador</option>
-                        <option value="comercial">Comercial</option>
-                        <option value="editor">Editor</option>
-                        <option value="admin">Administrador</option>
-                    </select>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="newUserEmail">Email</label>
+                        <input type="email" id="newUserEmail" required autocomplete="email">
+                    </div>
+                    <div class="form-group">
+                        <label for="newUserPassword">Contrasena temporal</label>
+                        <input type="password" id="newUserPassword" required minlength="6" autocomplete="new-password">
+                        <div class="form-help">Minimo 6 caracteres. Esta contrasena se podra cambiar despues.</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="newUserRole">Rol</label>
+                        <select id="newUserRole" required>
+                            <option value="comercial">Comercial</option>
+                            <option value="compras">Compras</option>
+                            <option value="admin">Administrador</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary" onclick="closeAddUserModal()">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Crear Usuario</button>
+                    <button type="button" class="btn btn-secondary" id="cancelAddUserBtn">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="submitAddUserBtn">Crear usuario</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Scripts -->
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="load-config.js"></script>
     <script src="supabase-config-universal.js"></script>
-    <script src="stock-warning.js"></script>
     <script src="auth.js"></script>
-    <!-- roles.js eliminado - usando función simple para asignar roles -->
+    <script src="menu-hamburguesa.js"></script>
     <script>
-        let supabaseClient = null;
+        const OFFICIAL_ROLES = ['admin', 'comercial', 'compras'];
+        let usersState = [];
 
-        // Inicializar
-        document.addEventListener('DOMContentLoaded', async () => {
-            // Verificar autenticación
-            const isAuth = await window.authManager.requireAuth();
-            if (!isAuth) {
+        function escapeHtml(value) {
+            return (value || '')
+                .toString()
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function formatDateTime(value) {
+            if (!value) return 'Nunca';
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return '-';
+            return date.toLocaleString('es-ES');
+        }
+
+        function normalizeRole(role) {
+            const normalized = (role || '').toString().trim().toLowerCase();
+            return normalized || 'comercial';
+        }
+
+        async function getAccessToken() {
+            const client = await window.universalSupabase?.getClient();
+            const sessionResult = await client.auth.getSession();
+            return sessionResult?.data?.session?.access_token || null;
+        }
+
+        async function apiFetch(url, options = {}) {
+            const token = await getAccessToken();
+            const headers = Object.assign({}, options.headers || {}, { 'Content-Type': 'application/json' });
+            if (token) headers.Authorization = `Bearer ${token}`;
+
+            const response = await fetch(url, Object.assign({}, options, { headers }));
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(payload.error || payload.message || `HTTP ${response.status}`);
+            }
+            return payload;
+        }
+
+        function showAlert(message, type) {
+            const alertEl = document.getElementById('usersAlert');
+            alertEl.textContent = message;
+            alertEl.className = `users-alert show ${type}`;
+        }
+
+        function clearAlert() {
+            const alertEl = document.getElementById('usersAlert');
+            alertEl.textContent = '';
+            alertEl.className = 'users-alert';
+        }
+
+        function setStatus(message) {
+            const statusEl = document.getElementById('usersStatus');
+            if (statusEl) statusEl.textContent = message;
+        }
+
+        function buildRoleOptions(selectedRole) {
+            return OFFICIAL_ROLES.map(role => `<option value="${role}" ${role === selectedRole ? 'selected' : ''}>${role}</option>`).join('');
+        }
+
+        function renderUsers() {
+            const tbody = document.getElementById('usersTableBody');
+            if (!tbody) return;
+
+            if (!usersState.length) {
+                tbody.innerHTML = '<tr><td colspan="6" class="empty-row">No hay usuarios registrados.</td></tr>';
+                setStatus('0 usuarios');
                 return;
             }
 
-            // Sistema de roles desactivado - todos tienen acceso completo
-            // const hasAccess = await window.rolesManager.requireAccess('gestion-usuarios.html');
-            // if (!hasAccess) {
-            //     return;
-            // }
-
-            // Función simple para asignar rol a un usuario (reemplaza rolesManager.assignRole)
-            window.assignRoleToUser = async function(userId, role) {
-                try {
-                    // Verificar que el rol es válido
-                    const validRoles = ['admin', 'comercial'];
-                    if (!validRoles.includes(role)) {
-                        return { success: false, error: `Rol "${role}" no válido. Roles válidos: ${validRoles.join(', ')}` };
-                    }
-
-                    const client = await window.universalSupabase?.getClient();
-                    if (!client) {
-                        return { success: false, error: 'Supabase no disponible' };
-                    }
-
-                    // Verificar si el usuario ya tiene un rol asignado
-                    const { data: existing, error: checkError } = await client
-                        .from('user_roles')
-                        .select('id')
-                        .eq('user_id', userId)
-                        .maybeSingle();
-
-                    if (checkError && checkError.code !== 'PGRST116') {
-                        return { success: false, error: checkError.message };
-                    }
-
-                    if (existing) {
-                        // Actualizar rol existente
-                        const { error } = await client
-                            .from('user_roles')
-                            .update({
-                                role: role,
-                                updated_at: new Date().toISOString()
-                            })
-                            .eq('user_id', userId);
-
-                        if (error) {
-                            return { success: false, error: error.message };
-                        }
-                        return { success: true };
-                    } else {
-                        // Crear nuevo rol
-                        const { error } = await client
-                            .from('user_roles')
-                            .insert({
-                                user_id: userId,
-                                role: role
-                            });
-
-                        if (error) {
-                            return { success: false, error: error.message };
-                        }
-                        return { success: true };
-                    }
-                } catch (error) {
-                    return { success: false, error: error.message || 'Error desconocido' };
-            }
-            };
-
-            // Inicializar Supabase - usar siempre el cliente compartido
-            if (window.universalSupabase) {
-                supabaseClient = await window.universalSupabase.getClient();
-            } else {
-                // Esperar un momento para que universalSupabase se inicialice
-                await new Promise(resolve => setTimeout(resolve, 200));
-                if (window.universalSupabase) {
-                    supabaseClient = await window.universalSupabase.getClient();
-                } else {
-                    throw new Error('Supabase no está disponible. Asegúrate de que supabase-config-universal.js se cargue antes.');
-                }
-            }
-
-            // Cargar usuarios
-            await loadUsers();
-
-            // Configurar formulario
-            document.getElementById('addUserForm').addEventListener('submit', handleAddUser);
-        });
-
-        // Cargar lista de usuarios
-        async function loadUsers() {
-            try {
-                const { data: { users }, error } = await supabaseClient.auth.admin.listUsers();
-                
-                if (error) throw error;
-
-                const tbody = document.getElementById('usersTableBody');
-                tbody.innerHTML = '';
-
-                if (users.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-secondary);">No hay usuarios registrados</td></tr>';
-                    return;
-                }
-
-                // Cargar roles de todos los usuarios
-                const userIds = users.map(u => u.id);
-                const { data: userRolesData } = await supabaseClient
-                    .from('user_roles')
-                    .select('user_id, role')
-                    .in('user_id', userIds);
-
-                const rolesMap = {};
-                if (userRolesData) {
-                    userRolesData.forEach(ur => {
-                        rolesMap[ur.user_id] = ur.role;
-                    });
-                }
-
-                users.forEach(user => {
-                    const row = document.createElement('tr');
-                    const lastSignIn = user.last_sign_in_at 
-                        ? new Date(user.last_sign_in_at).toLocaleString('es-ES')
-                        : 'Nunca';
-                    const createdAt = user.created_at 
-                        ? new Date(user.created_at).toLocaleString('es-ES')
-                        : '-';
-                    const userRole = rolesMap[user.id] || 'viewer';
-
-                    row.innerHTML = `
-                        <td class="user-email">${user.email}</td>
-                        <td>
-                            <select class="role-select" data-user-id="${user.id}" style="padding: 6px 12px; background: var(--bg-primary, #0f172a); border: 1px solid var(--border-color, #334155); border-radius: 6px; color: var(--text-primary, #f1f5f9); font-size: 0.9rem; cursor: pointer;">
-                                <option value="viewer" ${userRole === 'viewer' ? 'selected' : ''}>Visualizador</option>
-                                <option value="comercial" ${userRole === 'comercial' ? 'selected' : ''}>Comercial</option>
-                                <option value="editor" ${userRole === 'editor' ? 'selected' : ''}>Editor</option>
-                                <option value="admin" ${userRole === 'admin' ? 'selected' : ''}>Administrador</option>
-                            </select>
+            tbody.innerHTML = usersState.map(user => {
+                const role = normalizeRole(user.role);
+                const isLegacyRole = !OFFICIAL_ROLES.includes(role);
+                const selectedRole = isLegacyRole ? 'comercial' : role;
+                const legacyText = isLegacyRole ? `<span class="role-legacy">Rol legado detectado: ${escapeHtml(role)}</span>` : '';
+                const disabled = !!user.disabled;
+                const accessBadge = disabled
+                    ? '<span class="access-badge inactive"><i class="fas fa-ban"></i> Desactivado</span>'
+                    : '<span class="access-badge active"><i class="fas fa-check-circle"></i> Activo</span>';
+                const actionClass = disabled ? 'btn-success' : 'btn-danger';
+                const actionLabel = disabled ? 'Reactivar' : 'Desactivar';
+                const actionIcon = disabled ? 'fa-user-check' : 'fa-user-slash';
+                return `
+                    <tr>
+                        <td data-label="Usuario">
+                            <div class="user-email">${escapeHtml(user.email || '')}</div>
+                            <div class="user-meta">${escapeHtml(user.name || user.pais || '')}</div>
                         </td>
-                        <td>${lastSignIn}</td>
-                        <td>${createdAt}</td>
-                        <td>
+                        <td data-label="Rol">
+                            <select class="role-select" data-user-id="${escapeHtml(user.id)}" data-previous-role="${escapeHtml(selectedRole)}">
+                                ${buildRoleOptions(selectedRole)}
+                            </select>
+                            ${legacyText}
+                        </td>
+                        <td data-label="Ultimo acceso">${escapeHtml(formatDateTime(user.last_sign_in_at))}</td>
+                        <td data-label="Fecha de creacion">${escapeHtml(formatDateTime(user.created_at))}</td>
+                        <td data-label="Acceso">${accessBadge}</td>
+                        <td data-label="Acciones">
                             <div class="user-actions">
-                                <button class="btn-icon btn-delete" onclick="deleteUser('${user.id}', '${user.email}')">
-                                    <i class="fas fa-trash"></i> Eliminar
+                                <button class="btn ${actionClass}" type="button" data-toggle-user="${escapeHtml(user.id)}" data-toggle-email="${escapeHtml(user.email || '')}" data-disabled="${disabled ? 'true' : 'false'}">
+                                    <i class="fas ${actionIcon}"></i> ${actionLabel}
                                 </button>
                             </div>
                         </td>
-                    `;
-                    tbody.appendChild(row);
-                });
+                    </tr>
+                `;
+            }).join('');
 
-                // Agregar event listeners a los selects de roles
-                document.querySelectorAll('.role-select').forEach(select => {
-                    select.addEventListener('change', async (e) => {
-                        const userId = e.target.dataset.userId;
-                        const newRole = e.target.value;
-                        await updateUserRole(userId, newRole);
-                    });
+            setStatus(`${usersState.length} usuarios`);
+
+            tbody.querySelectorAll('.role-select').forEach(select => {
+                select.addEventListener('change', async (event) => {
+                    const userId = event.target.dataset.userId;
+                    const previousRole = event.target.dataset.previousRole || 'comercial';
+                    try {
+                        clearAlert();
+                        await apiFetch(`/api/admin-users/${encodeURIComponent(userId)}`, {
+                            method: 'PATCH',
+                            body: JSON.stringify({ role: event.target.value })
+                        });
+                        event.target.dataset.previousRole = event.target.value;
+                        showAlert('Rol actualizado correctamente.', 'success');
+                    } catch (error) {
+                        event.target.value = previousRole;
+                        showAlert(error.message || 'No se pudo actualizar el rol.', 'error');
+                    }
                 });
+            });
+
+            tbody.querySelectorAll('[data-toggle-user]').forEach(button => {
+                button.addEventListener('click', async () => {
+                    const userId = button.dataset.toggleUser;
+                    const email = button.dataset.toggleEmail;
+                    const currentlyDisabled = button.dataset.disabled === 'true';
+                    const nextDisabled = !currentlyDisabled;
+                    const actionText = nextDisabled ? 'desactivar' : 'reactivar';
+                    if (!window.confirm(`Seguro que deseas ${actionText} el acceso a ${email}? La cuenta no se eliminara.`)) {
+                        return;
+                    }
+
+                    try {
+                        clearAlert();
+                        button.disabled = true;
+                        await apiFetch(`/api/admin-users/${encodeURIComponent(userId)}`, {
+                            method: 'PATCH',
+                            body: JSON.stringify({ disabled: nextDisabled })
+                        });
+                        usersState = usersState.map(user => String(user.id) === String(userId)
+                            ? Object.assign({}, user, { disabled: nextDisabled })
+                            : user);
+                        renderUsers();
+                        showAlert(`Acceso ${nextDisabled ? 'desactivado' : 'reactivado'} correctamente.`, 'success');
+                    } catch (error) {
+                        button.disabled = false;
+                        showAlert(error.message || 'No se pudo actualizar el acceso del usuario.', 'error');
+                    }
+                });
+            });
+        }
+
+        async function loadUsers() {
+            try {
+                setStatus('Cargando usuarios...');
+                const payload = await apiFetch('/api/admin-users', { method: 'GET' });
+                usersState = Array.isArray(payload.users) ? payload.users : [];
+                renderUsers();
             } catch (error) {
-                console.error('Error cargando usuarios:', error);
-                document.getElementById('usersTableBody').innerHTML = 
-                    '<tr><td colspan="5" style="text-align: center; color: #fca5a5;">Error al cargar usuarios</td></tr>';
+                document.getElementById('usersTableBody').innerHTML = `<tr><td colspan="6" class="empty-row">${escapeHtml(error.message || 'Error al cargar usuarios.')}</td></tr>`;
+                setStatus('Error al cargar usuarios');
+                showAlert(error.message || 'Error al cargar usuarios.', 'error');
             }
         }
 
-        // Abrir modal de agregar usuario
         function openAddUserModal() {
             document.getElementById('addUserModal').classList.add('show');
+            document.getElementById('addUserModal').setAttribute('aria-hidden', 'false');
             document.getElementById('addUserForm').reset();
-            document.getElementById('errorMessage').classList.remove('show');
-            document.getElementById('successMessage').classList.remove('show');
         }
 
-        // Cerrar modal
         function closeAddUserModal() {
             document.getElementById('addUserModal').classList.remove('show');
+            document.getElementById('addUserModal').setAttribute('aria-hidden', 'true');
         }
 
-        // Manejar agregar usuario
-        async function handleAddUser(e) {
-            e.preventDefault();
-            
+        async function handleAddUser(event) {
+            event.preventDefault();
+            const submitBtn = document.getElementById('submitAddUserBtn');
             const email = document.getElementById('newUserEmail').value.trim();
             const password = document.getElementById('newUserPassword').value;
             const role = document.getElementById('newUserRole').value;
-            const errorMsg = document.getElementById('errorMessage');
-            const successMsg = document.getElementById('successMessage');
-
-            errorMsg.classList.remove('show');
-            successMsg.classList.remove('show');
 
             try {
-                // Crear usuario en Supabase Auth
-                const { data, error } = await supabaseClient.auth.signUp({
-                    email: email,
-                    password: password
+                submitBtn.disabled = true;
+                clearAlert();
+                await apiFetch('/api/admin-users', {
+                    method: 'POST',
+                    body: JSON.stringify({ email, password, role })
                 });
-
-                if (error) throw error;
-
-                // Si el usuario se creó correctamente, asignar rol
-                if (data.user) {
-                    const roleResult = await window.assignRoleToUser(data.user.id, role);
-                    if (!roleResult.success) {
-                        console.warn('Usuario creado pero error asignando rol:', roleResult.error);
-                    }
-                }
-
-                successMsg.textContent = 'Usuario creado exitosamente. El usuario debe confirmar su email.';
-                successMsg.classList.add('show');
-                
-                document.getElementById('addUserForm').reset();
-                
-                setTimeout(() => {
-                    closeAddUserModal();
-                    loadUsers();
-                }, 2000);
-            } catch (error) {
-                errorMsg.textContent = error.message || 'Error al crear usuario';
-                errorMsg.classList.add('show');
-            }
-        }
-
-        // Actualizar rol de usuario
-        async function updateUserRole(userId, newRole) {
-            try {
-                const result = await window.assignRoleToUser(userId, newRole);
-                if (result.success) {
-                    // Mostrar mensaje de éxito temporal
-                    const select = document.querySelector(`.role-select[data-user-id="${userId}"]`);
-                    if (select) {
-                        const originalBg = select.style.background;
-                        select.style.background = 'rgba(16, 185, 129, 0.2)';
-                        setTimeout(() => {
-                            select.style.background = originalBg;
-                        }, 1000);
-                    }
-                } else {
-                    alert('Error al actualizar rol: ' + result.error);
-                    // Recargar usuarios para restaurar el valor anterior
-                    await loadUsers();
-                }
-            } catch (error) {
-                console.error('Error actualizando rol:', error);
-                alert('Error al actualizar rol: ' + error.message);
-                await loadUsers();
-            }
-        }
-
-        // Eliminar usuario
-        async function deleteUser(userId, userEmail) {
-            if (!confirm(`¿Estás seguro de que deseas eliminar al usuario ${userEmail}?`)) {
-                return;
-            }
-
-            try {
-                // Nota: Eliminar usuarios también requiere Admin API
-                // Por ahora mostraremos un mensaje
-                alert('Para eliminar usuarios necesitas configurar el Admin API de Supabase. Consulta la documentación de Supabase Auth Admin API.');
-                // const { error } = await supabaseClient.auth.admin.deleteUser(userId);
-                // if (error) throw error;
-                // await loadUsers();
-            } catch (error) {
-                alert('Error al eliminar usuario: ' + error.message);
-            }
-        }
-
-        // Cerrar sesión
-        async function logout() {
-            const result = await window.authManager.logout();
-            if (result.success) {
-                window.location.href = 'login.html';
-            }
-        }
-
-        // Cerrar modal al hacer click fuera
-        document.getElementById('addUserModal').addEventListener('click', (e) => {
-            if (e.target.id === 'addUserModal') {
                 closeAddUserModal();
+                showAlert('Usuario creado correctamente.', 'success');
+                await loadUsers();
+            } catch (error) {
+                showAlert(error.message || 'No se pudo crear el usuario.', 'error');
+            } finally {
+                submitBtn.disabled = false;
+            }
+        }
+
+        async function ensureAdminAccess() {
+            const isAuth = await window.authManager.requireAuth('login.html');
+            if (!isAuth) return false;
+            const role = typeof window.getUserRole === 'function' ? await window.getUserRole() : null;
+            if ((role || '').toString().toLowerCase() !== 'admin') {
+                window.location.href = 'index.html';
+                return false;
+            }
+            return true;
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                if (!(await ensureAdminAccess())) return;
+                document.getElementById('openAddUserBtn').addEventListener('click', openAddUserModal);
+                document.getElementById('cancelAddUserBtn').addEventListener('click', closeAddUserModal);
+                document.getElementById('addUserForm').addEventListener('submit', handleAddUser);
+                document.getElementById('addUserModal').addEventListener('click', (e) => {
+                    if (e.target.id === 'addUserModal') closeAddUserModal();
+                });
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') closeAddUserModal();
+                });
+                await loadUsers();
+            } catch (error) {
+                showAlert(error.message || 'No se pudo iniciar la gestion de usuarios.', 'error');
+                setStatus('Error de inicializacion');
             }
         });
     </script>
 </body>
 </html>
-

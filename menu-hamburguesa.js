@@ -232,6 +232,28 @@ function ensureDatosMenuLink(roleLower) {
     dropdownMenu.appendChild(link);
 }
 
+function ensureGestionUsuariosMenuLink(roleLower) {
+    const dropdownMenu = document.getElementById('dropdownMenu');
+    if (!dropdownMenu) return;
+
+    const existing = dropdownMenu.querySelector('a.dropdown-link[data-menu-key="gestion-usuarios"]');
+    const isAdmin = roleLower === 'admin';
+
+    if (!isAdmin) {
+        if (existing) existing.remove();
+        return;
+    }
+
+    if (existing) return;
+
+    const link = document.createElement('a');
+    link.className = 'dropdown-link';
+    link.href = 'gestion-usuarios.html';
+    link.setAttribute('data-menu-key', 'gestion-usuarios');
+    link.innerHTML = '<i class="fas fa-users-cog"></i><span>Usuarios</span>';
+    dropdownMenu.appendChild(link);
+}
+
 /**
  * Inicializar barra de usuario (nombre, rol, logout) en el header
  */
@@ -305,6 +327,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const role = typeof window.getUserRole === 'function' ? await window.getUserRole() : null;
         const roleLower = (role || '').toString().toLowerCase();
         ensureDatosMenuLink(roleLower);
+        ensureGestionUsuariosMenuLink(roleLower);
 
         if (roleLower === 'compras') {
             const navCart = document.getElementById('nav-cart-link');
