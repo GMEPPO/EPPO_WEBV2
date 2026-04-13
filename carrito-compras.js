@@ -8989,18 +8989,18 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     // Texto del pie de pÃ¡gina segÃºn idioma
     const footerTexts = {
         pt: [
-            'PreÃ§os nÃ£o incluem IVA e sÃ£o vÃ¡lidos para uma Ãºnica entrega.',
-            'Estes preÃ§os nÃ£o incluem despesas de transporte.',
-            'Esta proposta Ã© vÃ¡lida por 1 mÃªs e estÃ¡ sempre sujeita a revisÃ£o no momento da adjudicaÃ§Ã£o.',
-            'A quantidade de entrega poderÃ¡ ter uma variaÃ§Ã£o de atÃ© 10%.',
-            'CondiÃ§Ãµes de pagamento: 30% do valor total do pedido no momento da adjudicaÃ§Ã£o; 70% nas condiÃ§Ãµes habituais.'
+            'Preços não incluem IVA e são válidos para uma única entrega.',
+            'Estes preços não incluem despesas de transporte.',
+            'Esta proposta é válida por 1 mês e está sempre sujeita a revisão no momento da adjudicação.',
+            'A quantidade de entrega poderá ter uma variação de até 10%.',
+            'Condições de pagamento: 30% do valor total do pedido no momento da adjudicação; 70% nas condições habituais.'
         ],
         es: [
-            'Los precios no incluyen IVA y son vÃ¡lidos para una Ãºnica entrega.',
+            'Los precios no incluyen IVA y son válidos para una única entrega.',
             'Estos precios no incluyen gastos de transporte.',
-            'Esta propuesta es vÃ¡lida por 1 mes y estÃ¡ siempre sujeta a revisiÃ³n en el momento de la adjudicaciÃ³n.',
-            'La cantidad de entrega podrÃ¡ tener una variaciÃ³n de hasta 10%.',
-            'Condiciones de pago: 30% del valor total del pedido en el momento de la adjudicaciÃ³n; 70% en las condiciones habituales.'
+            'Esta propuesta es válida por 1 mes y está siempre sujeta a revisión en el momento de la adjudicación.',
+            'La cantidad de entrega podrá tener una variación de hasta 10%.',
+            'Condiciones de pago: 30% del valor total del pedido en el momento de la adjudicación; 70% en las condiciones habituales.'
         ],
         en: [
             'Prices do not include VAT and are valid for a single delivery.',
