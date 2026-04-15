@@ -7342,6 +7342,20 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
         pdfCartManager = context.cartManager;
         usingTemporaryCartManager = context.isTemporary;
 
+        const getProposalCountryValue = (proposalLike) => {
+            if (!proposalLike || typeof proposalLike !== 'object') return '';
+
+            return (
+                proposalLike.pais ||
+                proposalLike.Pais ||
+                proposalLike.country ||
+                proposalLike.Country ||
+                proposalLike.pais_cliente ||
+                proposalLike.country_code ||
+                ''
+            );
+        };
+
         if (!pdfCartManager?.supabase) {
             console.error('âŒ ERROR CRÃTICO: no se pudo preparar el contexto del carrito para el PDF');
             return;
@@ -7528,8 +7542,16 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
             return '';
         };
 
-        let pdfLanguage = normalizeCountryCode(proposal.pais) || 'pt';
+        const resolvedProposalCountry = getProposalCountryValue(proposal) || getProposalCountryValue(pdfCartManager.editingProposalData);
+        let pdfLanguage = normalizeCountryCode(resolvedProposalCountry) || 'pt';
         pdfCartManager.currentLanguage = pdfLanguage;
+
+        console.log('ðŸŒ País resuelto para PDF guardado:', {
+            rawProposalPais: proposal?.pais,
+            rawProposalPaisAlt: proposal?.Pais,
+            resolvedProposalCountry,
+            pdfLanguage
+        });
 
         console.log('ðŸ“„ Generando PDF con idioma:', pdfLanguage);
         console.log('ðŸ“¦ Items del carrito para PDF:', cartItems.length);
@@ -7978,23 +8000,47 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         return '';
     }
 
+    function getProposalCountryValue(proposalLike) {
+        if (!proposalLike || typeof proposalLike !== 'object') return '';
+
+        return (
+            proposalLike.pais ||
+            proposalLike.Pais ||
+            proposalLike.country ||
+            proposalLike.Country ||
+            proposalLike.pais_cliente ||
+            proposalLike.country_code ||
+            ''
+        );
+    }
+
     // Determinar el idioma: si hay proposalData con paÃ­s, usar ese paÃ­s para determinar el idioma
     // Si no, usar selectedLanguage o el idioma actual del carrito
     let lang = 'pt'; // Por defecto portuguÃ©s
-    
-    if (proposalData && proposalData.pais) {
+
+    const proposalCountry = getProposalCountryValue(proposalData);
+    const editingCountry = getProposalCountryValue(window.cartManager?.editingProposalData);
+
+    if (proposalCountry) {
         // Si hay datos de propuesta con paÃ­s, usar el paÃ­s para determinar el idioma
-        lang = normalizeCountryCode(proposalData.pais) || lang;
+        lang = normalizeCountryCode(proposalCountry) || lang;
     } else if (selectedLanguage) {
         // Si se especificÃ³ un idioma directamente, usarlo
         lang = selectedLanguage;
-    } else if (window.cartManager?.editingProposalData?.pais) {
+    } else if (editingCountry) {
         // Si estamos editando una propuesta, usar el paÃ­s de la propuesta
-        lang = normalizeCountryCode(window.cartManager.editingProposalData.pais) || lang;
+        lang = normalizeCountryCode(editingCountry) || lang;
     } else {
         // Por defecto, usar el idioma actual del carrito
         lang = window.cartManager?.currentLanguage || 'pt';
     }
+
+    console.log('ðŸŒ ResoluciÃ³n de idioma del PDF:', {
+        selectedLanguage,
+        proposalCountry,
+        editingCountry,
+        resolvedLanguage: lang
+    });
     
     const t = translations[lang] || translations.pt;
 
@@ -9343,8 +9389,6 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             } else {
                 console.warn('âš ï¸ No se encontraron variantes de referencia');
             }
-        } else {
-            console.log('â„¹ï¸ No hay variante de referencia seleccionada. selectedReferenceVariant:', itemToUse.selectedReferenceVariant);
         }
 
         // Agregar notas especiales (observaciones) al final, con espacio adicional
