@@ -1,3 +1,5 @@
+const EDITING_CART_PROPOSAL_KEY = 'editing_proposal_cart_id';
+
 function parseEditingProposalFromStorage() {
     try {
         const raw = localStorage.getItem('editing_proposal');
@@ -34,6 +36,14 @@ function buildEditingCartUrl() {
     return `carrito-compras.html?edit=${encodeURIComponent(context.proposalId)}`;
 }
 
+function markEditingCartDraft(proposalId) {
+    if (!proposalId) return;
+
+    try {
+        localStorage.setItem(EDITING_CART_PROPOSAL_KEY, String(proposalId));
+    } catch (_) {}
+}
+
 function cancelEditingProposal(options = {}) {
     const {
         redirectTo = 'consultar-propuestas.html',
@@ -42,6 +52,7 @@ function cancelEditingProposal(options = {}) {
 
     try {
         localStorage.removeItem('editing_proposal');
+        localStorage.removeItem(EDITING_CART_PROPOSAL_KEY);
         if (clearCart) {
             localStorage.setItem('eppo_cart', '[]');
         }
@@ -60,5 +71,6 @@ function cancelEditingProposal(options = {}) {
 window.proposalEditing = {
     getContext: getEditingProposalContext,
     buildCartUrl: buildEditingCartUrl,
+    markDraftCart: markEditingCartDraft,
     cancel: cancelEditingProposal
 };

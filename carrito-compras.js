@@ -3,6 +3,8 @@
  * Maneja la funcionalidad completa del carrito incluyendo agregar categorÃ­as
  */
 
+const EDITING_CART_PROPOSAL_KEY = 'editing_proposal_cart_id';
+
 class CartManager {
     constructor() {
         this.cart = this.loadCart();
@@ -53,10 +55,11 @@ class CartManager {
         
         if (editId) {
             this.editingProposalId = editId;
+            const hasDraftCart = this.hasEditingDraftCart(editId);
             // Siempre cargar desde Supabase para tener todos los artÃ­culos (mÃ³dulos, precio especial, etc.).
             // El PDF/imprimir ya usa Supabase y muestra todo; localStorage puede tener datos antiguos o incompletos.
             try {
-                await this.loadProposalFromSupabase(editId);
+                await this.loadProposalFromSupabase(editId, { preserveDraftCart: hasDraftCart });
             } catch (err) {
                 console.warn('No se pudo cargar la propuesta desde Supabase, intentando localStorage:', err);
                 const savedData = localStorage.getItem('editing_proposal');
@@ -66,7 +69,12 @@ class CartManager {
                         this.modo200 = !!(this.editingProposalData.modo_200_plus || this.editingProposalData.modo_200);
                         await this.loadAllProducts();
                         await this.loadClientExclusiveProducts(this.editingProposalData.nombre_cliente);
-                        await this.loadProposalIntoCart();
+                        if (!this.hasEditingDraftCart(editId)) {
+                            await this.loadProposalIntoCart();
+                        } else {
+                            this.cart = this.loadCart();
+                            this.prefillProposalForm();
+                        }
                     } catch (_) {}
                 }
             }
@@ -75,6 +83,7 @@ class CartManager {
             // No estamos editando: si quedÃ³ datos de una ediciÃ³n anterior (salimos sin guardar o guardamos y volvimos), vaciar carrito
             if (localStorage.getItem('editing_proposal')) {
                 localStorage.removeItem('editing_proposal');
+                localStorage.removeItem(EDITING_CART_PROPOSAL_KEY);
                 this.editingProposalId = null;
                 this.editingProposalData = null;
                 this.cart = [];
@@ -83,7 +92,22 @@ class CartManager {
         }
     }
 
-    async loadProposalFromSupabase(proposalId) {
+    hasEditingDraftCart(proposalId) {
+        try {
+            const storedProposalId = localStorage.getItem(EDITING_CART_PROPOSAL_KEY);
+            if (String(storedProposalId || '') !== String(proposalId || '')) {
+                return false;
+            }
+
+            const savedCart = JSON.parse(localStorage.getItem('eppo_cart') || '[]');
+            return Array.isArray(savedCart) && savedCart.length > 0;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    async loadProposalFromSupabase(proposalId, options = {}) {
+        const { preserveDraftCart = false } = options;
         if (!this.supabase) {
             // No inicializado
             return;
@@ -159,6 +183,13 @@ class CartManager {
 
             console.log('ðŸ“¦ Productos cargados antes de cargar propuesta al carrito:', this.allProducts.length);
             console.log('ðŸ“‹ ArtÃ­culos a cargar:', articulos ? articulos.length : 0);
+
+            if (preserveDraftCart && this.hasEditingDraftCart(proposalId)) {
+                console.log('ðŸ’¾ Reanudando borrador local de la propuesta en edición');
+                this.cart = this.loadCart();
+                this.prefillProposalForm();
+                return;
+            }
 
             // IMPORTANTE: Cargar los artÃ­culos al carrito PRIMERO, antes de aplicar modo 200+
             // Esto asegura que los precios guardados se carguen correctamente
@@ -1396,6 +1427,11 @@ class CartManager {
      */
     saveCart() {
         localStorage.setItem('eppo_cart', JSON.stringify(this.cart));
+        if (this.editingProposalId) {
+            localStorage.setItem(EDITING_CART_PROPOSAL_KEY, String(this.editingProposalId));
+        } else {
+            localStorage.removeItem(EDITING_CART_PROPOSAL_KEY);
+        }
         // Actualizar contador en el botÃ³n de navegaciÃ³n
         this.updateCartBadge();
     }
@@ -3424,20 +3460,6 @@ class CartManager {
      * Configurar event listeners
      */
     setupEventListeners() {
-        // Al salir de la pÃ¡gina en modo ediciÃ³n, limpiar carrito y datos de ediciÃ³n para que al volver a OrÃ§amento no queden productos
-        window.addEventListener('beforeunload', () => {
-            if (this.editingProposalId) {
-                localStorage.removeItem('editing_proposal');
-                localStorage.setItem('eppo_cart', '[]');
-            }
-        });
-        window.addEventListener('pagehide', () => {
-            if (this.editingProposalId) {
-                localStorage.removeItem('editing_proposal');
-                localStorage.setItem('eppo_cart', '[]');
-            }
-        });
-
         // Formulario para agregar categorÃ­a
         const addCategoryForm = document.getElementById('addCategoryForm');
         if (addCategoryForm) {
@@ -6163,6 +6185,7 @@ function cancelProposalEditing() {
     }
 
     localStorage.removeItem('editing_proposal');
+    localStorage.removeItem(EDITING_CART_PROPOSAL_KEY);
     localStorage.setItem('eppo_cart', '[]');
     window.location.href = 'consultar-propuestas.html';
 }
@@ -12044,6 +12067,7 @@ async function sendProposalToSupabase() {
         // Limpiar datos de ediciÃ³n
         if (window.cartManager.editingProposalId) {
             localStorage.removeItem('editing_proposal');
+            localStorage.removeItem(EDITING_CART_PROPOSAL_KEY);
             window.cartManager.editingProposalId = null;
             window.cartManager.editingProposalData = null;
             

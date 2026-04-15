@@ -469,6 +469,13 @@
     
     <script>
         // Función para preguntar cantidad y agregar al carrito
+        function markEditingDraftCartIfNeeded() {
+            const context = window.proposalEditing ? window.proposalEditing.getContext() : null;
+            if (context && context.proposalId && window.proposalEditing?.markDraftCart) {
+                window.proposalEditing.markDraftCart(context.proposalId);
+            }
+        }
+
         function askQuantityAndAddToCart(product) {
             // Obtener idioma actual
             const currentLang = localStorage.getItem('language') || 'pt';
@@ -553,6 +560,7 @@
                 try {
                     if (window.addToCart) {
                         window.addToCart(product, quantity);
+                        markEditingDraftCartIfNeeded();
                     } else {
                         // Fallback si addToCart no está disponible
                         // Siempre crear un nuevo item (permitir duplicados)
@@ -594,6 +602,7 @@
                         });
                         
                         localStorage.setItem('eppo_cart', JSON.stringify(cart));
+                        markEditingDraftCartIfNeeded();
                         
                         // Actualizar contador en el botón de navegación
                         if (typeof window.updateCartBadge === 'function') {
@@ -662,6 +671,7 @@
                 products.forEach(function(p) {
                     if (window.addToCart) window.addToCart(p, quantity);
                 });
+                markEditingDraftCartIfNeeded();
                 if (typeof window.updateCartBadge === 'function') window.updateCartBadge();
             };
             modalContent.querySelector('#confirmQuantityBtnMulti').addEventListener('click', confirmAdd);
