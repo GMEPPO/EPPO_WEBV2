@@ -7330,9 +7330,6 @@ async function getCartManagerForPdfGeneration() {
 }
 
 async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt', proposalSnapshot = null) {
-    console.log('ðŸš€ ========== INICIO generateProposalPDFFromSavedProposal ==========');
-    console.log('ðŸ“‹ ParÃ¡metros:', { proposalId, language });
-
     let pdfCartManager = null;
     let usingTemporaryCartManager = false;
     const originalGlobalCartManager = window.cartManager;
@@ -7365,9 +7362,6 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt',
             window.cartManager = pdfCartManager;
         }
 
-        console.log('âœ… cartManager y supabase disponibles');
-        console.log('ðŸ“¥ Cargando propuesta desde Supabase...');
-
         const { data: proposal, error: proposalError } = await pdfCartManager.supabase
             .from('presupuestos')
             .select('*')
@@ -7378,13 +7372,6 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt',
             console.error('âŒ Error cargando propuesta:', proposalError);
             throw new Error('No se pudo cargar la propuesta desde Supabase');
         }
-
-        console.log('âœ… Propuesta cargada:', {
-            id: proposal.id,
-            nombre_cliente: proposal.nombre_cliente,
-            fecha_inicial: proposal.fecha_inicial,
-            updated_at: proposal.updated_at
-        });
 
         if (proposal.nombre_cliente) {
             await pdfCartManager.loadClientExclusiveProducts(proposal.nombre_cliente);
@@ -7532,9 +7519,21 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt',
 
         const normalizeCountryCode = (value) => {
             const repaired = String(value || '')
-                .replace(/EspaÃ±a/gi, 'España')
-                .replace(/Espa?a/gi, 'España')
-                .replace(/Espanha/gi, 'España');
+                .replace(/\u00c3\u00b1/g, '\u00f1')
+                .replace(/\u00c3\u0091/g, '\u00d1')
+                .replace(/\u00c3\u00a1/g, '\u00e1')
+                .replace(/\u00c3\u0081/g, '\u00c1')
+                .replace(/\u00c3\u00a9/g, '\u00e9')
+                .replace(/\u00c3\u0089/g, '\u00c9')
+                .replace(/\u00c3\u00ad/g, '\u00ed')
+                .replace(/\u00c3\u008d/g, '\u00cd')
+                .replace(/\u00c3\u00b3/g, '\u00f3')
+                .replace(/\u00c3\u0093/g, '\u00d3')
+                .replace(/\u00c3\u00ba/g, '\u00fa')
+                .replace(/\u00c3\u009a/g, '\u00da')
+                .replace(/\u00c3\u00bc/g, '\u00fc')
+                .replace(/\u00c3\u009c/g, '\u00dc')
+                .replace(/\u00c2/g, '');
 
             const normalized = repaired
                 .normalize('NFD')
@@ -7542,7 +7541,7 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt',
                 .trim()
                 .toLowerCase();
 
-            if (['es', 'espana', 'spain'].includes(normalized)) return 'es';
+            if (['es', 'espana', 'espanha', 'spain'].includes(normalized)) return 'es';
             if (['pt', 'portugal'].includes(normalized)) return 'pt';
             return '';
         };
@@ -7554,7 +7553,7 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt',
         let pdfLanguage = normalizeCountryCode(resolvedProposalCountry) || 'pt';
         pdfCartManager.currentLanguage = pdfLanguage;
 
-        console.log('ðŸŒ País resuelto para PDF guardado:', {
+        console.log('PDF saved proposal country resolution:', {
             rawSnapshotPais: proposalSnapshot?.pais,
             rawSnapshotPaisAlt: proposalSnapshot?.Pais,
             rawProposalPais: proposal?.pais,
@@ -7613,11 +7612,8 @@ async function preprocessPdfLogos(cartItems) {
     });
     
     if (itemsWithPdfLogos.length === 0) {
-        console.log('â„¹ï¸ No hay logos PDF para pre-procesar');
         return pdfLogosMap;
     }
-    
-    console.log(`ðŸ”„ Pre-procesando ${itemsWithPdfLogos.length} logo(s) PDF...`);
     
     // Procesar todos los PDFs en paralelo
     const conversionPromises = itemsWithPdfLogos.map(async (item) => {
@@ -7946,9 +7942,21 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
 
     function normalizeCountryCode(value) {
         const repaired = String(value || '')
-            .replace(/EspaÃ±a/gi, 'España')
-            .replace(/Espa?a/gi, 'España')
-            .replace(/Espanha/gi, 'España');
+            .replace(/\u00c3\u00b1/g, '\u00f1')
+            .replace(/\u00c3\u0091/g, '\u00d1')
+            .replace(/\u00c3\u00a1/g, '\u00e1')
+            .replace(/\u00c3\u0081/g, '\u00c1')
+            .replace(/\u00c3\u00a9/g, '\u00e9')
+            .replace(/\u00c3\u0089/g, '\u00c9')
+            .replace(/\u00c3\u00ad/g, '\u00ed')
+            .replace(/\u00c3\u008d/g, '\u00cd')
+            .replace(/\u00c3\u00b3/g, '\u00f3')
+            .replace(/\u00c3\u0093/g, '\u00d3')
+            .replace(/\u00c3\u00ba/g, '\u00fa')
+            .replace(/\u00c3\u009a/g, '\u00da')
+            .replace(/\u00c3\u00bc/g, '\u00fc')
+            .replace(/\u00c3\u009c/g, '\u00dc')
+            .replace(/\u00c2/g, '');
 
         const normalized = repaired
             .normalize('NFD')
@@ -7956,7 +7964,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             .trim()
             .toLowerCase();
 
-        if (['es', 'espana', 'spain'].includes(normalized)) return 'es';
+        if (['es', 'espana', 'espanha', 'spain'].includes(normalized)) return 'es';
         if (['pt', 'portugal'].includes(normalized)) return 'pt';
         return '';
     }
@@ -8001,7 +8009,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         lang = window.cartManager?.currentLanguage || 'pt';
     }
 
-    console.log('ðŸŒ ResoluciÃ³n de idioma del PDF:', {
+    console.log('PDF language resolution:', {
         selectedLanguage,
         proposalCountry,
         editingCountry,
@@ -8085,7 +8093,6 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
 
                             // Agregar imagen al PDF (JPEG comprimido)
                             doc.addImage(imgData, 'JPEG', x, y, imgWidth, imgHeight);
-                            console.log('Logo agregado al PDF en posiciÃ³n x:', x, 'y:', y);
                             resolve();
                         } catch (error) {
                             console.error('Error agregando logo al PDF:', error);
@@ -8112,7 +8119,6 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             }
 
             await Promise.all(promises);
-            console.log('Logos cargados correctamente');
         } catch (error) {
             console.error('Error en loadAndAddLogosToPDF:', error);
         }
@@ -8144,7 +8150,6 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     let commercialPhone = '';
     if (commercialName && window.cartManager && window.cartManager.supabase) {
         try {
-            console.log('ðŸ” Buscando datos del comercial:', commercialName);
             // Usar maybeSingle() en lugar de single() para evitar errores si no se encuentra
             const { data: commercialData, error: commercialError } = await window.cartManager.supabase
                 .from('user_roles')
@@ -8152,25 +8157,9 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                 .eq('Name', commercialName)
                 .maybeSingle();
             
-            console.log('ðŸ“§ Datos del comercial obtenidos:', {
-                commercialName: commercialName,
-                commercialData: commercialData,
-                commercialError: commercialError,
-                hasEmail: !!commercialData?.Email,
-                hasPhone: !!commercialData?.Contacto,
-                emailValue: commercialData?.Email,
-                phoneValue: commercialData?.Contacto
-            });
-            
             if (!commercialError && commercialData) {
                 commercialEmail = commercialData.Email || '';
                 commercialPhone = commercialData.Contacto || '';
-                console.log('âœ… Email y telÃ©fono del comercial asignados:', {
-                    email: commercialEmail,
-                    phone: commercialPhone,
-                    emailLength: commercialEmail.length,
-                    phoneLength: commercialPhone.length
-                });
             } else {
                 console.warn('âš ï¸ No se encontraron datos del comercial o hubo un error:', {
                     error: commercialError,
@@ -8345,14 +8334,6 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             commercialText += '\n' + contactInfo.join('\n'); // Separar en lÃ­neas distintas
         }
     }
-    
-    console.log('ðŸ“ Texto del comercial preparado para PDF:', {
-        commercialName: commercialName,
-        commercialEmail: commercialEmail,
-        commercialPhone: commercialPhone,
-        commercialText: commercialText,
-        textLength: commercialText.length
-    });
     
     // Calcular altura necesaria para cada columna
     let leftColumnHeight = 0;
@@ -10111,15 +10092,6 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     // Validar y limpiar nombre de archivo (eliminar caracteres invÃ¡lidos)
     fileName = fileName.replace(/[<>:"/\\|?*]/g, '_').substring(0, 255);
     
-    console.log('ðŸ’¾ Guardando PDF con nombre:', fileName);
-    console.log('ðŸ“Š Estado del documento antes de guardar:', {
-        hasDoc: !!doc,
-        docType: typeof doc,
-        hasSaveMethod: typeof doc.save === 'function',
-        fileName: fileName,
-        fileNameLength: fileName.length
-    });
-    
     try {
         if (!doc) {
             throw new Error('Documento PDF no estÃ¡ disponible');
@@ -10132,8 +10104,6 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         if (!fileName || fileName.trim() === '') {
             throw new Error('Nombre de archivo vacÃ­o');
         }
-        
-        console.log('ðŸ’¾ Generando PDF para mostrar diÃ¡logo de guardar...');
         
         // Generar el PDF como blob
         const pdfBlob = doc.output('blob');
@@ -10155,16 +10125,16 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                 await writable.write(pdfBlob);
                 await writable.close();
                 
-                console.log('âœ… PDF guardado exitosamente usando File System Access API');
+                console.log('PDF saved with File System Access API');
                 return;
             } catch (fileError) {
                 // Si el usuario cancela el diÃ¡logo, no es un error
                 if (fileError.name === 'AbortError') {
-                    console.log('â„¹ï¸ Usuario cancelÃ³ el guardado del PDF');
+                    console.log('PDF save dialog canceled by user');
                     return;
                 }
                 if (fileError.name !== 'SecurityError') {
-                    console.warn('âš ï¸ Error con File System Access API, usando mÃ©todo alternativo:', fileError);
+                    console.warn('File System Access API failed, using fallback save:', fileError);
                 }
             }
         }
@@ -10186,7 +10156,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             URL.revokeObjectURL(url);
         }, 100);
         
-        console.log('âœ… PDF guardado exitosamente con nombre:', fileName);
+        console.log('PDF saved with filename:', fileName);
     } catch (saveError) {
         console.error('âŒ ERROR al guardar PDF:', saveError);
         console.error('   - Tipo de error:', saveError.name);
@@ -10196,7 +10166,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         // Intentar con nombre mÃ¡s simple usando el mÃ©todo tradicional
         try {
             const simpleName = `propuesta_${new Date().getTime()}.pdf`;
-            console.log('ðŸ”„ Intentando guardar con nombre simple:', simpleName);
+            console.log('Retrying PDF save with simple filename:', simpleName);
             
             // Generar blob con nombre simple
             const pdfBlob = doc.output('blob');
@@ -10212,7 +10182,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                 URL.revokeObjectURL(url);
             }, 100);
             
-            console.log('âœ… PDF guardado con nombre simple');
+            console.log('PDF saved with simple filename');
         } catch (secondError) {
             console.error('âŒ ERROR CRÃTICO: No se pudo guardar ni con nombre simple:', secondError);
             window.cartManager?.showNotification('Error crÃ­tico al guardar el PDF', 'error');
@@ -11153,9 +11123,21 @@ async function generateProposalCode(proposalDate, commercialName, clientName) {
 
 function normalizeCountryCode(value) {
     const repaired = String(value || '')
-        .replace(/EspaÃ±a/gi, 'España')
-        .replace(/Espa?a/gi, 'España')
-        .replace(/Espanha/gi, 'España');
+        .replace(/\u00c3\u00b1/g, '\u00f1')
+        .replace(/\u00c3\u0091/g, '\u00d1')
+        .replace(/\u00c3\u00a1/g, '\u00e1')
+        .replace(/\u00c3\u0081/g, '\u00c1')
+        .replace(/\u00c3\u00a9/g, '\u00e9')
+        .replace(/\u00c3\u0089/g, '\u00c9')
+        .replace(/\u00c3\u00ad/g, '\u00ed')
+        .replace(/\u00c3\u008d/g, '\u00cd')
+        .replace(/\u00c3\u00b3/g, '\u00f3')
+        .replace(/\u00c3\u0093/g, '\u00d3')
+        .replace(/\u00c3\u00ba/g, '\u00fa')
+        .replace(/\u00c3\u009a/g, '\u00da')
+        .replace(/\u00c3\u00bc/g, '\u00fc')
+        .replace(/\u00c3\u009c/g, '\u00dc')
+        .replace(/\u00c2/g, '');
 
     const normalized = repaired
         .normalize('NFD')
@@ -11163,7 +11145,7 @@ function normalizeCountryCode(value) {
         .trim()
         .toLowerCase();
 
-    if (['es', 'espana', 'spain'].includes(normalized)) return 'es';
+    if (['es', 'espana', 'espanha', 'spain'].includes(normalized)) return 'es';
     if (['pt', 'portugal'].includes(normalized)) return 'pt';
     return '';
 }

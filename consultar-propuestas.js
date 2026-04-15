@@ -2614,9 +2614,21 @@ class ProposalsManager {
             // Obtener el idioma actual
             const normalizeCountryCode = (value) => {
                 const repaired = String(value || '')
-                    .replace(/EspaÃ±a/gi, 'España')
-                    .replace(/Espa?a/gi, 'España')
-                    .replace(/Espanha/gi, 'España');
+                    .replace(/\u00c3\u00b1/g, '\u00f1')
+                    .replace(/\u00c3\u0091/g, '\u00d1')
+                    .replace(/\u00c3\u00a1/g, '\u00e1')
+                    .replace(/\u00c3\u0081/g, '\u00c1')
+                    .replace(/\u00c3\u00a9/g, '\u00e9')
+                    .replace(/\u00c3\u0089/g, '\u00c9')
+                    .replace(/\u00c3\u00ad/g, '\u00ed')
+                    .replace(/\u00c3\u008d/g, '\u00cd')
+                    .replace(/\u00c3\u00b3/g, '\u00f3')
+                    .replace(/\u00c3\u0093/g, '\u00d3')
+                    .replace(/\u00c3\u00ba/g, '\u00fa')
+                    .replace(/\u00c3\u009a/g, '\u00da')
+                    .replace(/\u00c3\u00bc/g, '\u00fc')
+                    .replace(/\u00c3\u009c/g, '\u00dc')
+                    .replace(/\u00c2/g, '');
 
                 const normalized = repaired
                     .normalize('NFD')
@@ -2624,7 +2636,7 @@ class ProposalsManager {
                     .trim()
                     .toLowerCase();
 
-                if (['es', 'espana', 'spain'].includes(normalized)) return 'es';
+                if (['es', 'espana', 'espanha', 'spain'].includes(normalized)) return 'es';
                 if (['pt', 'portugal'].includes(normalized)) return 'pt';
                 return '';
             };
