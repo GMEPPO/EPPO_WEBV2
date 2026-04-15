@@ -2612,7 +2612,24 @@ class ProposalsManager {
             }
 
             // Obtener el idioma actual
-            const language = this.currentLanguage || 'pt';
+            const normalizeCountryCode = (value) => {
+                const repaired = String(value || '')
+                    .replace(/EspaÃ±a/gi, 'España')
+                    .replace(/Espa?a/gi, 'España')
+                    .replace(/Espanha/gi, 'España');
+
+                const normalized = repaired
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .trim()
+                    .toLowerCase();
+
+                if (['es', 'espana', 'spain'].includes(normalized)) return 'es';
+                if (['pt', 'portugal'].includes(normalized)) return 'pt';
+                return '';
+            };
+
+            const language = normalizeCountryCode(proposal.pais) || this.currentLanguage || 'pt';
             console.log('🌐 Idioma seleccionado:', language);
 
             // Mostrar notificación de carga
@@ -2626,7 +2643,7 @@ class ProposalsManager {
             // Generar el PDF
             console.log('📄 Llamando a generateProposalPDFFromSavedProposal...');
             if (typeof generateProposalPDFFromSavedProposal !== 'undefined') {
-                await generateProposalPDFFromSavedProposal(proposalId, language);
+                await generateProposalPDFFromSavedProposal(proposalId, language, proposal);
                 
                 console.log('✅ generateProposalPDFFromSavedProposal completado');
                 const successMessage = this.currentLanguage === 'es' ? 

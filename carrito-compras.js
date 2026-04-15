@@ -7329,7 +7329,7 @@ async function getCartManagerForPdfGeneration() {
     return { cartManager: tempCartManager, isTemporary: true };
 }
 
-async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt') {
+async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt', proposalSnapshot = null) {
     console.log('ðŸš€ ========== INICIO generateProposalPDFFromSavedProposal ==========');
     console.log('ðŸ“‹ ParÃ¡metros:', { proposalId, language });
 
@@ -7531,42 +7531,40 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
         pdfCartManager.cart = cartItems;
 
         const normalizeCountryCode = (value) => {
-            const normalized = String(value || '')
+            const repaired = String(value || '')
+                .replace(/EspaÃ±a/gi, 'España')
+                .replace(/Espa?a/gi, 'España')
+                .replace(/Espanha/gi, 'España');
+
+            const normalized = repaired
                 .normalize('NFD')
                 .replace(/[\u0300-\u036f]/g, '')
                 .trim()
                 .toLowerCase();
 
-            if (['es', 'espana', 'espanha', 'spain'].includes(normalized)) return 'es';
+            if (['es', 'espana', 'spain'].includes(normalized)) return 'es';
             if (['pt', 'portugal'].includes(normalized)) return 'pt';
             return '';
         };
 
-        const resolvedProposalCountry = getProposalCountryValue(proposal) || getProposalCountryValue(pdfCartManager.editingProposalData);
+        const resolvedProposalCountry =
+            getProposalCountryValue(proposalSnapshot) ||
+            getProposalCountryValue(proposal) ||
+            getProposalCountryValue(pdfCartManager.editingProposalData);
         let pdfLanguage = normalizeCountryCode(resolvedProposalCountry) || 'pt';
         pdfCartManager.currentLanguage = pdfLanguage;
 
         console.log('ðŸŒ País resuelto para PDF guardado:', {
+            rawSnapshotPais: proposalSnapshot?.pais,
+            rawSnapshotPaisAlt: proposalSnapshot?.Pais,
             rawProposalPais: proposal?.pais,
             rawProposalPaisAlt: proposal?.Pais,
             resolvedProposalCountry,
             pdfLanguage
         });
 
-        console.log('ðŸ“„ Generando PDF con idioma:', pdfLanguage);
-        console.log('ðŸ“¦ Items del carrito para PDF:', cartItems.length);
-        console.log('ðŸ“„ Llamando a generateProposalPDF...');
-        console.log('   - Idioma:', pdfLanguage);
-        console.log('   - Items del carrito:', cartItems.length);
-        console.log('   - Datos de propuesta:', {
-            id: proposal.id,
-            nombre_cliente: proposal.nombre_cliente,
-            fecha_inicial: proposal.fecha_inicial
-        });
-
         try {
             await generateProposalPDF(pdfLanguage, proposal);
-            console.log('âœ… PDF generado exitosamente desde propuesta guardada');
         } catch (pdfError) {
             console.error('âŒ ERROR en generateProposalPDF:', pdfError);
             console.error('   - Tipo:', pdfError.name);
@@ -7575,11 +7573,9 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
             throw pdfError;
         }
 
-        console.log('ðŸ”„ Restaurando carrito original...');
         pdfCartManager.cart = originalCart;
         pdfCartManager.editingProposalData = originalEditingData;
         pdfCartManager.currentLanguage = originalPdfManagerLanguage;
-        console.log('âœ… Carrito restaurado');
 
     } catch (error) {
         console.error('âŒ ERROR GENERAL en generateProposalPDFFromSavedProposal:', error);
@@ -7592,14 +7588,11 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
             window.cartManager = originalGlobalCartManager;
         }
     }
-
-    console.log('ðŸ ========== FIN generateProposalPDFFromSavedProposal ==========');
 }
 
 // Asegurar que la funciÃ³n estÃ© disponible globalmente
 if (typeof window !== 'undefined') {
     window.generateProposalPDFFromSavedProposal = generateProposalPDFFromSavedProposal;
-    console.log('âœ… generateProposalPDFFromSavedProposal asignada a window');
 }
 
 /**
@@ -7784,17 +7777,6 @@ async function convertPdfToImage(pdfUrl) {
 }
 
 async function generateProposalPDF(selectedLanguage = null, proposalData = null) {
-    console.log('ðŸš€ ========== INICIO generateProposalPDF ==========');
-    console.log('ðŸ“‹ ParÃ¡metros recibidos:', {
-        selectedLanguage: selectedLanguage,
-        hasProposalData: proposalData !== null,
-        proposalData: proposalData ? {
-            id: proposalData.id,
-            nombre_cliente: proposalData.nombre_cliente,
-            fecha_inicial: proposalData.fecha_inicial
-        } : null
-    });
-    
     // Cargar rol del usuario para mostrar precios correctamente en el PDF
     if (!window.cachedRole) {
         try {
@@ -7806,8 +7788,6 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     
     // Si se proporciona proposalData, usar esos datos en lugar del carrito actual
     const useProposalData = proposalData !== null;
-    console.log('ðŸ” useProposalData:', useProposalData);
-    
     if (!useProposalData && (!window.cartManager || window.cartManager.cart.length === 0)) {
         console.error('âŒ ERROR: Carrito vacÃ­o o cartManager no disponible');
         console.error('   - window.cartManager existe:', !!window.cartManager);
@@ -7821,19 +7801,11 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         return;
     }
     
-    console.log('âœ… ValidaciÃ³n inicial pasada');
-
     // Asegurar que el carrito estÃ© actualizado (recargar desde localStorage)
     // Esto garantiza que tengamos las observaciones mÃ¡s recientes y el color seleccionado
-    console.log('ðŸ“¦ Cargando carrito...');
     let savedCart;
     try {
         savedCart = useProposalData ? window.cartManager.cart : window.cartManager.loadCart();
-        console.log('âœ… Carrito cargado:', {
-            itemsCount: savedCart ? savedCart.length : 0,
-            useProposalData: useProposalData
-        });
-        
         if (!savedCart || !Array.isArray(savedCart)) {
             console.error('âŒ ERROR: savedCart no es un array vÃ¡lido:', savedCart);
             throw new Error('Carrito invÃ¡lido');
@@ -7854,41 +7826,25 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     }
     
     // PRE-PROCESAR LOGOS PDF: Convertir todos los PDFs a imÃ¡genes ANTES de generar el PDF
-    console.log('ðŸš€ Iniciando pre-procesamiento de logos PDF...');
     let pdfLogosMap = {};
     try {
         pdfLogosMap = await preprocessPdfLogos(savedCart);
-        console.log('âœ… Pre-procesamiento de logos completado. ImÃ¡genes listas para usar en el PDF.');
     } catch (error) {
         console.error('âš ï¸ ADVERTENCIA: Error en pre-procesamiento de logos (continuando de todas formas):', error);
         pdfLogosMap = {};
     }
-    
-    // Debug: verificar que las observaciones y colores estÃ©n presentes
-    console.log('Carrito cargado para PDF:', savedCart.map(item => ({
-        id: item.id,
-        name: item.name,
-        observations: item.observations,
-        selectedReferenceVariant: item.selectedReferenceVariant,
-        variantes_referencias: item.variantes_referencias ? item.variantes_referencias.length : 0
-    })));
 
     // Verificar que jsPDF estÃ© disponible
-    console.log('ðŸ“„ Verificando jsPDF...');
     if (!window.jspdf) {
         console.error('âŒ ERROR CRÃTICO: window.jspdf no estÃ¡ disponible');
         window.cartManager?.showNotification('Error: jsPDF no estÃ¡ cargado', 'error');
         return;
     }
     
-    console.log('âœ… jsPDF disponible');
     const { jsPDF } = window.jspdf;
-    
-    console.log('ðŸ“„ Creando documento PDF...');
     let doc;
     try {
         doc = new jsPDF('p', 'mm', 'a4');
-        console.log('âœ… Documento PDF creado');
     } catch (error) {
         console.error('âŒ ERROR CRÃTICO al crear documento PDF:', error);
         window.cartManager?.showNotification('Error al crear el PDF', 'error');
@@ -7989,13 +7945,18 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     };
 
     function normalizeCountryCode(value) {
-        const normalized = String(value || '')
+        const repaired = String(value || '')
+            .replace(/EspaÃ±a/gi, 'España')
+            .replace(/Espa?a/gi, 'España')
+            .replace(/Espanha/gi, 'España');
+
+        const normalized = repaired
             .normalize('NFD')
             .replace(/[\u0300-\u036f]/g, '')
             .trim()
             .toLowerCase();
 
-        if (['es', 'espana', 'espanha', 'spain'].includes(normalized)) return 'es';
+        if (['es', 'espana', 'spain'].includes(normalized)) return 'es';
         if (['pt', 'portugal'].includes(normalized)) return 'pt';
         return '';
     }
@@ -8022,8 +7983,13 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     const editingCountry = getProposalCountryValue(window.cartManager?.editingProposalData);
 
     if (proposalCountry) {
-        // Si hay datos de propuesta con paÃ­s, usar el paÃ­s para determinar el idioma
-        lang = normalizeCountryCode(proposalCountry) || lang;
+        // Si hay datos de propuesta con paÃ­s, usar el paÃ­s para determinar el idioma.
+        // Si no se puede resolver, respetar el idioma pasado desde HistÃ³rico.
+        lang = normalizeCountryCode(proposalCountry) ||
+            selectedLanguage ||
+            normalizeCountryCode(editingCountry) ||
+            window.cartManager?.currentLanguage ||
+            lang;
     } else if (selectedLanguage) {
         // Si se especificÃ³ un idioma directamente, usarlo
         lang = selectedLanguage;
@@ -9013,16 +8979,6 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         let fullText = normalizeDescriptionForPdf(baseDescription || '');
         let parts = [];
         
-        console.log('ðŸ” [drawDescriptionWithBoldParts] ParÃ¡metros recibidos:', {
-            baseDescription: baseDescription,
-            baseDescriptionLength: baseDescription ? baseDescription.length : 0,
-            fullText: fullText,
-            fullTextLength: fullText.length,
-            variantText: variantText,
-            observations: observations,
-            selectedColorText: selectedColorText
-        });
-        
         // Verificar si variantText contiene solo color (empieza con "Color:" o "Cor:")
         const isOnlyColor = variantText && (variantText.trim().startsWith('Color:') || variantText.trim().startsWith('Cor:'));
         
@@ -9067,13 +9023,6 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         }
         
         // Si hay color seleccionado, agregarlo en un espacio aparte
-        console.log('ðŸŽ¨ Verificando color en drawDescriptionWithBoldParts:', {
-            selectedColorText: selectedColorText,
-            hasSelectedColorText: !!(selectedColorText && selectedColorText.trim()),
-            fullText: fullText,
-            variantText: variantText
-        });
-        
         if (selectedColorText && selectedColorText.trim()) {
             // Agregar salto de lÃ­nea antes del color
             const hasContentBefore = (fullText && fullText.trim()) || (variantText && variantText.trim());
@@ -9081,9 +9030,6 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             // El color se muestra en negrita (normalizado)
             const colorPart = { text: colorSeparator + normalizeDescriptionForPdf(selectedColorText), bold: true };
             parts.push(colorPart);
-            console.log('âœ… Color agregado a parts:', colorPart);
-        } else {
-            console.warn('âš ï¸ No se agregÃ³ color porque selectedColorText estÃ¡ vacÃ­o o es undefined');
         }
         
         // Si hay observaciones, agregarlas (normalizadas para reducir espacio)
@@ -9237,21 +9183,8 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     const spacesBetweenParagraphs = (footerText.length - 1) * 3; // Espacio entre pÃ¡rrafos
     const footerHeight = (totalLines * lineHeight) + spacesBetweenParagraphs + footerPaddingTop + footerPaddingBottom;
     
-    console.log('ðŸ“¦ Carrito a procesar para PDF:', cartToProcess.map(item => ({
-        id: item.id,
-        name: item.name,
-        selectedReferenceVariant: item.selectedReferenceVariant,
-        hasVariantesReferencias: !!item.variantes_referencias
-    })));
-    
-    console.log('ðŸ”„ Iniciando bucle de procesamiento de items...');
     for (let i = 0; i < cartToProcess.length; i++) {
         const item = cartToProcess[i];
-        console.log(`ðŸ“¦ Procesando item ${i + 1}/${cartToProcess.length}:`, {
-            type: item.type,
-            name: item.name,
-            id: item.id
-        });
         
         try {
         // Determinar si tiene precio personalizado y obtener el nombre de la variante
@@ -9282,25 +9215,13 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             } else {
                 description = item.descripcion_pt || item.descripcionPt || item.descripcion_es || item.descripcionEs || item.description || '';
             }
-            console.log(`   ðŸ“ Item ${i + 1} (product): descripciÃ³n obtenida`, {
-                descripcion_es: item.descripcion_es,
-                descripcionEs: item.descripcionEs,
-                descripcion_pt: item.descripcion_pt,
-                descripcionPt: item.descripcionPt,
-                description: item.description,
-                finalDescription: description,
-                descriptionLength: description ? description.length : 0,
-                hasDescription: !!description && description.trim() !== '' && description.trim() !== '.'
-            });
         } else if (item.type === 'special') {
             // Para items especiales, intentar usar descripciÃ³n primero, luego notes
             description = lang === 'es' ? 
                 (item.descripcionEs || item.descripcion_es || item.description || item.notes || '') :
                 (item.descripcionPt || item.descripcion_pt || item.descripcionEs || item.descripcion_es || item.description || item.notes || '');
-            console.log(`   ðŸ“ Item ${i + 1} (special): descripciÃ³n obtenida:`, description ? 'tiene descripciÃ³n' : 'sin descripciÃ³n');
         } else {
             description = item.notes || '';
-            console.log(`   ðŸ“‹ Item ${i + 1} (${item.type}): usando notes como descripciÃ³n`);
         }
 
         // Guardar informaciÃ³n de variante y observaciones por separado para renderizar en negrita
@@ -9328,15 +9249,6 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         // Usar el item del carrito actualizado si existe, sino usar el item pasado
         const itemToUse = currentCartItem || item;
         
-        console.log('ðŸ” Verificando color para item:', {
-            itemId: item.id,
-            itemCartItemId: item.cartItemId,
-            selectedReferenceVariant: itemToUse.selectedReferenceVariant,
-            selectedReferenceVariantOriginal: item.selectedReferenceVariant,
-            hasVariantesReferencias: !!itemToUse.variantes_referencias,
-            foundInCart: !!currentCartItem
-        });
-        
         if (itemToUse.selectedReferenceVariant !== null && itemToUse.selectedReferenceVariant !== undefined) {
             // Obtener variantes_referencias del item o del producto en la BD
             let referenceVariants = itemToUse.variantes_referencias || [];
@@ -9350,8 +9262,6 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                 }
             }
             
-            console.log('ðŸ” Variantes de referencia encontradas:', referenceVariants);
-            
             // Priorizar el color guardado en la BD (puede no existir en las variantes actuales)
             if (itemToUse.colorSeleccionadoGuardado) {
                 if (lang === 'pt') {
@@ -9361,14 +9271,11 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                 } else {
                     selectedColorText = `Color selected ${itemToUse.colorSeleccionadoGuardado}`;
                 }
-                console.log('âœ… Color seleccionado generado desde color guardado:', selectedColorText);
             } else if (referenceVariants && Array.isArray(referenceVariants) && referenceVariants.length > 0) {
                 const selectedIndex = parseInt(itemToUse.selectedReferenceVariant);
-                console.log('ðŸ” Ãndice seleccionado:', selectedIndex, 'de', referenceVariants.length);
                 
                 if (selectedIndex >= 0 && selectedIndex < referenceVariants.length) {
                     const selectedVariant = referenceVariants[selectedIndex];
-                    console.log('ðŸ” Variante seleccionada:', selectedVariant);
                     
                     if (selectedVariant && selectedVariant.color) {
                         // Formato: "Cor seleccionada X" (PT) o "Color seleccionado X" (ES)
@@ -9379,15 +9286,8 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             } else {
                             selectedColorText = `Color selected ${selectedVariant.color}`;
                         }
-                        console.log('âœ… Color seleccionado generado desde variantes:', selectedColorText);
-                    } else {
-                        console.warn('âš ï¸ La variante seleccionada no tiene color:', selectedVariant);
                     }
-                } else {
-                    console.warn('âš ï¸ Ãndice fuera de rango:', selectedIndex, 'de', referenceVariants.length);
                 }
-            } else {
-                console.warn('âš ï¸ No se encontraron variantes de referencia');
             }
         }
 
@@ -9525,19 +9425,6 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             minRowHeight
         );
         
-        console.log('ðŸ“ CÃ¡lculo de altura de descripciÃ³n:', {
-            itemName: item.name,
-            fullDescriptionTextLength: fullDescriptionText.length,
-            numLines: allLinesCount,
-            lineHeight: actualLineHeight,
-            calculatedHeight: descriptionHeight,
-            minRowHeight: minRowHeight,
-            hasVariant: !!variantText,
-            hasColor: !!selectedColorText,
-            hasObservations: !!(observations && observations.trim()),
-            observationsText: observations ? observations.substring(0, 50) + '...' : null
-        });
-        
         // Obtener plazo de entrega: primero verificar si hay variante personalizada con plazo
         let deliveryText = (item.plazoEntrega || item.plazo_entrega || '-');
         let stockDisponible = null;
@@ -9622,19 +9509,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
             occCellHeight
         );
         
-        console.log('ðŸ“ Altura final calculada para fila:', {
-            itemName: item.name,
-            descriptionHeight: descriptionHeight,
-            minDescriptionHeight: minDescriptionHeight,
-            calculatedRowHeight: calculatedRowHeight,
-            numDescriptionLines: allLinesCount,
-            hasObservations: !!(observations && observations.trim())
-        });
-        
-        console.log(`ðŸ”„ Item ${i + 1}: Continuando despuÃ©s de calcular altura...`);
-
         // Verificar si necesitamos una nueva pÃ¡gina
-        console.log(`ðŸ”„ Item ${i + 1}: Verificando si necesita nueva pÃ¡gina...`);
         // SOLO verificar si el producto individual cabe (sin considerar total ni condiciones)
         // El total y las condiciones se manejan despuÃ©s
         if (currentY + calculatedRowHeight > pageHeight - margin) {
@@ -9742,7 +9617,6 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                 });
             } else {
                 // Si no hay imagen, continuar sin esperar
-                console.log(`â„¹ï¸ Item ${i + 1} no tiene imagen, continuando...`);
             }
         } catch (error) {
             console.error(`âŒ Error procesando imagen del item ${i + 1}:`, error);
@@ -9754,27 +9628,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         
         // Dibujar descripciÃ³n con partes en negrita (variante, color y observaciones)
         // Pasamos el color seleccionado como un parÃ¡metro separado
-        console.log('ðŸ“„ Dibujando descripciÃ³n para PDF:', {
-            itemId: item.id,
-            itemName: item.name,
-            description: description,
-            descriptionLength: description ? description.length : 0,
-            hasDescription: !!description,
-            selectedColorText: selectedColorText,
-            selectedReferenceVariant: item.selectedReferenceVariant,
-            variantText: variantTextForDescription,
-            observations: observations,
-            hasVariantesReferencias: !!item.variantes_referencias,
-            unitPrice: unitPrice,
-            priceIsZero: (unitPrice === 0 || unitPrice === null || unitPrice === undefined)
-        });
-        
         // Asegurar que selectedColorText se pase correctamente
-        if (!selectedColorText && item.selectedReferenceVariant !== null && item.selectedReferenceVariant !== undefined) {
-            console.warn('âš ï¸ selectedColorText estÃ¡ vacÃ­o pero hay selectedReferenceVariant:', item.selectedReferenceVariant);
-        }
-        
-        console.log(`ðŸ”„ Item ${i + 1}: Llamando a drawDescriptionWithBoldParts...`);
         try {
             drawDescriptionWithBoldParts(
                 colPositions.description, 
@@ -9787,14 +9641,12 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                 t.notes,
                 selectedColorText || '' // Color seleccionado como parÃ¡metro adicional, asegurar que no sea undefined
             );
-            console.log(`âœ… Item ${i + 1}: drawDescriptionWithBoldParts completado`);
         } catch (descError) {
             console.error(`âŒ ERROR en drawDescriptionWithBoldParts item ${i + 1}:`, descError);
             console.error('   - Stack:', descError.stack);
             throw descError;
         }
         
-        console.log(`ðŸ”„ Item ${i + 1}: Dibujando cantidad...`);
         try {
             const quantityText = (mergeOccurrences && mergeOccurrences.length > 0)
                 ? mergeOccurrences.map(o => formatQuantityForPdf(o?.qty || 0)).join('\n')
@@ -9807,7 +9659,6 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                 quantityText,
                 { align: 'center', fontSize: 8, noWrap: false, separatorBetweenLines: !!(mergeOccurrences && mergeOccurrences.length > 1) }
             );
-            console.log(`âœ… Item ${i + 1}: Cantidad dibujada`);
         } catch (cellError) {
             console.error(`âŒ ERROR dibujando cantidad item ${i + 1}:`, cellError);
             throw cellError;
@@ -9856,7 +9707,6 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         );
         
         // Dibujar logo si existe o texto de confirmaciÃ³n para personalizados sin logotipo
-        console.log(`ðŸ”„ Item ${i + 1}: Verificando logo (hasLogosFinal: ${hasLogosFinal}, logoUrl: ${item.logoUrl ? 'existe' : 'no existe'})...`);
         if (hasLogosFinal) {
             drawCell(colPositions.logo, currentY, colWidths.logo, calculatedRowHeight, '', { border: true });
             const requiresLogoConfirmation = requiresLogoConfirmationForItem(item);
@@ -9871,14 +9721,6 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                         // Usar la imagen pre-procesada del mapa (ya convertida antes de generar el PDF)
                         // Normalizar la URL (sin espacios) para buscar en el mapa
                         const normalizedLogoUrl = item.logoUrl.trim();
-                        
-                        console.log('ðŸ” Buscando logo PDF en mapa:', {
-                            logoUrl: item.logoUrl,
-                            normalizedLogoUrl: normalizedLogoUrl,
-                            mapKeys: Object.keys(pdfLogosMap),
-                            hasInMap: !!pdfLogosMap[normalizedLogoUrl],
-                            mapSize: Object.keys(pdfLogosMap).length
-                        });
                         
                         const pdfImageData = pdfLogosMap[normalizedLogoUrl];
                         
@@ -9911,7 +9753,6 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                                             ctx.drawImage(tempImg, 0, 0, canvasWidth, canvasHeight);
                                             const compressedImgData = canvas.toDataURL('image/jpeg', 0.8);
                                             doc.addImage(compressedImgData, 'JPEG', logoX, logoY, logoSize, logoSize);
-                                            console.log('âœ… Logo PDF (comprimido) agregado al PDF correctamente');
                                         } catch (error) {
                                             console.error('Error comprimiendo logo PDF:', error);
                                             // Fallback: usar imagen original
@@ -9925,7 +9766,6 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                                     };
                                     tempImg.src = pdfImageData;
                                 });
-                                console.log('âœ… Logo PDF (pre-procesado) agregado al PDF correctamente');
                             } catch (addImageError) {
                                 console.error('âŒ Error agregando imagen PDF pre-procesada al documento:', addImageError);
                                 // Si falla al agregar, mostrar "PDF"
@@ -9936,11 +9776,6 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                                 doc.text('PDF', pdfTextX, pdfTextY, { align: 'center' });
                             }
                         } else {
-                            console.warn('âš ï¸ No se encontrÃ³ imagen pre-procesada para el PDF:', {
-                                logoUrl: item.logoUrl,
-                                mapKeys: Object.keys(pdfLogosMap),
-                                pdfImageData: pdfImageData ? 'existe pero vacÃ­o' : 'no existe'
-                            });
                             // Si no hay imagen pre-procesada, mostrar "PDF"
                             doc.setFontSize(6);
                             doc.setTextColor(0, 0, 0);
@@ -10029,7 +9864,6 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         }
 
         currentY += calculatedRowHeight;
-        console.log(`âœ… Item ${i + 1} procesado. currentY: ${currentY}`);
         } catch (itemError) {
             console.error(`âŒ ERROR procesando item ${i + 1}:`, itemError);
             console.error('   - Item:', item);
@@ -10041,28 +9875,9 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         }
     }
     
-    console.log('âœ… Bucle de procesamiento completado');
-
-    console.log('âœ… Todos los items procesados. currentY final:', currentY);
-    console.log('ðŸ“Š Resumen del procesamiento:', {
-        itemsProcessed: cartToProcess.length,
-        totalProposal: totalProposal,
-        currentY: currentY,
-        pageHeight: pageHeight,
-        margin: margin
-    });
-
     // footerHeight ya fue calculado antes del bucle, no es necesario recalcularlo
 
     // Dibujar total - DEBE estar pegado inmediatamente despuÃ©s del Ãºltimo producto
-    console.log('ðŸ’° Iniciando dibujo del total...');
-    console.log('ðŸ“‹ Datos disponibles para el total:', {
-        totalProposal: totalProposal,
-        hasCartManager: !!window.cartManager,
-        hasFormatTotal: !!(window.cartManager && window.cartManager.formatTotal),
-        t_totalProposal: t.totalProposal
-    });
-    
     // NO mover el total a una nueva pÃ¡gina, solo verificar que cabe bÃ¡sicamente
     if (currentY + baseRowHeight > pageHeight - margin) {
         doc.addPage();
@@ -10099,10 +9914,7 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     }
     // Restaurar color de texto a negro
     doc.setTextColor(0, 0, 0);
-    console.log('âœ… Total dibujado. currentY despuÃ©s del total:', currentY);
-
     // Agregar pie de pÃ¡gina con condiciones legales (estilo oscuro como en la imagen)
-    console.log('ðŸ“„ Iniciando dibujo del pie de pÃ¡gina...');
     // Verificar si las condiciones caben completas en la pÃ¡gina actual
     // Si no caben, mover SOLO las condiciones a una nueva pÃ¡gina (el total ya estÃ¡ dibujado)
     currentY += baseRowHeight + spaceAfterTotal;
@@ -10111,7 +9923,6 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     if (currentY + footerHeight > pageHeight - margin) {
         doc.addPage();
         currentY = margin;
-        console.log('ðŸ“„ Nueva pÃ¡gina creada para condiciones (el total ya estÃ¡ en la pÃ¡gina anterior)');
     }
     
     // Dibujar fondo gris oscuro (similar al de la imagen: gris oscuro sÃ³lido)
@@ -10145,7 +9956,6 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
     });
     
     // Las condiciones quedan pegadas al final del cuadro (sin padding inferior)
-    console.log('âœ… Pie de pÃ¡gina dibujado. currentY final:', currentY);
 
     // Verificar si hay artÃ­culos VACAVALIENTE y agregar pÃ¡gina con imagen del Pantone
     const hasVacavalienteItems = savedCart.some(item => {
@@ -10353,7 +10163,9 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
                     console.log('â„¹ï¸ Usuario cancelÃ³ el guardado del PDF');
                     return;
                 }
-                console.warn('âš ï¸ Error con File System Access API, usando mÃ©todo alternativo:', fileError);
+                if (fileError.name !== 'SecurityError') {
+                    console.warn('âš ï¸ Error con File System Access API, usando mÃ©todo alternativo:', fileError);
+                }
             }
         }
         
@@ -10407,8 +10219,6 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         }
     }
     
-    console.log('ðŸ ========== FIN generateProposalPDF ==========');
-
     // NotificaciÃ³n de Ã©xito
     const message = lang === 'es' ? 
         'PDF generado correctamente' : 
@@ -11342,13 +11152,18 @@ async function generateProposalCode(proposalDate, commercialName, clientName) {
 }
 
 function normalizeCountryCode(value) {
-    const normalized = String(value || '')
+    const repaired = String(value || '')
+        .replace(/EspaÃ±a/gi, 'España')
+        .replace(/Espa?a/gi, 'España')
+        .replace(/Espanha/gi, 'España');
+
+    const normalized = repaired
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
         .trim()
         .toLowerCase();
 
-    if (['es', 'espana', 'espanha', 'spain'].includes(normalized)) return 'es';
+    if (['es', 'espana', 'spain'].includes(normalized)) return 'es';
     if (['pt', 'portugal'].includes(normalized)) return 'pt';
     return '';
 }
