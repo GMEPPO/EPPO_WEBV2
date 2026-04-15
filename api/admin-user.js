@@ -139,6 +139,10 @@ module.exports = async function handler(req, res) {
                     );
 
                 if (error) {
+                    const mappedError = mapUserRolesConstraintError(error, 'Failed to update user');
+                    if (mappedError) {
+                        return res.status(400).json({ error: mappedError });
+                    }
                     return res.status(500).json({ error: error.message });
                 }
             }
@@ -170,9 +174,28 @@ module.exports = async function handler(req, res) {
                 mirror_enabled: finalMirrorEnabled
             });
         } catch (error) {
+            const mappedError = mapUserRolesConstraintError(error, 'Failed to update user');
+            if (mappedError) {
+                return res.status(400).json({ error: mappedError });
+            }
             return res.status(500).json({ error: error.message || 'Failed to update user' });
         }
     }
 
     return res.status(405).json({ error: 'Method not allowed' });
 };
+
+function mapUserRolesConstraintError(error, fallbackMessage) {
+    const message = error?.message || fallbackMessage || 'Failed to update user';
+    const normalized = message.toLowerCase();
+
+    if (
+        error?.code === '23514' ||
+        normalized.includes('user_roles_role_check') ||
+        (normalized.includes('check constraint') && normalized.includes('role'))
+    ) {
+        return 'La base de datos aún no permite el rol "director comercial". Ejecuta el script docs-y-scripts/supabase-user-roles-add-director-comercial.sql en Supabase.';
+    }
+
+    return null;
+}

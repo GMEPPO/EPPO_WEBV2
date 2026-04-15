@@ -142,6 +142,11 @@ module.exports = async function handler(req, res) {
                 );
 
             if (upsertError) {
+                const mappedError = mapUserRolesConstraintError(upsertError, 'Failed to create user');
+                if (mappedError) {
+                    await adminClient.auth.admin.deleteUser(userId).catch(() => {});
+                    return res.status(400).json({ error: mappedError });
+                }
                 await adminClient.auth.admin.deleteUser(userId).catch(() => {});
                 return res.status(500).json({ error: upsertError.message });
             }
@@ -161,9 +166,28 @@ module.exports = async function handler(req, res) {
                 }
             });
         } catch (error) {
+            const mappedError = mapUserRolesConstraintError(error, 'Failed to create user');
+            if (mappedError) {
+                return res.status(400).json({ error: mappedError });
+            }
             return res.status(500).json({ error: error.message || 'Failed to create user' });
         }
     }
 
     return res.status(405).json({ error: 'Method not allowed' });
 };
+
+function mapUserRolesConstraintError(error, fallbackMessage) {
+    const message = error?.message || fallbackMessage || 'Failed to create user';
+    const normalized = message.toLowerCase();
+
+    if (
+        error?.code === '23514' ||
+        normalized.includes('user_roles_role_check') ||
+        (normalized.includes('check constraint') && normalized.includes('role'))
+    ) {
+        return 'La base de datos aún no permite el rol "director comercial". Ejecuta el script docs-y-scripts/supabase-user-roles-add-director-comercial.sql en Supabase.';
+    }
+
+    return null;
+}
