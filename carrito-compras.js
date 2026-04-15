@@ -620,9 +620,9 @@ class CartManager {
                     precioProducto: precioProducto
                 });
                 
-                // Precio manual: cuando la propuesta se guardÃ³ con modo 200+, O cuando el producto es "sobre consulta"
-                // (precio base 0) y en la propuesta se guardÃ³ un precio > 0 â€” asÃ­ al editar se muestra y mantiene ese precio.
-                const esPrecioManual = !!(this.modo200 || (this.editingProposalData && (this.editingProposalData.modo_200_plus || this.editingProposalData.modo_200)) || (precioProducto === 0 && precioGuardado > 0));
+                // Precio manual solo para productos "sobre consulta" (precio base 0)
+                // que ya fueron guardados con un precio distinto al base.
+                const esPrecioManual = (precioProducto === 0 && precioGuardado > 0);
                 
                 // Obtener el orden del artÃ­culo (si existe en la BD, sino usar el Ã­ndice)
                 const orden = articulo.orden !== undefined && articulo.orden !== null ? articulo.orden : index;
@@ -642,8 +642,9 @@ class CartManager {
                     // Incluso si es 0 (Sobre consulta), debe mantenerse el precio guardado
                     price: precioGuardado,
                     basePrice: product.precio,
-                    // Guardar el precio original para referencia
-                    originalPrice: precioGuardado,
+                    // Para propuestas ya guardadas, el precio actual es el guardado.
+                    // El precio previo al modo 200+ se recalcula desde tiers/basePrice al desactivarlo.
+                    originalPrice: esPrecioManual ? precioGuardado : undefined,
                     image: product.foto,
                     quantity: quantity,
                     specs: this.getProductSpecs(product),
@@ -683,7 +684,8 @@ class CartManager {
                     box_size: product.box_size || null,
                     phc_ref: product.phc_ref || null,
                     nombre_fornecedor: nomeFornecedor, // Guardar nombre del fornecedor
-                    manualPrice: esPrecioManual, // Marcar como precio manual si es Laser Build con precio diferente
+                    manualPrice: esPrecioManual,
+                    mode200Applied: !!(this.editingProposalData && (this.editingProposalData.modo_200_plus || this.editingProposalData.modo_200)),
                     logoUrl: articulo.logo_url || null
                 };
 
@@ -2884,9 +2886,10 @@ class CartManager {
                             // Verificar rol del usuario (usar cachÃ© si estÃ¡ disponible)
                             const userRole = window.cachedRole || null;
                             
-                            // Mostrar input editable si: (precio 0 o precio manual guardado) y sin variante, y usuario admin
-                            // AsÃ­ al editar una propuesta el admin ve y puede editar el precio que se guardÃ³ (sobre consulta)
-                            const mostrarInputPrecio = (precioActualEsCero || isManualPrice) && !tieneVarianteSeleccionada && userRole === 'admin';
+                            // Mostrar input editable solo para admin y para precios manuales reales
+                            // de productos "sobre consulta" (precio base 0).
+                            const baseIsZero = item.basePrice === 0 || item.basePrice === null || item.basePrice === undefined;
+                            const mostrarInputPrecio = (baseIsZero && (precioActualEsCero || isManualPrice)) && !tieneVarianteSeleccionada && userRole === 'admin';
                             if (precioActualEsCero && !tieneVarianteSeleccionada && userRole === 'comercial') {
                                 const translations = { 'pt': 'Sobre consulta', 'es': 'Sobre consulta', 'en': 'On request' };
                                 const currentLang = this.currentLanguage || localStorage.getItem('language') || 'pt';
@@ -3970,6 +3973,7 @@ class CartManager {
                 const precioAnterior = item.price;
                 // Aplicar el precio mÃ¡ximo
                 item.price = maxPrice;
+                item.mode200Applied = true;
                 itemsApplied++;
                 console.log(`   âœ… Precio aplicado: â‚¬${precioAnterior} -> â‚¬${maxPrice}`);
                 console.log(`   ðŸ”„ Item actualizado:`, {
@@ -4014,30 +4018,36 @@ class CartManager {
                 return;
             }
 
-            // Si tiene precio original guardado, restaurarlo
-            if (item.originalPrice !== undefined) {
-                // Restaurar precio original y recalcular segÃºn cantidad
-                const originalPrice = item.originalPrice;
-                item.price = originalPrice;
-
-                // Recalcular precio segÃºn escalones con la cantidad actual
-                let priceTiersToUse = item.price_tiers || [];
-                if (item.selectedVariant !== null && item.selectedVariant !== undefined && item.variants && item.variants.length > 0) {
-                    const selectedVariant = item.variants[item.selectedVariant];
-                    if (selectedVariant && selectedVariant.price_tiers && selectedVariant.price_tiers.length > 0) {
-                        priceTiersToUse = selectedVariant.price_tiers;
-                    }
-                }
-
-                if (priceTiersToUse && Array.isArray(priceTiersToUse) && priceTiersToUse.length > 0) {
-                    const basePriceForCalc = item.basePrice !== undefined && item.basePrice !== null ? item.basePrice : originalPrice;
-                    const priceResult = this.getPriceForQuantity(priceTiersToUse, item.quantity, basePriceForCalc);
-                    item.price = priceResult.price;
-                }
-
-                // Limpiar precio original
-                delete item.originalPrice;
+            // Los precios manuales reales ("sobre consulta") no deben recalcularse.
+            if (item.manualPrice) {
+                item.mode200Applied = false;
+                return;
             }
+
+            // Recalcular precio segÃºn cantidad actual y tiers vigentes.
+            let priceTiersToUse = item.price_tiers || [];
+            if (item.selectedVariant !== null && item.selectedVariant !== undefined && item.variants && item.variants.length > 0) {
+                const selectedVariant = item.variants[item.selectedVariant];
+                if (selectedVariant && selectedVariant.price_tiers && selectedVariant.price_tiers.length > 0) {
+                    priceTiersToUse = selectedVariant.price_tiers;
+                }
+            }
+
+            if (priceTiersToUse && Array.isArray(priceTiersToUse) && priceTiersToUse.length > 0) {
+                const basePriceForCalc = item.basePrice !== undefined && item.basePrice !== null ? item.basePrice : (item.price || 0);
+                const priceResult = this.getPriceForQuantity(priceTiersToUse, item.quantity, basePriceForCalc);
+                item.price = priceResult.price;
+                item.minQuantity = priceResult.minQuantity;
+                item.isValidQuantity = priceResult.isValid;
+            } else {
+                const fallbackPrice = item.basePrice !== undefined && item.basePrice !== null ? item.basePrice : (item.price || 0);
+                item.price = fallbackPrice;
+                item.minQuantity = null;
+                item.isValidQuantity = true;
+            }
+
+            item.mode200Applied = false;
+            delete item.originalPrice;
         });
     }
 
@@ -11152,6 +11162,18 @@ async function generateProposalCode(proposalDate, commercialName, clientName) {
     return code;
 }
 
+function normalizeCountryCode(value) {
+    const normalized = String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .toLowerCase();
+
+    if (['es', 'espana', 'espanha', 'spain'].includes(normalized)) return 'es';
+    if (['pt', 'portugal'].includes(normalized)) return 'pt';
+    return '';
+}
+
 /**
  * Enviar propuesta a Supabase
  */
@@ -13408,6 +13430,8 @@ async function updateManualPrice(itemId, newPrice) {
         item.price = priceNum;
         // Marcar que el precio fue editado manualmente para evitar recÃ¡lculos automÃ¡ticos
         item.manualPrice = true;
+        item.originalPrice = priceNum;
+        item.mode200Applied = false;
         
         // Guardar carrito
         window.cartManager.saveCart();
