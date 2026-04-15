@@ -291,7 +291,7 @@ class ProposalsManager {
                     const role = await window.getUserRole?.();
                     window.cachedRole = role || window.cachedRole;
                     
-                    if (role === 'comercial') {
+                    if ((role || '').toString().toLowerCase() === 'comercial') {
                         console.log('🔒 [consultar-propuestas] Usuario comercial detectado, filtrando propuestas...');
 
                         const allowedCommercialNames = await this.getCurrentCommercialAccessNames();
@@ -945,7 +945,7 @@ class ProposalsManager {
                                 padding-right: 32px;
                             " onfocus="this.style.borderColor='var(--primary-500, #2563eb)'; this.style.boxShadow='0 0 0 2px rgba(37,99,235,0.2)';" onblur="this.style.borderColor='var(--bg-gray-300, #d1d5db)'; this.style.boxShadow='none';">
                                 ${(() => {
-                                    const isComercial = (window.cachedRole || '').toString().toLowerCase() === 'comercial';
+                                    const isComercial = (window.isCommercialLikeRole && window.isCommercialLikeRole(window.cachedRole)) || (window.cachedRole || '').toString().toLowerCase() === 'comercial';
                                     const allowedComercial = ['propuesta_enviada', 'propuesta_en_edicion', 'follow_up', 'rejeitada', 'proposta_parcialmente_adjudicada', 'proposta_adjudicada'];
                                     
                                     let options = '';
@@ -1784,7 +1784,7 @@ class ProposalsManager {
                 " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(139,92,246,0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
                     <i class="fas fa-folder"></i> <span id="view-dossiers-text">${detailLabels.viewDossiers} (${this.getProposalDossierCounts(proposal).active})</span>
                 </button>
-                ${window.cachedRole !== 'comercial' ? `
+                ${((window.cachedRole || '').toString().toLowerCase() === 'admin') ? `
                 <button class="btn-delete-proposal" onclick="window.proposalsManager.openDeleteConfirmModal('${proposal.id}')" style="
                     background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
                     color: white;
@@ -2483,7 +2483,7 @@ class ProposalsManager {
                                 <td style="color: var(--text-primary, #f9fafb);">${(() => {
                                     const precio = parseFloat(articulo.precio) || 0;
                                     // Si el precio es 0 y el usuario es comercial, mostrar "Sobre consulta"
-                                    if (precio === 0 && window.cachedRole === 'comercial') {
+                                    if (precio === 0 && ((window.isCommercialLikeRole && window.isCommercialLikeRole(window.cachedRole)) || window.cachedRole === 'comercial')) {
                                         const translations = {
                                             'pt': 'Sobre consulta',
                                             'es': 'Sobre consulta',
@@ -2536,6 +2536,7 @@ class ProposalsManager {
             nombre_comercial: proposal.nombre_comercial,
             fecha_inicial: proposal.fecha_inicial,
             estado_propuesta: proposal.estado_propuesta,
+            codigo_propuesta: proposal.codigo_propuesta || null,
             articulos: proposal.articulos || [],
             modo_200_plus: proposal.modo_200_plus || proposal.modo_200 || false
         };
@@ -8141,7 +8142,7 @@ class ProposalsManager {
 
             // Webhook: solo para perfil comercial
             const roleLower = (role || '').toString().toLowerCase();
-            if (roleLower === 'comercial') {
+            if ((window.isCommercialLikeRole && window.isCommercialLikeRole(roleLower)) || roleLower === 'comercial') {
                 const origin = typeof window !== 'undefined' && window.location && window.location.origin;
                 const webhookUrl = origin && origin !== 'null' && !origin.startsWith('file')
                     ? (origin + '/api/follow-up-webhook.json')
@@ -8236,7 +8237,7 @@ class ProposalsManager {
             const nuevosComentarios = comentariosActuales + bloqueAdjudicada;
             await this.updateProposalStatus(proposalId, 'proposta_adjudicada', { comentarios: nuevosComentarios || null });
             const role = window.cachedRole || await window.getUserRole?.();
-            if ((role || '').toString().toLowerCase() === 'comercial') {
+            if ((window.isCommercialLikeRole && window.isCommercialLikeRole(role)) || (role || '').toString().toLowerCase() === 'comercial') {
                 const origin = typeof window !== 'undefined' && window.location && window.location.origin;
                 const webhookUrl = origin && origin !== 'null' && !origin.startsWith('file') ? (origin + '/api/follow-up-webhook.json') : null;
                 if (webhookUrl) {

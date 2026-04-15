@@ -1508,6 +1508,9 @@
                         <span id="editing-proposal-number-text"></span>
                         <span id="editing-proposal-client-text"></span>
                     </div>
+                    <button type="button" class="btn-secondary" id="cancelEditingBtn" onclick="cancelProposalEditing()" style="display: none; padding: 8px 14px; font-size: 0.875rem;">
+                        <i class="fas fa-times-circle"></i> <span id="cancel-editing-text">Cancelar edición</span>
+                    </button>
                 </div>
                 <div class="cart-header-right">
                     <button class="btn-primary" id="sendProposalBtn" onclick="openSendProposalModal()" style="background: #10b981;">
@@ -1887,6 +1890,7 @@
         </div>
     </div>
 
+    <script src="proposal-editing.js"></script>
     <script src="carrito-compras.js"></script>
     
     <script>

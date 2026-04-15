@@ -21,6 +21,17 @@ let cachedPais = null;
 let paisCacheTimestamp = 0;
 const PAIS_CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
 
+function normalizeBusinessRole(role) {
+    const normalized = (role || '').toString().trim().toLowerCase();
+    if (normalized === 'editor' || normalized === 'viewer') return 'comercial';
+    return normalized;
+}
+
+function isCommercialLikeRole(role) {
+    const normalized = normalizeBusinessRole(role);
+    return normalized === 'comercial' || normalized === 'director comercial';
+}
+
 /**
  * Obtener rol del usuario directamente desde Supabase (sin roles.js)
  */
@@ -74,10 +85,7 @@ async function getUserRole() {
 
         if (data && data.role) {
             // Mapear roles deprecados
-            let role = data.role;
-            if (role === 'editor' || role === 'viewer') {
-                role = 'comercial';
-            }
+            let role = normalizeBusinessRole(data.role);
             cachedRole = role;
             roleCacheTimestamp = now;
             try { localStorage.setItem(ROLE_STORAGE_KEY, String(role).toLowerCase()); } catch (e) {}
@@ -114,13 +122,15 @@ window.clearRoleCache = function() {
 // Permitir a auth.js establecer el rol tras cargar desde user_roles (evita doble consulta)
 window.setCachedRole = function(role) {
     if (role) {
-        cachedRole = role;
+        cachedRole = normalizeBusinessRole(role);
         roleCacheTimestamp = Date.now();
-        try { localStorage.setItem(ROLE_STORAGE_KEY, String(role).toLowerCase()); } catch (e) {}
-        if (String(role).toLowerCase() === 'compras') document.documentElement.classList.add('role-compras');
+        try { localStorage.setItem(ROLE_STORAGE_KEY, String(cachedRole).toLowerCase()); } catch (e) {}
+        if (String(cachedRole).toLowerCase() === 'compras') document.documentElement.classList.add('role-compras');
         else document.documentElement.classList.remove('role-compras');
     }
 };
+
+window.isCommercialLikeRole = isCommercialLikeRole;
 
 /**
  * Obtener país del usuario desde user_roles
@@ -198,7 +208,7 @@ async function toggleMenu() {
     // Solo bloquear apertura del menú para rol comercial (compras sí puede abrirlo)
     try {
         const role = await getUserRole();
-        if (role === 'comercial') {
+        if (isCommercialLikeRole(role)) {
             return;
         }
     } catch (error) {
@@ -350,7 +360,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     try {
                         const r = await getUserRole();
                         const rl = (r || '').toString().toLowerCase();
-                        if (rl === 'comercial') {
+                        if (isCommercialLikeRole(rl)) {
                             e.preventDefault();
                             e.stopPropagation();
                             return false;

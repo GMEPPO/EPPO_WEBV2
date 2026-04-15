@@ -362,6 +362,22 @@
 
             <!-- Contenido principal de productos -->
             <section class="products-content">
+                <div id="editing-proposal-products-banner" style="display: none; margin-bottom: 20px; padding: 16px 18px; border: 1px solid #cbd5e1; border-radius: 12px; background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%);">
+                    <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
+                        <div style="display: flex; align-items: center; gap: 10px; color: #1e3a8a; font-weight: 600;">
+                            <i class="fas fa-edit"></i>
+                            <span id="editing-proposal-products-text">Editando propuesta</span>
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                            <a id="go-to-editing-budget-btn" href="carrito-compras.html" style="padding: 10px 14px; border-radius: 8px; background: #2563eb; color: white; text-decoration: none; font-weight: 600;">
+                                Ir al presupuesto
+                            </a>
+                            <button type="button" id="cancel-products-editing-btn" style="padding: 10px 14px; border-radius: 8px; border: 1px solid #cbd5e1; background: white; color: #334155; font-weight: 600; cursor: pointer;">
+                                Cancelar edición
+                            </button>
+                        </div>
+                    </div>
+                </div>
                 <div class="products-header" style="display: none;">
                     <h1 class="products-title">Cargando productos...</h1>
                     <p class="products-subtitle">Por favor espera mientras cargamos los productos</p>
@@ -448,6 +464,7 @@
     </main>
 
     <script src="productos-dinamico-supabase.js"></script>
+    <script src="proposal-editing.js"></script>
     <script src="carrito-compras.js"></script>
     
     <script>
@@ -547,8 +564,8 @@
                             (product.descripcionPt || product.descripcion_pt || product.descripcionEs || product.descripcion_es || '');
                         
                         const priceTiers = product.price_tiers || [];
-                        const initialPrice = priceTiers.length > 0 && window.cartManager ? 
-                            window.cartManager.getPriceForQuantity(priceTiers, quantity, product.precio).price : 
+                        const initialPrice = priceTiers.length > 0 && window.getPriceForQuantity ? 
+                            window.getPriceForQuantity(priceTiers, quantity, product.precio).price : 
                             product.precio;
                         
                         // Siempre crear un nuevo item (permitir duplicados)
@@ -832,4 +849,3 @@
     <script src="chat-widget.js"></script>
 </body>
 </html>
-

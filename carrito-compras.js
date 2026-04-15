@@ -34,6 +34,7 @@ class CartManager {
         this.setupEventListeners();
         this.renderCart();
         this.updateSummary();
+        this.updateEditingNavigationLinks();
         
         // Actualizar plazos segÃºn stock despuÃ©s de cargar
         this.updateDeliveryTimesFromStock();
@@ -146,6 +147,7 @@ class CartManager {
                 articulos: articulos || [],
                 modo_200_plus: proposal.modo_200_plus || proposal.modo_200 || false
             };
+            localStorage.setItem('editing_proposal', JSON.stringify(this.editingProposalData));
 
             // Cargar estado del modo 200+ desde la propuesta (solo asÃ­ se bloquea el precio al cambiar cantidad)
             this.modo200 = proposal.modo_200_plus || proposal.modo_200 || false;
@@ -937,12 +939,15 @@ class CartManager {
 
         // Mostrar informaciÃ³n en la barra del carrito
         this.showEditingInfoInCartBar(proposalNumber, clientName);
+        this.updateEditingNavigationLinks();
     }
 
     showEditingInfoInCartBar(proposalNumber, clientName) {
         const infoContainer = document.getElementById('editing-proposal-info');
         const numberText = document.getElementById('editing-proposal-number-text');
         const clientText = document.getElementById('editing-proposal-client-text');
+        const cancelBtn = document.getElementById('cancelEditingBtn');
+        const cancelText = document.getElementById('cancel-editing-text');
 
         if (infoContainer && numberText && clientText) {
             // Mostrar el contenedor
@@ -958,6 +963,19 @@ class CartManager {
             } else {
                 numberText.textContent = `Proposal #${proposalNumber}`;
                 clientText.textContent = `Client: ${clientName}`;
+            }
+        }
+
+        if (cancelBtn) {
+            cancelBtn.style.display = 'inline-flex';
+        }
+        if (cancelText) {
+            if (this.currentLanguage === 'es') {
+                cancelText.textContent = 'Cancelar edición';
+            } else if (this.currentLanguage === 'pt') {
+                cancelText.textContent = 'Cancelar edição';
+            } else {
+                cancelText.textContent = 'Cancel editing';
             }
         }
 
@@ -980,6 +998,23 @@ class CartManager {
             } else {
                 sendProposalText.textContent = 'Update Proposal';
             }
+        }
+    }
+
+    updateEditingNavigationLinks() {
+        const productsLinks = document.querySelectorAll('a[href="productos-dinamico.html"], .btn-continue-shopping');
+        const cartLink = document.getElementById('nav-cart-link');
+        const editUrl = this.editingProposalId ? `carrito-compras.html?edit=${encodeURIComponent(this.editingProposalId)}` : 'carrito-compras.html';
+        const productsUrl = this.editingProposalId ? `productos-dinamico.html?edit=${encodeURIComponent(this.editingProposalId)}` : 'productos-dinamico.html';
+
+        productsLinks.forEach(link => {
+            if (link) {
+                link.setAttribute('href', productsUrl);
+            }
+        });
+
+        if (cartLink) {
+            cartLink.setAttribute('href', editUrl);
         }
     }
 
@@ -1557,6 +1592,10 @@ class CartManager {
         this.saveCart();
         this.renderCart();
         this.updateSummary();
+        this.updateEditingNavigationLinks();
+        if (this.editingProposalId || this.editingProposalData) {
+            this.showEditingIndicator();
+        }
         this.showNotification('Producto agregado al carrito', 'success');
         
         // Actualizar plazos de entrega segÃºn stock (despuÃ©s de renderizar, sin bloquear)
@@ -2890,7 +2929,7 @@ class CartManager {
                             // de productos "sobre consulta" (precio base 0).
                             const baseIsZero = item.basePrice === 0 || item.basePrice === null || item.basePrice === undefined;
                             const mostrarInputPrecio = (baseIsZero && (precioActualEsCero || isManualPrice)) && !tieneVarianteSeleccionada && userRole === 'admin';
-                            if (precioActualEsCero && !tieneVarianteSeleccionada && userRole === 'comercial') {
+                            if (precioActualEsCero && !tieneVarianteSeleccionada && isCommercialLikeRole(userRole)) {
                                 const translations = { 'pt': 'Sobre consulta', 'es': 'Sobre consulta', 'en': 'On request' };
                                 const currentLang = this.currentLanguage || localStorage.getItem('language') || 'pt';
                                 const textoConsulta = translations[currentLang] || translations['pt'];
@@ -3073,7 +3112,7 @@ class CartManager {
                 </div>
                 <h2 class="empty-cart-title">${t.title}</h2>
                 <p class="empty-cart-text">${t.text}</p>
-                <a href="productos-dinamico.html" class="btn-continue-shopping">${t.button}</a>
+                <a href="${this.editingProposalId ? `productos-dinamico.html?edit=${encodeURIComponent(this.editingProposalId)}` : 'productos-dinamico.html'}" class="btn-continue-shopping">${t.button}</a>
             </div>
         `;
     }
@@ -5617,7 +5656,7 @@ async function openAddSpecialOrderModal() {
                     const userName = (userRoleData.Name || '').toLowerCase().trim();
                     
                     // Si es comercial (no admin) y no es Claudia Cruz, deshabilitar precio
-                    if (userRole === 'comercial' && userName !== 'claudia cruz') {
+                    if (isCommercialLikeRole(userRole) && userName !== 'claudia cruz') {
                         priceInput.value = 0;
                         priceInput.disabled = true;
                         priceInput.style.opacity = '0.6';
@@ -5705,7 +5744,7 @@ async function addSpecialOrderToCart() {
                     const userName = (userRoleData.Name || '').toLowerCase().trim();
                     
                     // Si es comercial (no admin) y no es Claudia Cruz, forzar precio a 0
-                    if (userRole === 'comercial' && userName !== 'claudia cruz') {
+                    if (isCommercialLikeRole(userRole) && userName !== 'claudia cruz') {
                         price = 0;
                         console.log('ðŸ”’ Usuario comercial detectado: precio forzado a 0 en pedido especial');
                     }
@@ -6115,6 +6154,17 @@ function clearCart() {
     if (window.cartManager) {
         window.cartManager.clearCart();
     }
+}
+
+function cancelProposalEditing() {
+    if (window.proposalEditing) {
+        window.proposalEditing.cancel({ redirectTo: 'consultar-propuestas.html', clearCart: true });
+        return;
+    }
+
+    localStorage.removeItem('editing_proposal');
+    localStorage.setItem('eppo_cart', '[]');
+    window.location.href = 'consultar-propuestas.html';
 }
 
 function sendOrder() {
@@ -6627,7 +6677,9 @@ window.simpleRemove = simpleRemove;
 
 // Inicializar cuando el DOM estÃ© listo
 document.addEventListener('DOMContentLoaded', () => {
-    window.cartManager = new CartManager();
+    if (document.getElementById('cartItems')) {
+        window.cartManager = new CartManager();
+    }
 });
 
 /**
@@ -6671,7 +6723,7 @@ window.addToCart = function(product, quantity = 1) {
         // Obtener price_tiers
         const priceTiers = product.price_tiers || [];
         const initialPrice = priceTiers.length > 0 ? 
-            (window.cartManager ? window.cartManager.getPriceForQuantity(priceTiers, normalizedQuantity, product.precio).price : product.precio) :
+            (window.getPriceForQuantity ? window.getPriceForQuantity(priceTiers, normalizedQuantity, product.precio).price : product.precio) :
             product.precio;
 
         // Siempre crear un nuevo item (permitir duplicados)
@@ -6705,6 +6757,47 @@ window.addToCart = function(product, quantity = 1) {
         // Mostrar notificaciÃ³n
         showQuickNotification('Producto agregado al carrito');
     }
+};
+
+window.getPriceForQuantity = function(priceTiers, quantity, basePrice = 0) {
+    if (window.cartManager && typeof window.cartManager.getPriceForQuantity === 'function') {
+        return window.cartManager.getPriceForQuantity(priceTiers, quantity, basePrice);
+    }
+
+    if (!priceTiers || !Array.isArray(priceTiers) || priceTiers.length === 0) {
+        return { price: basePrice, minQuantity: null, isValid: true };
+    }
+
+    let selectedPrice = Number.isFinite(basePrice) ? Number(basePrice) : 0;
+    const sortedTiers = [...priceTiers].sort((a, b) => {
+        const minA = a?.min_qty !== null && a?.min_qty !== undefined ? Number(a.min_qty) : 0;
+        const minB = b?.min_qty !== null && b?.min_qty !== undefined ? Number(b.min_qty) : 0;
+        return minA - minB;
+    });
+
+    const firstMinQty = sortedTiers[0]?.min_qty !== null && sortedTiers[0]?.min_qty !== undefined ? Number(sortedTiers[0].min_qty) : 1;
+    let isValid = quantity >= firstMinQty;
+
+    for (const tier of sortedTiers) {
+        const minQty = tier?.min_qty !== null && tier?.min_qty !== undefined ? Number(tier.min_qty) : 0;
+        const maxQty = tier?.max_qty !== null && tier?.max_qty !== undefined ? Number(tier.max_qty) : null;
+        const tierPrice = tier?.price !== null && tier?.price !== undefined ? Number(tier.price) : null;
+        const inRange = quantity >= minQty && (maxQty === null || quantity <= maxQty);
+        if (inRange && tierPrice !== null && Number.isFinite(tierPrice)) {
+            selectedPrice = tierPrice;
+        }
+    }
+
+    if (quantity > 0 && sortedTiers.length > 0) {
+        const lastTier = sortedTiers[sortedTiers.length - 1];
+        const lastMinQty = lastTier?.min_qty !== null && lastTier?.min_qty !== undefined ? Number(lastTier.min_qty) : 0;
+        const lastPrice = lastTier?.price !== null && lastTier?.price !== undefined ? Number(lastTier.price) : null;
+        if (quantity >= lastMinQty && lastPrice !== null && Number.isFinite(lastPrice)) {
+            selectedPrice = lastPrice;
+        }
+    }
+
+    return { price: selectedPrice, minQuantity: firstMinQty, isValid };
 };
 
 // FunciÃ³n para obtener especificaciones del producto (versiÃ³n global)
@@ -10672,8 +10765,9 @@ async function loadExistingCommercials() {
             console.warn('âš ï¸ Error al obtener usuario actual:', error);
         }
 
-        // 2. Si el usuario es comercial, solo mostrar su nombre y el de su espejo
-        if (currentUserRole === 'comercial') {
+        // 2. Si el usuario es comercial o director comercial, mostrar su nombre
+        // y, solo para comerciales, también el de su espejo
+        if (isCommercialLikeRole(currentUserRole)) {
             const comercialesList = [];
             
             // Agregar el nombre del comercial actual
@@ -10682,13 +10776,13 @@ async function loadExistingCommercials() {
             }
             
             // Agregar el nombre del comercial espejo si existe
-            if (currentUserEspejo && currentUserEspejo.trim() !== '') {
+            if (currentUserRole === 'comercial' && currentUserEspejo && currentUserEspejo.trim() !== '') {
                 // Verificar que el espejo existe en la base de datos
                 const { data: espejoData, error: espejoError } = await window.cartManager.supabase
                     .from('user_roles')
                     .select('Name, role')
                     .eq('Name', currentUserEspejo)
-                    .eq('role', 'comercial')
+                    .in('role', ['comercial', 'director comercial'])
                     .single();
                 
                 if (!espejoError && espejoData && espejoData.Name) {
@@ -10710,17 +10804,17 @@ async function loadExistingCommercials() {
             });
             
             existingCommercials = comercialesList;
-            console.log('âœ… Comerciales cargados (solo usuario y espejo):', comercialesList.length);
+            console.log('âœ… Comerciales cargados (solo usuario y espejo si aplica):', comercialesList.length);
             console.log('ðŸ“‹ Lista de comerciales:', comercialesList);
             return; // Salir de la funciÃ³n, ya tenemos la lista
         }
 
         // 3. Si el usuario es admin o no tiene rol, mostrar todos los comerciales
-        // Obtener todos los usuarios con rol "comercial"
+        // Obtener todos los usuarios con rol "comercial" o "director comercial"
         const { data: comercialesData, error: comercialesError } = await window.cartManager.supabase
             .from('user_roles')
             .select('Name, role')
-            .eq('role', 'comercial');
+            .in('role', ['comercial', 'director comercial']);
 
         if (comercialesError) {
             console.error('âŒ Error al cargar comerciales:', comercialesError);
@@ -10774,8 +10868,8 @@ async function loadExistingCommercials() {
                     return; // Saltar si no tiene nombre
                 }
                 
-                // Incluir todos los comerciales
-                if (user.role === 'comercial') {
+                // Incluir todos los comerciales y directores comerciales
+                if (user.role === 'comercial' || user.role === 'director comercial') {
                     comercialesList.push(userName);
                 }
                 // Incluir solo a Claudia Cruz si es admin
@@ -10801,7 +10895,7 @@ async function loadExistingCommercials() {
         console.log('ðŸ“‹ Lista de comerciales:', comercialesList);
         
         if (comercialesList.length === 0) {
-            console.warn('âš ï¸ No se encontraron comerciales. Verifica que haya usuarios con rol "comercial" o "admin" (solo Claudia Cruz) en user_roles.');
+            console.warn('âš ï¸ No se encontraron comerciales. Verifica que haya usuarios con rol "comercial", "director comercial" o "admin" (solo Claudia Cruz) en user_roles.');
         }
     } catch (error) {
         console.error('Error en loadExistingCommercials:', error);
@@ -11172,6 +11266,11 @@ function normalizeCountryCode(value) {
     if (['es', 'espana', 'espanha', 'spain'].includes(normalized)) return 'es';
     if (['pt', 'portugal'].includes(normalized)) return 'pt';
     return '';
+}
+
+function isCommercialLikeRole(role) {
+    const normalized = (role || '').toString().trim().toLowerCase();
+    return normalized === 'comercial' || normalized === 'director comercial';
 }
 
 /**
@@ -11593,7 +11692,7 @@ async function sendProposalToSupabase() {
                                     .select('"Name", role')
                                     .eq('user_id', user.id)
                                     .single();
-                                if (!roleError && userRoleData && userRoleData.role === 'comercial') {
+                                if (!roleError && userRoleData && isCommercialLikeRole(userRoleData.role)) {
                                     const userName = (userRoleData.Name || '').toLowerCase().trim();
                                     if (userName !== 'claudia cruz') priceForProduct = 0;
                                 }
@@ -11815,7 +11914,7 @@ async function sendProposalToSupabase() {
         if (specialOrManualItems.length > 0 && presupuesto) {
             try {
                 const role = window.cachedRole || await window.getUserRole?.();
-                if ((role || '').toString().toLowerCase() === 'comercial') {
+                if (isCommercialLikeRole(role)) {
                     const quienEdito = await window.cartManager.getCurrentUserName();
                     // Dados dos produtos especiais em portuguÃªs de Portugal para o webhook
                     const artigosEspeciais = specialOrManualItems.map(it => ({
@@ -11863,7 +11962,7 @@ async function sendProposalToSupabase() {
         if (articulosLaserBuildSobreConsulta.length > 0 && presupuesto) {
             try {
                 const role = window.cachedRole || await window.getUserRole?.();
-                if ((role || '').toString().toLowerCase() === 'comercial') {
+                if (isCommercialLikeRole(role)) {
                     const nombreComercial = await window.cartManager.getCurrentUserName();
                     const ed = window.cartManager && window.cartManager.editingProposalData;
                     const codigoProp = (presupuesto.codigo_propuesta) || (ed && ed.codigo_propuesta) || '';
@@ -11959,6 +12058,10 @@ async function sendProposalToSupabase() {
             if (infoContainer) {
                 infoContainer.style.display = 'none';
             }
+            const cancelBtn = document.getElementById('cancelEditingBtn');
+            if (cancelBtn) {
+                cancelBtn.style.display = 'none';
+            }
 
             // Mostrar nuevamente el botÃ³n de crear propuesta
             const generateProposalBtn = document.getElementById('generateProposalBtn');
@@ -11976,6 +12079,10 @@ async function sendProposalToSupabase() {
                 } else {
                     sendProposalText.textContent = 'Send Proposal';
                 }
+            }
+
+            if (typeof window.cartManager.updateEditingNavigationLinks === 'function') {
+                window.cartManager.updateEditingNavigationLinks();
             }
         }
 

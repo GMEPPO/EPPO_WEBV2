@@ -158,7 +158,7 @@
                         <h2>Criar utilizador</h2>
                         <p>Creacion directa en Supabase Auth con nombre, password temporal y rol inicial.</p>
                     </div>
-                    <div class="panel-meta">Roles oficiales: admin, comercial, compras</div>
+                    <div class="panel-meta">Roles oficiales: admin, comercial, director comercial, compras</div>
                 </div>
                 <form id="addUserForm" class="create-user-grid">
                     <div class="form-group">
@@ -177,6 +177,7 @@
                         <label for="newUserRole">Papel</label>
                         <select id="newUserRole" required>
                             <option value="comercial">COMERCIAL</option>
+                            <option value="director comercial">DIRECTOR COMERCIAL</option>
                             <option value="compras">COMPRAS</option>
                             <option value="admin">ADMIN</option>
                         </select>
@@ -223,7 +224,7 @@
     <script src="auth.js"></script>
     <script src="menu-hamburguesa.js"></script>
     <script>
-        const OFFICIAL_ROLES = ['admin', 'comercial', 'compras'];
+        const OFFICIAL_ROLES = ['admin', 'comercial', 'director comercial', 'compras'];
         const ADMIN_USERS_BASE_API = '/api/admin-users-list';
         const ADMIN_USER_API = '/api/admin-user';
         let usersState = [];
@@ -288,8 +289,18 @@
             if (statusEl) statusEl.textContent = message;
         }
 
+        function formatRoleLabel(role) {
+            const labels = {
+                admin: 'ADMIN',
+                comercial: 'COMERCIAL',
+                'director comercial': 'DIRECTOR COMERCIAL',
+                compras: 'COMPRAS'
+            };
+            return labels[role] || role;
+        }
+
         function buildRoleOptions(selectedRole) {
-            return OFFICIAL_ROLES.map(role => `<option value="${role}" ${role === selectedRole ? 'selected' : ''}>${role}</option>`).join('');
+            return OFFICIAL_ROLES.map(role => `<option value="${role}" ${role === selectedRole ? 'selected' : ''}>${formatRoleLabel(role)}</option>`).join('');
         }
 
         function buildMirrorOptions(currentUserId, selectedMirrorId) {

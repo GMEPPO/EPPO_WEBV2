@@ -83,6 +83,7 @@ class DynamicProductsPage {
         this.dynamicFilterFields = new Map(); // Almacenar campos de filtros dinámicos para traducciones
         this.multiSelectMode = false; // Modo multi-selección para añadir varios productos con la misma cantidad
         this.lastDisplayedProducts = []; // Copia de los productos actualmente mostrados (para multi-selección)
+        this.editingProposalContext = window.proposalEditing ? window.proposalEditing.getContext() : null;
         // NO llamar init() aquí - se llamará desde el listener de DOMContentLoaded
         // Esto evita inicializaciones múltiples
     }
@@ -143,6 +144,7 @@ class DynamicProductsPage {
             
             this.setupLanguageSelector();
             this.updateSearchPlaceholder();
+            this.updateEditingProposalUI();
             
             // FORZAR creación de filtros dinámicos DESPUÉS de todo lo demás
             // Esto es especialmente importante cuando viene una categoría desde URL
@@ -3057,6 +3059,7 @@ class DynamicProductsPage {
         
         // Actualizar títulos de filtros estáticos
         this.updateFilterTitles(lang);
+        this.updateEditingProposalUI();
         
         // Actualizar textos de ordenamiento
         this.updateSortLabels(lang);
@@ -3066,6 +3069,75 @@ class DynamicProductsPage {
         
         // Re-renderizar productos con el nuevo idioma (sin cambiar filtros)
         this.applyFilters();
+    }
+
+    updateEditingProposalUI() {
+        this.editingProposalContext = window.proposalEditing ? window.proposalEditing.getContext() : null;
+
+        const banner = document.getElementById('editing-proposal-products-banner');
+        const text = document.getElementById('editing-proposal-products-text');
+        const goToBudgetBtn = document.getElementById('go-to-editing-budget-btn');
+        const cancelBtn = document.getElementById('cancel-products-editing-btn');
+        const cartLink = document.getElementById('nav-cart-link');
+        const lang = this.currentLanguage || localStorage.getItem('language') || 'pt';
+
+        const translations = {
+            pt: {
+                editing: 'Editando Proposta',
+                client: 'Cliente',
+                goToBudget: 'Ir ao orçamento',
+                cancel: 'Cancelar edição'
+            },
+            es: {
+                editing: 'Editando Propuesta',
+                client: 'Cliente',
+                goToBudget: 'Ir al presupuesto',
+                cancel: 'Cancelar edición'
+            },
+            en: {
+                editing: 'Editing Proposal',
+                client: 'Client',
+                goToBudget: 'Go to budget',
+                cancel: 'Cancel editing'
+            }
+        };
+
+        const t = translations[lang] || translations.pt;
+
+        if (!this.editingProposalContext) {
+            if (banner) banner.style.display = 'none';
+            if (cartLink) cartLink.setAttribute('href', 'carrito-compras.html');
+            return;
+        }
+
+        const proposalLabel = this.editingProposalContext.codigoPropuesta || (this.editingProposalContext.proposalId ? String(this.editingProposalContext.proposalId).substring(0, 8).toUpperCase() : '');
+        const clientName = this.editingProposalContext.clientName || '-';
+        const cartUrl = window.proposalEditing ? window.proposalEditing.buildCartUrl() : 'carrito-compras.html';
+
+        if (banner) {
+            banner.style.display = 'block';
+        }
+        if (text) {
+            text.textContent = `${t.editing} #${proposalLabel} - ${t.client}: ${clientName}`;
+        }
+        if (goToBudgetBtn) {
+            goToBudgetBtn.textContent = t.goToBudget;
+            goToBudgetBtn.setAttribute('href', cartUrl);
+        }
+        if (cancelBtn) {
+            cancelBtn.textContent = t.cancel;
+            if (!cancelBtn.dataset.boundEditingCancel) {
+                cancelBtn.addEventListener('click', () => {
+                    if (window.proposalEditing) {
+                        window.proposalEditing.cancel({ redirectTo: 'consultar-propuestas.html', clearCart: true });
+                    }
+                });
+                cancelBtn.dataset.boundEditingCancel = 'true';
+            }
+        }
+        if (cartLink) {
+            cartLink.setAttribute('href', cartUrl);
+        }
     }
     
     /**
