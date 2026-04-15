@@ -7503,6 +7503,7 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
         }
 
         const originalEditingData = pdfCartManager.editingProposalData;
+        const originalPdfManagerLanguage = pdfCartManager.currentLanguage;
         pdfCartManager.editingProposalData = {
             id: proposal.id,
             codigo_propuesta: proposal.codigo_propuesta,
@@ -7528,6 +7529,7 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
         };
 
         let pdfLanguage = normalizeCountryCode(proposal.pais) || 'pt';
+        pdfCartManager.currentLanguage = pdfLanguage;
 
         console.log('ðŸ“„ Generando PDF con idioma:', pdfLanguage);
         console.log('ðŸ“¦ Items del carrito para PDF:', cartItems.length);
@@ -7554,6 +7556,7 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
         console.log('ðŸ”„ Restaurando carrito original...');
         pdfCartManager.cart = originalCart;
         pdfCartManager.editingProposalData = originalEditingData;
+        pdfCartManager.currentLanguage = originalPdfManagerLanguage;
         console.log('âœ… Carrito restaurado');
 
     } catch (error) {
