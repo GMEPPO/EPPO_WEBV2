@@ -1,6 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
 
-const ALLOWED_ROLES = new Set(['admin', 'comercial', 'compras']);
+const ALLOWED_ROLES = new Set(['admin', 'comercial', 'director comercial', 'compras']);
 
 function setCors(res) {
     res.setHeader('Access-Control-Allow-Origin', '*');

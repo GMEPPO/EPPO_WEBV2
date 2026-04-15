@@ -97,7 +97,13 @@ module.exports = async function handler(req, res) {
                     return res.status(400).json({ error: 'Un comercial no puede ser su propio espejo' });
                 }
 
-                if (finalMirrorEnabled && !finalMirrorUserId) {
+                // Si no hay espejo asignado, desactivar el flag automáticamente.
+                // Esto evita errores al cambiar solo el rol cuando existen datos legacy inconsistentes.
+                if (!finalMirrorUserId) {
+                    finalMirrorEnabled = false;
+                }
+
+                if (hasMirrorEnabled && requestedMirrorEnabled && !finalMirrorUserId) {
                     return res.status(400).json({ error: 'No se puede activar el espejo sin asignar un comercial espejo' });
                 }
 
