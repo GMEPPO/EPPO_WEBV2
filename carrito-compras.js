@@ -7375,12 +7375,19 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
         window.cartManager.cart = cartItems;
 
         // Determinar el idioma basado en el paÃ­s de la propuesta
-        let pdfLanguage = 'pt'; // Por defecto portuguÃ©s
-        if (proposal.pais === 'EspaÃ±a') {
-            pdfLanguage = 'es';
-        } else if (proposal.pais === 'Portugal') {
-            pdfLanguage = 'pt';
-        }
+        const normalizeCountryCode = (value) => {
+            const normalized = String(value || '')
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .trim()
+                .toLowerCase();
+
+            if (['es', 'espana', 'espanha', 'spain'].includes(normalized)) return 'es';
+            if (['pt', 'portugal'].includes(normalized)) return 'pt';
+            return '';
+        };
+
+        let pdfLanguage = normalizeCountryCode(proposal.pais) || 'pt';
 
         console.log('ðŸ“„ Generando PDF con idioma:', pdfLanguage);
         console.log('ðŸ“¦ Items del carrito para PDF:', cartItems.length);
@@ -7815,28 +7822,31 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         }
     };
 
+    function normalizeCountryCode(value) {
+        const normalized = String(value || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .trim()
+            .toLowerCase();
+
+        if (['es', 'espana', 'espanha', 'spain'].includes(normalized)) return 'es';
+        if (['pt', 'portugal'].includes(normalized)) return 'pt';
+        return '';
+    }
+
     // Determinar el idioma: si hay proposalData con paÃ­s, usar ese paÃ­s para determinar el idioma
     // Si no, usar selectedLanguage o el idioma actual del carrito
     let lang = 'pt'; // Por defecto portuguÃ©s
     
     if (proposalData && proposalData.pais) {
         // Si hay datos de propuesta con paÃ­s, usar el paÃ­s para determinar el idioma
-        if (proposalData.pais === 'EspaÃ±a') {
-            lang = 'es';
-        } else if (proposalData.pais === 'Portugal') {
-            lang = 'pt';
-        }
+        lang = normalizeCountryCode(proposalData.pais) || lang;
     } else if (selectedLanguage) {
         // Si se especificÃ³ un idioma directamente, usarlo
         lang = selectedLanguage;
     } else if (window.cartManager?.editingProposalData?.pais) {
         // Si estamos editando una propuesta, usar el paÃ­s de la propuesta
-        const pais = window.cartManager.editingProposalData.pais;
-        if (pais === 'EspaÃ±a') {
-            lang = 'es';
-        } else if (pais === 'Portugal') {
-            lang = 'pt';
-        }
+        lang = normalizeCountryCode(window.cartManager.editingProposalData.pais) || lang;
     } else {
         // Por defecto, usar el idioma actual del carrito
         lang = window.cartManager?.currentLanguage || 'pt';
@@ -8725,17 +8735,28 @@ async function generateProposalPDF(selectedLanguage = null, proposalData = null)
         });
         const lineStarts = [];
         let acc = 0;
-        for (const line of lines) {
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
             lineStarts.push(acc);
             acc += line.length;
+            // splitTextToSize elimina el espacio inicial de la siguiente línea
+            // cuando hace wrap por palabras; lo saltamos para mantener los índices alineados.
+            while (i < lines.length - 1 && acc < displayName.length && /\s/.test(displayName[acc])) {
+                acc += 1;
+            }
         }
         const startY = y + (height - lines.length * lineHeight) / 2 + lineHeight;
         const leftX = x + padding;
-        const maxX = x + width - padding;
         lines.forEach((line, lineIndex) => {
             const lineStart = lineStarts[lineIndex];
             const lineEnd = lineStart + line.length;
+            const lineWidth = doc.getTextWidth(line);
             let currentX = leftX;
+            if (align === 'center') {
+                currentX = x + (width - lineWidth) / 2;
+            } else if (align === 'right') {
+                currentX = x + width - padding - lineWidth;
+            }
             for (const seg of segsWithIndex) {
                 const overlapStart = Math.max(seg.start, lineStart);
                 const overlapEnd = Math.min(seg.end, lineEnd);
@@ -11166,13 +11187,7 @@ async function sendProposalToSupabase() {
         // Para ediciones, obtener el paÃ­s desde el campo pais de la propuesta o usar el idioma actual
         // Para ediciones, obtener el paÃ­s desde el campo pais de la propuesta
         const paisFromData = window.cartManager.editingProposalData?.pais;
-        if (paisFromData === 'EspaÃ±a') {
-            proposalCountry = 'es';
-        } else if (paisFromData === 'Portugal') {
-            proposalCountry = 'pt';
-        } else {
-            proposalCountry = 'pt'; // Valor por defecto
-        }
+        proposalCountry = normalizeCountryCode(paisFromData) || 'pt';
     } else {
         // Si es una nueva propuesta, obtener datos del formulario
         clientName = document.getElementById('clientNameInput').value.trim();
