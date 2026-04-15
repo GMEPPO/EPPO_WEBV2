@@ -7306,26 +7306,55 @@ function generateProposalFileName(proposalData, cartItems) {
 }
 
 // Declarar funciÃ³n y tambiÃ©n asignarla a window para asegurar disponibilidad global
+async function getCartManagerForPdfGeneration() {
+    if (window.cartManager?.supabase) {
+        return { cartManager: window.cartManager, isTemporary: false };
+    }
+
+    const tempCartManager = Object.create(CartManager.prototype);
+    tempCartManager.cart = [];
+    tempCartManager.currentLanguage = localStorage.getItem('language') || 'pt';
+    tempCartManager.allProducts = [];
+    tempCartManager.allCategories = [];
+    tempCartManager.selectedProduct = null;
+    tempCartManager.supabase = null;
+    tempCartManager.editingProposalId = null;
+    tempCartManager.editingProposalData = null;
+    tempCartManager.modo200 = false;
+
+    await tempCartManager.initializeSupabase();
+    await tempCartManager.loadAllProducts();
+    await tempCartManager.loadCategories();
+
+    return { cartManager: tempCartManager, isTemporary: true };
+}
+
 async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt') {
     console.log('ðŸš€ ========== INICIO generateProposalPDFFromSavedProposal ==========');
     console.log('ðŸ“‹ ParÃ¡metros:', { proposalId, language });
-    
-    if (!window.cartManager) {
-        console.error('âŒ ERROR CRÃTICO: window.cartManager no estÃ¡ disponible');
-        return;
-    }
-    
-    if (!window.cartManager.supabase) {
-        console.error('âŒ ERROR CRÃTICO: window.cartManager.supabase no estÃ¡ disponible');
-        return;
-    }
-    
-    console.log('âœ… cartManager y supabase disponibles');
+
+    let pdfCartManager = null;
+    let usingTemporaryCartManager = false;
+    const originalGlobalCartManager = window.cartManager;
 
     try {
+        const context = await getCartManagerForPdfGeneration();
+        pdfCartManager = context.cartManager;
+        usingTemporaryCartManager = context.isTemporary;
+
+        if (!pdfCartManager?.supabase) {
+            console.error('âŒ ERROR CRÃTICO: no se pudo preparar el contexto del carrito para el PDF');
+            return;
+        }
+
+        if (usingTemporaryCartManager) {
+            window.cartManager = pdfCartManager;
+        }
+
+        console.log('âœ… cartManager y supabase disponibles');
         console.log('ðŸ“¥ Cargando propuesta desde Supabase...');
-        // Cargar la propuesta completa desde Supabase
-        const { data: proposal, error: proposalError } = await window.cartManager.supabase
+
+        const { data: proposal, error: proposalError } = await pdfCartManager.supabase
             .from('presupuestos')
             .select('*')
             .eq('id', proposalId)
@@ -7335,7 +7364,7 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
             console.error('âŒ Error cargando propuesta:', proposalError);
             throw new Error('No se pudo cargar la propuesta desde Supabase');
         }
-        
+
         console.log('âœ… Propuesta cargada:', {
             id: proposal.id,
             nombre_cliente: proposal.nombre_cliente,
@@ -7343,9 +7372,11 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
             updated_at: proposal.updated_at
         });
 
-        // Cargar los artÃ­culos de la propuesta
-        // Ordenar por created_at para mantener el orden de inserciÃ³n original, incluso con productos duplicados
-        const { data: articulos, error: articulosError } = await window.cartManager.supabase
+        if (proposal.nombre_cliente) {
+            await pdfCartManager.loadClientExclusiveProducts(proposal.nombre_cliente);
+        }
+
+        const { data: articulos, error: articulosError } = await pdfCartManager.supabase
             .from('presupuestos_articulos')
             .select('*')
             .eq('presupuesto_id', proposalId)
@@ -7355,26 +7386,19 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
             throw new Error('No se pudieron cargar los artÃ­culos desde Supabase');
         }
 
-        // Convertir artÃ­culos a formato de carrito (incluye mÃ³dulos y productos con precio especial)
         const cartItems = [];
         const articulosListPdf = articulos || [];
         for (const articulo of articulosListPdf) {
             const qtyArt = articulo.cantidad ?? articulo.cantidad_encomendada ?? 1;
-            // Buscar el producto SOLO por ID (referencia_articulo). No buscar por nombre: los productos
-            // de mÃ³dulo o exclusivos tienen nombre propio y no deben heredar imagen/descripciÃ³n de otro
-            // producto similar del catÃ¡logo (evita que "VV-Individual Retangular 55Ã—35" tome la foto
-            // y descripciÃ³n de "Individual Rectangular" del catÃ¡logo).
-            const product = (articulo.referencia_articulo && window.cartManager.allProducts)
-                ? window.cartManager.allProducts.find(p => String(p.id) === String(articulo.referencia_articulo))
+            const product = (articulo.referencia_articulo && pdfCartManager.allProducts)
+                ? pdfCartManager.allProducts.find(p => String(p.id) === String(articulo.referencia_articulo))
                 : null;
 
             if (product) {
-                // Obtener variante de referencia (color) seleccionada
-                const selectedReferenceVariant = (articulo.variante_referencia !== null && articulo.variante_referencia !== undefined) 
-                    ? parseInt(articulo.variante_referencia) 
+                const selectedReferenceVariant = (articulo.variante_referencia !== null && articulo.variante_referencia !== undefined)
+                    ? parseInt(articulo.variante_referencia)
                     : null;
 
-                // Obtener variantes_referencias del producto
                 let variantesReferencias = product.variantes_referencias || [];
                 if (variantesReferencias && typeof variantesReferencias === 'string') {
                     try {
@@ -7385,16 +7409,14 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
                     }
                 }
 
-                // Si hay color_seleccionado guardado, usarlo directamente (incluso si ya no existe en las variantes)
-                // Esto permite mantener el color aunque se haya eliminado de las variantes del producto
                 let colorSeleccionadoGuardado = articulo.color_seleccionado || null;
 
                 cartItems.push({
                     id: product.id,
                     type: 'product',
                     name: articulo.nombre_articulo,
-                    category: product.categoria || product.category || '', // Agregar categorÃ­a del producto
-                    categoria: product.categoria || product.category || '', // TambiÃ©n en espaÃ±ol
+                    category: product.categoria || product.category || '',
+                    categoria: product.categoria || product.category || '',
                     area_negocio: product.area_negocio || product.areaNegocio || '',
                     areaNegocio: product.area_negocio || product.areaNegocio || '',
                     quantity: qtyArt,
@@ -7403,7 +7425,6 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
                     referencia: articulo.referencia_articulo,
                     plazoEntrega: articulo.plazo_entrega || '',
                     image: product.foto || null,
-                    // Asegurar que se obtenga la descripciÃ³n en ambos formatos (camelCase y snake_case)
                     descripcionEs: product.descripcionEs || product.descripcion_es || '',
                     descripcionPt: product.descripcionPt || product.descripcion_pt || '',
                     descripcion_es: product.descripcion_es || product.descripcionEs || '',
@@ -7412,42 +7433,40 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
                     price_tiers: product.price_tiers || [],
                     variants: product.variants || [],
                     selectedVariant: (() => {
-                        // Buscar la variante correcta por su nombre (tipo_personalizacion)
-                        if (articulo.tipo_personalizacion && 
-                            articulo.tipo_personalizacion !== 'Sin personalizaciÃ³n' && 
-                            articulo.tipo_personalizacion !== 'Sem personalizaÃ§Ã£o' && 
+                        if (
+                            articulo.tipo_personalizacion &&
+                            articulo.tipo_personalizacion !== 'Sin personalizaciÃ³n' &&
+                            articulo.tipo_personalizacion !== 'Sem personalizaÃ§Ã£o' &&
                             articulo.tipo_personalizacion !== 'No customization' &&
-                            product.variants && 
-                            product.variants.length > 0) {
-                            // Buscar el Ã­ndice de la variante que coincida con el nombre guardado
-                            const variantIndex = product.variants.findIndex(variant => 
+                            product.variants &&
+                            product.variants.length > 0
+                        ) {
+                            const variantIndex = product.variants.findIndex(variant =>
                                 variant.name === articulo.tipo_personalizacion ||
                                 variant.nombre === articulo.tipo_personalizacion
                             );
-                            // Si se encuentra, devolver el Ã­ndice; si no, devolver null
                             return variantIndex >= 0 ? variantIndex : null;
                         }
                         return null;
                     })(),
-                    selectedReferenceVariant: selectedReferenceVariant, // Color seleccionado
-                    variantes_referencias: variantesReferencias, // Variantes de referencia del producto
-                    colorSeleccionadoGuardado: colorSeleccionadoGuardado, // Color guardado en la BD (puede no existir en variantes)
+                    selectedReferenceVariant: selectedReferenceVariant,
+                    variantes_referencias: variantesReferencias,
+                    colorSeleccionadoGuardado: colorSeleccionadoGuardado,
                     tipoPersonalizacion: articulo.tipo_personalizacion || '',
                     logoUrl: articulo.logo_url || null,
                     marca: product.marca || product.brand || product.marcaEs || '',
                     brand: product.brand || product.marca || product.marcaEs || ''
                 });
             } else {
-                // Si no se encuentra el producto en allProducts, intentar buscarlo en la base de datos
                 let productFromDB = null;
-                if (articulo.referencia_articulo && window.cartManager && window.cartManager.supabase) {
+                if (articulo.referencia_articulo && pdfCartManager.supabase) {
                     try {
-                        const { data: productData, error: productError } = await window.cartManager.supabase
+                        const { data: productData, error: productError } = await pdfCartManager.supabase
                             .from('products')
                             .select('*')
                             .eq('id', articulo.referencia_articulo)
                             .single();
-                        
+
                         if (!productError && productData) {
                             productFromDB = productData;
                             console.log('âœ… Producto encontrado en BD para item especial:', productData.nombre);
@@ -7456,8 +7475,7 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
                         console.warn('âš ï¸ Error buscando producto en BD:', dbError);
                     }
                 }
-                
-                // Crear un item especial (ej. mÃ³dulo editable), incluir descripciÃ³n, foto y plazo de entrega
+
                 const plazoEntregaSpecial = articulo.plazo_entrega || (productFromDB ? (productFromDB.plazo_entrega || productFromDB.plazoEntrega || '') : '');
                 cartItems.push({
                     id: articulo.referencia_articulo || `special_${articulo.id}`,
@@ -7471,7 +7489,6 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
                     notes: articulo.observaciones || '',
                     plazoEntrega: plazoEntregaSpecial,
                     plazo_entrega: plazoEntregaSpecial,
-                    // Incluir descripciÃ³n y foto si el producto se encontrÃ³ en la BD
                     descripcionEs: productFromDB ? (productFromDB.descripcion_es || productFromDB.descripcionEs || '') : '',
                     descripcionPt: productFromDB ? (productFromDB.descripcion_pt || productFromDB.descripcionPt || '') : '',
                     descripcion_es: productFromDB ? (productFromDB.descripcion_es || productFromDB.descripcionEs || '') : '',
@@ -7485,9 +7502,8 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
             }
         }
 
-        // Guardar temporalmente los datos de la propuesta en editingProposalData
-        const originalEditingData = window.cartManager.editingProposalData;
-        window.cartManager.editingProposalData = {
+        const originalEditingData = pdfCartManager.editingProposalData;
+        pdfCartManager.editingProposalData = {
             id: proposal.id,
             codigo_propuesta: proposal.codigo_propuesta,
             fecha_creacion: proposal.fecha_inicial,
@@ -7496,11 +7512,9 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
             pais: proposal.pais
         };
 
-        // Guardar temporalmente el carrito y reemplazarlo con los artÃ­culos de la propuesta
-        const originalCart = window.cartManager.cart;
-        window.cartManager.cart = cartItems;
+        const originalCart = pdfCartManager.cart;
+        pdfCartManager.cart = cartItems;
 
-        // Determinar el idioma basado en el paÃ­s de la propuesta
         const normalizeCountryCode = (value) => {
             const normalized = String(value || '')
                 .normalize('NFD')
@@ -7517,8 +7531,6 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
 
         console.log('ðŸ“„ Generando PDF con idioma:', pdfLanguage);
         console.log('ðŸ“¦ Items del carrito para PDF:', cartItems.length);
-        
-        // Generar el PDF con el idioma determinado por el paÃ­s
         console.log('ðŸ“„ Llamando a generateProposalPDF...');
         console.log('   - Idioma:', pdfLanguage);
         console.log('   - Items del carrito:', cartItems.length);
@@ -7527,7 +7539,7 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
             nombre_cliente: proposal.nombre_cliente,
             fecha_inicial: proposal.fecha_inicial
         });
-        
+
         try {
             await generateProposalPDF(pdfLanguage, proposal);
             console.log('âœ… PDF generado exitosamente desde propuesta guardada');
@@ -7539,10 +7551,9 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
             throw pdfError;
         }
 
-        // Restaurar el carrito original
         console.log('ðŸ”„ Restaurando carrito original...');
-        window.cartManager.cart = originalCart;
-        window.cartManager.editingProposalData = originalEditingData;
+        pdfCartManager.cart = originalCart;
+        pdfCartManager.editingProposalData = originalEditingData;
         console.log('âœ… Carrito restaurado');
 
     } catch (error) {
@@ -7551,8 +7562,12 @@ async function generateProposalPDFFromSavedProposal(proposalId, language = 'pt')
         console.error('   - Mensaje:', error.message);
         console.error('   - Stack:', error.stack);
         throw error;
+    } finally {
+        if (usingTemporaryCartManager) {
+            window.cartManager = originalGlobalCartManager;
+        }
     }
-    
+
     console.log('ðŸ ========== FIN generateProposalPDFFromSavedProposal ==========');
 }
 
