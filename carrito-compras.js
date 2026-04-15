@@ -3,7 +3,7 @@
  * Maneja la funcionalidad completa del carrito incluyendo agregar categorÃ­as
  */
 
-const EDITING_CART_PROPOSAL_KEY = 'editing_proposal_cart_id';
+window.EDITING_CART_PROPOSAL_KEY = window.EDITING_CART_PROPOSAL_KEY || 'editing_proposal_cart_id';
 
 class CartManager {
     constructor() {
@@ -83,7 +83,7 @@ class CartManager {
             // No estamos editando: si quedÃ³ datos de una ediciÃ³n anterior (salimos sin guardar o guardamos y volvimos), vaciar carrito
             if (localStorage.getItem('editing_proposal')) {
                 localStorage.removeItem('editing_proposal');
-                localStorage.removeItem(EDITING_CART_PROPOSAL_KEY);
+                localStorage.removeItem(window.EDITING_CART_PROPOSAL_KEY);
                 this.editingProposalId = null;
                 this.editingProposalData = null;
                 this.cart = [];
@@ -94,7 +94,7 @@ class CartManager {
 
     hasEditingDraftCart(proposalId) {
         try {
-            const storedProposalId = localStorage.getItem(EDITING_CART_PROPOSAL_KEY);
+            const storedProposalId = localStorage.getItem(window.EDITING_CART_PROPOSAL_KEY);
             if (String(storedProposalId || '') !== String(proposalId || '')) {
                 return false;
             }
@@ -1428,9 +1428,9 @@ class CartManager {
     saveCart() {
         localStorage.setItem('eppo_cart', JSON.stringify(this.cart));
         if (this.editingProposalId) {
-            localStorage.setItem(EDITING_CART_PROPOSAL_KEY, String(this.editingProposalId));
+            localStorage.setItem(window.EDITING_CART_PROPOSAL_KEY, String(this.editingProposalId));
         } else {
-            localStorage.removeItem(EDITING_CART_PROPOSAL_KEY);
+            localStorage.removeItem(window.EDITING_CART_PROPOSAL_KEY);
         }
         // Actualizar contador en el botÃ³n de navegaciÃ³n
         this.updateCartBadge();
@@ -6185,7 +6185,7 @@ function cancelProposalEditing() {
     }
 
     localStorage.removeItem('editing_proposal');
-    localStorage.removeItem(EDITING_CART_PROPOSAL_KEY);
+    localStorage.removeItem(window.EDITING_CART_PROPOSAL_KEY);
     localStorage.setItem('eppo_cart', '[]');
     window.location.href = 'consultar-propuestas.html';
 }
@@ -12067,7 +12067,7 @@ async function sendProposalToSupabase() {
         // Limpiar datos de ediciÃ³n
         if (window.cartManager.editingProposalId) {
             localStorage.removeItem('editing_proposal');
-            localStorage.removeItem(EDITING_CART_PROPOSAL_KEY);
+            localStorage.removeItem(window.EDITING_CART_PROPOSAL_KEY);
             window.cartManager.editingProposalId = null;
             window.cartManager.editingProposalData = null;
             

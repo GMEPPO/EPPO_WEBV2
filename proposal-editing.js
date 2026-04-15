@@ -1,4 +1,4 @@
-const EDITING_CART_PROPOSAL_KEY = 'editing_proposal_cart_id';
+window.EDITING_CART_PROPOSAL_KEY = window.EDITING_CART_PROPOSAL_KEY || 'editing_proposal_cart_id';
 
 function parseEditingProposalFromStorage() {
     try {
@@ -40,7 +40,7 @@ function markEditingCartDraft(proposalId) {
     if (!proposalId) return;
 
     try {
-        localStorage.setItem(EDITING_CART_PROPOSAL_KEY, String(proposalId));
+        localStorage.setItem(window.EDITING_CART_PROPOSAL_KEY, String(proposalId));
     } catch (_) {}
 }
 
@@ -52,7 +52,7 @@ function cancelEditingProposal(options = {}) {
 
     try {
         localStorage.removeItem('editing_proposal');
-        localStorage.removeItem(EDITING_CART_PROPOSAL_KEY);
+        localStorage.removeItem(window.EDITING_CART_PROPOSAL_KEY);
         if (clearCart) {
             localStorage.setItem('eppo_cart', '[]');
         }
