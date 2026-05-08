@@ -1,4 +1,5 @@
 {
+  "framework": null,
   "rewrites": [
     { "source": "/api/admin-users", "destination": "/api/admin-users/index" },
     { "source": "/reset-password", "destination": "/reset-password.html" },
