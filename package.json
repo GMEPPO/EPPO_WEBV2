@@ -1,34 +1,30 @@
 {
-  "name": "skus-administrator",
-  "private": true,
+  "name": "web-interna",
   "version": "1.0.0",
+  "description": "Sistema de gestión de propuestas y productos",
+  "main": "index.html",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "dev": "npx http-server -p 8000",
+    "start": "npx http-server -p 8000"
   },
+  "keywords": [
+    "propuestas",
+    "productos",
+    "supabase"
+  ],
+  "author": "",
+  "license": "ISC",
   "dependencies": {
-    "@radix-ui/react-slot": "^1.1.0",
-    "@supabase/ssr": "^0.5.1",
-    "@supabase/supabase-js": "^2.45.4",
-    "clsx": "^2.1.1",
-    "lucide-react": "^0.453.0",
-    "next": "^14.2.13",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "tailwind-merge": "^2.5.2",
-    "zod": "^3.23.8"
+    "@supabase/supabase-js": "^2.57.4"
   },
   "devDependencies": {
-    "@types/node": "^22.7.4",
-    "@types/react": "^18.3.9",
-    "@types/react-dom": "^18.3.0",
-    "autoprefixer": "^10.4.20",
-    "eslint": "^8.57.1",
-    "eslint-config-next": "^14.2.13",
-    "postcss": "^8.4.47",
-    "tailwindcss": "^3.4.13",
-    "typescript": "^5.6.2"
+    "http-server": "^14.1.1"
   }
 }
+
+
+
+
+
+
+

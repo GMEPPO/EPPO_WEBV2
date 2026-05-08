@@ -733,6 +733,14 @@ class CartManager {
                     // Corregir el precio
                     cartItem.price = precioGuardado;
                 }
+
+                // Si la variante personalizada guardada era "sobre consulta", el precio
+                // introducido por admin debe conservarse como precio manual aunque el
+                // precio base del producto no sea 0.
+                if (!cartItem.manualPrice && precioGuardado > 0 && canEditManualPriceForCartItem(cartItem, precioGuardado, this)) {
+                    cartItem.manualPrice = true;
+                    cartItem.originalPrice = precioGuardado;
+                }
                 
                 console.log('âœ… Item agregado al carrito:', {
                     nombre: cartItem.name,
@@ -2951,21 +2959,13 @@ class CartManager {
                             // Verificar si el precio actual es 0 o "sobre consulta"
                             const precioActualEsCero = unitPrice === 0 || unitPrice === null || unitPrice === undefined;
                             
-                            // Verificar si hay una variante personalizada seleccionada
-                            // Si hay variante seleccionada, NO mostrar input editable
-                            const tieneVarianteSeleccionada = item.selectedVariant !== null && 
-                                                              item.selectedVariant !== undefined && 
-                                                              item.variants && 
-                                                              item.variants.length > 0;
-                            
                             // Verificar rol del usuario (usar cachÃ© si estÃ¡ disponible)
                             const userRole = window.cachedRole || null;
                             
-                            // Mostrar input editable solo para admin y para precios manuales reales
-                            // de productos "sobre consulta" (precio base 0).
-                            const baseIsZero = item.basePrice === 0 || item.basePrice === null || item.basePrice === undefined;
-                            const mostrarInputPrecio = (baseIsZero && (precioActualEsCero || isManualPrice)) && !tieneVarianteSeleccionada && userRole === 'admin';
-                            if (precioActualEsCero && !tieneVarianteSeleccionada && isCommercialLikeRole(userRole)) {
+                            // Mostrar input editable solo para admin y para precios efectivos
+                            // "sobre consulta", incluyendo variantes personalizadas.
+                            const mostrarInputPrecio = canEditManualPriceForCartItem(item, unitPrice, this) && userRole === 'admin';
+                            if (precioActualEsCero && !mostrarInputPrecio && isCommercialLikeRole(userRole)) {
                                 const translations = { 'pt': 'Sobre consulta', 'es': 'Sobre consulta', 'en': 'On request' };
                                 const currentLang = this.currentLanguage || localStorage.getItem('language') || 'pt';
                                 const textoConsulta = translations[currentLang] || translations['pt'];
@@ -5387,6 +5387,8 @@ function changeProductVariant(itemId, variantIndex) {
             console.error('Item no encontrado o no es un producto');
             return;
         }
+
+        const previousSelectedVariant = item.selectedVariant !== undefined ? item.selectedVariant : null;
         
         // Cargar variantes si no estÃ¡n en el item
         if (!item.variants || item.variants.length === 0) {
@@ -5433,6 +5435,14 @@ function changeProductVariant(itemId, variantIndex) {
                 console.warn('Ãndice de variante invÃ¡lido:', index);
                 return;
             }
+        }
+
+        const previousVariantKey = previousSelectedVariant === null || previousSelectedVariant === undefined ? 'base' : String(previousSelectedVariant);
+        const nextVariantKey = item.selectedVariant === null || item.selectedVariant === undefined ? 'base' : String(item.selectedVariant);
+        if (previousVariantKey !== nextVariantKey && item.manualPrice === true) {
+            item.manualPrice = false;
+            delete item.originalPrice;
+            item.mode200Applied = false;
         }
         
         // Recalcular precio segÃºn la variante seleccionada
@@ -13309,7 +13319,7 @@ async function renameTemporaryLogos(clientName, articulosData) {
 }
 
 /**
- * Actualizar precio manualmente (solo para productos con precio 0 y solo para administradores)
+ * Actualizar precio manualmente (solo para productos/variantes con precio 0 y solo para administradores)
  */
 async function updateManualPrice(itemId, newPrice) {
     if (!window.cartManager) {
@@ -13365,38 +13375,16 @@ async function updateManualPrice(itemId, newPrice) {
             return;
         }
         
-        // Permitir editar si: precio base es 0 (sobre consulta) O ya tiene precio manual (para poder re-editar sin aviso)
-        const currentPrice = item.price ?? 0;
-        const baseIsZero = (item.basePrice === 0 || item.basePrice === null || item.basePrice === undefined);
-        const alreadyManual = item.manualPrice === true;
-        if (currentPrice !== 0 && !alreadyManual) {
-            // Solo bloquear si el producto no era "sobre consulta" (basePrice !== 0) y no tiene precio manual
-            if (!baseIsZero) {
-                console.warn('âš ï¸ Solo se pueden editar precios de productos con precio 0 (sobre consulta)');
-                alert(window.cartManager.currentLanguage === 'pt' ? 
-                      'Apenas produtos com preÃ§o 0 (sobre consulta) podem ter preÃ§o editado manualmente.' :
-                      window.cartManager.currentLanguage === 'es' ?
-                      'Solo se pueden editar precios de productos con precio 0 (sobre consulta).' :
-                      'Only products with price 0 (on request) can have manually edited prices.');
-                const priceInput = document.querySelector(`input.cart-item-price-input[onchange*="${itemId}"]`);
-                if (priceInput && item.price !== undefined && item.price !== null) {
-                    priceInput.value = item.price.toFixed(4);
-                }
-                return;
-            }
-        }
-        
-        // Verificar si hay una variante personalizada seleccionada
-        // Si hay variante seleccionada, NO permitir editar el precio
-        if (item.selectedVariant !== null && item.selectedVariant !== undefined && item.variants && item.variants.length > 0) {
-            console.warn('âš ï¸ No se puede editar el precio cuando hay una variante personalizada seleccionada');
+        // Permitir editar si el precio efectivo seleccionado es 0 (sobre consulta)
+        // o si el item ya tenia un precio manual guardado.
+        const currentPrice = Number(item.price ?? 0);
+        if (!canEditManualPriceForCartItem(item, currentPrice, window.cartManager)) {
+            console.warn('âš ï¸ Solo se pueden editar precios de productos con precio 0 (sobre consulta)');
             alert(window.cartManager.currentLanguage === 'pt' ? 
-                  'NÃ£o Ã© possÃ­vel editar o preÃ§o quando hÃ¡ uma variante personalizada selecionada.' :
+                  'Apenas produtos com preÃ§o 0 (sobre consulta) podem ter preÃ§o editado manualmente.' :
                   window.cartManager.currentLanguage === 'es' ?
-                  'No se puede editar el precio cuando hay una variante personalizada seleccionada.' :
-                  'Cannot edit price when a personalized variant is selected.');
-            
-            // Restaurar precio anterior
+                  'Solo se pueden editar precios de productos con precio 0 (sobre consulta).' :
+                  'Only products with price 0 (on request) can have manually edited prices.');
             const priceInput = document.querySelector(`input.cart-item-price-input[onchange*="${itemId}"]`);
             if (priceInput && item.price !== undefined && item.price !== null) {
                 priceInput.value = item.price.toFixed(4);
@@ -13436,6 +13424,72 @@ async function updateManualPrice(itemId, newPrice) {
 }
 
 window.handleLogoUpload = handleLogoUpload;
+
+function getCartItemSelectedVariant(item) {
+    if (!item || item.selectedVariant === null || item.selectedVariant === undefined) {
+        return null;
+    }
+
+    if (!Array.isArray(item.variants) || item.variants.length === 0) {
+        return null;
+    }
+
+    const index = Number(item.selectedVariant);
+    if (!Number.isInteger(index) || index < 0 || index >= item.variants.length) {
+        return null;
+    }
+
+    return item.variants[index] || null;
+}
+
+function getCartItemEffectivePriceTiers(item) {
+    const selectedVariant = getCartItemSelectedVariant(item);
+    if (selectedVariant && Array.isArray(selectedVariant.price_tiers) && selectedVariant.price_tiers.length > 0) {
+        return selectedVariant.price_tiers;
+    }
+
+    return Array.isArray(item?.price_tiers) ? item.price_tiers : [];
+}
+
+function isCartItemOnRequestPrice(item, currentPrice = item?.price, cartManager = window.cartManager) {
+    if (!item) {
+        return false;
+    }
+
+    const priceNum = Number(currentPrice ?? 0);
+    if (Number.isFinite(priceNum) && priceNum === 0) {
+        return true;
+    }
+
+    const priceTiers = getCartItemEffectivePriceTiers(item);
+    if (priceTiers.length > 0 && cartManager && typeof cartManager.getPriceForQuantity === 'function') {
+        const selectedVariant = getCartItemSelectedVariant(item);
+        const basePrice = selectedVariant ? 0 : (item.basePrice ?? 0);
+        const quantity = Number(item.quantity) || 1;
+        const priceResult = cartManager.getPriceForQuantity(priceTiers, quantity, basePrice);
+        const effectivePrice = Number(priceResult?.price ?? 0);
+        return Number.isFinite(effectivePrice) && effectivePrice === 0;
+    }
+
+    if (item.basePrice === null || item.basePrice === undefined) {
+        return false;
+    }
+
+    const basePrice = Number(item.basePrice);
+    return Number.isFinite(basePrice) && basePrice === 0;
+}
+
+function canEditManualPriceForCartItem(item, currentPrice = item?.price, cartManager = window.cartManager) {
+    if (!item || item.type !== 'product') {
+        return false;
+    }
+
+    if (item.manualPrice === true) {
+        return true;
+    }
+
+    return isCartItemOnRequestPrice(item, currentPrice, cartManager);
+}
 
 /**
  * Variable global para almacenar la resoluciÃ³n de la promesa del modal de versiÃ³n
