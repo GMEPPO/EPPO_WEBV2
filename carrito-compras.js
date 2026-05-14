@@ -7604,6 +7604,1194 @@ if (typeof window !== 'undefined') {
     window.generateProposalPDFFromSavedProposal = generateProposalPDFFromSavedProposal;
 }
 
+async function loadExcelJSForProposalExport() {
+    if (window.ExcelJS) return window.ExcelJS;
+
+    const existingScript = document.querySelector('script[data-eppo-exceljs="true"], script[src*="exceljs"]');
+    if (existingScript) {
+        return new Promise((resolve, reject) => {
+            const startedAt = Date.now();
+            const interval = setInterval(() => {
+                if (window.ExcelJS) {
+                    clearInterval(interval);
+                    resolve(window.ExcelJS);
+                } else if (Date.now() - startedAt > 10000) {
+                    clearInterval(interval);
+                    reject(new Error('ExcelJS no se cargo a tiempo'));
+                }
+            }, 100);
+            existingScript.addEventListener('error', () => {
+                clearInterval(interval);
+                reject(new Error('Error cargando ExcelJS'));
+            }, { once: true });
+        });
+    }
+
+    return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';
+        script.async = true;
+        script.dataset.eppoExceljs = 'true';
+        script.onload = () => {
+            if (window.ExcelJS) {
+                resolve(window.ExcelJS);
+            } else {
+                reject(new Error('ExcelJS no esta disponible despues de cargar el script'));
+            }
+        };
+        script.onerror = () => reject(new Error('No se pudo cargar ExcelJS'));
+        document.head.appendChild(script);
+    });
+}
+
+function normalizeCountryCodeForProposalExport(value) {
+    const repaired = String(value || '')
+        .replace(/\u00c3\u00b1/g, '\u00f1')
+        .replace(/\u00c3\u0091/g, '\u00d1')
+        .replace(/\u00c3\u00a1/g, '\u00e1')
+        .replace(/\u00c3\u0081/g, '\u00c1')
+        .replace(/\u00c3\u00a9/g, '\u00e9')
+        .replace(/\u00c3\u0089/g, '\u00c9')
+        .replace(/\u00c3\u00ad/g, '\u00ed')
+        .replace(/\u00c3\u008d/g, '\u00cd')
+        .replace(/\u00c3\u00b3/g, '\u00f3')
+        .replace(/\u00c3\u0093/g, '\u00d3')
+        .replace(/\u00c3\u00ba/g, '\u00fa')
+        .replace(/\u00c3\u009a/g, '\u00da')
+        .replace(/\u00c3\u00bc/g, '\u00fc')
+        .replace(/\u00c3\u009c/g, '\u00dc')
+        .replace(/\u00c2/g, '');
+
+    const normalized = repaired
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .toLowerCase();
+
+    if (['es', 'espana', 'espanha', 'spain'].includes(normalized)) return 'es';
+    if (['pt', 'portugal'].includes(normalized)) return 'pt';
+    return '';
+}
+
+function getProposalCountryValueForExport(proposalLike) {
+    if (!proposalLike || typeof proposalLike !== 'object') return '';
+    return (
+        proposalLike.pais ||
+        proposalLike.Pais ||
+        proposalLike.country ||
+        proposalLike.Country ||
+        proposalLike.pais_cliente ||
+        proposalLike.country_code ||
+        ''
+    );
+}
+
+function normalizeProposalExportText(value) {
+    return String(value || '')
+        .replace(/\r\n/g, '\n')
+        .replace(/\r/g, '\n')
+        .replace(/\n{2,}/g, '\n')
+        .trim();
+}
+
+function getDisplayNameForProposalExport(name) {
+    return String(name || '').replace(/\.([^.]*?)\./g, '$1').trim();
+}
+
+function stripPesoAndQtdCaixaForProposalExport(observations) {
+    if (!observations || typeof observations !== 'string') return '';
+    return observations
+        .replace(/\s*Peso:\s*[^\n|]*/gi, '')
+        .replace(/\s*Qtd\/caixa:\s*[^\n|]*/gi, '')
+        .replace(/\s*Quantidade por caixa:\s*[^\n|]*/gi, '')
+        .replace(/\s*Cant\. por caja:\s*[^\n|]*/gi, '')
+        .replace(/\s*Qty per box:\s*[^\n|]*/gi, '')
+        .replace(/\s*\|\s*\|\s*/g, ' | ')
+        .replace(/^\s*\|\s*|\s*\|\s*$/g, '')
+        .replace(/\n{2,}/g, '\n')
+        .trim();
+}
+
+function normalizeTextNoAccentsForProposalExport(value) {
+    return (value || '')
+        .toString()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+}
+
+function isPersonalizedSelectionForProposalExport(item) {
+    if (item.selectedVariant !== null && item.selectedVariant !== undefined) return true;
+    const tp = normalizeTextNoAccentsForProposalExport(item.tipoPersonalizacion || item.tipo_personalizacion || item.personalization || '');
+    if (!tp) return false;
+    return tp !== 'sin personalizacion' && tp !== 'sem personalizacao' && tp !== 'no customization';
+}
+
+function getItemAreaNegocioForProposalExport(item, exportCartManager) {
+    const directArea = item.area_negocio || item.areaNegocio || item.categoria || item.category || '';
+    if (directArea) return directArea;
+    const ref = item.id || item.referencia || item.referencia_articulo;
+    if (!ref || !exportCartManager?.allProducts?.length) return '';
+    const match = exportCartManager.allProducts.find(p => String(p.id) === String(ref));
+    return match ? (match.area_negocio || match.areaNegocio || match.categoria || match.category || '') : '';
+}
+
+function isPersonalizedBusinessAreaForProposalExport(areaValue) {
+    const area = normalizeTextNoAccentsForProposalExport(areaValue);
+    const isAccessoriesPersonalized =
+        (area.includes('acessor') || area.includes('accesor')) && area.includes('personaliz');
+    const isCosmeticsPersonalized =
+        area.includes('cosmet') && area.includes('personaliz');
+    return isAccessoriesPersonalized || isCosmeticsPersonalized;
+}
+
+function requiresLogoConfirmationForProposalExport(item, exportCartManager) {
+    if (item.logoUrl && String(item.logoUrl).trim() !== '') return false;
+    const area = getItemAreaNegocioForProposalExport(item, exportCartManager);
+    if (!isPersonalizedBusinessAreaForProposalExport(area)) return false;
+    return isPersonalizedSelectionForProposalExport(item);
+}
+
+function formatQuantityForProposalExport(value) {
+    const n = Number(value) || 0;
+    return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+function formatMoneyForProposalExport(value) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return '0,00';
+    const fixed = n.toFixed(2);
+    const parts = fixed.split('.');
+    return `${parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.')},${parts[1] || '00'}`;
+}
+
+function buildProposalExcelFileName(proposalData) {
+    const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
+    const cleanName = (proposalData?.nombre_cliente || 'Sin_nombre')
+        .replace(/[^a-zA-Z0-9]/g, '_')
+        .replace(/_+/g, '_')
+        .substring(0, 50) || 'Sin_nombre';
+    return `GGMPI_${cleanName}_varios_${dateStr}.xlsx`
+        .replace(/[<>:"/\\|?*]/g, '_')
+        .substring(0, 255);
+}
+
+function getProductImageUrlForProposalExport(imageUrl) {
+    if (!imageUrl || typeof imageUrl !== 'string') return null;
+    const trimmedUrl = imageUrl.trim();
+    if (!trimmedUrl || trimmedUrl === '{}' || trimmedUrl === 'null' || trimmedUrl === 'undefined') return null;
+    if (/^https?:\/\//i.test(trimmedUrl) || /^data:image\//i.test(trimmedUrl)) return trimmedUrl;
+
+    const supabaseUrl = (typeof window !== 'undefined' && window.SUPABASE_CONFIG && window.SUPABASE_CONFIG.url)
+        ? window.SUPABASE_CONFIG.url
+        : null;
+    if (!supabaseUrl) return trimmedUrl;
+    if (trimmedUrl.startsWith('productos/')) {
+        return `${supabaseUrl}/storage/v1/object/public/product-images/${trimmedUrl}`;
+    }
+    return `${supabaseUrl}/storage/v1/object/public/product-images/productos/${trimmedUrl}`;
+}
+
+function buildProposalExportTranslations(lang) {
+    const translations = {
+        pt: {
+            sheetName: 'Proposta',
+            client: 'Cliente',
+            proposalNumber: 'Nr proposta',
+            proposalDate: 'Data da proposta',
+            commercial: 'Comercial',
+            email: 'Email',
+            phone: 'Contacto',
+            photo: 'Foto',
+            name: 'Nome',
+            description: 'Descricao',
+            quantity: 'Qtd.',
+            unitPrice: 'Preco',
+            total: 'Total',
+            deliveryTime: 'Entrega',
+            logo: 'Logo',
+            personalized: 'Personalizado',
+            notes: 'Notas',
+            totalProposal: 'Total da Proposta',
+            onRequest: 'Sobre consulta',
+            enStock: 'Em stock',
+            unidadesEnStock: 'unidades em stock',
+            restantes: 'Restantes',
+            plazoEntrega: 'prazo de entrega',
+            sujetoConfirmacion: '(sujeito a confirmacao no momento da adjudicacao)',
+            logoConfirmation: 'preco a confirmar apos a rececao do logotipo',
+            imageFallback: 'Imagem',
+            logoFallback: 'Logo',
+            footer: [
+                'Precos nao incluem IVA e sao validos para uma unica entrega.',
+                'Estes precos nao incluem despesas de transporte.',
+                'Esta proposta e valida por 1 mes e esta sempre sujeita a revisao no momento da adjudicacao.',
+                'A quantidade de entrega podera ter uma variacao de ate 10%.',
+                'Condicoes de pagamento: 30% do valor total do pedido no momento da adjudicacao; 70% nas condicoes habituais.'
+            ]
+        },
+        es: {
+            sheetName: 'Propuesta',
+            client: 'Cliente',
+            proposalNumber: 'N de propuesta',
+            proposalDate: 'Fecha de la propuesta',
+            commercial: 'Comercial',
+            email: 'Email',
+            phone: 'Contacto',
+            photo: 'Foto',
+            name: 'Nombre',
+            description: 'Descripcion',
+            quantity: 'Cant.',
+            unitPrice: 'Precio',
+            total: 'Total',
+            deliveryTime: 'Entrega',
+            logo: 'Logo',
+            personalized: 'Personalizado',
+            notes: 'Notas',
+            totalProposal: 'Total de la Propuesta',
+            onRequest: 'Sobre consulta',
+            enStock: 'En stock',
+            unidadesEnStock: 'unidades en stock',
+            restantes: 'Restantes',
+            plazoEntrega: 'plazo de entrega',
+            sujetoConfirmacion: '(sujeto a confirmacion en el momento de la adjudicacion)',
+            logoConfirmation: 'precio a confirmar tras la recepcion del logotipo',
+            imageFallback: 'Imagen',
+            logoFallback: 'Logo',
+            footer: [
+                'Los precios no incluyen IVA y son validos para una unica entrega.',
+                'Estos precios no incluyen gastos de transporte.',
+                'Esta propuesta es valida por 1 mes y esta siempre sujeta a revision en el momento de la adjudicacion.',
+                'La cantidad de entrega podra tener una variacion de hasta 10%.',
+                'Condiciones de pago: 30% del valor total del pedido en el momento de la adjudicacion; 70% en las condiciones habituales.'
+            ]
+        },
+        en: {
+            sheetName: 'Proposal',
+            client: 'Client',
+            proposalNumber: 'Proposal No.',
+            proposalDate: 'Proposal Date',
+            commercial: 'Commercial',
+            email: 'Email',
+            phone: 'Phone',
+            photo: 'Photo',
+            name: 'Name',
+            description: 'Description',
+            quantity: 'Qty.',
+            unitPrice: 'Price',
+            total: 'Total',
+            deliveryTime: 'Delivery',
+            logo: 'Logo',
+            personalized: 'Custom',
+            notes: 'Notes',
+            totalProposal: 'Proposal Total',
+            onRequest: 'On request',
+            enStock: 'In stock',
+            unidadesEnStock: 'units in stock',
+            restantes: 'Remaining',
+            plazoEntrega: 'delivery time',
+            sujetoConfirmacion: '(subject to confirmation at the time of award)',
+            logoConfirmation: 'price to confirm after logo reception',
+            imageFallback: 'Image',
+            logoFallback: 'Logo',
+            footer: [
+                'Prices do not include VAT and are valid for a single delivery.',
+                'These prices do not include transport costs.',
+                'This proposal is valid for 2 months and is always subject to revision at the time of award.',
+                'The delivery quantity may have a variation of up to 10%.',
+                'Payment conditions: 30% of the total order value at the time of award; 70% under usual conditions.'
+            ]
+        }
+    };
+    return translations[lang] || translations.pt;
+}
+
+async function buildCartItemsForProposalExcel(exportCartManager, articulos) {
+    const cartItems = [];
+    const articulosList = (articulos || []).slice().sort((a, b) => {
+        const oA = a.orden != null && a.orden !== '' ? Number(a.orden) : 999999;
+        const oB = b.orden != null && b.orden !== '' ? Number(b.orden) : 999999;
+        if (oA !== oB) return oA - oB;
+        return (a.created_at || '').localeCompare(b.created_at || '');
+    });
+
+    for (const articulo of articulosList) {
+        const qtyArt = articulo.cantidad ?? articulo.cantidad_encomendada ?? 1;
+        const product = (articulo.referencia_articulo && exportCartManager.allProducts)
+            ? exportCartManager.allProducts.find(p => String(p.id) === String(articulo.referencia_articulo))
+            : null;
+
+        if (product) {
+            let variantesReferencias = product.variantes_referencias || [];
+            if (variantesReferencias && typeof variantesReferencias === 'string') {
+                try {
+                    variantesReferencias = JSON.parse(variantesReferencias);
+                } catch (_) {
+                    variantesReferencias = [];
+                }
+            }
+
+            cartItems.push({
+                id: product.id,
+                type: 'product',
+                name: articulo.nombre_articulo,
+                category: product.categoria || product.category || '',
+                categoria: product.categoria || product.category || '',
+                area_negocio: product.area_negocio || product.areaNegocio || '',
+                areaNegocio: product.area_negocio || product.areaNegocio || '',
+                quantity: qtyArt,
+                price: articulo.precio,
+                observations: articulo.observaciones || '',
+                referencia: articulo.referencia_articulo,
+                plazoEntrega: articulo.plazo_entrega || '',
+                image: getProductImageUrlForProposalExport(product.foto || articulo.foto_articulo || null),
+                descripcionEs: product.descripcionEs || product.descripcion_es || '',
+                descripcionPt: product.descripcionPt || product.descripcion_pt || '',
+                descripcion_es: product.descripcion_es || product.descripcionEs || '',
+                descripcion_pt: product.descripcion_pt || product.descripcionPt || '',
+                description: product.descripcion_es || product.descripcionEs || product.descripcion_pt || product.descripcionPt || '',
+                price_tiers: product.price_tiers || [],
+                variants: product.variants || [],
+                selectedVariant: (() => {
+                    if (
+                        articulo.tipo_personalizacion &&
+                        articulo.tipo_personalizacion !== 'Sin personalizacion' &&
+                        articulo.tipo_personalizacion !== 'Sin personalizaciÃ³n' &&
+                        articulo.tipo_personalizacion !== 'Sem personalizacao' &&
+                        articulo.tipo_personalizacion !== 'Sem personalizaÃ§Ã£o' &&
+                        articulo.tipo_personalizacion !== 'No customization' &&
+                        product.variants &&
+                        product.variants.length > 0
+                    ) {
+                        const variantIndex = product.variants.findIndex(variant =>
+                            variant.name === articulo.tipo_personalizacion ||
+                            variant.nombre === articulo.tipo_personalizacion
+                        );
+                        return variantIndex >= 0 ? variantIndex : null;
+                    }
+                    return null;
+                })(),
+                selectedReferenceVariant: (articulo.variante_referencia !== null && articulo.variante_referencia !== undefined)
+                    ? parseInt(articulo.variante_referencia)
+                    : null,
+                variantes_referencias: variantesReferencias,
+                colorSeleccionadoGuardado: articulo.color_seleccionado || null,
+                tipoPersonalizacion: articulo.tipo_personalizacion || '',
+                logoUrl: articulo.logo_url || null,
+                marca: product.marca || product.brand || product.marcaEs || '',
+                brand: product.brand || product.marca || product.marcaEs || ''
+            });
+        } else {
+            let productFromDB = null;
+            if (articulo.referencia_articulo && exportCartManager.supabase) {
+                try {
+                    const { data: productData, error: productError } = await exportCartManager.supabase
+                        .from('products')
+                        .select('*')
+                        .eq('id', articulo.referencia_articulo)
+                        .single();
+
+                    if (!productError && productData) {
+                        productFromDB = productData;
+                    }
+                } catch (_) {}
+            }
+
+            const plazoEntregaSpecial = articulo.plazo_entrega || (productFromDB ? (productFromDB.plazo_entrega || productFromDB.plazoEntrega || '') : '');
+            cartItems.push({
+                id: articulo.referencia_articulo || `special_${articulo.id}`,
+                type: 'special',
+                name: articulo.nombre_articulo,
+                area_negocio: productFromDB ? (productFromDB.area_negocio || productFromDB.areaNegocio || '') : '',
+                areaNegocio: productFromDB ? (productFromDB.area_negocio || productFromDB.areaNegocio || '') : '',
+                quantity: qtyArt,
+                price: articulo.precio,
+                observations: articulo.observaciones || '',
+                notes: articulo.observaciones || '',
+                plazoEntrega: plazoEntregaSpecial,
+                plazo_entrega: plazoEntregaSpecial,
+                descripcionEs: productFromDB ? (productFromDB.descripcion_es || productFromDB.descripcionEs || '') : '',
+                descripcionPt: productFromDB ? (productFromDB.descripcion_pt || productFromDB.descripcionPt || '') : '',
+                descripcion_es: productFromDB ? (productFromDB.descripcion_es || productFromDB.descripcionEs || '') : '',
+                descripcion_pt: productFromDB ? (productFromDB.descripcion_pt || productFromDB.descripcionPt || '') : '',
+                description: productFromDB ? (productFromDB.descripcion_es || productFromDB.descripcion_pt || productFromDB.descripcionEs || productFromDB.descripcionPt || '') : '',
+                image: getProductImageUrlForProposalExport(productFromDB ? (productFromDB.foto || null) : articulo.foto_articulo || null),
+                foto: getProductImageUrlForProposalExport(productFromDB ? (productFromDB.foto || null) : articulo.foto_articulo || null),
+                tipoPersonalizacion: articulo.tipo_personalizacion || '',
+                logoUrl: articulo.logo_url || null
+            });
+        }
+    }
+
+    return cartItems;
+}
+
+function mergeProposalExportItems(cartItems, exportCartManager) {
+    const mergedByKey = new Map();
+    const mergedOrder = [];
+
+    (cartItems || []).forEach((item) => {
+        if (!item || item.type !== 'product') {
+            mergedOrder.push(item);
+            return;
+        }
+
+        const idKey = item.id || item.referencia_articulo || item.referencia || '';
+        const refKey = item.selectedReferenceVariant !== null && item.selectedReferenceVariant !== undefined
+            ? String(item.selectedReferenceVariant)
+            : '';
+        const colorGuardKey = item.colorSeleccionadoGuardado || item.colorSeleccionadoGuardado === ''
+            ? String(item.colorSeleccionadoGuardado)
+            : '';
+        const tipoPersonalizacionKey = normalizeTextNoAccentsForProposalExport(
+            item.tipoPersonalizacion || item.tipo_personalizacion || item.personalization || ''
+        );
+        const selectedVariantKey = item.selectedVariant !== null && item.selectedVariant !== undefined
+            ? String(item.selectedVariant)
+            : '';
+        const logoKey = (item.logoUrl && String(item.logoUrl).trim() !== '') ? 'has' : 'no';
+        const obsKey = (item.observations || item.observations_text || '').trim();
+        const key = `${idKey}|tp:${tipoPersonalizacionKey}|sv:${selectedVariantKey}|ref:${refKey}|c:${colorGuardKey}|logo:${logoKey}|obs:${obsKey}`;
+
+        if (!mergedByKey.has(key)) {
+            const cloned = { ...item };
+            cloned._mergeOccurrences = [{ qty: Number(cloned.quantity || 0), unitPrice: Number(cloned.price || 0) }];
+            cloned._mergeBaseForCalc = cloned.basePrice || cloned.precio || Number(cloned.price || 0) || 0;
+            mergedByKey.set(key, cloned);
+            mergedOrder.push(cloned);
+            return;
+        }
+
+        const existing = mergedByKey.get(key);
+        if ((!existing.logoUrl || String(existing.logoUrl).trim() === '') && item.logoUrl && String(item.logoUrl).trim() !== '') {
+            existing.logoUrl = item.logoUrl;
+        }
+
+        existing._mergeOccurrences.push({ qty: Number(item.quantity || 0), unitPrice: Number(item.price || 0) });
+
+        const hasSelectedVariant = existing.selectedVariant !== null &&
+            existing.selectedVariant !== undefined &&
+            existing.variants &&
+            Array.isArray(existing.variants) &&
+            existing.variants.length > 0;
+
+        let effectivePriceTiers = [];
+        let variantTiersMissing = false;
+
+        if (hasSelectedVariant) {
+            const selectedVariant = existing.variants[existing.selectedVariant];
+            if (selectedVariant && Array.isArray(selectedVariant.price_tiers) && selectedVariant.price_tiers.length > 0) {
+                effectivePriceTiers = selectedVariant.price_tiers;
+            } else {
+                variantTiersMissing = true;
+            }
+        } else if (existing.price_tiers && Array.isArray(existing.price_tiers) && existing.price_tiers.length > 0) {
+            effectivePriceTiers = existing.price_tiers;
+        }
+
+        const canCalcTiers = !variantTiersMissing &&
+            effectivePriceTiers &&
+            Array.isArray(effectivePriceTiers) &&
+            effectivePriceTiers.length > 0 &&
+            exportCartManager &&
+            typeof exportCartManager.getPriceForQuantity === 'function';
+
+        let totalSum = 0;
+        const newOccs = [];
+
+        for (const o of existing._mergeOccurrences) {
+            const q = Number(o.qty || 0);
+            if (!Number.isFinite(q) || q <= 0) continue;
+            let unit = Number(o.unitPrice || 0);
+            if (canCalcTiers) {
+                const res = exportCartManager.getPriceForQuantity(effectivePriceTiers, q, existing._mergeBaseForCalc || 0);
+                unit = (res && typeof res.price === 'number' && Number.isFinite(res.price)) ? res.price : unit;
+            }
+            const total = unit * q;
+            newOccs.push({ qty: q, unitPrice: unit, total });
+            totalSum += total;
+        }
+
+        const quantitySum = newOccs.reduce((acc, o) => acc + Number(o.qty || 0), 0);
+        existing._mergeOccurrences = newOccs;
+        existing.quantity = quantitySum;
+        existing.price = quantitySum > 0 ? (totalSum / quantitySum) : Number(existing.price || 0);
+    });
+
+    return mergedOrder;
+}
+
+function buildDescriptionForProposalExcel(item, lang, t) {
+    let description = '';
+    if (item.type === 'product') {
+        description = lang === 'es'
+            ? (item.descripcion_es || item.descripcionEs || item.description || '')
+            : (item.descripcion_pt || item.descripcionPt || item.descripcion_es || item.descripcionEs || item.description || '');
+    } else {
+        description = lang === 'es'
+            ? (item.descripcionEs || item.descripcion_es || item.description || item.notes || '')
+            : (item.descripcionPt || item.descripcion_pt || item.descripcionEs || item.descripcion_es || item.description || item.notes || '');
+    }
+
+    const parts = [];
+    const cleanDescription = normalizeProposalExportText(description || '-');
+    if (cleanDescription) parts.push(cleanDescription);
+
+    let variantText = '';
+    if (item.selectedVariant !== null && item.selectedVariant !== undefined && item.variants && item.variants.length > 0) {
+        const selectedVariant = item.variants[item.selectedVariant];
+        variantText = selectedVariant?.name || selectedVariant?.nombre || '';
+    } else {
+        const tp = item.tipoPersonalizacion || item.tipo_personalizacion || '';
+        const normalizedTp = normalizeTextNoAccentsForProposalExport(tp);
+        if (tp && normalizedTp !== 'sin personalizacion' && normalizedTp !== 'sem personalizacao' && normalizedTp !== 'no customization') {
+            variantText = tp;
+        }
+    }
+
+    if (variantText) {
+        parts.push(`${t.personalized}: ${normalizeProposalExportText(variantText)}`);
+    }
+
+    let selectedColorText = '';
+    if (item.selectedReferenceVariant !== null && item.selectedReferenceVariant !== undefined) {
+        if (item.colorSeleccionadoGuardado) {
+            selectedColorText = lang === 'pt'
+                ? `Cor seleccionada ${item.colorSeleccionadoGuardado}`
+                : lang === 'es'
+                ? `Color seleccionado ${item.colorSeleccionadoGuardado}`
+                : `Color selected ${item.colorSeleccionadoGuardado}`;
+        } else {
+            const referenceVariants = Array.isArray(item.variantes_referencias) ? item.variantes_referencias : [];
+            const selectedIndex = parseInt(item.selectedReferenceVariant);
+            const selectedVariant = referenceVariants[selectedIndex];
+            if (selectedVariant?.color) {
+                selectedColorText = lang === 'pt'
+                    ? `Cor seleccionada ${selectedVariant.color}`
+                    : lang === 'es'
+                    ? `Color seleccionado ${selectedVariant.color}`
+                    : `Color selected ${selectedVariant.color}`;
+            }
+        }
+    }
+
+    if (selectedColorText) {
+        parts.push(selectedColorText);
+    }
+
+    const observations = stripPesoAndQtdCaixaForProposalExport(item.observations || item.observations_text || item.notes || '');
+    if (observations) {
+        parts.push(`${t.notes}: ${normalizeProposalExportText(observations)}`);
+    }
+
+    return parts.filter(Boolean).join('\n\n') || '-';
+}
+
+async function buildDeliveryTextForProposalExcel(item, quantity, exportCartManager, lang, t) {
+    let deliveryText = item.plazoEntrega || item.plazo_entrega || '-';
+    let hasVariantDeliveryTime = false;
+
+    if (item.selectedVariant !== null && item.selectedVariant !== undefined && item.variants && item.variants.length > 0) {
+        const selectedVariant = item.variants[item.selectedVariant];
+        const variantDelivery = selectedVariant?.plazo_entrega_personalizado ||
+            selectedVariant?.plazoEntrega ||
+            selectedVariant?.plazo_entrega ||
+            selectedVariant?.deliveryTime;
+        if (variantDelivery) {
+            deliveryText = `${variantDelivery} ${t.sujetoConfirmacion}`;
+            hasVariantDeliveryTime = true;
+        }
+    }
+
+    if (!hasVariantDeliveryTime && exportCartManager?.allProducts) {
+        const productFromDB = exportCartManager.allProducts.find(p => String(p.id) === String(item.id));
+        if (productFromDB?.phc_ref && typeof exportCartManager.getStockForProduct === 'function') {
+            try {
+                const stockDisponible = await exportCartManager.getStockForProduct(productFromDB.phc_ref);
+                if (stockDisponible !== null && stockDisponible !== undefined) {
+                    if (stockDisponible >= quantity) {
+                        deliveryText = `${t.enStock}\n${t.sujetoConfirmacion}`;
+                    } else if (stockDisponible > 0) {
+                        deliveryText = `${stockDisponible.toLocaleString()} ${t.unidadesEnStock} / ${t.restantes} ${t.plazoEntrega} ${deliveryText}`;
+                    }
+                }
+            } catch (error) {
+                console.warn('Error consultando stock para Excel:', error);
+            }
+        }
+    }
+
+    if (deliveryText && deliveryText !== '-' && !/adjudica|award/i.test(deliveryText)) {
+        deliveryText = `${deliveryText} ${t.sujetoConfirmacion}`;
+    }
+
+    return deliveryText || '-';
+}
+
+function getProposalExcelPriceValues(item, t) {
+    const mergeOccurrences = Array.isArray(item._mergeOccurrences) ? item._mergeOccurrences : null;
+    let quantity = Number(item.quantity || 1);
+    let unitPrice = Number(item.price || 0);
+    let total = unitPrice * quantity;
+
+    if (mergeOccurrences && mergeOccurrences.length > 0) {
+        const qtySum = mergeOccurrences.reduce((acc, o) => acc + Number(o?.qty || 0), 0);
+        const totalSum = mergeOccurrences.reduce((acc, o) => {
+            const unit = Number(o?.unitPrice || 0);
+            const q = Number(o?.qty || 0);
+            const tVal = (o && o.total !== undefined && o.total !== null) ? Number(o.total) : (unit * q);
+            return acc + (Number.isFinite(tVal) ? tVal : 0);
+        }, 0);
+        quantity = qtySum;
+        total = totalSum;
+        unitPrice = qtySum > 0 ? (totalSum / qtySum) : unitPrice;
+    }
+
+    const quantityValue = (mergeOccurrences && mergeOccurrences.length > 1)
+        ? mergeOccurrences.map(o => formatQuantityForProposalExport(o?.qty || 0)).join('\n')
+        : quantity;
+
+    const unitPriceValue = (mergeOccurrences && mergeOccurrences.length > 1)
+        ? mergeOccurrences.map(o => {
+            const unit = Number(o?.unitPrice || 0);
+            return unit === 0 ? t.onRequest : `\u20ac${formatMoneyForProposalExport(unit)}`;
+        }).join('\n')
+        : (unitPrice === 0 ? t.onRequest : unitPrice);
+
+    const totalValue = (mergeOccurrences && mergeOccurrences.length > 1)
+        ? mergeOccurrences.map(o => {
+            const unit = Number(o?.unitPrice || 0);
+            const q = Number(o?.qty || 0);
+            const tVal = (o && o.total !== undefined && o.total !== null) ? Number(o.total) : (unit * q);
+            return unit === 0 ? t.onRequest : `\u20ac${formatMoneyForProposalExport(tVal)}`;
+        }).join('\n')
+        : (unitPrice === 0 ? t.onRequest : total);
+
+    return { quantity, unitPrice, total, quantityValue, unitPriceValue, totalValue };
+}
+
+function blobToDataUrlForProposalExcel(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error || new Error('Error leyendo imagen'));
+        reader.readAsDataURL(blob);
+    });
+}
+
+function resizeImageDataUrlForProposalExcel(dataUrl, maxDimension = 360) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+            try {
+                const ratio = Math.min(1, maxDimension / Math.max(img.width || maxDimension, img.height || maxDimension));
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.max(1, Math.round((img.width || maxDimension) * ratio));
+                canvas.height = Math.max(1, Math.round((img.height || maxDimension) * ratio));
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                resolve({ base64: canvas.toDataURL('image/png'), extension: 'png' });
+            } catch (error) {
+                console.warn('No se pudo redimensionar imagen para Excel:', error);
+                resolve(null);
+            }
+        };
+        img.onerror = () => resolve(null);
+        img.src = dataUrl;
+    });
+}
+
+async function getImageForProposalExcel(rawUrl, maxDimension = 360) {
+    const url = String(rawUrl || '').trim();
+    if (!url) return null;
+
+    try {
+        const isPdf = /\.pdf(\?|$)/i.test(url) || url.toLowerCase().includes('.pdf');
+        if (isPdf && typeof convertPdfToImage === 'function') {
+            const pdfImageData = await convertPdfToImage(url);
+            return pdfImageData ? await resizeImageDataUrlForProposalExcel(pdfImageData, maxDimension) : null;
+        }
+
+        if (/^data:image\//i.test(url)) {
+            return await resizeImageDataUrlForProposalExcel(url, maxDimension);
+        }
+
+        const response = await fetch(url, { mode: 'cors' });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const blob = await response.blob();
+
+        if (blob.type === 'application/pdf' && typeof convertPdfToImage === 'function') {
+            const pdfImageData = await convertPdfToImage(url);
+            return pdfImageData ? await resizeImageDataUrlForProposalExcel(pdfImageData, maxDimension) : null;
+        }
+
+        if (!blob.type || !blob.type.startsWith('image/')) {
+            return null;
+        }
+
+        const dataUrl = await blobToDataUrlForProposalExcel(blob);
+        return await resizeImageDataUrlForProposalExcel(dataUrl, maxDimension);
+    } catch (error) {
+        console.warn('No se pudo cargar imagen para Excel:', url, error);
+        return null;
+    }
+}
+
+async function addProposalExcelImage(workbook, worksheet, rawUrl, rowNumber, colNumber, width, height, fallbackText) {
+    const image = await getImageForProposalExcel(rawUrl, 420);
+    if (!image) {
+        worksheet.getCell(rowNumber, colNumber).value = fallbackText || '';
+        return false;
+    }
+
+    const imageId = workbook.addImage({
+        base64: image.base64,
+        extension: image.extension || 'png'
+    });
+    worksheet.addImage(imageId, {
+        tl: { col: colNumber - 1 + 0.12, row: rowNumber - 1 + 0.12 },
+        ext: { width, height },
+        editAs: 'oneCell'
+    });
+    return true;
+}
+
+async function saveProposalExcelWorkbook(workbook, fileName) {
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    });
+
+    if ('showSaveFilePicker' in window) {
+        try {
+            const fileHandle = await window.showSaveFilePicker({
+                suggestedName: fileName,
+                types: [{
+                    description: 'Excel files',
+                    accept: {
+                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx']
+                    }
+                }]
+            });
+            const writable = await fileHandle.createWritable();
+            await writable.write(blob);
+            await writable.close();
+            return { saved: true };
+        } catch (fileError) {
+            if (fileError.name === 'AbortError') {
+                return { cancelled: true };
+            }
+            if (fileError.name !== 'SecurityError') {
+                console.warn('File System Access API failed, using fallback save:', fileError);
+            }
+        }
+    }
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    }, 100);
+    return { saved: true };
+}
+
+async function generateProposalExcelWorkbook(exportCartManager, proposal, cartItems, lang) {
+    await loadExcelJSForProposalExport();
+    const ExcelJS = window.ExcelJS;
+    const t = buildProposalExportTranslations(lang);
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'EPPO';
+    workbook.created = new Date();
+
+    const worksheet = workbook.addWorksheet(t.sheetName, {
+        properties: { defaultRowHeight: 22 },
+        pageSetup: {
+            paperSize: 9,
+            orientation: 'landscape',
+            fitToPage: true,
+            fitToWidth: 1,
+            fitToHeight: 0,
+            margins: { left: 0.35, right: 0.35, top: 0.45, bottom: 0.45, header: 0.2, footer: 0.2 }
+        },
+        views: [{ showGridLines: false }]
+    });
+
+    const items = mergeProposalExportItems(cartItems || [], exportCartManager);
+    const hasLogoColumn = items.some(item =>
+        (item.logoUrl && String(item.logoUrl).trim() !== '') ||
+        requiresLogoConfirmationForProposalExport(item, exportCartManager)
+    );
+    const totalColumns = hasLogoColumn ? 8 : 7;
+
+    const columns = [
+        { header: t.photo, key: 'photo', width: 14 },
+        { header: t.name, key: 'name', width: 24 },
+        { header: t.description, key: 'description', width: 54 },
+        { header: t.quantity, key: 'quantity', width: 12 },
+        { header: t.unitPrice, key: 'unitPrice', width: 14 },
+        { header: t.total, key: 'total', width: 14 },
+        { header: t.deliveryTime, key: 'deliveryTime', width: 28 }
+    ];
+    if (hasLogoColumn) {
+        columns.push({ header: t.logo, key: 'logo', width: 15 });
+    }
+    worksheet.columns = columns;
+
+    const lastColumnLetter = worksheet.getColumn(totalColumns).letter;
+    [1, 2, 3].forEach(row => {
+        worksheet.getRow(row).height = 24;
+    });
+    worksheet.mergeCells('A1:C3');
+    worksheet.mergeCells(`${worksheet.getColumn(Math.max(5, totalColumns - 2)).letter}1:${lastColumnLetter}3`);
+
+    try {
+        if (exportCartManager?.supabase) {
+            const { data: logos, error } = await exportCartManager.supabase
+                .from('logos_propuesta')
+                .select('tipo, url_imagen')
+                .eq('activo', true);
+            if (!error && logos && logos.length > 0) {
+                const logoLeft = logos.find(l => l.tipo === 'izquierdo');
+                const logoRight = logos.find(l => l.tipo === 'derecho');
+                if (logoLeft?.url_imagen) {
+                    await addProposalExcelImage(workbook, worksheet, logoLeft.url_imagen, 1, 1, 150, 55, 'Logo');
+                }
+                if (logoRight?.url_imagen) {
+                    await addProposalExcelImage(workbook, worksheet, logoRight.url_imagen, 1, totalColumns - 1, 150, 55, 'Logo');
+                }
+            }
+        }
+    } catch (error) {
+        console.warn('No se pudieron cargar logos superiores para Excel:', error);
+    }
+
+    let commercialEmail = '';
+    let commercialPhone = '';
+    const commercialName = proposal?.nombre_comercial || '';
+    if (commercialName && exportCartManager?.supabase) {
+        try {
+            const { data: commercialData } = await exportCartManager.supabase
+                .from('user_roles')
+                .select('Email, Contacto')
+                .eq('Name', commercialName)
+                .maybeSingle();
+            commercialEmail = commercialData?.Email || '';
+            commercialPhone = commercialData?.Contacto || '';
+        } catch (error) {
+            console.warn('No se pudieron obtener datos del comercial para Excel:', error);
+        }
+    }
+
+    const clientNumber = proposal?.numero_cliente || '0';
+    const clientName = proposal?.nombre_cliente || '';
+    const clientDisplayText = clientNumber && clientNumber !== '0'
+        ? `${clientNumber} - ${clientName || '-'}`
+        : (clientName || '-');
+    const version = Number(proposal?.version || 1);
+    const proposalCode = proposal?.codigo_propuesta ? `${proposal.codigo_propuesta}${version > 1 ? ` - V${version}` : ''}` : '-';
+    const proposalDate = proposal?.fecha_inicial || proposal?.fecha_creacion || new Date().toISOString();
+    const formattedDate = new Date(proposalDate).toLocaleDateString(
+        lang === 'pt' ? 'pt-PT' : lang === 'es' ? 'es-ES' : 'en-US',
+        { day: '2-digit', month: '2-digit', year: 'numeric' }
+    );
+
+    const labelFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE5E7EB' } };
+    const headerFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF404040' } };
+    const greenFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF059669' } };
+    const thinBorder = {
+        top: { style: 'thin', color: { argb: 'FF000000' } },
+        left: { style: 'thin', color: { argb: 'FF000000' } },
+        bottom: { style: 'thin', color: { argb: 'FF000000' } },
+        right: { style: 'thin', color: { argb: 'FF000000' } }
+    };
+
+    const mergeCellsIfRange = (fromCell, toCell) => {
+        if (fromCell === toCell) return;
+        worksheet.mergeCells(`${fromCell}:${toCell}`);
+    };
+    worksheet.mergeCells(`A5:B5`);
+    worksheet.mergeCells(`C5:D5`);
+    worksheet.mergeCells(`E5:F5`);
+    mergeCellsIfRange('G5', `${lastColumnLetter}5`);
+    worksheet.mergeCells(`A6:B6`);
+    worksheet.mergeCells(`C6:D6`);
+    worksheet.mergeCells(`E6:F6`);
+    mergeCellsIfRange('G6', `${lastColumnLetter}6`);
+    worksheet.mergeCells(`A7:B7`);
+    worksheet.mergeCells(`C7:D7`);
+    worksheet.mergeCells(`E7:F7`);
+    mergeCellsIfRange('G7', `${lastColumnLetter}7`);
+
+    const headerPairs = [
+        ['A5', t.client, 'C5', clientDisplayText],
+        ['E5', t.commercial, 'G5', commercialName || '-'],
+        ['A6', t.proposalNumber, 'C6', proposalCode],
+        ['E6', t.email, 'G6', commercialEmail || '-'],
+        ['A7', t.proposalDate, 'C7', formattedDate],
+        ['E7', t.phone, 'G7', commercialPhone || '-']
+    ];
+    headerPairs.forEach(([labelCell, labelText, valueCell, valueText]) => {
+        worksheet.getCell(labelCell).value = labelText;
+        worksheet.getCell(labelCell).font = { bold: true, color: { argb: 'FF111827' } };
+        worksheet.getCell(labelCell).fill = labelFill;
+        worksheet.getCell(valueCell).value = valueText;
+        worksheet.getCell(valueCell).alignment = { wrapText: true, vertical: 'middle' };
+    });
+    for (let row = 5; row <= 7; row++) {
+        worksheet.getRow(row).height = 24;
+        for (let col = 1; col <= totalColumns; col++) {
+            const cell = worksheet.getCell(row, col);
+            cell.border = thinBorder;
+            cell.alignment = { vertical: 'middle', wrapText: true };
+        }
+    }
+
+    const tableStartRow = 9;
+    const excelRows = [];
+    const imageTasks = [];
+    let proposalTotal = 0;
+
+    for (let index = 0; index < items.length; index++) {
+        const item = items[index];
+        const priceValues = getProposalExcelPriceValues(item, t);
+        proposalTotal += priceValues.total;
+        const description = buildDescriptionForProposalExcel(item, lang, t);
+        const deliveryText = await buildDeliveryTextForProposalExcel(item, priceValues.quantity, exportCartManager, lang, t);
+        const requiresLogoConfirmation = requiresLogoConfirmationForProposalExport(item, exportCartManager);
+
+        const rowValues = [
+            '',
+            getDisplayNameForProposalExport(item.name || '-'),
+            description,
+            priceValues.quantityValue,
+            priceValues.unitPriceValue,
+            priceValues.totalValue,
+            deliveryText
+        ];
+
+        if (hasLogoColumn) {
+            rowValues.push(requiresLogoConfirmation ? t.logoConfirmation : (item.logoUrl ? '' : 'N/A'));
+        }
+
+        excelRows.push(rowValues);
+
+        const rowNumber = tableStartRow + 1 + index;
+        if (item.image) {
+            imageTasks.push({
+                url: item.image,
+                rowNumber,
+                colNumber: 1,
+                width: 76,
+                height: 58,
+                fallbackText: t.imageFallback
+            });
+        }
+        if (hasLogoColumn && item.logoUrl) {
+            imageTasks.push({
+                url: item.logoUrl,
+                rowNumber,
+                colNumber: totalColumns,
+                width: 68,
+                height: 52,
+                fallbackText: t.logoFallback
+            });
+        }
+    }
+
+    worksheet.addTable({
+        name: `ProposalTable${String(proposal?.id || Date.now()).replace(/[^a-zA-Z0-9]/g, '').substring(0, 20)}`,
+        ref: `A${tableStartRow}`,
+        headerRow: true,
+        totalsRow: false,
+        style: {
+            theme: 'TableStyleMedium2',
+            showRowStripes: true
+        },
+        columns: columns.map(col => ({ name: col.header, filterButton: true })),
+        rows: excelRows
+    });
+
+    const tableEndRow = tableStartRow + excelRows.length;
+    worksheet.getRow(tableStartRow).height = 24;
+    for (let col = 1; col <= totalColumns; col++) {
+        const cell = worksheet.getCell(tableStartRow, col);
+        cell.fill = headerFill;
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        cell.border = thinBorder;
+    }
+
+    for (let row = tableStartRow + 1; row <= tableEndRow; row++) {
+        worksheet.getRow(row).height = 66;
+        for (let col = 1; col <= totalColumns; col++) {
+            const cell = worksheet.getCell(row, col);
+            cell.border = thinBorder;
+            cell.alignment = { vertical: 'middle', wrapText: true };
+            if ([1, 4, 5, 6, 7, totalColumns].includes(col)) {
+                cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+            }
+            if ((col === 5 || col === 6) && typeof cell.value === 'number') {
+                cell.numFmt = '\u20ac#,##0.00';
+            }
+        }
+    }
+
+    for (const task of imageTasks) {
+        await addProposalExcelImage(
+            workbook,
+            worksheet,
+            task.url,
+            task.rowNumber,
+            task.colNumber,
+            task.width,
+            task.height,
+            task.fallbackText
+        );
+    }
+
+    const totalRow = tableEndRow + 2;
+    worksheet.mergeCells(`A${totalRow}:E${totalRow}`);
+    worksheet.getCell(`A${totalRow}`).value = t.totalProposal;
+    worksheet.getCell(`A${totalRow}`).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    worksheet.getCell(`A${totalRow}`).alignment = { horizontal: 'right', vertical: 'middle' };
+    worksheet.getCell(`A${totalRow}`).fill = greenFill;
+    worksheet.getCell(`F${totalRow}`).value = proposalTotal;
+    worksheet.getCell(`F${totalRow}`).numFmt = '\u20ac#,##0.00';
+    worksheet.getCell(`F${totalRow}`).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    worksheet.getCell(`F${totalRow}`).alignment = { horizontal: 'center', vertical: 'middle' };
+    worksheet.getCell(`F${totalRow}`).fill = greenFill;
+    for (let col = 1; col <= totalColumns; col++) {
+        worksheet.getCell(totalRow, col).border = thinBorder;
+        if (col > 6) worksheet.getCell(totalRow, col).fill = greenFill;
+    }
+
+    const footerStart = totalRow + 2;
+    t.footer.forEach((text, idx) => {
+        const rowNumber = footerStart + idx;
+        worksheet.mergeCells(`A${rowNumber}:${lastColumnLetter}${rowNumber}`);
+        const cell = worksheet.getCell(`A${rowNumber}`);
+        cell.value = text;
+        cell.fill = headerFill;
+        cell.font = { color: { argb: 'FFFFFFFF' } };
+        cell.alignment = { wrapText: true, vertical: 'middle' };
+        cell.border = thinBorder;
+        worksheet.getRow(rowNumber).height = 22;
+    });
+
+    worksheet.autoFilter = {
+        from: { row: tableStartRow, column: 1 },
+        to: { row: tableEndRow, column: totalColumns }
+    };
+    worksheet.views = [{ state: 'frozen', ySplit: tableStartRow, showGridLines: false }];
+
+    const fileName = buildProposalExcelFileName(proposal);
+    return await saveProposalExcelWorkbook(workbook, fileName);
+}
+
+async function generateProposalExcelFromSavedProposal(proposalId, language = 'pt', proposalSnapshot = null) {
+    let excelCartManager = null;
+    let usingTemporaryCartManager = false;
+    const originalGlobalCartManager = window.cartManager;
+    let originalEditingData = null;
+    let originalExcelManagerLanguage = null;
+    let originalCart = null;
+    let hasOriginalState = false;
+
+    try {
+        const context = await getCartManagerForPdfGeneration();
+        excelCartManager = context.cartManager;
+        usingTemporaryCartManager = context.isTemporary;
+
+        if (!excelCartManager?.supabase) {
+            throw new Error('No se pudo preparar el contexto para Excel');
+        }
+
+        if (usingTemporaryCartManager) {
+            window.cartManager = excelCartManager;
+        }
+
+        const { data: proposal, error: proposalError } = await excelCartManager.supabase
+            .from('presupuestos')
+            .select('*')
+            .eq('id', proposalId)
+            .single();
+
+        if (proposalError || !proposal) {
+            throw new Error('No se pudo cargar la propuesta desde Supabase');
+        }
+
+        if (proposal.nombre_cliente) {
+            await excelCartManager.loadClientExclusiveProducts(proposal.nombre_cliente);
+        }
+
+        const { data: articulos, error: articulosError } = await excelCartManager.supabase
+            .from('presupuestos_articulos')
+            .select('*')
+            .eq('presupuesto_id', proposalId)
+            .order('created_at', { ascending: true });
+
+        if (articulosError) {
+            throw new Error('No se pudieron cargar los articulos desde Supabase');
+        }
+
+        const cartItems = await buildCartItemsForProposalExcel(excelCartManager, articulos || []);
+        originalEditingData = excelCartManager.editingProposalData;
+        originalExcelManagerLanguage = excelCartManager.currentLanguage;
+        originalCart = excelCartManager.cart;
+        hasOriginalState = true;
+
+        excelCartManager.editingProposalData = {
+            id: proposal.id,
+            codigo_propuesta: proposal.codigo_propuesta,
+            fecha_creacion: proposal.fecha_inicial,
+            nombre_cliente: proposal.nombre_cliente,
+            nombre_comercial: proposal.nombre_comercial,
+            pais: proposal.pais,
+            numero_cliente: proposal.numero_cliente || '0',
+            version: proposal.version || 1
+        };
+        excelCartManager.cart = cartItems;
+
+        const resolvedProposalCountry =
+            getProposalCountryValueForExport(proposalSnapshot) ||
+            getProposalCountryValueForExport(proposal) ||
+            getProposalCountryValueForExport(excelCartManager.editingProposalData);
+        const excelLanguage = normalizeCountryCodeForProposalExport(resolvedProposalCountry) ||
+            language ||
+            excelCartManager.currentLanguage ||
+            'pt';
+        excelCartManager.currentLanguage = excelLanguage;
+
+        const saveResult = await generateProposalExcelWorkbook(excelCartManager, proposal, cartItems, excelLanguage);
+
+        return saveResult;
+    } catch (error) {
+        console.error('ERROR GENERAL en generateProposalExcelFromSavedProposal:', error);
+        throw error;
+    } finally {
+        if (excelCartManager && hasOriginalState) {
+            excelCartManager.cart = originalCart;
+            excelCartManager.editingProposalData = originalEditingData;
+            excelCartManager.currentLanguage = originalExcelManagerLanguage;
+        }
+        if (usingTemporaryCartManager) {
+            window.cartManager = originalGlobalCartManager;
+        }
+    }
+}
+
+if (typeof window !== 'undefined') {
+    window.generateProposalExcelFromSavedProposal = generateProposalExcelFromSavedProposal;
+}
+
 /**
  * Pre-procesar todos los logos PDF del carrito, convirtiÃ©ndolos a imÃ¡genes
  * Esta funciÃ³n se ejecuta ANTES de generar el PDF para optimizar el proceso
@@ -13649,6 +14837,9 @@ window.updateManualPrice = updateManualPrice;
 // Asegurar que generateProposalPDFFromSavedProposal estÃ© disponible globalmente
 if (typeof generateProposalPDFFromSavedProposal !== 'undefined') {
     window.generateProposalPDFFromSavedProposal = generateProposalPDFFromSavedProposal;
+}
+if (typeof generateProposalExcelFromSavedProposal !== 'undefined') {
+    window.generateProposalExcelFromSavedProposal = generateProposalExcelFromSavedProposal;
 }
 
 

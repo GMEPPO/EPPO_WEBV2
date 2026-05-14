@@ -1752,6 +1752,21 @@ class ProposalsManager {
                 " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(239,68,68,0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
                     <i class="fas fa-file-pdf"></i> <span id="print-pdf-text">${detailLabels.printPDF}</span>
                 </button>
+                <button class="btn-print-excel" onclick="window.proposalsManager.printProposalExcel('${proposal.id}')" style="
+                    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                    color: white;
+                    border: none;
+                    padding: 10px 20px;
+                    border-radius: 8px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    transition: all 0.2s;
+                " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(16,185,129,0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
+                    <i class="fas fa-file-excel"></i> <span id="print-excel-text">${detailLabels.printExcel}</span>
+                </button>
                 ${logos.length > 0 ? `
                 <button class="btn-view-logos" onclick="window.proposalsManager.viewProposalLogos('${proposal.id}')" style="
                     background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
@@ -2682,6 +2697,94 @@ class ProposalsManager {
         }
         
         console.log('🏁 ========== FIN printProposalPDF ==========');
+    }
+
+    async printProposalExcel(proposalId) {
+        console.log('========== INICIO printProposalExcel ==========');
+        const proposal = this.allProposals.find(p => p.id === proposalId);
+        if (!proposal) {
+            const message = this.currentLanguage === 'es' ?
+                'Propuesta no encontrada' :
+                this.currentLanguage === 'pt' ?
+                'Proposta nao encontrada' :
+                'Proposal not found';
+            this.showNotification(message, 'error');
+            return;
+        }
+
+        try {
+            if (typeof window.generateProposalExcelFromSavedProposal === 'undefined') {
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+
+            if (typeof window.generateProposalExcelFromSavedProposal === 'undefined') {
+                await this.loadCartManagerScript();
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+
+            if (typeof window.generateProposalExcelFromSavedProposal === 'undefined') {
+                throw new Error('La funcion de generacion de Excel no esta disponible.');
+            }
+
+            const normalizeCountryCode = (value) => {
+                const repaired = String(value || '')
+                    .replace(/\u00c3\u00b1/g, '\u00f1')
+                    .replace(/\u00c3\u0091/g, '\u00d1')
+                    .replace(/\u00c3\u00a1/g, '\u00e1')
+                    .replace(/\u00c3\u0081/g, '\u00c1')
+                    .replace(/\u00c3\u00a9/g, '\u00e9')
+                    .replace(/\u00c3\u0089/g, '\u00c9')
+                    .replace(/\u00c3\u00ad/g, '\u00ed')
+                    .replace(/\u00c3\u008d/g, '\u00cd')
+                    .replace(/\u00c3\u00b3/g, '\u00f3')
+                    .replace(/\u00c3\u0093/g, '\u00d3')
+                    .replace(/\u00c3\u00ba/g, '\u00fa')
+                    .replace(/\u00c3\u009a/g, '\u00da')
+                    .replace(/\u00c3\u00bc/g, '\u00fc')
+                    .replace(/\u00c3\u009c/g, '\u00dc')
+                    .replace(/\u00c2/g, '');
+
+                const normalized = repaired
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .trim()
+                    .toLowerCase();
+
+                if (['es', 'espana', 'espanha', 'spain'].includes(normalized)) return 'es';
+                if (['pt', 'portugal'].includes(normalized)) return 'pt';
+                return '';
+            };
+
+            const language = normalizeCountryCode(proposal.pais) || this.currentLanguage || 'pt';
+            const loadingMessage = this.currentLanguage === 'es' ?
+                'Generando Excel...' :
+                this.currentLanguage === 'pt' ?
+                'Gerando Excel...' :
+                'Generating Excel...';
+            this.showNotification(loadingMessage, 'info');
+
+            const result = await window.generateProposalExcelFromSavedProposal(proposalId, language, proposal);
+            if (result && result.cancelled) {
+                return;
+            }
+
+            const successMessage = this.currentLanguage === 'es' ?
+                'Excel generado correctamente' :
+                this.currentLanguage === 'pt' ?
+                'Excel gerado com sucesso' :
+                'Excel generated successfully';
+            this.showNotification(successMessage, 'success');
+        } catch (error) {
+            console.error('ERROR en printProposalExcel:', error);
+            const errorMessage = this.currentLanguage === 'es' ?
+                `Error al generar Excel: ${error.message}` :
+                this.currentLanguage === 'pt' ?
+                `Erro ao gerar Excel: ${error.message}` :
+                `Error generating Excel: ${error.message}`;
+            this.showNotification(errorMessage, 'error');
+        }
+
+        console.log('========== FIN printProposalExcel ==========');
     }
 
     async loadCartManagerScript() {
@@ -4054,6 +4157,7 @@ class ProposalsManager {
                 total: 'Total',
                 editProposal: 'Editar Proposta',
                 printPDF: 'Imprimir PDF',
+                printExcel: 'Imprimir Excel',
                 viewDossiers: 'Ver Dossiers',
                 replaceDossier: 'Substituir Dossier',
                 appendDossier: 'Anexar Documento',
@@ -4098,6 +4202,7 @@ class ProposalsManager {
                 total: 'Total',
                 editProposal: 'Editar Propuesta',
                 printPDF: 'Imprimir PDF',
+                printExcel: 'Imprimir Excel',
                 viewDossiers: 'Ver Dossiers',
                 replaceDossier: 'Sustituir Dossier',
                 appendDossier: 'Anexar Documento',
@@ -4142,6 +4247,7 @@ class ProposalsManager {
                 total: 'Total',
                 editProposal: 'Edit Proposal',
                 printPDF: 'Print PDF',
+                printExcel: 'Print Excel',
                 viewDossiers: 'View Dossiers',
                 replaceDossier: 'Replace Dossier',
                 appendDossier: 'Append Document',
