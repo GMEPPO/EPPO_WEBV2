@@ -1003,6 +1003,7 @@
 
             async init() {
                 try {
+                    this.updateBackButtonHref();
                     this.productId = this.getProductIdFromURL();
                     if (!this.productId) {
                         this.showError('ID de producto no válido');
@@ -1020,6 +1021,25 @@
             getProductIdFromURL() {
                 const urlParams = new URLSearchParams(window.location.search);
                 return urlParams.get('id');
+            }
+
+            getReturnUrlFromURL() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const returnUrl = urlParams.get('returnUrl');
+                const isUnsafeUrl = returnUrl && (/^[a-z][a-z0-9+.-]*:/i.test(returnUrl) || returnUrl.startsWith('//'));
+
+                if (returnUrl && !isUnsafeUrl && returnUrl.includes('productos-dinamico.html')) {
+                    return returnUrl;
+                }
+
+                return 'productos-dinamico.html';
+            }
+
+            updateBackButtonHref() {
+                const backButton = document.querySelector('.back-button');
+                if (backButton) {
+                    backButton.setAttribute('href', this.getReturnUrlFromURL());
+                }
             }
 
             async initializeSupabase() {
@@ -1305,6 +1325,7 @@
                 const backButton = document.querySelector('.back-button');
                 if (backButton) {
                     backButton.innerHTML = `<i class="fas fa-arrow-left"></i> ${this.translateLabel('backButton')}`;
+                    backButton.setAttribute('href', this.getReturnUrlFromURL());
                 }
             }
 

@@ -39,6 +39,9 @@ class DynamicProductsPage {
         // Detectar categoría desde URL
         const urlParams = new URLSearchParams(window.location.search);
         const categoryParam = urlParams.get('category');
+        this.productListStateKey = 'eppo_products_list_state_v1';
+        this.shouldRestoreProductListState = urlParams.get('restore') === '1';
+        this.pendingProductListState = this.shouldRestoreProductListState ? this.loadProductListState() : null;
         
         // Mapear categorías de URL a nombres internos (incluye alias comunes)
         const categoryMap = {
@@ -108,6 +111,180 @@ class DynamicProductsPage {
         return categorias.some(c => this.normalizeCategoryName(c) === normSlug);
     }
 
+    loadProductListState() {
+        try {
+            const rawState = sessionStorage.getItem(this.productListStateKey);
+            return rawState ? JSON.parse(rawState) : null;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    getProductListState() {
+        const searchInput = document.getElementById('product-search-input');
+        const priceRange = document.getElementById('priceSlider') || document.getElementById('priceRange');
+        const currentSearchTerm = searchInput ? searchInput.value.trim() : (this.filters.searchTerm || '');
+        const currentMaxPrice = priceRange ? Number(priceRange.value) : Number(this.filters.maxPrice);
+
+        return {
+            filters: {
+                categories: Array.isArray(this.filters.categories) ? [...this.filters.categories] : [],
+                maxPrice: Number.isFinite(currentMaxPrice) ? currentMaxPrice : this.filters.maxPrice,
+                powers: Array.isArray(this.filters.powers) ? [...this.filters.powers] : [],
+                colors: Array.isArray(this.filters.colors) ? [...this.filters.colors] : [],
+                types: Array.isArray(this.filters.types) ? [...this.filters.types] : [],
+                technologies: Array.isArray(this.filters.technologies) ? [...this.filters.technologies] : [],
+                dynamicFilters: this.filters.dynamicFilters ? JSON.parse(JSON.stringify(this.filters.dynamicFilters)) : {},
+                searchTerm: currentSearchTerm
+            },
+            currentSort: this.currentSort || 'name-supplier',
+            scrollY: window.scrollY || window.pageYOffset || 0,
+            timestamp: Date.now()
+        };
+    }
+
+    saveProductListState() {
+        try {
+            sessionStorage.setItem(this.productListStateKey, JSON.stringify(this.getProductListState()));
+        } catch (error) {
+            // Si sessionStorage no esta disponible, la navegacion sigue funcionando sin restauracion.
+        }
+    }
+
+    buildProductsReturnUrl() {
+        const currentPage = window.location.pathname.split('/').pop() || 'productos-dinamico.html';
+        const params = new URLSearchParams(window.location.search);
+        params.set('restore', '1');
+        const query = params.toString();
+        return `${currentPage}${query ? `?${query}` : ''}`;
+    }
+
+    openProductDetail(productId) {
+        if (!productId) return;
+
+        this.saveProductListState();
+        const returnUrl = this.buildProductsReturnUrl();
+
+        try {
+            window.history.replaceState(window.history.state, '', returnUrl);
+        } catch (error) {
+            // No bloquear la apertura del producto si el navegador impide actualizar el historial.
+        }
+
+        const detailParams = new URLSearchParams();
+        detailParams.set('id', String(productId));
+        detailParams.set('returnUrl', returnUrl);
+        window.location.href = `producto-detalle.html?${detailParams.toString()}`;
+    }
+
+    sanitizeRestoredDynamicFilters(dynamicFilters) {
+        if (!dynamicFilters || typeof dynamicFilters !== 'object') {
+            return {};
+        }
+
+        return Object.entries(dynamicFilters).reduce((acc, [fieldId, selectedValues]) => {
+            if (!fieldId) return acc;
+            if (Array.isArray(selectedValues)) {
+                acc[fieldId] = selectedValues.map(value => String(value));
+            } else if (selectedValues !== null && selectedValues !== undefined && selectedValues !== '') {
+                acc[fieldId] = [String(selectedValues)];
+            } else {
+                acc[fieldId] = [];
+            }
+            return acc;
+        }, {});
+    }
+
+    restoreProductListControls() {
+        const priceRange = document.getElementById('priceSlider') || document.getElementById('priceRange');
+        if (priceRange) {
+            const maxAllowedPrice = Number(priceRange.max) || this.filters.maxPrice || 200;
+            const restoredPrice = Number(this.filters.maxPrice);
+            const safePrice = Number.isFinite(restoredPrice) ? Math.min(restoredPrice, maxAllowedPrice) : maxAllowedPrice;
+            priceRange.value = safePrice;
+            this.filters.maxPrice = safePrice;
+            this.updatePriceValue(safePrice);
+        }
+
+        const searchInput = document.getElementById('product-search-input');
+        if (searchInput) {
+            searchInput.value = this.filters.searchTerm || '';
+        }
+
+        const clearSearchBtn = document.getElementById('clear-search-btn');
+        if (clearSearchBtn) {
+            clearSearchBtn.style.display = this.filters.searchTerm ? 'flex' : 'none';
+        }
+
+        this.updateCategoryCheckboxes();
+        this.updateSortDropdownUI(this.currentSort);
+    }
+
+    restoreProductListScroll(scrollY) {
+        const targetScroll = Number(scrollY);
+        if (!Number.isFinite(targetScroll) || targetScroll <= 0) return;
+
+        setTimeout(() => {
+            requestAnimationFrame(() => {
+                window.scrollTo({ top: targetScroll, left: 0, behavior: 'auto' });
+            });
+        }, 80);
+    }
+
+    clearRestoreParamFromUrl() {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('restore') !== '1') return;
+
+        params.delete('restore');
+        const pageName = window.location.pathname.split('/').pop() || 'productos-dinamico.html';
+        const query = params.toString();
+        const cleanUrl = `${pageName}${query ? `?${query}` : ''}`;
+
+        try {
+            window.history.replaceState(window.history.state, '', cleanUrl);
+        } catch (error) {
+            // La limpieza de URL es cosmetica; la restauracion ya se completo.
+        }
+    }
+
+    async restoreProductListStateIfNeeded() {
+        if (!this.shouldRestoreProductListState) {
+            return false;
+        }
+
+        const state = this.pendingProductListState || this.loadProductListState();
+        if (!state || !state.filters) {
+            this.clearRestoreParamFromUrl();
+            return false;
+        }
+
+        const restoredFilters = state.filters || {};
+        const restoredCategories = Array.isArray(restoredFilters.categories)
+            ? restoredFilters.categories.map(category => this.normalizeCategoryName(category)).filter(Boolean)
+            : [];
+        const restoredMaxPrice = Number(restoredFilters.maxPrice);
+
+        this.selectedCategoryFromUrl = null;
+        this.filters = {
+            categories: restoredCategories,
+            maxPrice: Number.isFinite(restoredMaxPrice) ? restoredMaxPrice : this.filters.maxPrice,
+            powers: Array.isArray(restoredFilters.powers) ? restoredFilters.powers : [],
+            colors: Array.isArray(restoredFilters.colors) ? restoredFilters.colors : [],
+            types: Array.isArray(restoredFilters.types) ? restoredFilters.types : [],
+            technologies: Array.isArray(restoredFilters.technologies) ? restoredFilters.technologies : [],
+            dynamicFilters: this.sanitizeRestoredDynamicFilters(restoredFilters.dynamicFilters),
+            searchTerm: typeof restoredFilters.searchTerm === 'string' ? restoredFilters.searchTerm : ''
+        };
+        this.currentSort = state.currentSort || this.currentSort || 'name-supplier';
+
+        this.restoreProductListControls();
+        await this.updateDynamicFilters();
+        this.applyFilters();
+        this.restoreProductListScroll(state.scrollY);
+        this.clearRestoreParamFromUrl();
+        return true;
+    }
+
     async init() {
         try {
             // Resetear flags
@@ -133,11 +310,13 @@ class DynamicProductsPage {
             
             // Esperar a que los productos estén completamente cargados
             await this.waitForProducts();
+
+            const restoredProductListState = await this.restoreProductListStateIfNeeded();
             
             // Mostrar productos filtrados PRIMERO
-            if (this.loadedProducts && this.allProducts.length > 0) {
+            if (!restoredProductListState && this.loadedProducts && this.allProducts.length > 0) {
                     this.applyFilters();
-            } else {
+            } else if (!restoredProductListState) {
                 // No hay productos disponibles
                 this.displayProducts([]);
             }
@@ -148,7 +327,7 @@ class DynamicProductsPage {
             
             // FORZAR creación de filtros dinámicos DESPUÉS de todo lo demás
             // Esto es especialmente importante cuando viene una categoría desde URL
-            if (this.filters.categories.length > 0 && this.allProducts.length > 0) {
+            if (!restoredProductListState && this.filters.categories.length > 0 && this.allProducts.length > 0) {
                 // Resetear el flag para asegurar que se puedan crear
                 this.creatingDynamicFilters = false;
                 
@@ -622,7 +801,7 @@ class DynamicProductsPage {
             
             if (this.allProducts.length === 0) {
                 this.displayProducts([]);
-            } else {
+            } else if (!this.shouldRestoreProductListState) {
                 // Mostrar todos los productos directamente
                 this.applyFilters();
             }
@@ -2446,13 +2625,13 @@ class DynamicProductsPage {
         return `
             <article class="card product-card" data-product-id="${product.id}" style="position:relative;">
                 ${multiSelectCheckboxHtml}
-                <div class="media" onclick="window.location.href='producto-detalle.html?id=${product.id}'" style="cursor: pointer; position: relative;">
+                <div class="media" onclick="window.productManager && window.productManager.openProductDetail('${product.id}')" style="cursor: pointer; position: relative;">
                     ${imageHtml}
                     ${badgeHtml}
                 </div>
 
                 <div style="padding:12px; display:flex; flex-direction:column; flex:1;">
-                    <h3 class="title" onclick="window.location.href='producto-detalle.html?id=${product.id}'" style="cursor: pointer; text-align: center;">${displayNombre || '—'}</h3>
+                    <h3 class="title" onclick="window.productManager && window.productManager.openProductDetail('${product.id}')" style="cursor: pointer; text-align: center;">${displayNombre || '—'}</h3>
                     <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px; flex:1;">
                         ${relevantFields.map(field => `
                             <div style="display:flex;justify-content:space-between;gap:16px;">
@@ -2938,20 +3117,23 @@ class DynamicProductsPage {
         // Calcular precio máximo de todos los productos
         const maxPrice = this.allProducts.length > 0 ? Math.max(...this.allProducts.map(p => p.precio)) : 200;
         
-        priceRange.max = Math.ceil(maxPrice);
-        priceRange.value = Math.ceil(maxPrice);
+        const maxPriceValue = Math.ceil(maxPrice);
+        priceRange.max = maxPriceValue;
+        priceRange.value = maxPriceValue;
         
         // Actualizar valor inicial
-        this.updatePriceValue(Math.ceil(maxPrice));
+        this.updatePriceValue(maxPriceValue);
 
         // Resetear filtros manteniendo categorías disponibles
         this.filters = {
             categories: [...this.defaultCategories],
-            maxPrice: Math.ceil(maxPrice),
+            maxPrice: maxPriceValue,
             powers: [],
             colors: [],
             types: [],
-            technologies: []
+            technologies: [],
+            dynamicFilters: {},
+            searchTerm: ''
         };
         this.updateCategoryCheckboxes();
 
@@ -2963,9 +3145,11 @@ class DynamicProductsPage {
             this.applyFilters();
         });
 
-        this.updateDynamicFilters().then(() => {
-            this.applyFilters();
-        });
+        if (!this.shouldRestoreProductListState) {
+            this.updateDynamicFilters().then(() => {
+                this.applyFilters();
+            });
+        }
     }
 
     updatePriceValue(value) {
@@ -2993,7 +3177,8 @@ class DynamicProductsPage {
             types: [],
             technologies: [],
             // Mantener la estructura de filtros dinámicos pero vacía
-            dynamicFilters: {}
+            dynamicFilters: {},
+            searchTerm: ''
         };
         
         // Desmarcar todos los checkboxes de filtros dinámicos
